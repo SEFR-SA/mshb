@@ -14,6 +14,9 @@ import { formatDistanceToNow } from "date-fns";
 import GroupSettingsDialog from "@/components/GroupSettingsDialog";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import GroupMembersPanel from "@/components/chat/GroupMembersPanel";
+import FileAttachmentButton from "@/components/chat/FileAttachmentButton";
+import MessageFilePreview from "@/components/chat/MessageFilePreview";
+import { uploadChatFile } from "@/lib/uploadChatFile";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Message = Tables<"messages">;
@@ -43,6 +46,7 @@ const GroupChat = () => {
   const [hasMore, setHasMore] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -68,7 +72,6 @@ const GroupChat = () => {
       const myMembership = members?.find((m: any) => m.user_id === user.id);
       setIsAdmin((myMembership as any)?.role === "admin");
 
-      // Build roles map
       const rolesMap = new Map<string, string>();
       members?.forEach((m: any) => rolesMap.set(m.user_id, m.role));
       setMemberRoles(rolesMap);
@@ -176,15 +179,28 @@ const GroupChat = () => {
   };
 
   const sendMessage = async () => {
-    if (!newMsg.trim() || !groupId || !user || sending) return;
+    if ((!newMsg.trim() && !selectedFile) || !groupId || !user || sending) return;
     const content = newMsg.trim().slice(0, 2000);
     setSending(true);
     setNewMsg("");
+    const file = selectedFile;
+    setSelectedFile(null);
+
     try {
-      await supabase.from("messages").insert({ group_thread_id: groupId, author_id: user.id, content } as any);
+      let fileData: { file_url: string; file_name: string; file_type: string; file_size: number } | null = null;
+      if (file) {
+        const url = await uploadChatFile(user.id, file);
+        fileData = { file_url: url, file_name: file.name, file_type: file.type, file_size: file.size };
+      }
+      await supabase.from("messages").insert({
+        group_thread_id: groupId,
+        author_id: user.id,
+        content,
+        ...(fileData || {}),
+      } as any);
       await supabase.from("group_threads").update({ last_message_at: new Date().toISOString() } as any).eq("id", groupId);
     } catch {
-      toast({ title: t("common.error"), variant: "destructive" });
+      toast({ title: selectedFile ? t("files.uploadError") : t("common.error"), variant: "destructive" });
     }
     setSending(false);
   };
@@ -252,6 +268,7 @@ const GroupChat = () => {
           const isMine = msg.author_id === user?.id;
           const isDeleted = msg.deleted_for_everyone;
           const authorProfile = profiles.get(msg.author_id);
+          const msgAny = msg as any;
 
           return (
             <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
@@ -288,6 +305,17 @@ const GroupChat = () => {
                     </div>
                   ) : (
                     <>
+                      {!isDeleted && msgAny.file_url && (
+                        <div className="mb-1">
+                          <MessageFilePreview
+                            fileUrl={msgAny.file_url}
+                            fileName={msgAny.file_name || "file"}
+                            fileType={msgAny.file_type || ""}
+                            fileSize={msgAny.file_size || 0}
+                            isMine={isMine}
+                          />
+                        </div>
+                      )}
                       <p className="text-sm whitespace-pre-wrap break-words">
                         {isDeleted ? t("chat.deleted") : msg.content}
                       </p>
@@ -338,9 +366,22 @@ const GroupChat = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* File preview strip */}
+      {selectedFile && (
+        <div className="px-3 pt-2 flex items-center gap-2">
+          <div className="flex-1 text-sm truncate text-muted-foreground">
+            📎 {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)
+          </div>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedFile(null)}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+
       {/* Composer */}
       <div className="p-3 glass border-t border-border/50">
         <div className="flex items-center gap-2">
+          <FileAttachmentButton onFileSelect={setSelectedFile} disabled={sending} />
           <Input
             value={newMsg}
             onChange={(e) => { setNewMsg(e.target.value); broadcastTyping(); }}
@@ -349,7 +390,7 @@ const GroupChat = () => {
             className="flex-1"
             maxLength={2000}
           />
-          <Button size="icon" onClick={sendMessage} disabled={!newMsg.trim() || sending}>
+          <Button size="icon" onClick={sendMessage} disabled={(!newMsg.trim() && !selectedFile) || sending}>
             <Send className="h-4 w-4" />
           </Button>
         </div>
@@ -365,12 +406,10 @@ const GroupChat = () => {
     </div>
   );
 
-  // Mobile: just the chat panel
   if (isMobile) {
     return chatPanel;
   }
 
-  // Desktop: 3-panel layout
   return (
     <div className="flex h-full overflow-hidden">
       <ChatSidebar activeThreadId={groupId} />

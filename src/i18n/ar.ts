@@ -140,6 +140,12 @@ export default {
     incoming: "واردة",
     outgoing: "صادرة",
   },
+  files: {
+    tooLarge: "الملف كبير جداً. الحد الأقصى هو ١٠ ميغابايت.",
+    uploadError: "فشل رفع الملف.",
+    download: "تحميل",
+    attachment: "مرفق",
+  },
   groups: {
     create: "إنشاء مجموعة",
     name: "اسم المجموعة",

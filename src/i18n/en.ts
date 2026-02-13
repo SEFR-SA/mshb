@@ -140,6 +140,12 @@ export default {
     incoming: "Incoming",
     outgoing: "Outgoing",
   },
+  files: {
+    tooLarge: "File is too large. Maximum size is 10 MB.",
+    uploadError: "Failed to upload file.",
+    download: "Download",
+    attachment: "Attachment",
+  },
   groups: {
     create: "Create Group",
     name: "Group Name",
