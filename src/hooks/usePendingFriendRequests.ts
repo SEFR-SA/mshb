@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import i18n from "@/i18n";
 
 const playNotificationSound = () => {
   try {
@@ -29,7 +28,7 @@ export function usePendingFriendRequests() {
 
     if (prevCountRef.current !== null && newCount > prevCountRef.current) {
       playNotificationSound();
-      toast({ title: i18n.t("notifications.newFriendRequest") });
+      toast({ title: "You have a new friend request!" });
     }
     prevCountRef.current = newCount;
 
