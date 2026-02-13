@@ -145,6 +145,8 @@ export default {
     uploadError: "Failed to upload file.",
     download: "Download",
     attachment: "Attachment",
+    uploading: "Uploading file...",
+    dropHere: "Drop file here",
   },
   groups: {
     create: "Create Group",

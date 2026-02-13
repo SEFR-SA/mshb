@@ -145,6 +145,8 @@ export default {
     uploadError: "فشل رفع الملف.",
     download: "تحميل",
     attachment: "مرفق",
+    uploading: "جارٍ رفع الملف...",
+    dropHere: "أفلت الملف هنا",
   },
   groups: {
     create: "إنشاء مجموعة",

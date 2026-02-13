@@ -7,7 +7,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Settings2, Users } from "lucide-react";
+import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Settings2, Users, Upload } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
@@ -16,6 +16,7 @@ import ChatSidebar from "@/components/chat/ChatSidebar";
 import GroupMembersPanel from "@/components/chat/GroupMembersPanel";
 import FileAttachmentButton from "@/components/chat/FileAttachmentButton";
 import MessageFilePreview from "@/components/chat/MessageFilePreview";
+import { Progress } from "@/components/ui/progress";
 import { uploadChatFile } from "@/lib/uploadChatFile";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -23,6 +24,7 @@ type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
 const PAGE_SIZE = 30;
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const GroupChat = () => {
   const { t } = useTranslation();
@@ -47,6 +49,8 @@ const GroupChat = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -189,8 +193,10 @@ const GroupChat = () => {
     try {
       let fileData: { file_url: string; file_name: string; file_type: string; file_size: number } | null = null;
       if (file) {
-        const url = await uploadChatFile(user.id, file);
+        setUploadProgress(0);
+        const url = await uploadChatFile(user.id, file, (p) => setUploadProgress(p));
         fileData = { file_url: url, file_name: file.name, file_type: file.type, file_size: file.size };
+        setUploadProgress(null);
       }
       await supabase.from("messages").insert({
         group_thread_id: groupId,
@@ -200,9 +206,24 @@ const GroupChat = () => {
       } as any);
       await supabase.from("group_threads").update({ last_message_at: new Date().toISOString() } as any).eq("id", groupId);
     } catch {
+      setUploadProgress(null);
       toast({ title: selectedFile ? t("files.uploadError") : t("common.error"), variant: "destructive" });
     }
     setSending(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setDragOver(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setDragOver(false); };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      toast({ title: t("files.tooLarge"), variant: "destructive" });
+      return;
+    }
+    setSelectedFile(file);
   };
 
   const editMessage = async (msgId: string) => {
@@ -229,7 +250,16 @@ const GroupChat = () => {
     .join(", ");
 
   const chatPanel = (
-    <div className="flex flex-col h-full min-w-0 flex-1">
+    <div className="flex flex-col h-full min-w-0 flex-1 relative" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+      {/* Drag overlay */}
+      {dragOver && (
+        <div className="absolute inset-0 z-50 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2 text-primary">
+            <Upload className="h-10 w-10" />
+            <span className="font-medium">{t("files.dropHere")}</span>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="flex items-center gap-3 p-3 glass border-b border-border/50">
         {isMobile && (
@@ -366,8 +396,16 @@ const GroupChat = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Upload progress */}
+      {uploadProgress !== null && (
+        <div className="px-3 pt-2 space-y-1">
+          <p className="text-xs text-muted-foreground">{t("files.uploading")}</p>
+          <Progress value={uploadProgress} className="h-2" />
+        </div>
+      )}
+
       {/* File preview strip */}
-      {selectedFile && (
+      {selectedFile && uploadProgress === null && (
         <div className="px-3 pt-2 flex items-center gap-2">
           <div className="flex-1 text-sm truncate text-muted-foreground">
             📎 {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)

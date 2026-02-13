@@ -153,7 +153,11 @@ const GroupSettingsDialog = ({ open, onOpenChange, groupId, isAdmin, onLeave }: 
 
   const handleLeave = async () => {
     if (!user) return;
-    await supabase.from("group_members").delete().eq("group_id", groupId).eq("user_id", user.id);
+    const { error } = await supabase.from("group_members").delete().eq("group_id", groupId).eq("user_id", user.id);
+    if (error) {
+      toast({ title: t("common.error"), variant: "destructive" });
+      return;
+    }
     onOpenChange(false);
     onLeave();
   };
