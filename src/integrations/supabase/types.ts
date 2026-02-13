@@ -166,6 +166,10 @@ export type Database = {
           created_at: string
           deleted_for_everyone: boolean
           edited_at: string | null
+          file_name: string | null
+          file_size: number | null
+          file_type: string | null
+          file_url: string | null
           group_thread_id: string | null
           id: string
           thread_id: string | null
@@ -176,6 +180,10 @@ export type Database = {
           created_at?: string
           deleted_for_everyone?: boolean
           edited_at?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
           group_thread_id?: string | null
           id?: string
           thread_id?: string | null
@@ -186,6 +194,10 @@ export type Database = {
           created_at?: string
           deleted_for_everyone?: boolean
           edited_at?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
           group_thread_id?: string | null
           id?: string
           thread_id?: string | null
