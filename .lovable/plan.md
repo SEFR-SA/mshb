@@ -1,53 +1,87 @@
 
 
-# Add Badge Indicators to Navigation for New Messages and Friend Requests
+# Fix Group Creation RLS Policy
 
-## Overview
-Add real-time badge counters to the navigation items so users can see at a glance when they have unread messages or pending friend requests.
+## Problem
+Creating a new group fails with a 403 error because the RLS INSERT policy on `group_threads` is RESTRICTIVE. PostgreSQL requires at least one PERMISSIVE policy to grant access -- restrictive policies alone will always deny.
 
-## Current State
-- The "Messages" nav item already shows a badge with unread message count (via the `useUnreadCount` hook)
-- The "Friends" nav item has no badge indicator
-- Pending friend requests are only visible once you navigate to the Friends page
+The same issue likely affects the `group_members` table INSERT policy, which would fail on the next step after group creation.
 
-## Changes
+## Fix
 
-### 1. New hook: `src/hooks/usePendingFriendRequests.ts`
-- Create a hook that counts **incoming** pending friend requests (`addressee_id = user.id AND status = 'pending'`)
-- Subscribe to realtime changes on the `friendships` table to auto-update
-- Returns `pendingCount` (number)
+### Database Migration
+Drop the restrictive INSERT policies on `group_threads` and `group_members`, then recreate them as PERMISSIVE:
 
-### 2. Update `src/components/layout/AppLayout.tsx`
-- Import and use the new `usePendingFriendRequests` hook
-- Add a `badgeCount` property to each nav item (messages = `totalUnread`, friends = `pendingCount`, settings = 0)
-- Render the badge for any nav item where `badgeCount > 0` (currently only messages has this logic -- generalize it to all items)
-- Apply the same badge styling to both desktop sidebar and mobile bottom nav
+```sql
+-- Fix group_threads INSERT policy
+DROP POLICY IF EXISTS "Authenticated users can create groups" ON public.group_threads;
+CREATE POLICY "Authenticated users can create groups"
+  ON public.group_threads FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = created_by);
 
-### 3. Update `src/components/chat/ChatSidebar.tsx`
-- The ChatSidebar also renders navigation-like items but does not need friend request badges since it only shows conversations
+-- Fix group_members INSERT policy
+DROP POLICY IF EXISTS "Admin can add members" ON public.group_members;
+CREATE POLICY "Admin can add members"
+  ON public.group_members FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    is_group_admin(auth.uid(), group_id)
+    OR (
+      auth.uid() = user_id
+      AND EXISTS (
+        SELECT 1 FROM group_threads
+        WHERE group_threads.id = group_members.group_id
+          AND group_threads.created_by = auth.uid()
+      )
+    )
+  );
+```
+
+Also fix the SELECT/UPDATE/DELETE policies on both tables, since they are all restrictive and will block access:
+
+```sql
+-- group_threads SELECT
+DROP POLICY IF EXISTS "Members can view group threads" ON public.group_threads;
+CREATE POLICY "Members can view group threads"
+  ON public.group_threads FOR SELECT
+  TO authenticated
+  USING (is_group_member(auth.uid(), id));
+
+-- group_threads UPDATE
+DROP POLICY IF EXISTS "Admin can update group" ON public.group_threads;
+CREATE POLICY "Admin can update group"
+  ON public.group_threads FOR UPDATE
+  TO authenticated
+  USING (is_group_admin(auth.uid(), id));
+
+-- group_members SELECT
+DROP POLICY IF EXISTS "Members can view group members" ON public.group_members;
+CREATE POLICY "Members can view group members"
+  ON public.group_members FOR SELECT
+  TO authenticated
+  USING (is_group_member(auth.uid(), group_id));
+
+-- group_members UPDATE
+DROP POLICY IF EXISTS "Admin can update roles" ON public.group_members;
+CREATE POLICY "Admin can update roles"
+  ON public.group_members FOR UPDATE
+  TO authenticated
+  USING (is_group_admin(auth.uid(), group_id));
+
+-- group_members DELETE
+DROP POLICY IF EXISTS "Admin can remove or self leave" ON public.group_members;
+CREATE POLICY "Admin can remove or self leave"
+  ON public.group_members FOR DELETE
+  TO authenticated
+  USING (is_group_admin(auth.uid(), group_id) OR auth.uid() = user_id);
+```
 
 ## Technical Details
 
-### `usePendingFriendRequests` hook
-```
-- Query: supabase.from("friendships").select("id", { count: "exact", head: true })
-    .eq("addressee_id", user.id).eq("status", "pending")
-- Realtime: subscribe to postgres_changes on friendships table
-- Returns { pendingCount: number }
-```
-
-### Nav items badge mapping
-```
-navItems = [
-  { to: "/", icon: MessageSquare, label: "Messages", badge: totalUnread },
-  { to: "/friends", icon: Users, label: "Friends", badge: pendingCount },
-  { to: "/settings", icon: Settings, label: "Settings", badge: 0 },
-]
-```
-
-### Files Created
-- `src/hooks/usePendingFriendRequests.ts`
+### Root Cause
+All RLS policies on `group_threads` and `group_members` were created as RESTRICTIVE (using `CREATE POLICY ... AS RESTRICTIVE` or equivalent). PostgreSQL's RLS model requires at least one PERMISSIVE policy per operation for access to be granted. Restrictive policies can only further narrow access granted by permissive ones.
 
 ### Files Modified
-- `src/components/layout/AppLayout.tsx` -- add friend request badge to nav
+- **Database migration only** -- no code changes needed. The `CreateGroupDialog.tsx` code is correct; it's purely a database policy issue.
 
