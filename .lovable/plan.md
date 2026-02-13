@@ -1,67 +1,73 @@
 
 
-# Fix Group Creation + Add Install to Desktop Button
+# Fix Group Members + Group Settings Enhancements
 
-## Issue 1: Group Creation Still Fails
+## Issue 1: Group Members Not Being Saved
 
 ### Root Cause
-The INSERT query in `CreateGroupDialog.tsx` uses `.insert(...).select("id").single()`, which requires **both** INSERT and SELECT permissions. The SELECT policy on `group_threads` checks `is_group_member(auth.uid(), id)`, but at insert time the user hasn't been added to `group_members` yet -- so the SELECT check fails, causing the RLS error.
+The `CreateGroupDialog` inserts the creator and selected members in a **single bulk insert** to `group_members`. The RLS INSERT policy allows:
+- `is_group_admin(auth.uid(), group_id)` -- fails because creator is not a member yet
+- `auth.uid() = user_id AND created_by = auth.uid()` -- only works for the creator's own row, not for other members' rows
+
+So the creator's row might insert, but all other members' rows fail silently because `auth.uid() != user_id` for those rows.
 
 ### Fix
-Run a database migration to update the SELECT policy on `group_threads` to also allow the group creator to see the group:
+Two changes needed:
 
-```sql
-DROP POLICY IF EXISTS "Members can view group threads" ON public.group_threads;
-CREATE POLICY "Members can view group threads"
-  ON public.group_threads FOR SELECT
-  TO authenticated
-  USING (is_group_member(auth.uid(), id) OR created_by = auth.uid());
+**1. Code change in `CreateGroupDialog.tsx`**: Split the insert into two steps -- first add the creator as admin, then add other members. After the creator is an admin, `is_group_admin` will return true for subsequent inserts.
+
+```typescript
+// Step 1: Add creator as admin
+await supabase.from("group_members").insert({ group_id: group.id, user_id: user.id, role: "admin" });
+
+// Step 2: Now creator is admin, so this will pass the is_group_admin check
+const otherMembers = Array.from(selectedIds).map(uid => ({ group_id: group.id, user_id: uid, role: "member" }));
+if (otherMembers.length > 0) {
+  await supabase.from("group_members").insert(otherMembers);
+}
 ```
 
 ---
 
-## Issue 2: Add "Install to Desktop" Button
+## Issue 2: Group Settings -- Add Photo and Banner Upload
 
-The app is already configured as a PWA (manifest.json, service worker, icons exist). It just needs a visible install button that uses the browser's `beforeinstallprompt` event.
+### Database Migration
+Add a `banner_url` column to `group_threads` (the `avatar_url` column already exists).
 
-### Changes to `src/pages/Settings.tsx`
-- Add a "Download to Desktop" / "Install App" button in the settings page
-- Use the `beforeinstallprompt` event to capture the install prompt
-- Show the button only when the browser supports installation (not already installed)
-- Add a `Download` icon from lucide-react
+```sql
+ALTER TABLE public.group_threads ADD COLUMN IF NOT EXISTS banner_url text;
+```
 
-### Changes to `src/components/layout/AppLayout.tsx`
-- Add a small install button in the desktop sidebar's bottom area (near theme/language toggles) so it's always accessible
+### Storage
+Use the existing `avatars` bucket for group images too (it's already public).
+
+### Changes to `GroupSettingsDialog.tsx`
+- Add group profile photo upload (updates `avatar_url` on `group_threads`)
+- Add group banner upload (updates `banner_url` on `group_threads`)
+- Show current photo/banner with upload buttons (admin only)
+- Use same upload pattern as user profile (upload to `avatars` bucket, save URL)
+
+### Changes to `GroupChat.tsx`
+- Display group avatar in the header using `AvatarImage`
+- Pass `banner_url` to `GroupMembersPanel`
+
+### i18n Updates
+Add translation keys for group photo/banner labels in `en.ts` and `ar.ts`:
+- `groups.profilePhoto`: "Group Photo"
+- `groups.banner`: "Group Banner"
+- `groups.uploadPhoto`: "Upload Photo"
+- `groups.uploadBanner`: "Upload Banner"
 
 ---
 
 ## Technical Details
 
-### PWA Install Logic
-```typescript
-const [installPrompt, setInstallPrompt] = useState<any>(null);
-
-useEffect(() => {
-  const handler = (e: Event) => {
-    e.preventDefault();
-    setInstallPrompt(e);
-  };
-  window.addEventListener("beforeinstallprompt", handler);
-  return () => window.removeEventListener("beforeinstallprompt", handler);
-}, []);
-
-const handleInstall = async () => {
-  if (!installPrompt) return;
-  installPrompt.prompt();
-  setInstallPrompt(null);
-};
-```
-
-### i18n
-- Add `app.install` key: "Install App" / "تثبيت التطبيق"
-
 ### Files Modified
-- **Database migration**: Fix `group_threads` SELECT policy
-- `src/components/layout/AppLayout.tsx`: Add install button in sidebar
-- `src/pages/Settings.tsx`: Add install button in settings
-- `src/i18n/en.ts` and `src/i18n/ar.ts`: Add install translation key
+- **Database migration**: Add `banner_url` column to `group_threads`
+- `src/components/CreateGroupDialog.tsx`: Split member insertion into two sequential calls
+- `src/components/GroupSettingsDialog.tsx`: Add photo and banner upload sections with file input and storage upload
+- `src/pages/GroupChat.tsx`: Show group avatar in header, pass banner to members panel
+- `src/components/chat/GroupMembersPanel.tsx`: Accept and display banner
+- `src/i18n/en.ts`: Add group photo/banner translation keys
+- `src/i18n/ar.ts`: Add Arabic translations
+
