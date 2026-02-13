@@ -68,7 +68,7 @@ export default {
   presence: {
     online: "Online",
     offline: "Offline",
-    lastSeen: "Last seen",
+    lastSeen: "Last seen {{time}} ago",
   },
   status: {
     online: "Online",

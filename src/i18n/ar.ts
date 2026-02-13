@@ -68,7 +68,7 @@ export default {
   presence: {
     online: "متصل",
     offline: "غير متصل",
-    lastSeen: "آخر ظهور",
+    lastSeen: "آخر ظهور منذ {{time}}",
   },
   status: {
     online: "متصل",
