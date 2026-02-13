@@ -17,7 +17,7 @@ import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 const STATUSES: UserStatus[] = ["online", "busy", "dnd", "idle", "invisible"];
 const DURATIONS = ["15m", "1h", "8h", "24h", "3d", "forever"] as const;
 const DURATION_MINUTES: Record<string, number | null> = {
-  "15m": 15, "1h": 60, "8h": 480, "24h": 1440, "3d": 4320, forever: null,
+  "15m": 15, "1h": 60, "8h": 480, "24h": 1440, "3d": 4320, forever: null
 };
 
 const Settings = () => {
@@ -38,7 +38,7 @@ const Settings = () => {
       setUsername(profile.username || "");
       setDisplayName(profile.display_name || "");
       setStatusText(profile.status_text || "");
-      setStatus(((profile as any).status as UserStatus) || "online");
+      setStatus((profile as any).status as UserStatus || "online");
     }
   }, [profile]);
 
@@ -53,18 +53,18 @@ const Settings = () => {
       }
     }
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        username: username.trim() || null,
-        display_name: displayName.trim() || null,
-        status_text: statusText.trim(),
-        status,
-        status_until: status === "online" ? null : statusUntil,
-        language: i18n.language,
-        theme,
-      } as any)
-      .eq("user_id", user.id);
+    const { error } = await supabase.
+    from("profiles").
+    update({
+      username: username.trim() || null,
+      display_name: displayName.trim() || null,
+      status_text: statusText.trim(),
+      status,
+      status_until: status === "online" ? null : statusUntil,
+      language: i18n.language,
+      theme
+    } as any).
+    eq("user_id", user.id);
 
     if (error) {
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
@@ -83,9 +83,9 @@ const Settings = () => {
     const ext = file.name.split(".").pop();
     const path = `${user.id}/avatar.${ext}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true });
+    const { error: uploadError } = await supabase.storage.
+    from("avatars").
+    upload(path, file, { upsert: true });
 
     if (uploadError) {
       toast({ title: t("common.error"), description: uploadError.message, variant: "destructive" });
@@ -95,10 +95,10 @@ const Settings = () => {
 
     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
 
-    await supabase
-      .from("profiles")
-      .update({ avatar_url: urlData.publicUrl })
-      .eq("user_id", user.id);
+    await supabase.
+    from("profiles").
+    update({ avatar_url: urlData.publicUrl }).
+    eq("user_id", user.id);
 
     await refreshProfile();
     setUploading(false);
@@ -111,8 +111,8 @@ const Settings = () => {
     document.documentElement.lang = next;
   };
 
-  const initials = (profile?.display_name || profile?.username || user?.email || "?")
-    .charAt(0).toUpperCase();
+  const initials = (profile?.display_name || profile?.username || user?.email || "?").
+  charAt(0).toUpperCase();
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-6 overflow-y-auto h-full">
@@ -151,41 +151,41 @@ const Settings = () => {
           </div>
           <div className="space-y-2">
             <Label>{t("status.label")}</Label>
-            <Select value={status} onValueChange={(v) => { setStatus(v as UserStatus); if (v === "online") setStatusDuration("forever"); }}>
+            <Select value={status} onValueChange={(v) => {setStatus(v as UserStatus);if (v === "online") setStatusDuration("forever");}}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-popover">
-                {STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>
+                {STATUSES.map((s) =>
+                <SelectItem key={s} value={s}>
                     <span className="flex items-center gap-2">
                       <StatusBadge status={s} />
                       {t(`status.${s}`)}
                     </span>
                   </SelectItem>
-                ))}
+                )}
               </SelectContent>
             </Select>
           </div>
-          {status !== "online" && (
-            <div className="space-y-2">
+          {status !== "online" &&
+          <div className="space-y-2">
               <Label>{t("status.duration")}</Label>
               <Select value={statusDuration} onValueChange={setStatusDuration}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-popover">
-                  {DURATIONS.map((d) => (
-                    <SelectItem key={d} value={d}>{t(`duration.${d}`)}</SelectItem>
-                  ))}
+                  {DURATIONS.map((d) =>
+                <SelectItem key={d} value={d}>{t(`duration.${d}`)}</SelectItem>
+                )}
                 </SelectContent>
               </Select>
             </div>
-          )}
-          <div className="space-y-2">
-            <Label>{t("profile.statusText")}</Label>
-            <Input value={statusText} onChange={(e) => setStatusText(e.target.value)} />
-          </div>
+          }
+          
+
+
+
         </CardContent>
       </Card>
 
@@ -216,8 +216,8 @@ const Settings = () => {
           <LogOut className="h-4 w-4 me-2" /> {t("auth.logout")}
         </Button>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default Settings;
