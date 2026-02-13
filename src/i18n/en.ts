@@ -66,6 +66,8 @@ export default {
     light: "Light",
     save: "Save Changes",
     saved: "Profile updated!",
+    aboutMe: "About Me",
+    memberSince: "Member Since",
   },
   presence: {
     online: "Online",

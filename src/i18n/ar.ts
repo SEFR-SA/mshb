@@ -66,6 +66,8 @@ export default {
     light: "فاتح",
     save: "حفظ التغييرات",
     saved: "تم تحديث الملف الشخصي!",
+    aboutMe: "نبذة عني",
+    memberSince: "عضو منذ",
   },
   presence: {
     online: "متصل",
