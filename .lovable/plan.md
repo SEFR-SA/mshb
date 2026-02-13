@@ -1,138 +1,79 @@
 
 
-# 🌌 Purple Galaxy Chat — MVP Plan
+# Status System with Dropdown, Duration, and Color Badges
 
 ## Overview
-A Discord-inspired real-time 1:1 messaging web app with a stunning "Purple Galaxy" theme, bilingual support (EN/AR with RTL), dark/light mode, and PWA installability. Built on Lovable Cloud (Supabase) for auth, database, real-time, and storage.
+Replace the free-text "Status" input field in Settings with a structured status system featuring 5 predefined statuses (Online, Busy, Do Not Disturb, Idle, Invisible), each with a color-coded badge, and optional duration selection for non-Online statuses. When the selected duration expires, the status automatically reverts to "Online."
 
 ---
 
-## Phase 1: Foundation & Theming
+## What Changes
 
-### Purple Galaxy Design System
-- Deep purple gradient backgrounds with subtle galaxy noise/particle textures and soft glow effects
-- Modern rounded UI components, glass-morphism cards
-- Custom color palette: deep purples, soft violets, accent glows
-- Google Fonts: Inter for English, **Noto Naskh Arabic** for Arabic text
+### 1. Database Migration
+Add two new columns to the `profiles` table:
+- `status` (text, default `'online'`) -- one of: `online`, `busy`, `dnd`, `idle`, `invisible`
+- `status_until` (timestamptz, nullable) -- when the status should revert to online; null means "forever"
 
-### Dark/Light Mode
-- Dark mode as default; toggle switch in settings and header
-- Preference persisted to localStorage (and later to user profile)
+The existing `status_text` column remains for custom status messages (optional future use).
 
-### Internationalization (i18n)
-- Language toggle (EN/AR) accessible from header and settings
-- When Arabic is selected, entire UI switches to RTL layout (mirrored navigation, right-aligned text)
-- All UI strings stored in translation files for both languages
+### 2. Settings Page (Status Field Replacement)
+Replace the current free-text `<Input>` for status with:
+- A **Select dropdown** listing the 5 statuses, each with a colored dot badge:
+  - Online -- green dot
+  - Busy -- red dot
+  - Do Not Disturb -- red dot (darker/different shade)
+  - Idle -- yellow dot
+  - Invisible -- gray dot
+- When any status other than "Online" is selected, a **second dropdown** appears for duration:
+  - 15 minutes, 1 hour, 8 hours, 24 hours, 3 days, Forever
+- On save, both `status` and `status_until` (calculated as `now + duration`, or null for "forever") are written to the database.
 
-### PWA Setup
-- App manifest with Purple Galaxy branding and icons
-- Basic service worker for installability ("Add to Desktop / Home Screen")
-- Offline shell support
+### 3. Status Badge Component
+Create a reusable `StatusBadge` component that renders a small colored dot based on status value. Used in:
+- Settings page (dropdown items + avatar area)
+- DM Inbox list (next to each user's avatar)
+- Chat header (next to the other user's info)
 
-### Responsive Layout
-- Mobile-first design with bottom navigation on mobile, sidebar on desktop
-- Smooth transitions between breakpoints
+Color mapping:
+- `online` = green (`bg-green-500`)
+- `busy` = red (`bg-red-500`)
+- `dnd` = red-600 (`bg-red-600`)
+- `idle` = yellow (`bg-yellow-500`)
+- `invisible` = gray (`bg-gray-400`)
 
----
+### 4. Auto-Revert Logic
+- On the client side: when the profile loads, check if `status_until` is in the past. If so, automatically update status to `'online'` and clear `status_until`.
+- The presence hook will also consider `status === 'invisible'` to show the user as offline to others.
 
-## Phase 2: Authentication & User Profiles
+### 5. Presence Integration
+Update the presence display logic:
+- If a user's status is `invisible`, show them as offline (gray dot) to other users
+- Otherwise, show their selected status badge color instead of the simple green/no-dot presence indicator
 
-### Auth Flows (Supabase Auth)
-- Email/password signup with validation (email format, password min 8 chars)
-- Login & logout
-- Password reset flow (email-based via Supabase)
-
-### User Profiles
-- **Database**: `profiles` table linked to `auth.users` with auto-creation trigger
-- **Fields**: avatar (uploaded via Supabase Storage), username (unique), display name, status text, language preference, theme preference
-- **Profile Settings Page**: Edit all profile fields, upload avatar, set language & theme
-- **Security**: RLS policies so users can only read/update their own profile; usernames queryable for DM search
-
----
-
-## Phase 3: Presence System
-
-### Real-Time Presence
-- Track online/offline status using Supabase Realtime Presence
-- Show online indicator (green dot) on user avatars in DM inbox and chat header
-- Optional "last seen" timestamp for offline users
-- Presence updates broadcast in real time on connect/disconnect
+### 6. i18n Translations
+Add translation keys for all 5 statuses and all 6 duration options in both English and Arabic files.
 
 ---
 
-## Phase 4: Direct Messages — Core
+## Technical Details
 
-### Data Model
-- **`dm_threads`**: stores participant pairs, `last_message_at` for sorting
-- **`messages`**: `thread_id`, `author_id`, `content`, `created_at`, `edited_at`, `deleted_for_everyone` (boolean)
-- **`message_hidden`**: `user_id`, `message_id` — for "delete for me" (per-user hide)
-- **RLS**: Only thread participants can read/write messages in their threads
+### Files Modified
+- **New migration** -- adds `status` and `status_until` columns to `profiles`
+- **`src/pages/Settings.tsx`** -- replace status input with Select dropdowns + duration picker
+- **`src/components/StatusBadge.tsx`** (new) -- reusable colored dot component
+- **`src/pages/Inbox.tsx`** -- use StatusBadge instead of simple green dot
+- **`src/pages/Chat.tsx`** -- use StatusBadge in chat header
+- **`src/contexts/AuthContext.tsx`** -- add auto-revert check on profile load
+- **`src/hooks/usePresence.ts`** -- factor in `invisible` status
+- **`src/i18n/en.ts`** and **`src/i18n/ar.ts`** -- new translation keys for statuses and durations
 
-### DM Inbox Screen
-- List of DM threads sorted by most recent activity
-- Each item: avatar, display name, online indicator, last message snippet, unread count badge
-- Search bar to find users by username/display name and start new DMs
-- Unread count updates in real time
+### Status Values
+```text
+online | busy | dnd | idle | invisible
+```
 
-### DM Chat Screen
-- **Header**: Other user's avatar, name, online status
-- **Message List**: Lazy-loaded (newest first, scroll up to load older)
-- **Timestamps** on each message (smart formatting: "just now", "2m ago", full date)
-- **Composer**: Text input with send button, supports Enter to send
-- **Typing Indicator**: Real-time "User is typing…" shown in chat
-
-### Real-Time Events (Supabase Realtime)
-- `message_created` → new message appears instantly for both participants
-- `message_edited` → content updates live with "Edited" badge
-- `message_deleted_for_everyone` → placeholder "This message was deleted" appears for both
-- `typing_started` / `typing_stopped` → via Realtime broadcast
-- `presence_updated` → online/offline status changes
-
----
-
-## Phase 5: Message Actions
-
-### Context Menu (long-press on mobile, right-click on desktop)
-
-**If I'm the author:**
-- ✏️ Edit — opens inline editor, saves via API, broadcasts update
-- 🗑️ Delete for me — hides message locally (insert into `message_hidden`)
-- 🗑️ Delete for everyone — sets `deleted_for_everyone = true`, replaces with placeholder for both users
-
-**If I'm NOT the author:**
-- 🗑️ Delete for me only
-
-**If message is already deleted-for-everyone (placeholder):**
-- 🗑️ Delete for me only (to hide the placeholder)
-
-### Edit Rules
-- Only author can edit; "Edited" indicator shown on edited messages
-- Edit updates both sides instantly via real-time
-
-### Delete for Everyone
-- No time limit; available always for author
-- Message content replaced with "This message was deleted" placeholder
-- Placeholder visible to both participants in real time
-
-### Delete for Me
-- Either participant can hide any message (including other person's messages, including placeholders)
-- Implemented via `message_hidden` join table — message only hidden for the requesting user
-
----
-
-## Phase 6: Backend Security & Enforcement
-
-- **RLS Policies**: Thread access restricted to participants; message CRUD restricted appropriately
-- **Edge Functions** (if needed): For rate limiting message sends, input sanitization
-- **Validation**: Message content length limits, sanitized input
-- **Rate Limiting**: Prevent spam on message creation
-- Only author can edit or delete-for-everyone (enforced at DB level via RLS)
-- Delete-for-me only affects the requesting user's `message_hidden` records
-
----
-
-## Architecture Notes (for future extensibility)
-- Code structured with clear separation: auth, messaging, presence, i18n, theme modules
-- Database schema designed to later support servers, channels, and group chats without major rewrites
-- Real-time subscription patterns reusable for future channel messaging
+### Duration Options (stored as minutes for calculation)
+```text
+15m | 60m | 480m | 1440m | 4320m | forever (null)
+```
 
