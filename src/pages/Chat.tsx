@@ -219,9 +219,7 @@ const Chat = () => {
               {(otherProfile?.display_name || "?").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <span className="absolute bottom-0 end-0 border-2 border-background rounded-full">
-            <StatusBadge status={(otherStatus === "offline" ? "invisible" : otherStatus) as UserStatus} size="sm" />
-          </span>
+          <StatusBadge status={(otherStatus === "offline" ? "invisible" : otherStatus) as UserStatus} size="sm" className="absolute bottom-0 end-0" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-medium truncate">{otherProfile?.display_name || otherProfile?.username || "User"}</p>

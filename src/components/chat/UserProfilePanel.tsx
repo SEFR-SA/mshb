@@ -39,9 +39,7 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
               {(profile.display_name || profile.username || "?").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <span className="absolute bottom-1 end-1 border-3 border-background rounded-full">
-            <StatusBadge status={status} size="md" />
-          </span>
+          <StatusBadge status={status} size="md" className="absolute bottom-1 end-1" />
         </div>
       </div>
 
