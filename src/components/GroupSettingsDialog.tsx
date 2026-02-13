@@ -33,10 +33,12 @@ const GroupSettingsDialog = ({ open, onOpenChange, groupId, isAdmin, onLeave }: 
   const { t } = useTranslation();
   const { user } = useAuth();
   const [groupName, setGroupName] = useState("");
+  const [description, setDescription] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
   const [editing, setEditing] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
   const [friends, setFriends] = useState<Profile[]>([]);
   const [showAddMember, setShowAddMember] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -49,6 +51,7 @@ const GroupSettingsDialog = ({ open, onOpenChange, groupId, isAdmin, onLeave }: 
       .maybeSingle();
     if (group) {
       setGroupName((group as any).name);
+      setDescription((group as any).description || "");
       setAvatarUrl((group as any).avatar_url || "");
       setBannerUrl((group as any).banner_url || "");
     }
@@ -102,6 +105,12 @@ const GroupSettingsDialog = ({ open, onOpenChange, groupId, isAdmin, onLeave }: 
     if (!groupName.trim()) return;
     await supabase.from("group_threads").update({ name: groupName.trim() } as any).eq("id", groupId);
     setEditing(false);
+    toast({ title: t("profile.saved") });
+  };
+
+  const handleDescriptionSave = async () => {
+    await supabase.from("group_threads").update({ description: description.trim() } as any).eq("id", groupId);
+    setEditingDescription(false);
     toast({ title: t("profile.saved") });
   };
 
@@ -215,10 +224,35 @@ const GroupSettingsDialog = ({ open, onOpenChange, groupId, isAdmin, onLeave }: 
                   </Button>
                 )}
               </div>
-            )}
-          </div>
+           )}
+           </div>
 
-          {/* Members */}
+           {/* Group Description */}
+           <div className="space-y-2">
+             <Label>{t("groups.description")}</Label>
+             {editingDescription && isAdmin ? (
+               <div className="flex gap-2">
+                 <textarea
+                   value={description}
+                   onChange={(e) => setDescription(e.target.value)}
+                   placeholder={t("groups.descriptionPlaceholder")}
+                   className="flex h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                 />
+                 <Button size="sm" onClick={handleDescriptionSave}>{t("actions.save")}</Button>
+               </div>
+             ) : (
+               <div className="flex items-start gap-2">
+                 <p className="text-sm text-muted-foreground flex-1">{description || <span className="italic">{t("groups.noDescription")}</span>}</p>
+                 {isAdmin && (
+                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingDescription(true)}>
+                     <Pencil className="h-3.5 w-3.5" />
+                   </Button>
+                 )}
+               </div>
+             )}
+           </div>
+
+           {/* Members */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>{t("groups.members")} ({members.length})</Label>

@@ -103,6 +103,7 @@ export type Database = {
           banner_url: string | null
           created_at: string
           created_by: string
+          description: string | null
           id: string
           last_message_at: string | null
           name: string
@@ -112,6 +113,7 @@ export type Database = {
           banner_url?: string | null
           created_at?: string
           created_by: string
+          description?: string | null
           id?: string
           last_message_at?: string | null
           name: string
@@ -121,6 +123,7 @@ export type Database = {
           banner_url?: string | null
           created_at?: string
           created_by?: string
+          description?: string | null
           id?: string
           last_message_at?: string | null
           name?: string
