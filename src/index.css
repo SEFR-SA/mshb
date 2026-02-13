@@ -1,96 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --font-sans: 'Inter', sans-serif;
+    --font-arabic: 'Noto Naskh Arabic', serif;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --background: 270 30% 96%;
+    --foreground: 270 50% 10%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --card: 270 30% 98%;
+    --card-foreground: 270 50% 10%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --popover: 270 30% 98%;
+    --popover-foreground: 270 50% 10%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --primary: 270 70% 55%;
+    --primary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --secondary: 270 30% 90%;
+    --secondary-foreground: 270 50% 15%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --muted: 270 20% 92%;
+    --muted-foreground: 270 15% 45%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 280 60% 65%;
+    --accent-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    --border: 270 20% 88%;
+    --input: 270 20% 88%;
+    --ring: 270 70% 55%;
 
-    --sidebar-background: 0 0% 98%;
+    --radius: 0.75rem;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-background: 270 30% 96%;
+    --sidebar-foreground: 270 50% 10%;
+    --sidebar-primary: 270 70% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 30% 90%;
+    --sidebar-accent-foreground: 270 50% 15%;
+    --sidebar-border: 270 20% 88%;
+    --sidebar-ring: 270 70% 55%;
 
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --galaxy-glow: 270 80% 70%;
+    --galaxy-deep: 270 60% 20%;
+    --galaxy-nebula: 280 65% 60%;
+    --galaxy-star: 45 100% 90%;
+    --online: 142 76% 36%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 270 40% 6%;
+    --foreground: 270 20% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 270 35% 10%;
+    --card-foreground: 270 20% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 270 35% 10%;
+    --popover-foreground: 270 20% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 270 70% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 270 30% 15%;
+    --secondary-foreground: 270 20% 90%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 270 25% 14%;
+    --muted-foreground: 270 15% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 280 60% 55%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --border: 270 25% 16%;
+    --input: 270 25% 16%;
+    --ring: 270 70% 60%;
+
+    --sidebar-background: 270 40% 8%;
+    --sidebar-foreground: 270 20% 95%;
+    --sidebar-primary: 270 70% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 270 30% 15%;
+    --sidebar-accent-foreground: 270 20% 90%;
+    --sidebar-border: 270 25% 16%;
+    --sidebar-ring: 270 70% 60%;
+
+    --galaxy-glow: 270 80% 60%;
+    --galaxy-deep: 270 50% 8%;
+    --galaxy-nebula: 280 65% 50%;
+    --galaxy-star: 45 100% 85%;
+    --online: 142 76% 46%;
   }
 }
 
@@ -100,6 +107,35 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  [dir="rtl"] {
+    font-family: var(--font-arabic), var(--font-sans), sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-card/60 backdrop-blur-xl border border-border/50;
+  }
+
+  .galaxy-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--galaxy-deep)) 0%,
+      hsl(var(--background)) 40%,
+      hsl(var(--galaxy-nebula) / 0.1) 70%,
+      hsl(var(--galaxy-deep)) 100%
+    );
+  }
+
+  .galaxy-glow {
+    box-shadow: 0 0 40px hsl(var(--galaxy-glow) / 0.15),
+                0 0 80px hsl(var(--galaxy-nebula) / 0.08);
+  }
+
+  .text-galaxy-glow {
+    text-shadow: 0 0 20px hsl(var(--galaxy-glow) / 0.5);
   }
 }
