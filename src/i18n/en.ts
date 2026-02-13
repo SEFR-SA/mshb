@@ -117,6 +117,10 @@ export default {
     error: "Something went wrong",
     retry: "Retry",
   },
+  notifications: {
+    newMessage: "You have a new message",
+    newFriendRequest: "You have a new friend request!",
+  },
   friends: {
     title: "Friends",
     all: "All Friends",
