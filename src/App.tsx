@@ -9,6 +9,8 @@ import AppLayout from "@/components/layout/AppLayout";
 import Auth from "@/pages/Auth";
 import Inbox from "@/pages/Inbox";
 import Chat from "@/pages/Chat";
+import Friends from "@/pages/Friends";
+import GroupChat from "@/pages/GroupChat";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 import "@/i18n";
@@ -35,6 +37,8 @@ const App = () => (
               <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route index element={<Inbox />} />
                 <Route path="chat/:threadId" element={<Chat />} />
+                <Route path="friends" element={<Friends />} />
+                <Route path="group/:groupId" element={<GroupChat />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
               <Route path="*" element={<NotFound />} />
