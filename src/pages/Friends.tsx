@@ -188,9 +188,7 @@ const Friends = () => {
                   <AvatarImage src={f.profile?.avatar_url || ""} />
                   <AvatarFallback className="bg-primary/20 text-primary">{initials(f.profile)}</AvatarFallback>
                 </Avatar>
-                <span className="absolute bottom-0 end-0 border-2 border-background rounded-full">
-                  <StatusBadge status={(getUserStatus(f.profile) === "offline" ? "invisible" : getUserStatus(f.profile)) as UserStatus} />
-                </span>
+                <StatusBadge status={(getUserStatus(f.profile) === "offline" ? "invisible" : getUserStatus(f.profile)) as UserStatus} className="absolute bottom-0 end-0" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{f.profile?.display_name || f.profile?.username || "User"}</p>

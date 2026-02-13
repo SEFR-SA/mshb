@@ -281,9 +281,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                   </AvatarFallback>
                 </Avatar>
                 {item.type === "dm" && item.otherProfile && (
-                  <span className="absolute bottom-0 end-0 border-2 border-background rounded-full">
-                    <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} />
-                  </span>
+                  <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />
                 )}
               </div>
               <div className="flex-1 min-w-0">

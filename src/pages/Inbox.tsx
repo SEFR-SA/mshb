@@ -256,9 +256,7 @@ const Inbox = () => {
                     {(p.display_name || p.username || "?").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="absolute bottom-0 end-0 border-2 border-background rounded-full">
-                  <StatusBadge status={(getUserStatus(p) === "offline" ? "invisible" : getUserStatus(p)) as UserStatus} />
-                </span>
+                <StatusBadge status={(getUserStatus(p) === "offline" ? "invisible" : getUserStatus(p)) as UserStatus} className="absolute bottom-0 end-0" />
               </div>
               <div className="min-w-0">
                 <p className="font-medium truncate">{p.display_name || p.username}</p>
@@ -296,9 +294,7 @@ const Inbox = () => {
                 </AvatarFallback>
               </Avatar>
               {item.type === "dm" && item.otherProfile && (
-                <span className="absolute bottom-0 end-0 border-2 border-background rounded-full">
-                  <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} />
-                </span>
+                <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />
               )}
             </div>
             <div className="flex-1 min-w-0">
