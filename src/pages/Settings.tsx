@@ -61,7 +61,7 @@ const Settings = () => {
       status_text: statusText.trim(),
       status,
       status_until: status === "online" ? null : statusUntil,
-      language: i18n.language,
+      language: i18n.language.split('-')[0],
       theme
     } as any).
     eq("user_id", user.id);
