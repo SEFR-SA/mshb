@@ -1,79 +1,96 @@
 
 
-# Status System with Dropdown, Duration, and Color Badges
+# Last Seen Timestamps and Unread Message Counts
 
 ## Overview
-Replace the free-text "Status" input field in Settings with a structured status system featuring 5 predefined statuses (Online, Busy, Do Not Disturb, Idle, Invisible), each with a color-coded badge, and optional duration selection for non-Online statuses. When the selected duration expires, the status automatically reverts to "Online."
+Two features: (1) show "Last seen X ago" for offline users in the chat header and inbox, and (2) add unread message count badges to inbox threads and the Messages nav item.
 
 ---
 
-## What Changes
+## Feature 1: Last Seen Timestamps
 
-### 1. Database Migration
-Add two new columns to the `profiles` table:
-- `status` (text, default `'online'`) -- one of: `online`, `busy`, `dnd`, `idle`, `invisible`
-- `status_until` (timestamptz, nullable) -- when the status should revert to online; null means "forever"
+The `profiles` table already has a `last_seen` column (timestamptz), and `usePresence` already updates it every 60 seconds. The `presence.lastSeen` translation key already exists in both EN and AR.
 
-The existing `status_text` column remains for custom status messages (optional future use).
+### Changes
 
-### 2. Settings Page (Status Field Replacement)
-Replace the current free-text `<Input>` for status with:
-- A **Select dropdown** listing the 5 statuses, each with a colored dot badge:
-  - Online -- green dot
-  - Busy -- red dot
-  - Do Not Disturb -- red dot (darker/different shade)
-  - Idle -- yellow dot
-  - Invisible -- gray dot
-- When any status other than "Online" is selected, a **second dropdown** appears for duration:
-  - 15 minutes, 1 hour, 8 hours, 24 hours, 3 days, Forever
-- On save, both `status` and `status_until` (calculated as `now + duration`, or null for "forever") are written to the database.
+**`src/pages/Chat.tsx`** (lines 211-213):
+- Replace the static "Online"/"Offline" text with logic:
+  - If online: show "Online" 
+  - If offline and `otherProfile.last_seen` exists: show "Last seen 5m ago" using `formatDistanceToNow`
+  - If offline and no `last_seen`: show "Offline"
 
-### 3. Status Badge Component
-Create a reusable `StatusBadge` component that renders a small colored dot based on status value. Used in:
-- Settings page (dropdown items + avatar area)
-- DM Inbox list (next to each user's avatar)
-- Chat header (next to the other user's info)
+**`src/pages/Inbox.tsx`** (lines 222-224):
+- Below the last message snippet, show a small "Last seen X ago" line for offline users in each thread item.
+- Only show when user is offline and has a `last_seen` value.
 
-Color mapping:
-- `online` = green (`bg-green-500`)
-- `busy` = red (`bg-red-500`)
-- `dnd` = red-600 (`bg-red-600`)
-- `idle` = yellow (`bg-yellow-500`)
-- `invisible` = gray (`bg-gray-400`)
+**`src/hooks/usePresence.ts`**:
+- Update `last_seen` on initial track (not just every 60s) so it's populated immediately.
 
-### 4. Auto-Revert Logic
-- On the client side: when the profile loads, check if `status_until` is in the past. If so, automatically update status to `'online'` and clear `status_until`.
-- The presence hook will also consider `status === 'invisible'` to show the user as offline to others.
+No database changes needed -- the column and translations already exist.
 
-### 5. Presence Integration
-Update the presence display logic:
-- If a user's status is `invisible`, show them as offline (gray dot) to other users
-- Otherwise, show their selected status badge color instead of the simple green/no-dot presence indicator
+---
 
-### 6. i18n Translations
-Add translation keys for all 5 statuses and all 6 duration options in both English and Arabic files.
+## Feature 2: Unread Message Counts
+
+### Approach
+Track the last time a user read each thread. Count messages in each thread created after that timestamp as "unread."
+
+### Database Migration
+Create a new table `thread_read_status`:
+- `id` (uuid, PK, default gen_random_uuid())
+- `user_id` (uuid, not null)
+- `thread_id` (uuid, not null)
+- `last_read_at` (timestamptz, not null, default now())
+- Unique constraint on (user_id, thread_id)
+- RLS: users can only read/insert/update their own rows
+
+### Code Changes
+
+**`src/pages/Chat.tsx`**:
+- When chat opens and on each new incoming message, upsert `thread_read_status` for the current user/thread with `last_read_at = now()`.
+
+**`src/pages/Inbox.tsx`**:
+- In `loadThreads`, for each thread:
+  1. Fetch the user's `last_read_at` from `thread_read_status`
+  2. Count messages in that thread where `created_at > last_read_at` and `author_id != current user`
+  3. Store as `unreadCount` on the thread object
+- Display a purple badge with the count next to each thread item (if count > 0).
+
+**`src/hooks/useUnreadCount.ts`** (new):
+- A custom hook that computes the total unread count across all threads.
+- Subscribes to realtime message inserts and thread_read_status changes to stay up-to-date.
+- Returns `totalUnread: number`.
+
+**`src/components/layout/AppLayout.tsx`**:
+- Import `useUnreadCount` hook.
+- Show a small red/purple badge with total unread count on the Messages nav item (both desktop sidebar and mobile bottom nav), only if count > 0.
+
+### i18n
+No new translations needed -- the badge is just a number.
 
 ---
 
 ## Technical Details
 
 ### Files Modified
-- **New migration** -- adds `status` and `status_until` columns to `profiles`
-- **`src/pages/Settings.tsx`** -- replace status input with Select dropdowns + duration picker
-- **`src/components/StatusBadge.tsx`** (new) -- reusable colored dot component
-- **`src/pages/Inbox.tsx`** -- use StatusBadge instead of simple green dot
-- **`src/pages/Chat.tsx`** -- use StatusBadge in chat header
-- **`src/contexts/AuthContext.tsx`** -- add auto-revert check on profile load
-- **`src/hooks/usePresence.ts`** -- factor in `invisible` status
-- **`src/i18n/en.ts`** and **`src/i18n/ar.ts`** -- new translation keys for statuses and durations
+- **New migration** -- creates `thread_read_status` table with RLS
+- **`src/pages/Chat.tsx`** -- mark thread as read on open; show "Last seen X ago"
+- **`src/pages/Inbox.tsx`** -- fetch unread counts; show badge; show last seen for offline users
+- **`src/hooks/useUnreadCount.ts`** (new) -- total unread count hook with realtime
+- **`src/hooks/usePresence.ts`** -- update last_seen on initial presence track
+- **`src/components/layout/AppLayout.tsx`** -- unread badge on Messages nav item
 
-### Status Values
+### thread_read_status Table Schema
 ```text
-online | busy | dnd | idle | invisible
+id         | uuid        | PK, gen_random_uuid()
+user_id    | uuid        | NOT NULL
+thread_id  | uuid        | NOT NULL
+last_read_at | timestamptz | NOT NULL, default now()
+UNIQUE(user_id, thread_id)
 ```
 
-### Duration Options (stored as minutes for calculation)
-```text
-15m | 60m | 480m | 1440m | 4320m | forever (null)
-```
+### RLS Policies
+- SELECT: `auth.uid() = user_id`
+- INSERT: `auth.uid() = user_id`
+- UPDATE: `auth.uid() = user_id`
 
