@@ -1,6 +1,7 @@
 export default {
   app: {
     name: "Galaxy Chat",
+    install: "Install App",
   },
   auth: {
     login: "Log In",

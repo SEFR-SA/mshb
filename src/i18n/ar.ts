@@ -1,6 +1,7 @@
 export default {
   app: {
     name: "غالاكسي شات",
+    install: "تثبيت التطبيق",
   },
   auth: {
     login: "تسجيل الدخول",

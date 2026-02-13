@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, LogOut, ImagePlus } from "lucide-react";
+import { Camera, LogOut, ImagePlus, Download } from "lucide-react";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 
 const STATUSES: UserStatus[] = ["online", "busy", "dnd", "idle", "invisible"];
@@ -34,8 +34,24 @@ const Settings = () => {
   const [statusDuration, setStatusDuration] = useState<string>("forever");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
 
   const p = profile as any;
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    setInstallPrompt(null);
+  };
 
   useEffect(() => {
     if (profile) {
@@ -253,6 +269,11 @@ const Settings = () => {
         <Button onClick={handleSave} disabled={saving} className="w-full">
           {t("profile.save")}
         </Button>
+        {installPrompt && (
+          <Button variant="outline" onClick={handleInstall} className="w-full">
+            <Download className="h-4 w-4 me-2" /> {t("app.install")}
+          </Button>
+        )}
         <Button variant="outline" onClick={signOut} className="w-full">
           <LogOut className="h-4 w-4 me-2" /> {t("auth.logout")}
         </Button>
