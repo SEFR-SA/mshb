@@ -1,125 +1,110 @@
 
 
-# Profile Banners, About Me, Username Signup & Password Strength
+# Group Chat 3-Panel Layout + Login with Username + Unique Username Validation
 
 ## Overview
-Four changes: (1) banner image upload + display, (2) "About Me" field in Settings, (3) mandatory username on signup with password strength rules, (4) display everything in the right panel.
+Three changes: (1) Add the same 3-panel Discord layout to the Group Chat page, showing group members in the right panel, (2) Allow login with either email or username, (3) Enforce unique usernames with real-time feedback during signup.
 
 ---
 
-## 1. Database Migration
+## 1. Group Chat 3-Panel Layout
 
-Add two new columns to `profiles`:
-- `banner_url` (text, nullable) -- stores the uploaded banner image URL
-- `about_me` (text, nullable, default '') -- a longer "About Me" bio field, separate from `status_text`
+### `src/pages/GroupChat.tsx` -- Major restructure
+- Import `ChatSidebar` and `useIsMobile` (same as `Chat.tsx` uses)
+- Create a new `GroupMembersPanel` component for the right panel
+- On desktop: wrap in a 3-column flex layout with `ChatSidebar` (left), chat area (center), and `GroupMembersPanel` (right)
+- On mobile: keep current single-column view with back button
+- Remove the back button on desktop (sidebar handles navigation)
 
-No new RLS needed -- existing policies cover profile updates.
-
----
-
-## 2. Banner Upload + About Me in Settings Page
-
-**`src/pages/Settings.tsx`**:
-- Add a banner area at the top (full-width, ~150px tall) showing the current banner image or a gradient placeholder
-- Add a camera/upload button overlay on the banner to upload a new image (same pattern as avatar upload, stored in `avatars` bucket under `{userId}/banner.{ext}`)
-- Add an "About Me" textarea field in the profile card (multi-line, max 500 chars)
-- Save `banner_url` and `about_me` in the `handleSave` function
-
----
-
-## 3. Right Panel Updates
-
-**`src/components/chat/UserProfilePanel.tsx`**:
-- Replace the static `bg-primary/20` banner div with an `<img>` tag showing `profile.banner_url` (fallback to gradient if no banner)
-- Add "About Me" section below status text (separate from status_text)
-- Keep status_text displayed as "Custom Status" and about_me as "About Me"
+### New component: `src/components/chat/GroupMembersPanel.tsx`
+- Props: `profiles: Map<string, Profile>`, `memberRoles: Map<string, string>`, `groupName: string`, `memberCount: number`
+- Layout (matching the UserProfilePanel style):
+  - Banner area (group avatar or gradient placeholder)
+  - Group name (large, bold)
+  - Member count
+  - Separator
+  - **Members list**: Each member shown with avatar, display name, username, online status badge, and role tag (Admin/Member)
+  - Admins listed first, then members alphabetically
+- Styled with the same glass/galaxy theme as `UserProfilePanel`
 
 ---
 
-## 4. Signup: Username Mandatory + Password Strength
+## 2. Login with Email or Username
 
-**`src/pages/Auth.tsx`**:
-- Rename the signup field from "Display Name" to "Username" (make it required)
-- Pass the username to `signUp()` which stores it as `username` in the profile
-- Add password validation rules:
-  - Uppercase letter (A-Z)
-  - Lowercase letter (a-z)
-  - Number (0-9)
-  - Special character (!@#$%^&*()-_+={}[]:;"'<>,.?/\\|)
-  - Minimum 8 characters
-  - Block common passwords (password, 123456, qwerty, etc.)
-- Add a **4-level strength bar** below the password field:
-  - **Weak** (red) -- meets 1 rule
-  - **Good** (orange) -- meets 2-3 rules
-  - **Strong** (yellow-green) -- meets 4 rules
-  - **Very Strong** (green) -- meets all 5 rules
-- Show individual rule checkmarks/crosses as the user types
-- Block form submission unless all rules pass
+### `src/pages/Auth.tsx`
+- In login mode, change the "Email" field to "Email or Username"
+- Add state `loginIdentifier` to hold the input value
+- On login submit:
+  - If the identifier contains `@`, treat it as an email and call `signIn(identifier, password)` directly
+  - If it does not contain `@`, look up the email from the `profiles` table by username first:
+    - Query: `supabase.from("profiles").select("user_id").eq("username", identifier).maybeSingle()`
+    - Then query auth -- but since we can't get email from profiles, we need to store email or use a different approach
+  - **Better approach**: Add a helper in `AuthContext` that looks up the user's email from profiles. We'll need to store the user's email in the profiles table, OR use a database function.
+  - **Simplest secure approach**: Create a database function `get_email_by_username(username text)` that returns the email from `auth.users` joined with profiles. This is a `SECURITY DEFINER` function so it can access `auth.users`.
 
-**`src/contexts/AuthContext.tsx`**:
-- Change `signUp` to accept `username` instead of `displayName`
-- Update the metadata passed to `supabase.auth.signUp` and also set `username` in the profile trigger or update after signup
-
----
-
-## 5. i18n Additions
-
-**English (`en.ts`)**:
-```
-auth.username: "Username"
-auth.usernameRequired: "Username is required"
-auth.passwordRules: "Password must contain:"
-auth.ruleUppercase: "One uppercase letter (A-Z)"
-auth.ruleLowercase: "One lowercase letter (a-z)"
-auth.ruleNumber: "One number (0-9)"
-auth.ruleSpecial: "One special character (!@#$...)"
-auth.ruleLength: "At least 8 characters"
-auth.ruleCommon: "Must not be a common password"
-auth.strengthWeak: "Weak"
-auth.strengthGood: "Good"
-auth.strengthStrong: "Strong"
-auth.strengthVeryStrong: "Very Strong"
-profile.aboutMeLabel: "About Me"
-profile.aboutMePlaceholder: "Tell others about yourself..."
-profile.banner: "Banner"
-profile.uploadBanner: "Upload Banner"
+### Database migration
+- Create function `get_email_by_username`:
+```sql
+CREATE OR REPLACE FUNCTION public.get_email_by_username(p_username text)
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT au.email
+  FROM auth.users au
+  JOIN public.profiles p ON p.user_id = au.id
+  WHERE lower(p.username) = lower(p_username)
+  LIMIT 1;
+$$;
 ```
 
-**Arabic (`ar.ts`)**: Equivalent translations for all keys above.
+### `src/contexts/AuthContext.tsx`
+- Update `signIn` to accept an identifier (email or username)
+- If identifier lacks `@`, call `supabase.rpc('get_email_by_username', { p_username: identifier })` to resolve the email, then sign in with that email
+- If no email found, return an error
+
+### i18n
+- `auth.emailOrUsername`: "Email or Username" / "البريد الإلكتروني أو اسم المستخدم"
+- `auth.userNotFound`: "No account found with that username" / "لا يوجد حساب بهذا الاسم"
+
+---
+
+## 3. Unique Username Validation
+
+### Database migration
+- Add a UNIQUE constraint on `profiles.username`:
+```sql
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_username_unique UNIQUE (username);
+```
+
+### `src/pages/Auth.tsx`
+- Add a debounced check (300ms) when the username field changes during signup
+- Query: `supabase.from("profiles").select("id").eq("username", username).maybeSingle()`
+- If a result is found, show a red message below the field: "Username is already taken"
+- If not found, show a green checkmark: "Username is available"
+- Block form submission if the username is taken
+
+### i18n
+- `auth.usernameTaken`: "Username is already taken" / "اسم المستخدم مستخدم بالفعل"
+- `auth.usernameAvailable`: "Username is available" / "اسم المستخدم متاح"
 
 ---
 
 ## Technical Details
 
+### Files Created
+- `src/components/chat/GroupMembersPanel.tsx` -- right panel for group chat showing member list
+
 ### Files Modified
-- **Database migration** -- add `banner_url` and `about_me` columns to profiles
-- `src/pages/Auth.tsx` -- username field, password strength bar + validation
-- `src/contexts/AuthContext.tsx` -- pass username to signup
-- `src/pages/Settings.tsx` -- banner upload, about me textarea
-- `src/components/chat/UserProfilePanel.tsx` -- show banner image, about me section
-- `src/i18n/en.ts` -- new translation keys
-- `src/i18n/ar.ts` -- new translation keys
+- `src/pages/GroupChat.tsx` -- wrap in 3-panel layout (desktop) using ChatSidebar + GroupMembersPanel
+- `src/pages/Auth.tsx` -- login with email/username, debounced username uniqueness check on signup
+- `src/contexts/AuthContext.tsx` -- signIn resolves username to email via RPC
+- `src/i18n/en.ts` -- new keys for email/username login, username taken/available, group members
+- `src/i18n/ar.ts` -- Arabic translations
 
-### New Component
-- `src/components/PasswordStrengthBar.tsx` -- reusable component showing 4-segment strength bar + rule checklist
-
-### Password Strength Logic
-```text
-Rules checked:
-1. Has uppercase (A-Z)
-2. Has lowercase (a-z)
-3. Has digit (0-9)
-4. Has special char
-5. Min 8 chars
-6. Not a common password
-
-Strength levels:
-- 0-1 rules met: Weak (red)
-- 2-3 rules met: Good (orange)
-- 4 rules met: Strong (yellow-green)
-- 5-6 rules met: Very Strong (green)
-```
-
-### Blocked Common Passwords
-password, password1, 123456, 12345678, qwerty, abc123, letmein, admin, welcome, monkey, master, dragon, login, princess, football, shadow, sunshine, trustno1
+### Database Migration
+- Add UNIQUE constraint on `profiles.username`
+- Create `get_email_by_username` security definer function
 
