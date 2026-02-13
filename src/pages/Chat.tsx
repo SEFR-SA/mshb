@@ -97,6 +97,15 @@ const Chat = () => {
 
   useEffect(() => { loadMessages(); }, [loadMessages]);
 
+  // Mark thread as read on open
+  useEffect(() => {
+    if (!threadId || !user) return;
+    supabase.from("thread_read_status").upsert(
+      { user_id: user.id, thread_id: threadId, last_read_at: new Date().toISOString() },
+      { onConflict: "user_id,thread_id" }
+    ).then();
+  }, [threadId, user]);
+
   // Realtime messages
   useEffect(() => {
     if (!threadId) return;
@@ -108,6 +117,13 @@ const Chat = () => {
           if (prev.find((m) => m.id === msg.id)) return prev;
           return [...prev, msg];
         });
+        // Mark thread as read on new incoming message
+        if (user && msg.author_id !== user.id) {
+          supabase.from("thread_read_status").upsert(
+            { user_id: user.id, thread_id: threadId, last_read_at: new Date().toISOString() },
+            { onConflict: "user_id,thread_id" }
+          ).then();
+        }
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `thread_id=eq.${threadId}` }, (payload) => {
@@ -209,7 +225,11 @@ const Chat = () => {
         <div className="min-w-0 flex-1">
           <p className="font-medium truncate">{otherProfile?.display_name || otherProfile?.username || "User"}</p>
           <p className="text-xs text-muted-foreground">
-            {isOnline(otherId) ? t("presence.online") : t("presence.offline")}
+            {getUserStatus(otherProfile) !== "offline"
+              ? t(`status.${getUserStatus(otherProfile)}`)
+              : otherProfile?.last_seen
+                ? t("presence.lastSeen", { time: formatDistanceToNow(new Date(otherProfile.last_seen)) })
+                : t("presence.offline")}
           </p>
         </div>
       </header>
