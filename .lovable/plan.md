@@ -1,153 +1,91 @@
 
 
-# Friends System and Group Chats
+# Discord-Style 3-Panel Chat Layout
 
 ## Overview
-Two major new features: (1) a Friends system for adding/accepting/removing friends, and (2) Group Chats with naming and admin roles.
+Redesign the DM Chat page (`/chat/:threadId`) to use a 3-panel layout matching Discord's design: a conversation list on the left, the chat area in the center, and the other user's profile panel on the right.
 
----
+## Layout Structure
 
-## Feature 1: Friends System
-
-### Database
-
-**New table: `friendships`**
+On **desktop** (768px+):
 ```text
-id          | uuid        | PK, gen_random_uuid()
-requester_id| uuid        | NOT NULL (the user who sent the request)
-addressee_id| uuid        | NOT NULL (the user who receives the request)
-status      | text        | NOT NULL, default 'pending' (pending / accepted / rejected)
-created_at  | timestamptz | NOT NULL, default now()
-updated_at  | timestamptz | NOT NULL, default now()
-UNIQUE(requester_id, addressee_id)
++------------------+-----------------------------+-------------------+
+|  Left Sidebar    |      Chat Area (center)     |  Right Panel      |
+|  (w-64, 256px)   |      (flex-1)               |  (w-72, 288px)    |
+|                  |                              |                   |
+|  Search bar      |  Header: name + status      |  Avatar (large)   |
+|  "Create Group"  |  Messages list              |  Display name     |
+|  DM/Group list   |  Typing indicator           |  Username          |
+|  (same as Inbox) |  Composer input             |  Status badge     |
+|                  |                              |  Status text      |
+|                  |                              |  "About Me"       |
+|                  |                              |  Member since     |
++------------------+-----------------------------+-------------------+
 ```
 
-**RLS Policies:**
-- SELECT: participant can view (`auth.uid() = requester_id OR auth.uid() = addressee_id`)
-- INSERT: requester must be self (`auth.uid() = requester_id`)
-- UPDATE: only addressee can accept/reject (`auth.uid() = addressee_id`)
-- DELETE: either participant can unfriend (`auth.uid() = requester_id OR auth.uid() = addressee_id`)
+On **mobile** (<768px): Keep the current single-column behavior. When on `/chat/:threadId`, show only the chat view with a back button. The Inbox page remains the thread list. The right profile panel is hidden on mobile (optionally toggled via the header).
 
-### UI
+## Changes
 
-**New page: `src/pages/Friends.tsx`**
-- Three tabs: "All Friends", "Pending", "Add Friend"
-- **All Friends tab**: list of accepted friends with online status, click to open DM
-- **Pending tab**: incoming requests with Accept/Reject buttons; outgoing requests with Cancel
-- **Add Friend tab**: search by username/display name, send friend request button
+### 1. `src/pages/Chat.tsx` -- Major restructure
 
-**Navigation update (`AppLayout.tsx`)**:
-- Add a "Friends" nav item (Users icon) between Messages and Settings
+- Wrap the existing chat in a 3-column flex layout (desktop only)
+- **Left panel**: Extract a `ChatSidebar` component that reuses the Inbox thread list logic (DM + group items, search, create group button). Highlight the active thread. Clicking a thread navigates to it.
+- **Center panel**: The existing chat (header, messages, composer) stays mostly the same. Remove the back arrow on desktop (sidebar is always visible). Keep it on mobile.
+- **Right panel**: New `UserProfilePanel` component showing:
+  - Large avatar with online status ring
+  - Display name + username
+  - Status indicator + status text
+  - "About Me" section (status_text)
+  - "Member Since" date (profile.created_at)
+  - A divider and section styling matching Discord's dark card look
+- On mobile, hide left and right panels; show only center chat with back button
 
-**New route in `App.tsx`**:
-- `/friends` route inside the protected layout
+### 2. New component: `src/components/chat/ChatSidebar.tsx`
 
-### i18n additions (both en.ts and ar.ts)
-- `friends.title`, `friends.all`, `friends.pending`, `friends.add`, `friends.search`, `friends.sendRequest`, `friends.accept`, `friends.reject`, `friends.cancel`, `friends.remove`, `friends.noFriends`, `friends.noPending`, `friends.requestSent`, `friends.requestAccepted`
+- Extracts the thread list logic from Inbox.tsx into a reusable component
+- Shows search input, create group button, and thread list (DM + group)
+- Accepts `activeThreadId` prop to highlight current conversation
+- Reuses the same data loading logic as Inbox
 
----
+### 3. New component: `src/components/chat/UserProfilePanel.tsx`
 
-## Feature 2: Group Chats
+- Accepts `profile: Profile` and presence info
+- Displays:
+  - Large avatar (80px) with status ring/badge
+  - Display name (bold, larger)
+  - @username
+  - Status badge + status text
+  - Separator
+  - "Member Since" with formatted date
+- Styled with the galaxy/glass theme to match existing UI
 
-### Database
+### 4. `src/pages/Inbox.tsx` -- Minor update
 
-**Modify `dm_threads` -> generalize to support groups**
+- When on desktop and a thread is selected, redirect to the chat view (the sidebar there shows the list)
+- When no thread is selected (just `/`), show the full-page inbox as-is (fallback)
 
-Rather than modifying dm_threads (which would break existing logic), create new tables:
+### 5. `src/components/layout/AppLayout.tsx` -- Conditional sidebar
 
-**New table: `group_threads`**
-```text
-id          | uuid        | PK, gen_random_uuid()
-name        | text        | NOT NULL
-avatar_url  | text        | nullable
-created_by  | uuid        | NOT NULL (admin/creator)
-last_message_at | timestamptz | default now()
-created_at  | timestamptz | NOT NULL, default now()
-```
+- On the chat route, the AppLayout sidebar still renders but the Chat page internally manages its own left panel
+- No changes needed if the Chat page handles its own 3-panel layout within the `<Outlet />`
 
-**New table: `group_members`**
-```text
-id          | uuid        | PK, gen_random_uuid()
-group_id    | uuid        | NOT NULL, FK -> group_threads(id) ON DELETE CASCADE
-user_id     | uuid        | NOT NULL
-role        | text        | NOT NULL, default 'member' (admin / member)
-joined_at   | timestamptz | NOT NULL, default now()
-UNIQUE(group_id, user_id)
-```
+### 6. i18n additions
 
-**Extend `messages` table:**
-- Add column `group_thread_id` (uuid, nullable, FK -> group_threads(id))
-- Make `thread_id` nullable (messages belong to either a DM thread OR a group thread)
+- `profile.memberSince`: "Member Since" / "عضو منذ"
+- `profile.aboutMe`: "About Me" / "نبذة عني"
 
-**RLS for group_threads:**
-- SELECT: user is a member (`EXISTS (SELECT 1 FROM group_members WHERE group_id = id AND user_id = auth.uid())`)
-- INSERT: authenticated users can create (`auth.uid() = created_by`)
-- UPDATE: only admin can update (`EXISTS (SELECT 1 FROM group_members WHERE group_id = id AND user_id = auth.uid() AND role = 'admin')`)
+## Mobile Behavior
 
-**RLS for group_members:**
-- SELECT: user is a member of the group
-- INSERT: only admin can add members
-- DELETE: admin can remove members, or user can leave (self)
-- UPDATE: only admin can change roles
+- Left sidebar and right panel are hidden
+- Chat fills full width
+- Back button returns to Inbox
+- User can tap the header avatar/name to see a sheet/drawer with the profile info (optional enhancement)
 
-**Updated RLS for messages** (to also allow group thread participants):
-- SELECT: user is DM participant OR group member
-- INSERT: user is DM participant OR group member, and `auth.uid() = author_id`
+## Technical Notes
 
-**Enable realtime** on `group_threads` and `group_members`.
-
-### UI
-
-**New page: `src/pages/GroupChat.tsx`**
-- Similar to Chat.tsx but adapted for groups:
-  - Header shows group name + member count
-  - Messages show author name/avatar (since multiple participants)
-  - Composer same as DM
-  - Group settings button (for admin): rename group, add/remove members
-
-**New dialog: `src/components/CreateGroupDialog.tsx`**
-- Modal to create a group: name input + select friends to add
-- Creator becomes admin automatically
-
-**New dialog: `src/components/GroupSettingsDialog.tsx`**
-- Admin can: rename group, add members, remove members, see member list with roles
-
-**Update `src/pages/Inbox.tsx`**:
-- Show both DM threads and group threads in one list, sorted by `last_message_at`
-- Group threads show group name, group avatar (or member initials), member count, last message
-
-**New route in `App.tsx`**:
-- `/group/:groupId` route inside the protected layout
-
-**Update `src/hooks/useUnreadCount.ts`**:
-- Also count unread from group threads
-
-### i18n additions (both en.ts and ar.ts)
-- `groups.create`, `groups.name`, `groups.namePlaceholder`, `groups.addMembers`, `groups.settings`, `groups.members`, `groups.admin`, `groups.member`, `groups.leave`, `groups.removeMember`, `groups.rename`, `groups.noGroups`, `groups.created`
-- `nav.friends`
-
----
-
-## Technical Details
-
-### Files Created
-- `src/pages/Friends.tsx` -- Friends page with tabs
-- `src/pages/GroupChat.tsx` -- Group chat page
-- `src/components/CreateGroupDialog.tsx` -- Create group modal
-- `src/components/GroupSettingsDialog.tsx` -- Group admin settings
-
-### Files Modified
-- **Database migration** -- create `friendships`, `group_threads`, `group_members` tables; add `group_thread_id` to messages; update messages RLS; enable realtime
-- `src/App.tsx` -- add `/friends` and `/group/:groupId` routes
-- `src/components/layout/AppLayout.tsx` -- add Friends nav item
-- `src/pages/Inbox.tsx` -- merge group threads into inbox list; add "Create Group" button
-- `src/hooks/useUnreadCount.ts` -- include group thread unreads
-- `src/i18n/en.ts` -- add friends + groups translations
-- `src/i18n/ar.ts` -- add friends + groups translations
-
-### Architecture Notes
-- DM threads and group threads use separate tables to avoid breaking existing DM logic
-- Messages table is extended with a nullable `group_thread_id` -- a message belongs to either `thread_id` (DM) or `group_thread_id` (group), not both
-- Group admin role is stored in `group_members.role`, not in profiles (following security best practices)
-- The creator of a group is automatically the admin; admin can promote other members
+- The ChatSidebar will share data-fetching logic with Inbox but be a separate component to avoid circular dependencies
+- The 3-panel layout uses CSS flex with fixed widths for side panels and flex-1 for the center
+- RTL support: using `start`/`end` logical properties (already in use) ensures correct mirroring
+- The right panel will be collapsible via a toggle button in the chat header for users who want more space
 
