@@ -35,6 +35,10 @@ export default {
     strengthGood: "Good",
     strengthStrong: "Strong",
     strengthVeryStrong: "Very Strong",
+    emailOrUsername: "Email or Username",
+    userNotFound: "No account found with that username",
+    usernameTaken: "Username is already taken",
+    usernameAvailable: "Username is available",
   },
   nav: {
     inbox: "Messages",

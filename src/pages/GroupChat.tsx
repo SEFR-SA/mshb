@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,6 +12,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import GroupSettingsDialog from "@/components/GroupSettingsDialog";
+import ChatSidebar from "@/components/chat/ChatSidebar";
+import GroupMembersPanel from "@/components/chat/GroupMembersPanel";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Message = Tables<"messages">;
@@ -23,13 +26,16 @@ const GroupChat = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [groupName, setGroupName] = useState("");
+  const [groupAvatarUrl, setGroupAvatarUrl] = useState("");
   const [memberCount, setMemberCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map());
+  const [memberRoles, setMemberRoles] = useState<Map<string, string>>(new Map());
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -52,6 +58,7 @@ const GroupChat = () => {
         .maybeSingle();
       if (!group) { navigate("/"); return; }
       setGroupName((group as any).name);
+      setGroupAvatarUrl((group as any).avatar_url || "");
 
       const { data: members } = await supabase
         .from("group_members")
@@ -60,6 +67,11 @@ const GroupChat = () => {
       setMemberCount(members?.length || 0);
       const myMembership = members?.find((m: any) => m.user_id === user.id);
       setIsAdmin((myMembership as any)?.role === "admin");
+
+      // Build roles map
+      const rolesMap = new Map<string, string>();
+      members?.forEach((m: any) => rolesMap.set(m.user_id, m.role));
+      setMemberRoles(rolesMap);
 
       const userIds = members?.map((m: any) => m.user_id) || [];
       if (userIds.length > 0) {
@@ -200,13 +212,15 @@ const GroupChat = () => {
     .map((uid) => profiles.get(uid)?.display_name || profiles.get(uid)?.username || "Someone")
     .join(", ");
 
-  return (
-    <div className="flex flex-col h-full">
+  const chatPanel = (
+    <div className="flex flex-col h-full min-w-0 flex-1">
       {/* Header */}
       <header className="flex items-center gap-3 p-3 glass border-b border-border/50">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+        {isMobile && (
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
         <Avatar className="h-9 w-9">
           <AvatarFallback className="bg-primary/20 text-primary text-sm">
             {groupName.charAt(0).toUpperCase()}
@@ -346,6 +360,26 @@ const GroupChat = () => {
         groupId={groupId || ""}
         isAdmin={isAdmin}
         onLeave={() => navigate("/")}
+      />
+    </div>
+  );
+
+  // Mobile: just the chat panel
+  if (isMobile) {
+    return chatPanel;
+  }
+
+  // Desktop: 3-panel layout
+  return (
+    <div className="flex h-full overflow-hidden">
+      <ChatSidebar activeThreadId={groupId} />
+      {chatPanel}
+      <GroupMembersPanel
+        profiles={profiles}
+        memberRoles={memberRoles}
+        groupName={groupName}
+        memberCount={memberCount}
+        groupAvatarUrl={groupAvatarUrl}
       />
     </div>
   );

@@ -299,6 +299,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_email_by_username: { Args: { p_username: string }; Returns: string }
       is_group_admin: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
