@@ -7,7 +7,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { usePendingFriendRequests } from "@/hooks/usePendingFriendRequests";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Settings, Moon, Sun, Globe, LogOut, Users } from "lucide-react";
+import { MessageSquare, Settings, Moon, Sun, Globe, LogOut, Users, Download } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -18,6 +18,22 @@ const AppLayout = () => {
   const isMobile = useIsMobile();
   const { totalUnread } = useUnreadCount();
   const { pendingCount } = usePendingFriendRequests();
+  const [installPrompt, setInstallPrompt] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    setInstallPrompt(null);
+  };
 
   const toggleLang = () => {
     const next = i18n.language === "ar" ? "en" : "ar";
@@ -73,6 +89,11 @@ const AppLayout = () => {
               <Button variant="ghost" size="icon" onClick={toggleLang} title={i18n.language === "ar" ? "English" : "العربية"}>
                 <Globe className="h-4 w-4" />
               </Button>
+              {installPrompt && (
+                <Button variant="ghost" size="icon" onClick={handleInstall} title={t("app.install")}>
+                  <Download className="h-4 w-4" />
+                </Button>
+              )}
               <Button variant="ghost" size="icon" onClick={signOut} title={t("auth.logout")}>
                 <LogOut className="h-4 w-4" />
               </Button>
