@@ -1,65 +1,67 @@
 
 
-# Notification Sound/Toast + Friendly Username Error
+# Fix Group Creation + Add Install to Desktop Button
 
-## Overview
-Three changes: (1) Play a notification sound and show a toast when a new message arrives, (2) Play a sound and show a toast when a new friend request arrives, (3) Replace the raw database error for duplicate usernames with a friendly "Username is already taken" message.
+## Issue 1: Group Creation Still Fails
 
----
+### Root Cause
+The INSERT query in `CreateGroupDialog.tsx` uses `.insert(...).select("id").single()`, which requires **both** INSERT and SELECT permissions. The SELECT policy on `group_threads` checks `is_group_member(auth.uid(), id)`, but at insert time the user hasn't been added to `group_members` yet -- so the SELECT check fails, causing the RLS error.
 
-## 1. Notification Sound for New Messages
+### Fix
+Run a database migration to update the SELECT policy on `group_threads` to also allow the group creator to see the group:
 
-### `src/hooks/useUnreadCount.ts`
-- Import `toast` from `@/hooks/use-toast`
-- Track the previous unread count using a ref
-- When the new total exceeds the previous total (meaning a new message arrived), play a notification sound and show a toast: "New message received"
-- Create and play an `Audio` object with a short notification sound (use a small embedded base64 sound or a public URL)
-- Skip notifications if the document is focused on the chat page (optional, but nice to have)
-
-### `public/notification.mp3`
-- Add a small notification sound file to the public folder (a short pleasant chime)
-
----
-
-## 2. Notification Sound for Friend Requests
-
-### `src/hooks/usePendingFriendRequests.ts`
-- Import `toast` from `@/hooks/use-toast`
-- Track previous pending count with a ref
-- When the new count exceeds the previous count, play the same notification sound and show a toast: "New friend request!"
-- Only trigger on increases (not when requests are accepted/rejected, which decreases the count)
+```sql
+DROP POLICY IF EXISTS "Members can view group threads" ON public.group_threads;
+CREATE POLICY "Members can view group threads"
+  ON public.group_threads FOR SELECT
+  TO authenticated
+  USING (is_group_member(auth.uid(), id) OR created_by = auth.uid());
+```
 
 ---
 
-## 3. Friendly Username Error in Settings
+## Issue 2: Add "Install to Desktop" Button
 
-### `src/pages/Settings.tsx`
-- In the `handleSave` function (line 75-76), check if the error message contains "unique constraint" or "profiles_username_unique"
-- If so, show the friendly message from i18n: `t("auth.usernameTaken")` instead of the raw database error
-- The key `auth.usernameTaken` already exists in translations ("Username is already taken")
+The app is already configured as a PWA (manifest.json, service worker, icons exist). It just needs a visible install button that uses the browser's `beforeinstallprompt` event.
 
----
+### Changes to `src/pages/Settings.tsx`
+- Add a "Download to Desktop" / "Install App" button in the settings page
+- Use the `beforeinstallprompt` event to capture the install prompt
+- Show the button only when the browser supports installation (not already installed)
+- Add a `Download` icon from lucide-react
 
-## i18n Updates
-
-### `src/i18n/en.ts`
-- Add `notifications.newMessage`: "You have a new message"
-- Add `notifications.newFriendRequest`: "You have a new friend request!"
-
-### `src/i18n/ar.ts`
-- Add Arabic translations for the above keys
+### Changes to `src/components/layout/AppLayout.tsx`
+- Add a small install button in the desktop sidebar's bottom area (near theme/language toggles) so it's always accessible
 
 ---
 
 ## Technical Details
 
-### Files Created
-- `public/notification.mp3` -- short notification chime sound
+### PWA Install Logic
+```typescript
+const [installPrompt, setInstallPrompt] = useState<any>(null);
+
+useEffect(() => {
+  const handler = (e: Event) => {
+    e.preventDefault();
+    setInstallPrompt(e);
+  };
+  window.addEventListener("beforeinstallprompt", handler);
+  return () => window.removeEventListener("beforeinstallprompt", handler);
+}, []);
+
+const handleInstall = async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  setInstallPrompt(null);
+};
+```
+
+### i18n
+- Add `app.install` key: "Install App" / "تثبيت التطبيق"
 
 ### Files Modified
-- `src/hooks/useUnreadCount.ts` -- detect increases in unread count, play sound + show toast
-- `src/hooks/usePendingFriendRequests.ts` -- detect new friend requests, play sound + show toast
-- `src/pages/Settings.tsx` -- catch duplicate username error and show friendly message
-- `src/i18n/en.ts` -- add notification translation keys
-- `src/i18n/ar.ts` -- add Arabic notification translations
-
+- **Database migration**: Fix `group_threads` SELECT policy
+- `src/components/layout/AppLayout.tsx`: Add install button in sidebar
+- `src/pages/Settings.tsx`: Add install button in settings
+- `src/i18n/en.ts` and `src/i18n/ar.ts`: Add install translation key
