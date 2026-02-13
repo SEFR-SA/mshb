@@ -1,91 +1,125 @@
 
 
-# Discord-Style 3-Panel Chat Layout
+# Profile Banners, About Me, Username Signup & Password Strength
 
 ## Overview
-Redesign the DM Chat page (`/chat/:threadId`) to use a 3-panel layout matching Discord's design: a conversation list on the left, the chat area in the center, and the other user's profile panel on the right.
+Four changes: (1) banner image upload + display, (2) "About Me" field in Settings, (3) mandatory username on signup with password strength rules, (4) display everything in the right panel.
 
-## Layout Structure
+---
 
-On **desktop** (768px+):
-```text
-+------------------+-----------------------------+-------------------+
-|  Left Sidebar    |      Chat Area (center)     |  Right Panel      |
-|  (w-64, 256px)   |      (flex-1)               |  (w-72, 288px)    |
-|                  |                              |                   |
-|  Search bar      |  Header: name + status      |  Avatar (large)   |
-|  "Create Group"  |  Messages list              |  Display name     |
-|  DM/Group list   |  Typing indicator           |  Username          |
-|  (same as Inbox) |  Composer input             |  Status badge     |
-|                  |                              |  Status text      |
-|                  |                              |  "About Me"       |
-|                  |                              |  Member since     |
-+------------------+-----------------------------+-------------------+
+## 1. Database Migration
+
+Add two new columns to `profiles`:
+- `banner_url` (text, nullable) -- stores the uploaded banner image URL
+- `about_me` (text, nullable, default '') -- a longer "About Me" bio field, separate from `status_text`
+
+No new RLS needed -- existing policies cover profile updates.
+
+---
+
+## 2. Banner Upload + About Me in Settings Page
+
+**`src/pages/Settings.tsx`**:
+- Add a banner area at the top (full-width, ~150px tall) showing the current banner image or a gradient placeholder
+- Add a camera/upload button overlay on the banner to upload a new image (same pattern as avatar upload, stored in `avatars` bucket under `{userId}/banner.{ext}`)
+- Add an "About Me" textarea field in the profile card (multi-line, max 500 chars)
+- Save `banner_url` and `about_me` in the `handleSave` function
+
+---
+
+## 3. Right Panel Updates
+
+**`src/components/chat/UserProfilePanel.tsx`**:
+- Replace the static `bg-primary/20` banner div with an `<img>` tag showing `profile.banner_url` (fallback to gradient if no banner)
+- Add "About Me" section below status text (separate from status_text)
+- Keep status_text displayed as "Custom Status" and about_me as "About Me"
+
+---
+
+## 4. Signup: Username Mandatory + Password Strength
+
+**`src/pages/Auth.tsx`**:
+- Rename the signup field from "Display Name" to "Username" (make it required)
+- Pass the username to `signUp()` which stores it as `username` in the profile
+- Add password validation rules:
+  - Uppercase letter (A-Z)
+  - Lowercase letter (a-z)
+  - Number (0-9)
+  - Special character (!@#$%^&*()-_+={}[]:;"'<>,.?/\\|)
+  - Minimum 8 characters
+  - Block common passwords (password, 123456, qwerty, etc.)
+- Add a **4-level strength bar** below the password field:
+  - **Weak** (red) -- meets 1 rule
+  - **Good** (orange) -- meets 2-3 rules
+  - **Strong** (yellow-green) -- meets 4 rules
+  - **Very Strong** (green) -- meets all 5 rules
+- Show individual rule checkmarks/crosses as the user types
+- Block form submission unless all rules pass
+
+**`src/contexts/AuthContext.tsx`**:
+- Change `signUp` to accept `username` instead of `displayName`
+- Update the metadata passed to `supabase.auth.signUp` and also set `username` in the profile trigger or update after signup
+
+---
+
+## 5. i18n Additions
+
+**English (`en.ts`)**:
+```
+auth.username: "Username"
+auth.usernameRequired: "Username is required"
+auth.passwordRules: "Password must contain:"
+auth.ruleUppercase: "One uppercase letter (A-Z)"
+auth.ruleLowercase: "One lowercase letter (a-z)"
+auth.ruleNumber: "One number (0-9)"
+auth.ruleSpecial: "One special character (!@#$...)"
+auth.ruleLength: "At least 8 characters"
+auth.ruleCommon: "Must not be a common password"
+auth.strengthWeak: "Weak"
+auth.strengthGood: "Good"
+auth.strengthStrong: "Strong"
+auth.strengthVeryStrong: "Very Strong"
+profile.aboutMeLabel: "About Me"
+profile.aboutMePlaceholder: "Tell others about yourself..."
+profile.banner: "Banner"
+profile.uploadBanner: "Upload Banner"
 ```
 
-On **mobile** (<768px): Keep the current single-column behavior. When on `/chat/:threadId`, show only the chat view with a back button. The Inbox page remains the thread list. The right profile panel is hidden on mobile (optionally toggled via the header).
+**Arabic (`ar.ts`)**: Equivalent translations for all keys above.
 
-## Changes
+---
 
-### 1. `src/pages/Chat.tsx` -- Major restructure
+## Technical Details
 
-- Wrap the existing chat in a 3-column flex layout (desktop only)
-- **Left panel**: Extract a `ChatSidebar` component that reuses the Inbox thread list logic (DM + group items, search, create group button). Highlight the active thread. Clicking a thread navigates to it.
-- **Center panel**: The existing chat (header, messages, composer) stays mostly the same. Remove the back arrow on desktop (sidebar is always visible). Keep it on mobile.
-- **Right panel**: New `UserProfilePanel` component showing:
-  - Large avatar with online status ring
-  - Display name + username
-  - Status indicator + status text
-  - "About Me" section (status_text)
-  - "Member Since" date (profile.created_at)
-  - A divider and section styling matching Discord's dark card look
-- On mobile, hide left and right panels; show only center chat with back button
+### Files Modified
+- **Database migration** -- add `banner_url` and `about_me` columns to profiles
+- `src/pages/Auth.tsx` -- username field, password strength bar + validation
+- `src/contexts/AuthContext.tsx` -- pass username to signup
+- `src/pages/Settings.tsx` -- banner upload, about me textarea
+- `src/components/chat/UserProfilePanel.tsx` -- show banner image, about me section
+- `src/i18n/en.ts` -- new translation keys
+- `src/i18n/ar.ts` -- new translation keys
 
-### 2. New component: `src/components/chat/ChatSidebar.tsx`
+### New Component
+- `src/components/PasswordStrengthBar.tsx` -- reusable component showing 4-segment strength bar + rule checklist
 
-- Extracts the thread list logic from Inbox.tsx into a reusable component
-- Shows search input, create group button, and thread list (DM + group)
-- Accepts `activeThreadId` prop to highlight current conversation
-- Reuses the same data loading logic as Inbox
+### Password Strength Logic
+```text
+Rules checked:
+1. Has uppercase (A-Z)
+2. Has lowercase (a-z)
+3. Has digit (0-9)
+4. Has special char
+5. Min 8 chars
+6. Not a common password
 
-### 3. New component: `src/components/chat/UserProfilePanel.tsx`
+Strength levels:
+- 0-1 rules met: Weak (red)
+- 2-3 rules met: Good (orange)
+- 4 rules met: Strong (yellow-green)
+- 5-6 rules met: Very Strong (green)
+```
 
-- Accepts `profile: Profile` and presence info
-- Displays:
-  - Large avatar (80px) with status ring/badge
-  - Display name (bold, larger)
-  - @username
-  - Status badge + status text
-  - Separator
-  - "Member Since" with formatted date
-- Styled with the galaxy/glass theme to match existing UI
-
-### 4. `src/pages/Inbox.tsx` -- Minor update
-
-- When on desktop and a thread is selected, redirect to the chat view (the sidebar there shows the list)
-- When no thread is selected (just `/`), show the full-page inbox as-is (fallback)
-
-### 5. `src/components/layout/AppLayout.tsx` -- Conditional sidebar
-
-- On the chat route, the AppLayout sidebar still renders but the Chat page internally manages its own left panel
-- No changes needed if the Chat page handles its own 3-panel layout within the `<Outlet />`
-
-### 6. i18n additions
-
-- `profile.memberSince`: "Member Since" / "عضو منذ"
-- `profile.aboutMe`: "About Me" / "نبذة عني"
-
-## Mobile Behavior
-
-- Left sidebar and right panel are hidden
-- Chat fills full width
-- Back button returns to Inbox
-- User can tap the header avatar/name to see a sheet/drawer with the profile info (optional enhancement)
-
-## Technical Notes
-
-- The ChatSidebar will share data-fetching logic with Inbox but be a separate component to avoid circular dependencies
-- The 3-panel layout uses CSS flex with fixed widths for side panels and flex-1 for the center
-- RTL support: using `start`/`end` logical properties (already in use) ensures correct mirroring
-- The right panel will be collapsible via a toggle button in the chat header for users who want more space
+### Blocked Common Passwords
+password, password1, 123456, 12345678, qwerty, abc123, letmein, admin, welcome, monkey, master, dragon, login, princess, football, shadow, sunshine, trustno1
 
