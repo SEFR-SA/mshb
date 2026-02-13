@@ -1,34 +1,34 @@
 
-## Fix Status Badge Alignment in GroupMembersPanel
 
-### Problem Analysis
-The status badge in `GroupMembersPanel.tsx` (line 77) has a border wrapper that's not properly aligned with the status indicator circle. Currently:
+## Remove Status Badge Wrapper from All Pages
 
-- **StatusBadge component**: Renders a small circle (`h-2.5 w-2.5` for size="sm")
-- **Border wrapper**: Uses `border-2 border-background rounded-full` to create a ring around it
-- **Issue**: The border sizing and positioning is off, causing misalignment
+The `<span>` wrapper elements that create a border ring around the `StatusBadge` component will be removed from every file. The `StatusBadge` itself will remain -- only the surrounding `<span>` with `border-*` classes is removed.
 
-Comparing with `UserProfilePanel.tsx` (line 42), which uses:
-- `border-3 border-background rounded-full` for a larger badge (size="md": `h-3 w-3`)
+### Files to Modify
 
-### Root Cause
-The `border-2` is too thin for the small badge size, and there's no padding between the badge and the border. The border needs sufficient padding/sizing to create a proper ring effect around the colored circle.
+**1. `src/components/chat/GroupMembersPanel.tsx`** (line 77-79)
+- Remove the wrapper `<span>` with `border-2 border-background rounded-full p-0.5`
+- Keep `<StatusBadge status={displayStatus} />` directly inside the `<div className="relative shrink-0">`
 
-### Solution
-Update the border wrapper in `GroupMembersPanel.tsx` to:
-1. Add padding around the StatusBadge to create proper spacing between the circle and border
-2. Adjust border sizing to match the badge dimensions better
-3. Ensure the wrapper is properly sized to accommodate both the badge and the border
+**2. `src/components/chat/UserProfilePanel.tsx`** (line 42-44)
+- Remove the wrapper `<span>` with `border-3 border-background rounded-full`
+- Keep `<StatusBadge status={status} size="md" />` directly
 
-The fix will use `p-0.5` (padding) to create breathing room, ensuring the border sits cleanly around the status indicator.
+**3. `src/pages/Chat.tsx`** (line 222-224)
+- Remove the wrapper `<span>` with `border-2 border-background rounded-full`
+- Keep `<StatusBadge>` directly
 
-### Changes Required
+**4. `src/pages/Friends.tsx`** (line 191-193)
+- Remove the wrapper `<span>` with `border-2 border-background rounded-full`
+- Keep `<StatusBadge>` directly
 
-**File: `src/components/chat/GroupMembersPanel.tsx`** (Line 77)
-- Replace: `<span className="absolute bottom-0 end-0 border-2 border-background rounded-full">`
-- With: `<span className="absolute bottom-0 end-0 border-2 border-background rounded-full p-0.5">`
+**5. `src/pages/Inbox.tsx`** (lines 259-261 and 299-301)
+- Remove both wrapper `<span>` elements
+- Keep `<StatusBadge>` directly in both places
 
-This adds internal padding that spaces the StatusBadge away from the border, creating a clean, aligned ring effect.
+**6. `src/components/chat/ChatSidebar.tsx`** (has similar wrapper)
+- Remove the wrapper `<span>`
+- Keep `<StatusBadge>` directly
 
-### Result
-The status badge will now have a properly sized and aligned border that surrounds the colored circle without visual misalignment.
+In all cases, the `<StatusBadge>` will be placed directly inside the positioning `<div>` or at the same location, just without the border ring wrapper. The absolute positioning classes will move to the `StatusBadge` itself via its `className` prop (e.g., `className="absolute bottom-0 end-0"`).
+
