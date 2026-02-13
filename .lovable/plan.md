@@ -1,143 +1,83 @@
 
 
-## File Uploads in Chat (DM and Group) -- 10 MB Limit
+## Plan: Fix Group Leave Bug + Upload Progress Indicator + Drag-and-Drop Files
 
-### Overview
-Add the ability for users to attach files of any type (images, videos, audio, documents, code files, etc.) to messages in both 1-to-1 and group chats. Files are stored in a dedicated storage bucket with a 10 MB size limit enforced client-side.
+### 1. Fix: Group Leave Not Working
 
----
+**Problem**: In `GroupSettingsDialog.tsx`, the `handleLeave` function navigates to the messages page regardless of whether the database delete succeeded. If the delete fails (silently), the user gets redirected but remains a group member.
 
-### 1. Database Changes
+**Fix**: Add error handling to `handleLeave` -- only close the dialog and navigate if the delete succeeds. Show an error toast if it fails.
 
-**New storage bucket: `chat-files`**
-- Public bucket so files can be accessed via URL
-- RLS policies allowing:
-  - INSERT: authenticated users can upload to their own folder (`{userId}/...`)
-  - SELECT: public (bucket is public)
-  - DELETE: users can delete files in their own folder
+**File**: `src/components/GroupSettingsDialog.tsx`
+- Wrap the delete call in error checking
+- Only call `onLeave()` if delete was successful
+- Show error toast on failure
 
-**Add columns to `messages` table:**
-- `file_url` (text, nullable) -- URL of the uploaded file
-- `file_name` (text, nullable) -- original file name for display
-- `file_type` (text, nullable) -- MIME type (e.g., `image/png`, `video/mp4`, `application/pdf`)
-- `file_size` (integer, nullable) -- file size in bytes for display
-
-Migration SQL:
-
-```sql
--- Create chat-files bucket
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('chat-files', 'chat-files', true);
-
--- Storage RLS policies
-CREATE POLICY "Auth users can upload chat files" ON storage.objects
-FOR INSERT TO authenticated
-WITH CHECK (
-  bucket_id = 'chat-files'
-  AND (auth.uid())::text = (storage.foldername(name))[1]
-);
-
-CREATE POLICY "Anyone can view chat files" ON storage.objects
-FOR SELECT TO public
-USING (bucket_id = 'chat-files');
-
-CREATE POLICY "Users can delete own chat files" ON storage.objects
-FOR DELETE TO authenticated
-USING (
-  bucket_id = 'chat-files'
-  AND (auth.uid())::text = (storage.foldername(name))[1]
-);
-
--- Add file columns to messages
-ALTER TABLE public.messages
-  ADD COLUMN file_url text,
-  ADD COLUMN file_name text,
-  ADD COLUMN file_type text,
-  ADD COLUMN file_size integer;
+```
+const handleLeave = async () => {
+  if (!user) return;
+  const { error } = await supabase
+    .from("group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("user_id", user.id);
+  if (error) {
+    toast({ title: t("common.error"), variant: "destructive" });
+    return;
+  }
+  onOpenChange(false);
+  onLeave();
+};
 ```
 
 ---
 
-### 2. New Component: `FileAttachmentButton`
+### 2. Add Upload Progress Indicator
 
-A reusable component placed in the message composer area (next to the text input). It:
-- Renders a paperclip/attachment icon button
-- Opens a native file picker (no type restriction -- accepts all files)
-- Validates file size client-side (max 10 MB), shows error toast if exceeded
-- Calls back with the selected file
+**Problem**: When uploading files in chat, there is no visual feedback -- the user doesn't know if the upload is in progress.
 
----
+**Solution**: Show a progress bar in the composer area while a file is uploading.
 
-### 3. New Component: `MessageFilePreview`
+**Changes**:
 
-Renders the file attachment inside a message bubble. Behavior varies by file type:
-- **Images** (`image/*`): inline thumbnail with click to open full size
-- **Videos** (`video/*`): inline `<video>` player with controls
-- **Audio** (`audio/*`): inline `<audio>` player with controls
-- **Other files** (PDF, Word, JSON, JS, etc.): file icon + file name + size, clickable to download
+- **`src/lib/uploadChatFile.ts`**: Modify to use `XMLHttpRequest` instead of the Supabase SDK so we can track upload progress via `xhr.upload.onprogress`. Return both the URL and accept an `onProgress` callback.
 
----
+- **`src/pages/Chat.tsx`** and **`src/pages/GroupChat.tsx`**:
+  - Add `uploadProgress` state (0-100, or null when not uploading)
+  - Pass `onProgress` callback to `uploadChatFile`
+  - Render a `Progress` bar component above the composer when uploading
+  - Disable the input and send button during upload
 
-### 4. Upload Flow
-
-When a user selects a file:
-1. Show a preview/indicator in the composer area (file name + size + remove button)
-2. On send:
-   a. Upload file to `chat-files/{userId}/{timestamp}_{filename}` via Supabase Storage
-   b. Get the public URL
-   c. Insert the message with `content` (text, can be empty), `file_url`, `file_name`, `file_type`, `file_size`
-3. Clear the attachment state
+- **`src/i18n/en.ts`** and **`src/i18n/ar.ts`**: Add `files.uploading` string ("Uploading file...")
 
 ---
 
-### 5. Modify Chat Pages
+### 3. Add Drag-and-Drop File Upload
 
-**`src/pages/Chat.tsx`** (1-to-1 DM):
-- Add file state (`selectedFile`) to the composer
-- Add `FileAttachmentButton` next to the input
-- Show file preview strip when a file is selected
-- Update `sendMessage` to upload file first, then insert message with file metadata
-- Update message rendering to use `MessageFilePreview` when `file_url` exists
+**Problem**: Users can only attach files by clicking the paperclip button.
 
-**`src/pages/GroupChat.tsx`** (Group chat):
-- Same changes as Chat.tsx
+**Solution**: Allow dragging files onto the chat message area to attach them.
 
----
+**Changes**:
 
-### 6. i18n Strings
+- **`src/pages/Chat.tsx`** and **`src/pages/GroupChat.tsx`**:
+  - Add `dragOver` state to track when a file is being dragged over the chat area
+  - Add `onDragOver`, `onDragLeave`, and `onDrop` handlers to the chat panel wrapper
+  - On drop, validate file size (10 MB limit) and set as `selectedFile`
+  - Show a visual overlay ("Drop file here") when dragging over the area
 
-Add to `en.ts` and `ar.ts`:
-
-```
-files: {
-  tooLarge: "File is too large. Maximum size is 10 MB.",
-  uploadError: "Failed to upload file.",
-  download: "Download",
-  attachment: "Attachment",
-}
-```
+- **`src/i18n/en.ts`** and **`src/i18n/ar.ts`**: Add `files.dropHere` string ("Drop file here")
 
 ---
 
-### 7. Files to Create/Modify
+### Files to Modify
 
-| File | Action |
-|------|--------|
-| `supabase/migrations/...` (new) | Create bucket + add columns |
-| `src/components/chat/FileAttachmentButton.tsx` | **Create** -- attachment button |
-| `src/components/chat/MessageFilePreview.tsx` | **Create** -- file display in messages |
-| `src/pages/Chat.tsx` | **Modify** -- add file upload to composer + render attachments |
-| `src/pages/GroupChat.tsx` | **Modify** -- same as Chat.tsx |
-| `src/i18n/en.ts` | **Modify** -- add file strings |
-| `src/i18n/ar.ts` | **Modify** -- add Arabic file strings |
-
----
-
-### 8. Constraints and Validation
-
-- **10 MB limit** enforced client-side before upload attempt
-- File name sanitized (special characters removed) before storage
-- Send button disabled while file is uploading (with loading indicator)
-- Messages can have text only, file only, or both text + file
-- Deleted messages (`deleted_for_everyone`) will not show the file preview
+| File | Changes |
+|------|---------|
+| `src/components/GroupSettingsDialog.tsx` | Fix handleLeave error handling |
+| `src/lib/uploadChatFile.ts` | Add progress callback support via XHR |
+| `src/pages/Chat.tsx` | Upload progress bar + drag-and-drop |
+| `src/pages/GroupChat.tsx` | Upload progress bar + drag-and-drop |
+| `src/i18n/en.ts` | Add uploading and dropHere strings |
+| `src/i18n/ar.ts` | Add Arabic translations |
 
