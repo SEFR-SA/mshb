@@ -70,6 +70,23 @@ export default {
     offline: "غير متصل",
     lastSeen: "آخر ظهور",
   },
+  status: {
+    online: "متصل",
+    busy: "مشغول",
+    dnd: "عدم الإزعاج",
+    idle: "خامل",
+    invisible: "مخفي",
+    label: "الحالة",
+    duration: "المدة",
+  },
+  duration: {
+    "15m": "١٥ دقيقة",
+    "1h": "ساعة واحدة",
+    "8h": "٨ ساعات",
+    "24h": "٢٤ ساعة",
+    "3d": "٣ أيام",
+    forever: "دائمًا",
+  },
   common: {
     loading: "جارٍ التحميل...",
     error: "حدث خطأ ما",

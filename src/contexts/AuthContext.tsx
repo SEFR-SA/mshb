@@ -31,6 +31,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .select("*")
       .eq("user_id", userId)
       .maybeSingle();
+    if (data) {
+      const p = data as any;
+      if (p.status_until && new Date(p.status_until) < new Date()) {
+        await supabase.from("profiles").update({ status: "online", status_until: null } as any).eq("user_id", userId);
+        p.status = "online";
+        p.status_until = null;
+      }
+    }
     setProfile(data);
   };
 

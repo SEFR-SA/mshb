@@ -10,7 +10,15 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Camera, LogOut } from "lucide-react";
+import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
+
+const STATUSES: UserStatus[] = ["online", "busy", "dnd", "idle", "invisible"];
+const DURATIONS = ["15m", "1h", "8h", "24h", "3d", "forever"] as const;
+const DURATION_MINUTES: Record<string, number | null> = {
+  "15m": 15, "1h": 60, "8h": 480, "24h": 1440, "3d": 4320, forever: null,
+};
 
 const Settings = () => {
   const { t, i18n } = useTranslation();
@@ -20,6 +28,8 @@ const Settings = () => {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [statusText, setStatusText] = useState("");
+  const [status, setStatus] = useState<UserStatus>("online");
+  const [statusDuration, setStatusDuration] = useState<string>("forever");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -28,21 +38,32 @@ const Settings = () => {
       setUsername(profile.username || "");
       setDisplayName(profile.display_name || "");
       setStatusText(profile.status_text || "");
+      setStatus(((profile as any).status as UserStatus) || "online");
     }
   }, [profile]);
 
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
+    let statusUntil: string | null = null;
+    if (status !== "online") {
+      const mins = DURATION_MINUTES[statusDuration];
+      if (mins !== null && mins !== undefined) {
+        statusUntil = new Date(Date.now() + mins * 60000).toISOString();
+      }
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update({
         username: username.trim() || null,
         display_name: displayName.trim() || null,
         status_text: statusText.trim(),
+        status,
+        status_until: status === "online" ? null : statusUntil,
         language: i18n.language,
         theme,
-      })
+      } as any)
       .eq("user_id", user.id);
 
     if (error) {
@@ -128,6 +149,39 @@ const Settings = () => {
             <Label>{t("profile.displayName")}</Label>
             <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
           </div>
+          <div className="space-y-2">
+            <Label>{t("status.label")}</Label>
+            <Select value={status} onValueChange={(v) => { setStatus(v as UserStatus); if (v === "online") setStatusDuration("forever"); }}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-popover">
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    <span className="flex items-center gap-2">
+                      <StatusBadge status={s} />
+                      {t(`status.${s}`)}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {status !== "online" && (
+            <div className="space-y-2">
+              <Label>{t("status.duration")}</Label>
+              <Select value={statusDuration} onValueChange={setStatusDuration}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover">
+                  {DURATIONS.map((d) => (
+                    <SelectItem key={d} value={d}>{t(`duration.${d}`)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-2">
             <Label>{t("profile.statusText")}</Label>
             <Input value={statusText} onChange={(e) => setStatusText(e.target.value)} />

@@ -113,7 +113,9 @@ export type Database = {
           id: string
           language: string | null
           last_seen: string | null
+          status: string
           status_text: string | null
+          status_until: string | null
           theme: string | null
           updated_at: string
           user_id: string
@@ -126,7 +128,9 @@ export type Database = {
           id?: string
           language?: string | null
           last_seen?: string | null
+          status?: string
           status_text?: string | null
+          status_until?: string | null
           theme?: string | null
           updated_at?: string
           user_id: string
@@ -139,7 +143,9 @@ export type Database = {
           id?: string
           language?: string | null
           last_seen?: string | null
+          status?: string
           status_text?: string | null
+          status_until?: string | null
           theme?: string | null
           updated_at?: string
           user_id?: string

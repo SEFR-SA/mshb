@@ -70,6 +70,23 @@ export default {
     offline: "Offline",
     lastSeen: "Last seen",
   },
+  status: {
+    online: "Online",
+    busy: "Busy",
+    dnd: "Do Not Disturb",
+    idle: "Idle",
+    invisible: "Invisible",
+    label: "Status",
+    duration: "Duration",
+  },
+  duration: {
+    "15m": "15 minutes",
+    "1h": "1 hour",
+    "8h": "8 hours",
+    "24h": "24 hours",
+    "3d": "3 days",
+    forever: "Forever",
+  },
   common: {
     loading: "Loading...",
     error: "Something went wrong",
