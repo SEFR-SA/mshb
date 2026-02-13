@@ -222,6 +222,7 @@ const GroupChat = () => {
           </Button>
         )}
         <Avatar className="h-9 w-9">
+          <AvatarImage src={groupAvatarUrl} />
           <AvatarFallback className="bg-primary/20 text-primary text-sm">
             {groupName.charAt(0).toUpperCase()}
           </AvatarFallback>

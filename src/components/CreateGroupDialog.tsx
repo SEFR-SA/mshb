@@ -77,13 +77,14 @@ const CreateGroupDialog = ({ open, onOpenChange }: CreateGroupDialogProps) => {
       return;
     }
 
-    // Add creator as admin + selected members
-    const members = [
-      { group_id: group.id, user_id: user.id, role: "admin" },
-      ...Array.from(selectedIds).map((uid) => ({ group_id: group.id, user_id: uid, role: "member" })),
-    ];
+    // Step 1: Add creator as admin first
+    await supabase.from("group_members").insert({ group_id: group.id, user_id: user.id, role: "admin" } as any);
 
-    await supabase.from("group_members").insert(members as any);
+    // Step 2: Now creator is admin, so RLS allows adding other members
+    const otherMembers = Array.from(selectedIds).map((uid) => ({ group_id: group.id, user_id: uid, role: "member" }));
+    if (otherMembers.length > 0) {
+      await supabase.from("group_members").insert(otherMembers as any);
+    }
 
     toast({ title: t("groups.created") });
     setCreating(false);

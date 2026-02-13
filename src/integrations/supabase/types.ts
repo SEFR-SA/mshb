@@ -100,6 +100,7 @@ export type Database = {
       group_threads: {
         Row: {
           avatar_url: string | null
+          banner_url: string | null
           created_at: string
           created_by: string
           id: string
@@ -108,6 +109,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          banner_url?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -116,6 +118,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          banner_url?: string | null
           created_at?: string
           created_by?: string
           id?: string

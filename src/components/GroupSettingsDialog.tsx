@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Pencil, Trash2, UserPlus, LogOut } from "lucide-react";
+import { Pencil, Trash2, UserPlus, LogOut, Camera, ImagePlus } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
@@ -33,18 +33,25 @@ const GroupSettingsDialog = ({ open, onOpenChange, groupId, isAdmin, onLeave }: 
   const { t } = useTranslation();
   const { user } = useAuth();
   const [groupName, setGroupName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
   const [editing, setEditing] = useState(false);
   const [friends, setFriends] = useState<Profile[]>([]);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const loadData = async () => {
     const { data: group } = await supabase
       .from("group_threads")
-      .select("name")
+      .select("*")
       .eq("id", groupId)
       .maybeSingle();
-    if (group) setGroupName((group as any).name);
+    if (group) {
+      setGroupName((group as any).name);
+      setAvatarUrl((group as any).avatar_url || "");
+      setBannerUrl((group as any).banner_url || "");
+    }
 
     const { data: memberRows } = await supabase
       .from("group_members")
@@ -98,6 +105,32 @@ const GroupSettingsDialog = ({ open, onOpenChange, groupId, isAdmin, onLeave }: 
     toast({ title: t("profile.saved") });
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "avatar" | "banner") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+
+    const ext = file.name.split(".").pop();
+    const path = `groups/${groupId}/${type}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    if (uploadError) {
+      toast({ title: t("common.error"), description: uploadError.message, variant: "destructive" });
+      setUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    const updateField = type === "avatar" ? { avatar_url: urlData.publicUrl } : { banner_url: urlData.publicUrl };
+    await supabase.from("group_threads").update(updateField as any).eq("id", groupId);
+
+    if (type === "avatar") setAvatarUrl(urlData.publicUrl);
+    else setBannerUrl(urlData.publicUrl);
+
+    toast({ title: t("profile.saved") });
+    setUploading(false);
+  };
+
   const addMember = async (userId: string) => {
     await supabase.from("group_members").insert({ group_id: groupId, user_id: userId } as any);
     loadData();
@@ -118,11 +151,53 @@ const GroupSettingsDialog = ({ open, onOpenChange, groupId, isAdmin, onLeave }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("groups.settings")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Group Banner */}
+          <div className="space-y-2">
+            <Label>{t("groups.banner")}</Label>
+            <div className="relative rounded-lg overflow-hidden">
+              {bannerUrl ? (
+                <img src={bannerUrl} alt="" className="h-28 w-full object-cover" />
+              ) : (
+                <div className="h-28 w-full bg-primary/20 rounded-lg" />
+              )}
+              {isAdmin && (
+                <label className="absolute top-2 end-2 h-8 w-8 rounded-full bg-background/80 flex items-center justify-center cursor-pointer hover:bg-background transition-colors">
+                  <ImagePlus className="h-4 w-4" />
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "banner")} disabled={uploading} />
+                </label>
+              )}
+            </div>
+          </div>
+
+          {/* Group Photo */}
+          <div className="space-y-2">
+            <Label>{t("groups.profilePhoto")}</Label>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={avatarUrl} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-xl">
+                    {groupName.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                {isAdmin && (
+                  <label className="absolute bottom-0 end-0 h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
+                    <Camera className="h-3 w-3" />
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "avatar")} disabled={uploading} />
+                  </label>
+                )}
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {isAdmin ? t("groups.uploadPhoto") : groupName}
+              </span>
+            </div>
+          </div>
+
           {/* Group name */}
           <div className="space-y-2">
             <Label>{t("groups.name")}</Label>

@@ -155,5 +155,9 @@ export default {
     noGroups: "لا توجد مجموعات بعد",
     created: "تم إنشاء المجموعة!",
     memberCount: "{{count}} أعضاء",
+    profilePhoto: "صورة المجموعة",
+    banner: "غلاف المجموعة",
+    uploadPhoto: "رفع الصورة",
+    uploadBanner: "رفع الغلاف",
   },
 };
