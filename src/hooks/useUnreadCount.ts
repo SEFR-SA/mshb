@@ -1,15 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import i18n from "@/i18n";
+
+const playNotificationSound = () => {
+  try {
+    const audio = new Audio("/notification.mp3");
+    audio.volume = 0.5;
+    audio.play().catch(() => {});
+  } catch {}
+};
 
 export function useUnreadCount() {
   const { user } = useAuth();
   const [totalUnread, setTotalUnread] = useState(0);
+  const prevCountRef = useRef<number | null>(null);
 
   const computeUnread = async () => {
     if (!user) { setTotalUnread(0); return; }
 
-    // DM threads unread
     const { data: threads } = await supabase
       .from("dm_threads")
       .select("id");
@@ -39,6 +49,12 @@ export function useUnreadCount() {
         total += count || 0;
       }
     }
+
+    if (prevCountRef.current !== null && total > prevCountRef.current) {
+      playNotificationSound();
+      toast({ title: i18n.t("notifications.newMessage") });
+    }
+    prevCountRef.current = total;
 
     setTotalUnread(total);
   };

@@ -73,7 +73,10 @@ const Settings = () => {
       .eq("user_id", user.id);
 
     if (error) {
-      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      const msg = error.message?.includes("profile_username_key") || error.message?.includes("unique constraint")
+        ? t("auth.usernameTaken")
+        : error.message;
+      toast({ title: t("common.error"), description: msg, variant: "destructive" });
     } else {
       toast({ title: t("profile.saved") });
       await refreshProfile();

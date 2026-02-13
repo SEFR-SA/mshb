@@ -117,6 +117,10 @@ export default {
     error: "حدث خطأ ما",
     retry: "إعادة المحاولة",
   },
+  notifications: {
+    newMessage: "لديك رسالة جديدة",
+    newFriendRequest: "لديك طلب صداقة جديد!",
+  },
   friends: {
     title: "الأصدقاء",
     all: "جميع الأصدقاء",
