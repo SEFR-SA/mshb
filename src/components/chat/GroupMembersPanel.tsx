@@ -74,7 +74,7 @@ const GroupMembersPanel = ({ profiles, memberRoles, groupName, memberCount, grou
                         {(profile.display_name || profile.username || "?").charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="absolute bottom-0 end-0 border-2 border-background rounded-full">
+                    <span className="absolute bottom-0 end-0 border-2 border-background rounded-full p-0.5">
                       <StatusBadge status={displayStatus} />
                     </span>
                   </div>
