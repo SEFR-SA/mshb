@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePresence } from "@/hooks/usePresence";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,6 +14,8 @@ import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import { formatDistanceToNow } from "date-fns";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
+import ChatSidebar from "@/components/chat/ChatSidebar";
+import UserProfilePanel from "@/components/chat/UserProfilePanel";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -25,6 +28,7 @@ const Chat = () => {
   const { user } = useAuth();
   const { isOnline, getUserStatus } = usePresence();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
@@ -117,7 +121,6 @@ const Chat = () => {
           if (prev.find((m) => m.id === msg.id)) return prev;
           return [...prev, msg];
         });
-        // Mark thread as read on new incoming message
         if (user && msg.author_id !== user.id) {
           supabase.from("thread_read_status").upsert(
             { user_id: user.id, thread_id: threadId, last_read_at: new Date().toISOString() },
@@ -135,7 +138,7 @@ const Chat = () => {
     return () => { channel.unsubscribe(); };
   }, [threadId]);
 
-  // Typing indicator via broadcast
+  // Typing indicator
   useEffect(() => {
     if (!threadId || !user) return;
     const channel = supabase.channel(`typing-${threadId}`);
@@ -167,11 +170,7 @@ const Chat = () => {
     setSending(true);
     setNewMsg("");
     try {
-      await supabase.from("messages").insert({
-        thread_id: threadId,
-        author_id: user.id,
-        content,
-      });
+      await supabase.from("messages").insert({ thread_id: threadId, author_id: user.id, content });
       await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
@@ -197,20 +196,22 @@ const Chat = () => {
   };
 
   const loadOlder = () => {
-    if (messages.length > 0) {
-      loadMessages(messages[0].created_at);
-    }
+    if (messages.length > 0) loadMessages(messages[0].created_at);
   };
 
   const visibleMessages = messages.filter((m) => !hiddenIds.has(m.id));
+  const otherStatus = getUserStatus(otherProfile);
 
-  return (
-    <div className="flex flex-col h-full">
+  // Center chat panel content
+  const chatPanel = (
+    <div className="flex flex-col h-full min-w-0 flex-1">
       {/* Header */}
       <header className="flex items-center gap-3 p-3 glass border-b border-border/50">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+        {isMobile && (
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
         <div className="relative">
           <Avatar className="h-9 w-9">
             <AvatarImage src={otherProfile?.avatar_url || ""} />
@@ -219,14 +220,14 @@ const Chat = () => {
             </AvatarFallback>
           </Avatar>
           <span className="absolute bottom-0 end-0 border-2 border-background rounded-full">
-            <StatusBadge status={(getUserStatus(otherProfile) === "offline" ? "invisible" : getUserStatus(otherProfile)) as UserStatus} size="sm" />
+            <StatusBadge status={(otherStatus === "offline" ? "invisible" : otherStatus) as UserStatus} size="sm" />
           </span>
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-medium truncate">{otherProfile?.display_name || otherProfile?.username || "User"}</p>
           <p className="text-xs text-muted-foreground">
-            {getUserStatus(otherProfile) !== "offline"
-              ? t(`status.${getUserStatus(otherProfile)}`)
+            {otherStatus !== "offline"
+              ? t(`status.${otherStatus}`)
               : otherProfile?.last_seen
                 ? t("presence.lastSeen", { time: formatDistanceToNow(new Date(otherProfile.last_seen)) })
                 : t("presence.offline")}
@@ -284,7 +285,6 @@ const Chat = () => {
                   </>
                 )}
 
-                {/* Context menu */}
                 {!editingId && (
                   <div className="absolute top-1 end-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <DropdownMenu>
@@ -341,6 +341,20 @@ const Chat = () => {
           </Button>
         </div>
       </div>
+    </div>
+  );
+
+  // Mobile: just the chat panel
+  if (isMobile) {
+    return chatPanel;
+  }
+
+  // Desktop: 3-panel layout
+  return (
+    <div className="flex h-full overflow-hidden">
+      <ChatSidebar activeThreadId={threadId} />
+      {chatPanel}
+      <UserProfilePanel profile={otherProfile} statusLabel={otherStatus} />
     </div>
   );
 };
