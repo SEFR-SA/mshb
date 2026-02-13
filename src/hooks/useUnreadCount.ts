@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import i18n from "@/i18n";
 
 const playNotificationSound = () => {
   try {
@@ -52,7 +51,7 @@ export function useUnreadCount() {
 
     if (prevCountRef.current !== null && total > prevCountRef.current) {
       playNotificationSound();
-      toast({ title: i18n.t("notifications.newMessage") });
+      toast({ title: "You have a new message" });
     }
     prevCountRef.current = total;
 
