@@ -1,87 +1,65 @@
 
 
-# Fix Group Creation RLS Policy
+# Notification Sound/Toast + Friendly Username Error
 
-## Problem
-Creating a new group fails with a 403 error because the RLS INSERT policy on `group_threads` is RESTRICTIVE. PostgreSQL requires at least one PERMISSIVE policy to grant access -- restrictive policies alone will always deny.
+## Overview
+Three changes: (1) Play a notification sound and show a toast when a new message arrives, (2) Play a sound and show a toast when a new friend request arrives, (3) Replace the raw database error for duplicate usernames with a friendly "Username is already taken" message.
 
-The same issue likely affects the `group_members` table INSERT policy, which would fail on the next step after group creation.
+---
 
-## Fix
+## 1. Notification Sound for New Messages
 
-### Database Migration
-Drop the restrictive INSERT policies on `group_threads` and `group_members`, then recreate them as PERMISSIVE:
+### `src/hooks/useUnreadCount.ts`
+- Import `toast` from `@/hooks/use-toast`
+- Track the previous unread count using a ref
+- When the new total exceeds the previous total (meaning a new message arrived), play a notification sound and show a toast: "New message received"
+- Create and play an `Audio` object with a short notification sound (use a small embedded base64 sound or a public URL)
+- Skip notifications if the document is focused on the chat page (optional, but nice to have)
 
-```sql
--- Fix group_threads INSERT policy
-DROP POLICY IF EXISTS "Authenticated users can create groups" ON public.group_threads;
-CREATE POLICY "Authenticated users can create groups"
-  ON public.group_threads FOR INSERT
-  TO authenticated
-  WITH CHECK (auth.uid() = created_by);
+### `public/notification.mp3`
+- Add a small notification sound file to the public folder (a short pleasant chime)
 
--- Fix group_members INSERT policy
-DROP POLICY IF EXISTS "Admin can add members" ON public.group_members;
-CREATE POLICY "Admin can add members"
-  ON public.group_members FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    is_group_admin(auth.uid(), group_id)
-    OR (
-      auth.uid() = user_id
-      AND EXISTS (
-        SELECT 1 FROM group_threads
-        WHERE group_threads.id = group_members.group_id
-          AND group_threads.created_by = auth.uid()
-      )
-    )
-  );
-```
+---
 
-Also fix the SELECT/UPDATE/DELETE policies on both tables, since they are all restrictive and will block access:
+## 2. Notification Sound for Friend Requests
 
-```sql
--- group_threads SELECT
-DROP POLICY IF EXISTS "Members can view group threads" ON public.group_threads;
-CREATE POLICY "Members can view group threads"
-  ON public.group_threads FOR SELECT
-  TO authenticated
-  USING (is_group_member(auth.uid(), id));
+### `src/hooks/usePendingFriendRequests.ts`
+- Import `toast` from `@/hooks/use-toast`
+- Track previous pending count with a ref
+- When the new count exceeds the previous count, play the same notification sound and show a toast: "New friend request!"
+- Only trigger on increases (not when requests are accepted/rejected, which decreases the count)
 
--- group_threads UPDATE
-DROP POLICY IF EXISTS "Admin can update group" ON public.group_threads;
-CREATE POLICY "Admin can update group"
-  ON public.group_threads FOR UPDATE
-  TO authenticated
-  USING (is_group_admin(auth.uid(), id));
+---
 
--- group_members SELECT
-DROP POLICY IF EXISTS "Members can view group members" ON public.group_members;
-CREATE POLICY "Members can view group members"
-  ON public.group_members FOR SELECT
-  TO authenticated
-  USING (is_group_member(auth.uid(), group_id));
+## 3. Friendly Username Error in Settings
 
--- group_members UPDATE
-DROP POLICY IF EXISTS "Admin can update roles" ON public.group_members;
-CREATE POLICY "Admin can update roles"
-  ON public.group_members FOR UPDATE
-  TO authenticated
-  USING (is_group_admin(auth.uid(), group_id));
+### `src/pages/Settings.tsx`
+- In the `handleSave` function (line 75-76), check if the error message contains "unique constraint" or "profiles_username_unique"
+- If so, show the friendly message from i18n: `t("auth.usernameTaken")` instead of the raw database error
+- The key `auth.usernameTaken` already exists in translations ("Username is already taken")
 
--- group_members DELETE
-DROP POLICY IF EXISTS "Admin can remove or self leave" ON public.group_members;
-CREATE POLICY "Admin can remove or self leave"
-  ON public.group_members FOR DELETE
-  TO authenticated
-  USING (is_group_admin(auth.uid(), group_id) OR auth.uid() = user_id);
-```
+---
+
+## i18n Updates
+
+### `src/i18n/en.ts`
+- Add `notifications.newMessage`: "You have a new message"
+- Add `notifications.newFriendRequest`: "You have a new friend request!"
+
+### `src/i18n/ar.ts`
+- Add Arabic translations for the above keys
+
+---
 
 ## Technical Details
 
-### Root Cause
-All RLS policies on `group_threads` and `group_members` were created as RESTRICTIVE (using `CREATE POLICY ... AS RESTRICTIVE` or equivalent). PostgreSQL's RLS model requires at least one PERMISSIVE policy per operation for access to be granted. Restrictive policies can only further narrow access granted by permissive ones.
+### Files Created
+- `public/notification.mp3` -- short notification chime sound
 
 ### Files Modified
-- **Database migration only** -- no code changes needed. The `CreateGroupDialog.tsx` code is correct; it's purely a database policy issue.
+- `src/hooks/useUnreadCount.ts` -- detect increases in unread count, play sound + show toast
+- `src/hooks/usePendingFriendRequests.ts` -- detect new friend requests, play sound + show toast
+- `src/pages/Settings.tsx` -- catch duplicate username error and show friendly message
+- `src/i18n/en.ts` -- add notification translation keys
+- `src/i18n/ar.ts` -- add Arabic notification translations
 
