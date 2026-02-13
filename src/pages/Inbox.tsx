@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,7 +73,23 @@ const Inbox = () => {
           }
         }
 
-        return { ...thread, otherProfile, lastMessage };
+        // Unread count
+        const { data: readStatus } = await supabase
+          .from("thread_read_status")
+          .select("last_read_at")
+          .eq("user_id", user.id)
+          .eq("thread_id", thread.id)
+          .maybeSingle();
+
+        let unreadQuery = supabase
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("thread_id", thread.id)
+          .neq("author_id", user.id);
+        if (readStatus?.last_read_at) unreadQuery = unreadQuery.gt("created_at", readStatus.last_read_at);
+        const { count: unreadCount } = await unreadQuery;
+
+        return { ...thread, otherProfile, lastMessage, unreadCount: unreadCount || 0 };
       })
     );
 
@@ -220,8 +237,20 @@ const Inbox = () => {
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{p?.display_name || p?.username || "User"}</p>
+                <div className="flex items-center justify-between">
+                  <p className="font-medium truncate">{p?.display_name || p?.username || "User"}</p>
+                  {(thread.unreadCount ?? 0) > 0 && (
+                    <span className="ms-2 inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-primary text-primary-foreground text-[11px] font-bold px-1.5">
+                      {thread.unreadCount}
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground truncate">{thread.lastMessage || ""}</p>
+                {getUserStatus(p) === "offline" && p?.last_seen && (
+                  <p className="text-xs text-muted-foreground/70">
+                    {t("presence.lastSeen", { time: formatDistanceToNow(new Date(p.last_seen)) })}
+                  </p>
+                )}
               </div>
             </button>
           );

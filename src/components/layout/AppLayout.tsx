@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Settings, Moon, Sun, Globe, LogOut } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -14,6 +15,7 @@ const AppLayout = () => {
   const { user, profile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
+  const { totalUnread } = useUnreadCount();
 
   const toggleLang = () => {
     const next = i18n.language === "ar" ? "en" : "ar";
@@ -52,6 +54,11 @@ const AppLayout = () => {
               >
                 <item.icon className="h-5 w-5" />
                 <span>{item.label}</span>
+                {item.to === "/" && totalUnread > 0 && (
+                  <span className="ms-auto inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-primary text-primary-foreground text-[11px] font-bold px-1.5">
+                    {totalUnread}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>
@@ -111,13 +118,18 @@ const AppLayout = () => {
                 to={item.to}
                 end={item.to === "/"}
                 className={({ isActive }) =>
-                  `flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${
+                  `relative flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${
                     isActive ? "text-primary" : "text-muted-foreground"
                   }`
                 }
               >
                 <item.icon className="h-5 w-5" />
                 <span>{item.label}</span>
+                {item.to === "/" && totalUnread > 0 && (
+                  <span className="absolute -top-1 end-1/4 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">
+                    {totalUnread}
+                  </span>
+                )}
               </NavLink>
             ))}
             <NavLink
