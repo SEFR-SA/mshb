@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
+import { usePendingFriendRequests } from "@/hooks/usePendingFriendRequests";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Settings, Moon, Sun, Globe, LogOut, Users } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -16,6 +17,7 @@ const AppLayout = () => {
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
   const { totalUnread } = useUnreadCount();
+  const { pendingCount } = usePendingFriendRequests();
 
   const toggleLang = () => {
     const next = i18n.language === "ar" ? "en" : "ar";
@@ -25,9 +27,9 @@ const AppLayout = () => {
   };
 
   const navItems = [
-    { to: "/", icon: MessageSquare, label: t("nav.inbox") },
-    { to: "/friends", icon: Users, label: t("nav.friends") },
-    { to: "/settings", icon: Settings, label: t("nav.settings") },
+    { to: "/", icon: MessageSquare, label: t("nav.inbox"), badge: totalUnread },
+    { to: "/friends", icon: Users, label: t("nav.friends"), badge: pendingCount },
+    { to: "/settings", icon: Settings, label: t("nav.settings"), badge: 0 },
   ];
 
   const initials = (profile?.display_name || profile?.username || user?.email || "?")
@@ -55,9 +57,9 @@ const AppLayout = () => {
               >
                 <item.icon className="h-5 w-5" />
                 <span>{item.label}</span>
-                {item.to === "/" && totalUnread > 0 && (
+                {item.badge > 0 && (
                   <span className="ms-auto inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-primary text-primary-foreground text-[11px] font-bold px-1.5">
-                    {totalUnread}
+                    {item.badge}
                   </span>
                 )}
               </NavLink>
@@ -126,9 +128,9 @@ const AppLayout = () => {
               >
                 <item.icon className="h-5 w-5" />
                 <span>{item.label}</span>
-                {item.to === "/" && totalUnread > 0 && (
+                {item.badge > 0 && (
                   <span className="absolute -top-1 end-1/4 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">
-                    {totalUnread}
+                    {item.badge}
                   </span>
                 )}
               </NavLink>
