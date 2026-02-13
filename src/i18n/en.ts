@@ -155,5 +155,9 @@ export default {
     noGroups: "No group chats yet",
     created: "Group created!",
     memberCount: "{{count}} members",
+    profilePhoto: "Group Photo",
+    banner: "Group Banner",
+    uploadPhoto: "Upload Photo",
+    uploadBanner: "Upload Banner",
   },
 };
