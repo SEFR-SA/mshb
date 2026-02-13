@@ -1,34 +1,75 @@
 
 
-## Remove Status Badge Wrapper from All Pages
+## Fix: Storage RLS Policy for Group Image Uploads
 
-The `<span>` wrapper elements that create a border ring around the `StatusBadge` component will be removed from every file. The `StatusBadge` itself will remain -- only the surrounding `<span>` with `border-*` classes is removed.
+### Problem
+The storage bucket `avatars` has an INSERT policy that requires the first folder in the file path to match the authenticated user's ID:
 
-### Files to Modify
+```
+auth.uid()::text = storage.foldername(name)[1]
+```
 
-**1. `src/components/chat/GroupMembersPanel.tsx`** (line 77-79)
-- Remove the wrapper `<span>` with `border-2 border-background rounded-full p-0.5`
-- Keep `<StatusBadge status={displayStatus} />` directly inside the `<div className="relative shrink-0">`
+Group images are uploaded to `groups/{groupId}/avatar.ext`, so the first folder is `groups` -- not the user's ID. This causes the RLS violation.
 
-**2. `src/components/chat/UserProfilePanel.tsx`** (line 42-44)
-- Remove the wrapper `<span>` with `border-3 border-background rounded-full`
-- Keep `<StatusBadge status={status} size="md" />` directly
+The same restriction applies to UPDATE and DELETE policies.
 
-**3. `src/pages/Chat.tsx`** (line 222-224)
-- Remove the wrapper `<span>` with `border-2 border-background rounded-full`
-- Keep `<StatusBadge>` directly
+### Solution
+Update the three storage policies (INSERT, UPDATE, DELETE) to also allow authenticated users to upload/update/delete files in the `groups/` folder path, as long as they are an admin of the group (using the existing `is_group_admin` function).
 
-**4. `src/pages/Friends.tsx`** (line 191-193)
-- Remove the wrapper `<span>` with `border-2 border-background rounded-full`
-- Keep `<StatusBadge>` directly
+### Database Migration
 
-**5. `src/pages/Inbox.tsx`** (lines 259-261 and 299-301)
-- Remove both wrapper `<span>` elements
-- Keep `<StatusBadge>` directly in both places
+**Drop and recreate the INSERT, UPDATE, and DELETE policies** on `storage.objects`:
 
-**6. `src/components/chat/ChatSidebar.tsx`** (has similar wrapper)
-- Remove the wrapper `<span>`
-- Keep `<StatusBadge>` directly
+```sql
+-- INSERT: allow user folder OR group folder (if group admin)
+DROP POLICY "Auth users can upload avatars" ON storage.objects;
+CREATE POLICY "Auth users can upload avatars" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'avatars' AND (
+    (auth.uid())::text = (storage.foldername(name))[1]
+    OR (
+      (storage.foldername(name))[1] = 'groups'
+      AND is_group_admin(auth.uid(), (storage.foldername(name))[2]::uuid)
+    )
+  )
+);
 
-In all cases, the `<StatusBadge>` will be placed directly inside the positioning `<div>` or at the same location, just without the border ring wrapper. The absolute positioning classes will move to the `StatusBadge` itself via its `className` prop (e.g., `className="absolute bottom-0 end-0"`).
+-- UPDATE
+DROP POLICY "Users can update own avatars" ON storage.objects;
+CREATE POLICY "Users can update own avatars" ON storage.objects
+FOR UPDATE TO authenticated
+USING (
+  bucket_id = 'avatars' AND (
+    (auth.uid())::text = (storage.foldername(name))[1]
+    OR (
+      (storage.foldername(name))[1] = 'groups'
+      AND is_group_admin(auth.uid(), (storage.foldername(name))[2]::uuid)
+    )
+  )
+);
+
+-- DELETE
+DROP POLICY "Users can delete own avatars" ON storage.objects;
+CREATE POLICY "Users can delete own avatars" ON storage.objects
+FOR DELETE TO authenticated
+USING (
+  bucket_id = 'avatars' AND (
+    (auth.uid())::text = (storage.foldername(name))[1]
+    OR (
+      (storage.foldername(name))[1] = 'groups'
+      AND is_group_admin(auth.uid(), (storage.foldername(name))[2]::uuid)
+    )
+  )
+);
+```
+
+### How It Works
+- Files at `{userId}/...` -- allowed if `auth.uid()` matches (existing behavior)
+- Files at `groups/{groupId}/...` -- allowed if the user is an admin of that group
+
+### Files Modified
+- **One database migration** to update the three storage RLS policies
+
+No code changes needed -- the upload logic in `GroupSettingsDialog.tsx` already uses the correct path format `groups/${groupId}/avatar.ext`.
 
