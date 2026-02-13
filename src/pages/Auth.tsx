@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
+import PasswordStrengthBar, { checkPasswordRules, allRulesPass } from "@/components/PasswordStrengthBar";
 
 type AuthMode = "login" | "signup" | "reset";
 
@@ -17,7 +18,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && user) return <Navigate to="/" replace />;
@@ -28,7 +29,11 @@ const Auth = () => {
       toast({ title: t("auth.emailRequired"), variant: "destructive" });
       return;
     }
-    if (mode !== "reset" && password.length < 8) {
+    if (mode === "signup" && !username.trim()) {
+      toast({ title: t("auth.usernameRequired"), variant: "destructive" });
+      return;
+    }
+    if (mode !== "reset" && !allRulesPass(checkPasswordRules(password))) {
       toast({ title: t("auth.passwordMin"), variant: "destructive" });
       return;
     }
@@ -43,7 +48,7 @@ const Auth = () => {
         const { error } = await signIn(email, password);
         if (error) toast({ title: t("auth.loginError"), description: error.message, variant: "destructive" });
       } else if (mode === "signup") {
-        const { error } = await signUp(email, password, displayName || undefined);
+        const { error } = await signUp(email, password, username.trim());
         if (error) toast({ title: t("auth.signupError"), description: error.message, variant: "destructive" });
         else toast({ title: t("auth.checkEmail") });
       } else {
@@ -71,8 +76,8 @@ const Auth = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
               <div className="space-y-2">
-                <Label>{t("auth.displayName")}</Label>
-                <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+                <Label>{t("auth.username")}</Label>
+                <Input value={username} onChange={(e) => setUsername(e.target.value)} required />
               </div>
             )}
             <div className="space-y-2">
@@ -82,13 +87,14 @@ const Auth = () => {
             {mode !== "reset" && (
               <div className="space-y-2">
                 <Label>{t("auth.password")}</Label>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                {mode === "signup" && <PasswordStrengthBar password={password} />}
               </div>
             )}
             {mode === "signup" && (
               <div className="space-y-2">
                 <Label>{t("auth.confirmPassword")}</Label>
-                <Input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required minLength={8} />
+                <Input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required />
               </div>
             )}
             <Button type="submit" className="w-full" disabled={submitting}>

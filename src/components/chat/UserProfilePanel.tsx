@@ -19,11 +19,16 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
   if (!profile) return null;
 
   const status = (statusLabel === "offline" ? "invisible" : statusLabel) as UserStatus;
+  const p = profile as any;
 
   return (
     <div className="w-72 border-s border-border/50 glass h-full overflow-y-auto">
       {/* Banner area */}
-      <div className="h-24 bg-primary/20 rounded-b-lg" />
+      {p.banner_url ? (
+        <img src={p.banner_url} alt="" className="h-24 w-full object-cover rounded-b-lg" />
+      ) : (
+        <div className="h-24 bg-primary/20 rounded-b-lg" />
+      )}
 
       {/* Avatar overlapping banner */}
       <div className="px-4 -mt-10">
@@ -55,13 +60,24 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
           <span className="text-sm capitalize">{t(`status.${statusLabel !== "offline" ? statusLabel : "invisible"}`)}</span>
         </div>
 
-        {/* Status text / About Me */}
+        {/* Custom Status */}
         {profile.status_text && (
           <>
             <Separator />
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">{t("profile.aboutMe")}</h4>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">{t("profile.statusText")}</h4>
               <p className="text-sm">{profile.status_text}</p>
+            </div>
+          </>
+        )}
+
+        {/* About Me */}
+        {p.about_me && (
+          <>
+            <Separator />
+            <div>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">{t("profile.aboutMe")}</h4>
+              <p className="text-sm whitespace-pre-wrap">{p.about_me}</p>
             </div>
           </>
         )}
