@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import { formatDistanceToNow } from "date-fns";
+import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -22,7 +23,7 @@ const Chat = () => {
   const { t } = useTranslation();
   const { threadId } = useParams<{ threadId: string }>();
   const { user } = useAuth();
-  const { isOnline } = usePresence();
+  const { isOnline, getUserStatus } = usePresence();
   const navigate = useNavigate();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -201,9 +202,9 @@ const Chat = () => {
               {(otherProfile?.display_name || "?").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          {isOnline(otherId) && (
-            <span className="absolute bottom-0 end-0 h-2.5 w-2.5 rounded-full bg-online border-2 border-background" />
-          )}
+          <span className="absolute bottom-0 end-0 border-2 border-background rounded-full">
+            <StatusBadge status={(getUserStatus(otherProfile) === "offline" ? "invisible" : getUserStatus(otherProfile)) as UserStatus} size="sm" />
+          </span>
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-medium truncate">{otherProfile?.display_name || otherProfile?.username || "User"}</p>

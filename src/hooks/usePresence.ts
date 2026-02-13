@@ -50,6 +50,12 @@ export function usePresence() {
   }, [user]);
 
   const isOnline = (userId: string) => presenceMap[userId]?.online ?? false;
+  const getUserStatus = (profile: any): string => {
+    if (!profile) return "offline";
+    if (profile.status === "invisible") return "invisible";
+    if (isOnline(profile.user_id)) return profile.status || "online";
+    return "offline";
+  };
 
-  return { presenceMap, isOnline };
+  return { presenceMap, isOnline, getUserStatus };
 }

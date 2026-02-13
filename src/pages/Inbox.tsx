@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Tables } from "@/integrations/supabase/types";
+import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 
 type Profile = Tables<"profiles">;
 type Thread = Tables<"dm_threads">;
@@ -22,7 +23,7 @@ interface ThreadWithProfile extends Thread {
 const Inbox = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { isOnline } = usePresence();
+  const { isOnline, getUserStatus } = usePresence();
   const navigate = useNavigate();
   const [threads, setThreads] = useState<ThreadWithProfile[]>([]);
   const [search, setSearch] = useState("");
@@ -172,9 +173,9 @@ const Inbox = () => {
                     {(p.display_name || p.username || "?").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                {isOnline(p.user_id) && (
-                  <span className="absolute bottom-0 end-0 h-3 w-3 rounded-full bg-online border-2 border-background" />
-                )}
+                <span className="absolute bottom-0 end-0 border-2 border-background rounded-full">
+                  <StatusBadge status={(getUserStatus(p) === "offline" ? "invisible" : getUserStatus(p)) as UserStatus} />
+                </span>
               </div>
               <div className="min-w-0">
                 <p className="font-medium truncate">{p.display_name || p.username}</p>
@@ -214,9 +215,9 @@ const Inbox = () => {
                     {(p?.display_name || p?.username || "?").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                {isOnline(otherId) && (
-                  <span className="absolute bottom-0 end-0 h-3 w-3 rounded-full bg-online border-2 border-background" />
-                )}
+                <span className="absolute bottom-0 end-0 border-2 border-background rounded-full">
+                  <StatusBadge status={(getUserStatus(p) === "offline" ? "invisible" : getUserStatus(p)) as UserStatus} />
+                </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{p?.display_name || p?.username || "User"}</p>
