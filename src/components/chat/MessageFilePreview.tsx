@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileText, Download } from "lucide-react";
+import ImageViewer from "./ImageViewer";
 
 interface MessageFilePreviewProps {
   fileUrl: string;
@@ -30,12 +31,13 @@ const MessageFilePreview = ({ fileUrl, fileName, fileType, fileSize, isMine }: M
           onClick={() => setFullscreen(true)}
         />
         {fullscreen && (
-          <div
-            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center cursor-pointer"
-            onClick={() => setFullscreen(false)}
-          >
-            <img src={fileUrl} alt={fileName} className="max-w-[90vw] max-h-[90vh] object-contain" />
-          </div>
+          <ImageViewer
+            fileUrl={fileUrl}
+            fileName={fileName}
+            fileType={fileType}
+            fileSize={fileSize}
+            onClose={() => setFullscreen(false)}
+          />
         )}
       </>
     );
