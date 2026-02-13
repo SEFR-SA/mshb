@@ -85,7 +85,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (identifier: string, password: string) => {
+    let email = identifier;
+    // If identifier doesn't contain @, resolve username to email
+    if (!identifier.includes("@")) {
+      const { data, error: rpcError } = await supabase.rpc("get_email_by_username", { p_username: identifier });
+      if (rpcError || !data) {
+        return { error: new Error("No account found with that username") };
+      }
+      email = data as string;
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
   };

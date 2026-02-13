@@ -35,6 +35,10 @@ export default {
     strengthGood: "جيدة",
     strengthStrong: "قوية",
     strengthVeryStrong: "قوية جداً",
+    emailOrUsername: "البريد الإلكتروني أو اسم المستخدم",
+    userNotFound: "لا يوجد حساب بهذا الاسم",
+    usernameTaken: "اسم المستخدم مستخدم بالفعل",
+    usernameAvailable: "اسم المستخدم متاح",
   },
   nav: {
     inbox: "الرسائل",
