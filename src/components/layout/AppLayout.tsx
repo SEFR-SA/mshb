@@ -6,7 +6,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Settings, Moon, Sun, Globe, LogOut } from "lucide-react";
+import { MessageSquare, Settings, Moon, Sun, Globe, LogOut, Users } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -26,6 +26,7 @@ const AppLayout = () => {
 
   const navItems = [
     { to: "/", icon: MessageSquare, label: t("nav.inbox") },
+    { to: "/friends", icon: Users, label: t("nav.friends") },
     { to: "/settings", icon: Settings, label: t("nav.settings") },
   ];
 

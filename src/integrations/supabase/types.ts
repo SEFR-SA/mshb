@@ -38,6 +38,92 @@ export type Database = {
         }
         Relationships: []
       }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "group_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_threads: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          created_by: string
+          id: string
+          last_message_at: string | null
+          name: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          last_message_at?: string | null
+          name: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          last_message_at?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
       message_hidden: {
         Row: {
           created_at: string
@@ -74,8 +160,9 @@ export type Database = {
           created_at: string
           deleted_for_everyone: boolean
           edited_at: string | null
+          group_thread_id: string | null
           id: string
-          thread_id: string
+          thread_id: string | null
         }
         Insert: {
           author_id: string
@@ -83,8 +170,9 @@ export type Database = {
           created_at?: string
           deleted_for_everyone?: boolean
           edited_at?: string | null
+          group_thread_id?: string | null
           id?: string
-          thread_id: string
+          thread_id?: string | null
         }
         Update: {
           author_id?: string
@@ -92,10 +180,18 @@ export type Database = {
           created_at?: string
           deleted_for_everyone?: boolean
           edited_at?: string | null
+          group_thread_id?: string | null
           id?: string
-          thread_id?: string
+          thread_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "messages_group_thread_id_fkey"
+            columns: ["group_thread_id"]
+            isOneToOne: false
+            referencedRelation: "group_threads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "messages_thread_id_fkey"
             columns: ["thread_id"]
@@ -155,24 +251,34 @@ export type Database = {
       }
       thread_read_status: {
         Row: {
+          group_thread_id: string | null
           id: string
           last_read_at: string
-          thread_id: string
+          thread_id: string | null
           user_id: string
         }
         Insert: {
+          group_thread_id?: string | null
           id?: string
           last_read_at?: string
-          thread_id: string
+          thread_id?: string | null
           user_id: string
         }
         Update: {
+          group_thread_id?: string | null
           id?: string
           last_read_at?: string
-          thread_id?: string
+          thread_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "thread_read_status_group_thread_id_fkey"
+            columns: ["group_thread_id"]
+            isOneToOne: false
+            referencedRelation: "group_threads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "thread_read_status_thread_id_fkey"
             columns: ["thread_id"]
@@ -187,7 +293,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_group_admin: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_member: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
