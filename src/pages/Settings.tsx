@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, LogOut } from "lucide-react";
+import { Camera, LogOut, ImagePlus } from "lucide-react";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 
 const STATUSES: UserStatus[] = ["online", "busy", "dnd", "idle", "invisible"];
@@ -28,16 +29,20 @@ const Settings = () => {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [statusText, setStatusText] = useState("");
+  const [aboutMe, setAboutMe] = useState("");
   const [status, setStatus] = useState<UserStatus>("online");
   const [statusDuration, setStatusDuration] = useState<string>("forever");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  const p = profile as any;
 
   useEffect(() => {
     if (profile) {
       setUsername(profile.username || "");
       setDisplayName(profile.display_name || "");
       setStatusText(profile.status_text || "");
+      setAboutMe(p?.about_me || "");
       setStatus((profile as any).status as UserStatus || "online");
     }
   }, [profile]);
@@ -53,18 +58,19 @@ const Settings = () => {
       }
     }
 
-    const { error } = await supabase.
-    from("profiles").
-    update({
-      username: username.trim() || null,
-      display_name: displayName.trim() || null,
-      status_text: statusText.trim(),
-      status,
-      status_until: status === "online" ? null : statusUntil,
-      language: i18n.language.split('-')[0],
-      theme
-    } as any).
-    eq("user_id", user.id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        username: username.trim() || null,
+        display_name: displayName.trim() || null,
+        status_text: statusText.trim(),
+        about_me: aboutMe.trim(),
+        status,
+        status_until: status === "online" ? null : statusUntil,
+        language: i18n.language.split('-')[0],
+        theme
+      } as any)
+      .eq("user_id", user.id);
 
     if (error) {
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
@@ -83,10 +89,7 @@ const Settings = () => {
     const ext = file.name.split(".").pop();
     const path = `${user.id}/avatar.${ext}`;
 
-    const { error: uploadError } = await supabase.storage.
-    from("avatars").
-    upload(path, file, { upsert: true });
-
+    const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
     if (uploadError) {
       toast({ title: t("common.error"), description: uploadError.message, variant: "destructive" });
       setUploading(false);
@@ -94,12 +97,28 @@ const Settings = () => {
     }
 
     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    await supabase.from("profiles").update({ avatar_url: urlData.publicUrl }).eq("user_id", user.id);
+    await refreshProfile();
+    setUploading(false);
+  };
 
-    await supabase.
-    from("profiles").
-    update({ avatar_url: urlData.publicUrl }).
-    eq("user_id", user.id);
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploading(true);
 
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/banner.${ext}`;
+
+    const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    if (uploadError) {
+      toast({ title: t("common.error"), description: uploadError.message, variant: "destructive" });
+      setUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    await supabase.from("profiles").update({ banner_url: urlData.publicUrl } as any).eq("user_id", user.id);
     await refreshProfile();
     setUploading(false);
   };
@@ -111,17 +130,29 @@ const Settings = () => {
     document.documentElement.lang = next;
   };
 
-  const initials = (profile?.display_name || profile?.username || user?.email || "?").
-  charAt(0).toUpperCase();
+  const initials = (profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase();
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-6 overflow-y-auto h-full">
       <h2 className="text-xl font-bold">{t("profile.title")}</h2>
 
+      {/* Banner */}
+      <div className="relative rounded-lg overflow-hidden">
+        {p?.banner_url ? (
+          <img src={p.banner_url} alt="" className="h-36 w-full object-cover" />
+        ) : (
+          <div className="h-36 w-full bg-primary/20" />
+        )}
+        <label className="absolute top-2 end-2 h-8 w-8 rounded-full bg-background/80 flex items-center justify-center cursor-pointer hover:bg-background transition-colors">
+          <ImagePlus className="h-4 w-4" />
+          <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
+        </label>
+      </div>
+
       {/* Avatar */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 -mt-12 ps-4">
         <div className="relative">
-          <Avatar className="h-20 w-20">
+          <Avatar className="h-20 w-20 border-4 border-background">
             <AvatarImage src={profile?.avatar_url || ""} />
             <AvatarFallback className="bg-primary/20 text-primary text-2xl">{initials}</AvatarFallback>
           </Avatar>
@@ -130,7 +161,7 @@ const Settings = () => {
             <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
           </label>
         </div>
-        <div>
+        <div className="mt-8">
           <p className="font-medium">{profile?.display_name || "User"}</p>
           {profile?.username && <p className="text-sm text-muted-foreground">@{profile.username}</p>}
         </div>
@@ -151,42 +182,48 @@ const Settings = () => {
           </div>
           <div className="space-y-2">
             <Label>{t("status.label")}</Label>
-            <Select value={status} onValueChange={(v) => {setStatus(v as UserStatus);if (v === "online") setStatusDuration("forever");}}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={status} onValueChange={(v) => { setStatus(v as UserStatus); if (v === "online") setStatusDuration("forever"); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent className="bg-popover">
-                {STATUSES.map((s) =>
-                <SelectItem key={s} value={s}>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
                     <span className="flex items-center gap-2">
                       <StatusBadge status={s} />
                       {t(`status.${s}`)}
                     </span>
                   </SelectItem>
-                )}
+                ))}
               </SelectContent>
             </Select>
           </div>
-          {status !== "online" &&
-          <div className="space-y-2">
+          {status !== "online" && (
+            <div className="space-y-2">
               <Label>{t("status.duration")}</Label>
               <Select value={statusDuration} onValueChange={setStatusDuration}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-popover">
-                  {DURATIONS.map((d) =>
-                <SelectItem key={d} value={d}>{t(`duration.${d}`)}</SelectItem>
-                )}
+                  {DURATIONS.map((d) => (
+                    <SelectItem key={d} value={d}>{t(`duration.${d}`)}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-          }
+          )}
           <div className="space-y-2">
             <Label>{t("profile.statusText")}</Label>
             <Input value={statusText} onChange={(e) => setStatusText(e.target.value)} placeholder={t("profile.statusText")} />
           </div>
-
+          <div className="space-y-2">
+            <Label>{t("profile.aboutMeLabel")}</Label>
+            <Textarea
+              value={aboutMe}
+              onChange={(e) => setAboutMe(e.target.value.slice(0, 500))}
+              placeholder={t("profile.aboutMePlaceholder")}
+              rows={4}
+              maxLength={500}
+            />
+            <p className="text-xs text-muted-foreground text-end">{aboutMe.length}/500</p>
+          </div>
         </CardContent>
       </Card>
 
@@ -217,8 +254,8 @@ const Settings = () => {
           <LogOut className="h-4 w-4 me-2" /> {t("auth.logout")}
         </Button>
       </div>
-    </div>);
-
+    </div>
+  );
 };
 
 export default Settings;
