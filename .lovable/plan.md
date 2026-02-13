@@ -1,83 +1,68 @@
 
 
-## Plan: Fix Group Leave Bug + Upload Progress Indicator + Drag-and-Drop Files
+## Enhanced Image Viewer with Toolbar
 
-### 1. Fix: Group Leave Not Working
+### Overview
+Replace the current simple fullscreen image overlay in `MessageFilePreview.tsx` with a rich image viewer that includes a Discord-style top toolbar and a "View Details" panel. The toolbar and interactions will match the reference image provided.
 
-**Problem**: In `GroupSettingsDialog.tsx`, the `handleLeave` function navigates to the messages page regardless of whether the database delete succeeded. If the delete fails (silently), the user gets redirected but remains a group member.
+### UI Design
 
-**Fix**: Add error handling to `handleLeave` -- only close the dialog and navigate if the delete succeeds. Show an error toast if it fails.
+**Top toolbar** (horizontal bar centered at the top of the fullscreen overlay, dark rounded pill):
+- **Zoom In** (magnifying glass +) -- zooms in on the image
+- **Zoom Out** (magnifying glass -) -- zooms out on the image
+- **Forward** (share/forward icon) -- opens a dialog to pick a user/group to forward the image to
+- **Save/Download** (download icon) -- downloads the image file
+- **Copy Image** (copy icon) -- copies the image to clipboard
+- **More (...)** menu with "View Details" option -- shows filename + size in a popover/panel
+- **Close (X)** button at the far right
 
-**File**: `src/components/GroupSettingsDialog.tsx`
-- Wrap the delete call in error checking
-- Only call `onLeave()` if delete was successful
-- Show error toast on failure
+**View Details panel** (small card overlay, bottom-left or near the image):
+- Filename
+- File size (formatted)
 
-```
-const handleLeave = async () => {
-  if (!user) return;
-  const { error } = await supabase
-    .from("group_members")
-    .delete()
-    .eq("group_id", groupId)
-    .eq("user_id", user.id);
-  if (error) {
-    toast({ title: t("common.error"), variant: "destructive" });
-    return;
-  }
-  onOpenChange(false);
-  onLeave();
-};
-```
+### Components
 
----
+**1. New: `src/components/chat/ImageViewer.tsx`**
+- Full-screen overlay component with dark backdrop
+- Manages zoom state (scale transform on the image, min 0.5x, max 3x)
+- Top toolbar with icon buttons styled as a dark pill bar
+- Forward button opens a `ForwardImageDialog`
+- Save button triggers file download via anchor element
+- Copy Image button uses `navigator.clipboard` / canvas approach to copy image to clipboard
+- View Details toggle shows/hides a small info card with filename and size
+- Close button and click-outside-image to close
+- Keyboard support: Escape to close, +/- for zoom
 
-### 2. Add Upload Progress Indicator
+**2. New: `src/components/chat/ForwardImageDialog.tsx`**
+- A dialog listing the user's DM threads and group threads
+- User selects a recipient and confirms
+- Inserts a new message with the same `file_url`, `file_name`, `file_type`, `file_size` into the chosen thread
+- Shows a success toast on completion
 
-**Problem**: When uploading files in chat, there is no visual feedback -- the user doesn't know if the upload is in progress.
+**3. Modify: `src/components/chat/MessageFilePreview.tsx`**
+- Replace the inline fullscreen overlay with `<ImageViewer>` component
+- Pass `fileUrl`, `fileName`, `fileType`, `fileSize` to it
 
-**Solution**: Show a progress bar in the composer area while a file is uploading.
+**4. Modify: `src/i18n/en.ts` and `src/i18n/ar.ts`**
+- Add strings for: `imageViewer.zoomIn`, `imageViewer.zoomOut`, `imageViewer.forward`, `imageViewer.save`, `imageViewer.copyImage`, `imageViewer.viewDetails`, `imageViewer.filename`, `imageViewer.size`, `imageViewer.copiedToClipboard`, `imageViewer.forwarded`
 
-**Changes**:
+### Technical Details
 
-- **`src/lib/uploadChatFile.ts`**: Modify to use `XMLHttpRequest` instead of the Supabase SDK so we can track upload progress via `xhr.upload.onprogress`. Return both the URL and accept an `onProgress` callback.
+**Zoom**: CSS `transform: scale(zoomLevel)` on the image, with scroll-wheel zoom support.
 
-- **`src/pages/Chat.tsx`** and **`src/pages/GroupChat.tsx`**:
-  - Add `uploadProgress` state (0-100, or null when not uploading)
-  - Pass `onProgress` callback to `uploadChatFile`
-  - Render a `Progress` bar component above the composer when uploading
-  - Disable the input and send button during upload
+**Copy Image**: Fetch the image as a blob, then use `navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])`. Fall back to a toast error if clipboard API is not available.
 
-- **`src/i18n/en.ts`** and **`src/i18n/ar.ts`**: Add `files.uploading` string ("Uploading file...")
+**Save/Download**: Create a temporary `<a>` element with `download` attribute pointing to the file URL.
 
----
+**Forward**: Query `dm_threads` and `group_threads` for the current user, display them in a list dialog, and insert a message with the file metadata into the selected thread.
 
-### 3. Add Drag-and-Drop File Upload
+### Files to Create/Modify
 
-**Problem**: Users can only attach files by clicking the paperclip button.
-
-**Solution**: Allow dragging files onto the chat message area to attach them.
-
-**Changes**:
-
-- **`src/pages/Chat.tsx`** and **`src/pages/GroupChat.tsx`**:
-  - Add `dragOver` state to track when a file is being dragged over the chat area
-  - Add `onDragOver`, `onDragLeave`, and `onDrop` handlers to the chat panel wrapper
-  - On drop, validate file size (10 MB limit) and set as `selectedFile`
-  - Show a visual overlay ("Drop file here") when dragging over the area
-
-- **`src/i18n/en.ts`** and **`src/i18n/ar.ts`**: Add `files.dropHere` string ("Drop file here")
-
----
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/GroupSettingsDialog.tsx` | Fix handleLeave error handling |
-| `src/lib/uploadChatFile.ts` | Add progress callback support via XHR |
-| `src/pages/Chat.tsx` | Upload progress bar + drag-and-drop |
-| `src/pages/GroupChat.tsx` | Upload progress bar + drag-and-drop |
-| `src/i18n/en.ts` | Add uploading and dropHere strings |
-| `src/i18n/ar.ts` | Add Arabic translations |
+| File | Action |
+|------|--------|
+| `src/components/chat/ImageViewer.tsx` | **Create** -- fullscreen viewer with toolbar |
+| `src/components/chat/ForwardImageDialog.tsx` | **Create** -- recipient picker for forwarding |
+| `src/components/chat/MessageFilePreview.tsx` | **Modify** -- use ImageViewer instead of inline overlay |
+| `src/i18n/en.ts` | **Modify** -- add image viewer strings |
+| `src/i18n/ar.ts` | **Modify** -- add Arabic translations |
 
