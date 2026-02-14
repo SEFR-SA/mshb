@@ -58,7 +58,7 @@ const ServerRail = () => {
               end
               className={({ isActive }) =>
                 `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
-                  isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20"
+                  isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
                 }`
               }
             >
@@ -74,7 +74,7 @@ const ServerRail = () => {
               to="/friends"
               className={({ isActive }) =>
                 `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
-                  isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20"
+                  isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
                 }`
               }
             >
