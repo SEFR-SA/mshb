@@ -122,6 +122,9 @@ export default {
     messageUser: "Message @{{name}}",
     accentColor: "Accent Color",
     resetColor: "Reset",
+    colorThemes: "Color Themes",
+    customTheme: "Custom",
+    defaultTheme: "Default",
   },
   presence: {
     online: "Online",

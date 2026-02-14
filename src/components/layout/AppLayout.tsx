@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
@@ -19,11 +20,14 @@ const AppLayout = () => {
   const { t, i18n } = useTranslation();
   const { user, profile } = useAuth();
   const { voiceChannel, disconnectVoice } = useVoiceChannel();
+  const { getGradientStyle, colorTheme } = useTheme();
   const isMobile = useIsMobile();
   const { totalUnread } = useUnreadCount();
   const { pendingCount } = usePendingFriendRequests();
   const [installPrompt, setInstallPrompt] = React.useState<any>(null);
   const [serverDrawerOpen, setServerDrawerOpen] = useState(false);
+
+  const gradientStyle = colorTheme !== "default" ? getGradientStyle() : {};
 
   React.useEffect(() => {
     const handler = (e: Event) => {
@@ -50,7 +54,7 @@ const AppLayout = () => {
     .charAt(0).toUpperCase();
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className={`flex h-screen overflow-hidden ${colorTheme === "default" ? "bg-background" : ""}`} style={colorTheme !== "default" ? gradientStyle : undefined}>
       <CallListener />
       {/* Server Rail */}
       {!isMobile && <ServerRail />}

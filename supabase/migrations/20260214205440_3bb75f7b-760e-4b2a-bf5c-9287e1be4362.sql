@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN color_theme text DEFAULT 'default';
