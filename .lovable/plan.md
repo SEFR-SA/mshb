@@ -1,145 +1,183 @@
 
 
-## Fix Voice Call Answer and End Call
+## Implement Discord-Style Server (Guild) Architecture
 
-### Problems Found
+This is a major feature that adds a full server/guild system to Galaxy Chat, inspired by Discord's layout. It involves database schema changes, new tables, RLS policies, and significant frontend UI work.
 
-1. **Answer Call fails silently**: Same stale closure bug that was fixed for `startCall`. When the callee clicks "Accept", `handleAccept` sets `activeSession` state, then calls `answerCall()` via setTimeout. But `answerCall` captures `sessionId` from the previous render (which was `null`), so `if (!sessionId) return` exits immediately. No peer connection is created, no signaling channel is joined.
+### Phase 1: Database Schema
 
-2. **End Call doesn't reach the other side**: Since `answerCall` never ran, the callee has no signaling channel. Clicking "End Call" sends a broadcast on a nonexistent channel. Additionally, the caller (in `Chat.tsx`) never listens for database status changes on the call session, so even the database update to "ended" or "declined" has no effect on the caller's UI.
+Create three new tables and update the messages table:
 
-### Solution
+**New Tables:**
 
-**File: `src/hooks/useWebRTC.ts`**
-- Add an optional `overrideSessionId` parameter to `answerCall` (same pattern used for `startCall`)
-- Inside `answerCall`, set up the signaling channel inline if not already present, using the override ID
-- This ensures the callee joins the correct broadcast channel and sets up the peer connection
+1. **`servers`** -- The guild/server entity
+   - `id` (uuid, PK, default gen_random_uuid())
+   - `name` (text, not null)
+   - `icon_url` (text, nullable)
+   - `owner_id` (uuid, not null) -- references the creator
+   - `invite_code` (text, unique, not null) -- random 8-char code for invites
+   - `created_at` (timestamptz, default now())
 
-**File: `src/components/chat/CallListener.tsx`**
-- Update `handleAccept` to pass `incomingCall.sessionId` directly to `answerCall(incomingCall.sessionId)` instead of relying on state
-- Remove the 500ms setTimeout since `answerCall` will handle channel setup inline
-- Add a listener for database status changes on the active call session. When the caller ends the call (updating status to "ended" in the database), the callee detects the change and cleans up
-- Similarly, add a listener on the caller side in `Chat.tsx` for when the callee declines
+2. **`channels`** -- Text/voice channels within a server
+   - `id` (uuid, PK, default gen_random_uuid())
+   - `server_id` (uuid, not null, FK to servers.id ON DELETE CASCADE)
+   - `name` (text, not null)
+   - `type` (text, not null, default 'text') -- 'text' or 'voice'
+   - `category` (text, default 'general') -- grouping label
+   - `position` (integer, default 0) -- ordering
+   - `created_at` (timestamptz, default now())
 
-**File: `src/pages/Chat.tsx`**
-- Add a realtime listener on the `call_sessions` table for status changes (filtered by the active `callSessionId`). When status changes to "ended" or "declined", clean up the caller's call state
+3. **`server_members`** -- Many-to-many users-to-servers
+   - `id` (uuid, PK, default gen_random_uuid())
+   - `server_id` (uuid, not null, FK to servers.id ON DELETE CASCADE)
+   - `user_id` (uuid, not null)
+   - `role` (text, not null, default 'member') -- 'owner', 'admin', 'member'
+   - `joined_at` (timestamptz, default now())
+   - UNIQUE(server_id, user_id)
+
+**Updated Table:**
+
+4. **`messages`** -- Add a `channel_id` column
+   - `channel_id` (uuid, nullable, FK to channels.id ON DELETE CASCADE)
+
+**Helper Functions (SECURITY DEFINER):**
+- `is_server_member(uuid, uuid)` -- checks if user is in a server
+- `is_server_admin(uuid, uuid)` -- checks if user is owner or admin
+- `generate_invite_code()` -- generates a random 8-char alphanumeric code
+
+**RLS Policies:**
+- `servers`: Members can SELECT; owner can INSERT (with check); owner/admin can UPDATE; no DELETE
+- `channels`: Server members can SELECT; admin/owner can INSERT, UPDATE, DELETE
+- `server_members`: Server members can SELECT themselves; admin/owner can INSERT/DELETE; self can DELETE (leave)
+- `messages`: Existing policies extended -- if `channel_id` is set, check server membership via the channel's server_id
+
+**Realtime:** Enable realtime for `channels` and `server_members` tables.
+
+### Phase 2: Frontend -- New Components
+
+**New Files to Create:**
+
+| File | Purpose |
+|------|---------|
+| `src/pages/ServerView.tsx` | Main server page: channel sidebar + chat area + member list |
+| `src/components/server/ServerRail.tsx` | Leftmost vertical rail of circular server icons + "+" button |
+| `src/components/server/ChannelSidebar.tsx` | Channel list grouped by category (Text Channels / Voice Channels) |
+| `src/components/server/ServerMemberList.tsx` | Right panel showing members grouped by role |
+| `src/components/server/CreateServerDialog.tsx` | Modal for creating a new server (name input) |
+| `src/components/server/ServerChannelChat.tsx` | Chat view for a specific channel (reuses message patterns from Chat.tsx) |
+| `src/components/server/JoinServerDialog.tsx` | Modal for joining via invite code |
+
+### Phase 3: Frontend -- Layout Changes
+
+**`src/components/layout/AppLayout.tsx`** -- Add a server icon in the nav (e.g., a "Servers" nav item or integrate the ServerRail as a persistent left rail).
+
+**`src/App.tsx`** -- Add new routes:
+- `/server/:serverId` -- Server view (defaults to first text channel)
+- `/server/:serverId/channel/:channelId` -- Specific channel view
+
+**Desktop Layout (inside ServerView):**
+
+```text
++--------+------------------+---------------------+-----------------+
+| Server | Channel Sidebar  |   Channel Chat      | Member List     |
+| Rail   | (server name,    |   (messages for      | (grouped by     |
+| (icons)| channel groups)  |   selected channel)  | role/status)    |
+| ~56px  | ~220px           |   flex-1             | ~220px          |
++--------+------------------+---------------------+-----------------+
+```
+
+**Mobile Layout:** Single-column with a drawer/sheet for the channel sidebar, collapsing the member list.
+
+### Phase 4: Server Creation Flow
+
+When a user creates a server:
+1. Insert into `servers` (name, owner_id, generated invite_code)
+2. Insert into `server_members` (server_id, user_id, role='owner')
+3. Insert a default channel: `#general` (type='text', category='Text Channels')
+4. Navigate to `/server/{new_server_id}`
+
+### Phase 5: Channel Switching and Real-time Messaging
+
+- Clicking a text channel navigates to `/server/:serverId/channel/:channelId`
+- `ServerChannelChat` fetches messages where `channel_id = channelId`
+- Real-time subscription filters on `channel_id=eq.{channelId}` so only messages for the active channel appear
+- Sending a message inserts with `channel_id` set (no `thread_id` or `group_thread_id`)
+
+### Phase 6: i18n Updates
+
+Add translation keys to `src/i18n/en.ts` and `src/i18n/ar.ts`:
+- `servers.create`, `servers.name`, `servers.invite`, `servers.joinServer`, `servers.members`, `servers.leave`, `servers.settings`, `servers.inviteCode`, `servers.copyInvite`
+- `channels.text`, `channels.voice`, `channels.create`, `channels.name`, `channels.category`
+- Role labels: `servers.owner`, `servers.admin`, `servers.member`
 
 ### Technical Details
 
-**`useWebRTC.ts` - answerCall fix:**
-```typescript
-const answerCall = useCallback(async (overrideSessionId?: string) => {
-  const sid = overrideSessionId || sessionId;
-  if (!sid) return;
-  setCallState("ringing");
+**SQL Migration (summary):**
 
-  // Ensure signaling channel is ready
-  if (!channelRef.current) {
-    const channel = supabase.channel(`call-${sid}`);
-    channelRef.current = channel;
-    channel
-      .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
-        const pc = pcRef.current;
-        if (!pc) return;
-        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-        await processQueuedCandidates();
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        channel.send({
-          type: "broadcast",
-          event: "call-answer",
-          payload: { sdp: answer },
-        });
-      })
-      .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
-        // ... handle ICE candidates
-      })
-      .on("broadcast", { event: "call-end" }, () => {
-        cleanup();
-      })
-      .subscribe();
-  }
+```sql
+-- servers table
+CREATE TABLE public.servers ( ... );
+ALTER TABLE public.servers ENABLE ROW LEVEL SECURITY;
 
-  await setupPeerConnection();
-}, [sessionId, setupPeerConnection, cleanup, processQueuedCandidates]);
+-- channels table
+CREATE TABLE public.channels ( ... );
+ALTER TABLE public.channels ENABLE ROW LEVEL SECURITY;
+
+-- server_members table
+CREATE TABLE public.server_members ( ... );
+ALTER TABLE public.server_members ENABLE ROW LEVEL SECURITY;
+
+-- Add channel_id to messages
+ALTER TABLE public.messages ADD COLUMN channel_id uuid REFERENCES public.channels(id) ON DELETE CASCADE;
+
+-- Helper functions
+CREATE FUNCTION public.is_server_member(...) ...
+CREATE FUNCTION public.is_server_admin(...) ...
+CREATE FUNCTION public.generate_invite_code() ...
+
+-- RLS policies for all new tables
+-- Update messages RLS to include channel_id path
+
+-- Enable realtime
+ALTER PUBLICATION supabase_realtime ADD TABLE public.servers;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.channels;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.server_members;
 ```
 
-**`CallListener.tsx` - handleAccept fix:**
-```typescript
-const handleAccept = useCallback(async () => {
-  if (!incomingCall) return;
-  setActiveSession(incomingCall.sessionId);
-  setIsCaller(false);
-  setOtherName(incomingCall.callerName);
-
-  await supabase
-    .from("call_sessions")
-    .update({ status: "connected", started_at: new Date().toISOString() })
-    .eq("id", incomingCall.sessionId);
-
-  setIncomingCall(null);
-  // Pass session ID directly to bypass stale closure
-  answerCall(incomingCall.sessionId);
-}, [incomingCall, answerCall]);
+**Messages RLS update:** The existing SELECT policy on messages checks `thread_id` or `group_thread_id`. We need to add a third OR branch:
+```sql
+OR (channel_id IS NOT NULL AND is_server_member(auth.uid(), (SELECT server_id FROM channels WHERE id = messages.channel_id)))
 ```
 
-**`CallListener.tsx` - Listen for caller ending the call:**
-```typescript
-useEffect(() => {
-  if (!activeSession) return;
-  const channel = supabase
-    .channel(`call-status-${activeSession}`)
-    .on("postgres_changes", {
-      event: "UPDATE",
-      schema: "public",
-      table: "call_sessions",
-      filter: `id=eq.${activeSession}`,
-    }, (payload) => {
-      const status = (payload.new as any).status;
-      if (status === "ended" || status === "declined") {
-        endCall();
-      }
-    })
-    .subscribe();
-  return () => { channel.unsubscribe(); };
-}, [activeSession, endCall]);
-```
+Similarly for INSERT.
 
-**`Chat.tsx` - Listen for callee declining/ending:**
-```typescript
-useEffect(() => {
-  if (!callSessionId) return;
-  const channel = supabase
-    .channel(`call-status-${callSessionId}`)
-    .on("postgres_changes", {
-      event: "UPDATE",
-      schema: "public",
-      table: "call_sessions",
-      filter: `id=eq.${callSessionId}`,
-    }, (payload) => {
-      const status = (payload.new as any).status;
-      if (status === "ended" || status === "declined") {
-        endCall();
-        setCallSessionId(null);
-        setIsCallerState(false);
-      }
-    })
-    .subscribe();
-  return () => { channel.unsubscribe(); };
-}, [callSessionId, endCall]);
-```
-
-### Files to Modify
+**Files Modified:**
 
 | File | Changes |
 |------|---------|
-| `src/hooks/useWebRTC.ts` | Add `overrideSessionId` param to `answerCall`; inline channel setup |
-| `src/components/chat/CallListener.tsx` | Pass sessionId directly to `answerCall`; add DB status listener for call end |
-| `src/pages/Chat.tsx` | Add DB status listener so caller detects decline/end from callee |
+| `src/App.tsx` | Add `/server/:serverId` and `/server/:serverId/channel/:channelId` routes |
+| `src/components/layout/AppLayout.tsx` | Add ServerRail as leftmost column; add "Servers" nav item for mobile |
+| `src/i18n/en.ts` | Add server/channel translation keys |
+| `src/i18n/ar.ts` | Add Arabic server/channel translation keys |
 
-### Expected Result
+**Files Created:**
 
-- Clicking "Answer Call" will properly join the signaling channel and establish the WebRTC connection
-- Clicking "End Call" on either side will terminate the call for both users
-- Declining a call will stop the ringing UI on the caller side
+| File | Purpose |
+|------|---------|
+| `src/pages/ServerView.tsx` | Server layout orchestrator |
+| `src/components/server/ServerRail.tsx` | Vertical server icon list |
+| `src/components/server/ChannelSidebar.tsx` | Channel list with categories |
+| `src/components/server/ServerMemberList.tsx` | Right-side member panel |
+| `src/components/server/CreateServerDialog.tsx` | Create server modal |
+| `src/components/server/JoinServerDialog.tsx` | Join via invite code modal |
+| `src/components/server/ServerChannelChat.tsx` | Channel message view |
+
+### Implementation Order
+
+1. Run database migration (tables, functions, RLS, realtime)
+2. Create all server components
+3. Update AppLayout with ServerRail
+4. Add routes in App.tsx
+5. Update i18n files
+6. Test end-to-end
 
