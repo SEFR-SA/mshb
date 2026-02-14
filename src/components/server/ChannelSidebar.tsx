@@ -46,6 +46,7 @@ interface VoiceParticipant {
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  is_speaking: boolean;
 }
 
 interface ServerMember {
@@ -81,7 +82,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [serverMembers, setServerMembers] = useState<ServerMember[]>([]);
   const [voiceParticipants, setVoiceParticipants] = useState<Map<string, VoiceParticipant[]>>(new Map());
-  const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
+  // speakingUsers state removed — now driven by p.is_speaking from DB
 
   // Edit/Delete/Manage members state
   const [editOpen, setEditOpen] = useState(false);
@@ -133,7 +134,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
     const { data } = await supabase
       .from("voice_channel_participants")
-      .select("channel_id, user_id")
+      .select("channel_id, user_id, is_speaking")
       .in("channel_id", voiceChannelIds);
     if (!data || data.length === 0) { setVoiceParticipants(new Map()); return; }
 
@@ -153,6 +154,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         display_name: p?.display_name || null,
         username: p?.username || null,
         avatar_url: p?.avatar_url || null,
+        is_speaking: !!(d as any).is_speaking,
       });
       grouped.set(d.channel_id, list);
     });
@@ -172,28 +174,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     return () => { sub.unsubscribe(); };
   }, [serverId, fetchVoiceParticipants]);
 
-  // Subscribe to speaking broadcasts from voice channels
-  useEffect(() => {
-    const voiceChannelIds = channels.filter((c) => c.type === "voice").map((c) => c.id);
-    if (voiceChannelIds.length === 0) return;
-
-    const subs = voiceChannelIds.map((chId) => {
-      return supabase
-        .channel(`voice-speaking-listen-${chId}`)
-        .on("broadcast", { event: "voice-speaking" }, ({ payload }) => {
-          if (!payload) return;
-          setSpeakingUsers((prev) => {
-            const next = new Set(prev);
-            if (payload.isSpeaking) next.add(payload.userId);
-            else next.delete(payload.userId);
-            return next;
-          });
-        })
-        .subscribe();
-    });
-
-    return () => { subs.forEach((s) => s.unsubscribe()); };
-  }, [channels]);
+  // Speaking state is now driven by is_speaking column in voice_channel_participants
+  // The existing postgres_changes subscription (line 168-173) already refetches on changes
 
   const handleCreateChannel = async () => {
     if (!newName.trim()) return;
@@ -444,7 +426,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                             </AvatarFallback>
                           </Avatar>
                           <span className="truncate">{p.display_name || p.username || "User"}</span>
-                          {speakingUsers.has(p.user_id) && (
+                          {p.is_speaking && (
                             <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
                           )}
                         </div>
