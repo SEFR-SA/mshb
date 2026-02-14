@@ -110,6 +110,8 @@ export default {
     banner: "Banner",
     uploadBanner: "Upload Banner",
     memberSince: "Member Since",
+    joinedServer: "Joined Server",
+    messageUser: "Message @{{name}}",
   },
   presence: {
     online: "Online",
