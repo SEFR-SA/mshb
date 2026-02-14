@@ -1,41 +1,36 @@
 
 
-## Remove Nav Links from AppLayout Sidebar and Merge User Panel into ChannelSidebar
+## Fix Messages and Friends Button Styling in Server Rail
 
-### Overview
-Since Messages and Friends are now accessible from the Server Rail, and Settings is accessible from the sidebar bottom, the desktop sidebar nav in AppLayout is redundant. We will remove the entire desktop sidebar from AppLayout and move the user panel (voice status, audio controls, user profile + settings) into the bottom of ChannelSidebar -- matching Discord's layout where the user panel sits at the bottom of the channel sidebar.
+### Problem
+The Messages and Friends NavLink buttons at the top of the Server Rail render with a different visual appearance (lighter/more transparent container) compared to the Create Server and Join Server buttons, despite having similar CSS classes. This is because `NavLink` renders an `<a>` tag which can render background colors slightly differently than native `<button>` elements.
+
+### Solution
+Convert the Messages and Friends items from `NavLink` components to `<button>` elements (matching Create/Join), and use `useNavigate` + `useLocation` for navigation and active state detection. This ensures identical DOM elements and rendering.
 
 ### Changes
 
-**1. `src/components/layout/AppLayout.tsx`**
-- Remove the entire desktop `<aside>` block (lines 62-148) which contains the nav items and the bottom user panel
-- Keep everything else: Server Rail, mobile header, mobile bottom nav, main content area
-- The desktop layout becomes: ServerRail | Main Content (with ChannelSidebar rendered inside ServerView's Outlet)
+**`src/components/server/ServerRail.tsx`**
 
-**2. `src/components/server/ChannelSidebar.tsx`**
-- Replace the current bottom section (lines 467-474, just a "Leave" button) with a full Discord-style user panel:
-  - Voice connection status row (when connected): green indicator + channel name + disconnect button
-  - Audio controls row: Mute, Deafen, Settings (link to /settings), and Leave Server button
-  - User profile row: Avatar with status badge, display name, username
-- Import needed hooks: `useAudioSettings`, `useVoiceChannel`, `useAuth` (already imported), `usePresence`
-- Import needed icons: `Mic`, `MicOff`, `Headphones`, `HeadphoneOff`, `PhoneOff`
-- Import `StatusBadge`, `Avatar` components (Avatar already imported)
+1. **Add imports**: Import `useNavigate` and `useLocation` from `react-router-dom` (remove `NavLink` import if only used here -- but it's also used for servers, so keep it)
 
-### Visual Layout (ChannelSidebar Bottom)
+2. **Replace Messages NavLink** (lines 56-66) with a `<button>` that uses `onClick={() => navigate("/")}` and determines active state via `location.pathname === "/"`:
+   ```tsx
+   <button
+     onClick={() => navigate("/")}
+     className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
+       location.pathname === "/"
+         ? "bg-primary text-primary-foreground rounded-xl"
+         : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
+     }`}
+   >
+     <MessageSquare className="h-5 w-5" />
+   </button>
+   ```
 
-```text
-+------------------------------------------+
-| [green dot] Voice Connected               |
-| #channel-name           [Disconnect]      |
-+------------------------------------------+
-| [Mute] [Deafen] [Settings] [Leave]       |
-+------------------------------------------+
-| [Avatar+Status]  DisplayName              |
-|                  @username                |
-+------------------------------------------+
-```
+3. **Replace Friends NavLink** (lines 73-82) with the same pattern using `location.pathname === "/friends"` and `navigate("/friends")`
+
+4. Server NavLinks (line 93-107) stay as `NavLink` since they work fine with the Avatar component
 
 ### Files Modified
-- `src/components/layout/AppLayout.tsx` -- remove desktop sidebar entirely
-- `src/components/server/ChannelSidebar.tsx` -- add user panel with voice status, audio controls, and profile to bottom
-
+- `src/components/server/ServerRail.tsx` -- convert Messages and Friends from NavLink to button elements for consistent rendering
