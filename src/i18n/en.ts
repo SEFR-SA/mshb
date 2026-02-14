@@ -250,6 +250,22 @@ export default {
   emoji: {
     search: "Search emojis...",
   },
+  gif: {
+    search: "Search GIFs...",
+    trending: "Trending",
+    title: "GIFs",
+    poweredBy: "Powered by GIPHY",
+  },
+  sticker: {
+    search: "Search stickers...",
+    trending: "Trending",
+    title: "Stickers",
+    myStickers: "My Stickers",
+    upload: "Upload Sticker",
+    delete: "Delete",
+    uploadSuccess: "Sticker uploaded!",
+    deleteSuccess: "Sticker deleted!",
+  },
   groups: {
     create: "Create Group",
     name: "Group Name",

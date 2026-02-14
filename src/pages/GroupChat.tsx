@@ -19,6 +19,9 @@ import MessageFilePreview from "@/components/chat/MessageFilePreview";
 import { Progress } from "@/components/ui/progress";
 import { uploadChatFile } from "@/lib/uploadChatFile";
 import type { Tables } from "@/integrations/supabase/types";
+import EmojiPicker from "@/components/chat/EmojiPicker";
+import GifPicker from "@/components/chat/GifPicker";
+import StickerPicker from "@/components/chat/StickerPicker";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -365,7 +368,11 @@ const GroupChat = () => {
                     </div>
                   ) : (
                     <>
-                      {!isDeleted && msgAny.file_url && (
+                      {!isDeleted && msgAny.file_url && (msgAny.file_type === "gif" || msgAny.file_type === "sticker") ? (
+                        <div className="mb-1">
+                          <img src={msgAny.file_url} alt={msgAny.file_type === "gif" ? "GIF" : "Sticker"} className="max-w-[240px] max-h-[200px] rounded-lg object-contain" loading="lazy" />
+                        </div>
+                      ) : !isDeleted && msgAny.file_url ? (
                         <div className="mb-1">
                           <MessageFilePreview
                             fileUrl={msgAny.file_url}
@@ -375,7 +382,7 @@ const GroupChat = () => {
                             isMine={isMine}
                           />
                         </div>
-                      )}
+                      ) : null}
                       <p className="text-sm whitespace-pre-wrap break-words">
                         {isDeleted ? t("chat.deleted") : msg.content}
                       </p>
@@ -450,6 +457,17 @@ const GroupChat = () => {
       <div className="p-3 glass border-t border-border/50">
         <div className="flex items-center gap-2">
           <FileAttachmentButton onFileSelect={setSelectedFile} disabled={sending} />
+          <EmojiPicker onEmojiSelect={(emoji) => setNewMsg((prev) => prev + emoji)} />
+          <GifPicker onGifSelect={async (url) => {
+            if (!groupId || !user) return;
+            await supabase.from("messages").insert({ group_thread_id: groupId, author_id: user.id, content: "", file_url: url, file_type: "gif", file_name: "gif" } as any);
+            await supabase.from("group_threads").update({ last_message_at: new Date().toISOString() } as any).eq("id", groupId);
+          }} />
+          <StickerPicker onStickerSelect={async (url) => {
+            if (!groupId || !user) return;
+            await supabase.from("messages").insert({ group_thread_id: groupId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
+            await supabase.from("group_threads").update({ last_message_at: new Date().toISOString() } as any).eq("id", groupId);
+          }} />
           <Input
             value={newMsg}
             onChange={(e) => { setNewMsg(e.target.value); broadcastTyping(); }}

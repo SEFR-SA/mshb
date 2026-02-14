@@ -1,1 +1,4 @@
 project_id = "wqgotyhepamnwsjcydpy"
+
+[functions.giphy-proxy]
+verify_jwt = false
