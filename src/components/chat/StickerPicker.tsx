@@ -144,7 +144,7 @@ const StickerPicker = ({ onStickerSelect }: StickerPickerProps) => {
               <TabsTrigger value="custom" className="text-xs">{t("sticker.myStickers")}</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="giphy" className="flex-1 flex flex-col min-h-0 mt-0">
+            <TabsContent value="giphy" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=active]:flex">
               <div className="p-2 border-b border-border">
                 <Input
                   value={search}
@@ -199,7 +199,7 @@ const StickerPicker = ({ onStickerSelect }: StickerPickerProps) => {
 
             </TabsContent>
 
-            <TabsContent value="custom" className="flex-1 flex flex-col min-h-0 mt-0">
+            <TabsContent value="custom" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=active]:flex">
               <div className="p-2 border-b border-border">
                 <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleUpload} />
                 <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => fileInputRef.current?.click()}>
