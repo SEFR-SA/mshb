@@ -178,7 +178,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   // The existing postgres_changes subscription (line 168-173) already refetches on changes
 
   const handleCreateChannel = async () => {
-    if (!newName.trim()) return;
+    if (!newName.trim() || newName.trim().length > 17) return;
     const { data: newChannel } = await supabase.from("channels" as any).insert({
       server_id: serverId,
       name: newName.trim().toLowerCase().replace(/\s+/g, "-"),
@@ -536,12 +536,16 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             <DialogDescription>{t("channels.createDesc")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input
-              placeholder={t("channels.namePlaceholder")}
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreateChannel()}
-            />
+            <div>
+              <Input
+                placeholder={t("channels.namePlaceholder")}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreateChannel()}
+                maxLength={17}
+              />
+              <p className="text-xs text-muted-foreground mt-1 text-end">{newName.length}/17</p>
+            </div>
             <Select value={newType} onValueChange={setNewType}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
