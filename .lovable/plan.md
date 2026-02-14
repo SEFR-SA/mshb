@@ -1,21 +1,20 @@
 
 
-## Fix Mobile Sidebar Transparency and Remove Duplicate Settings Icon
+## Hide Scrollbar Track Globally
 
 ### Problem
-1. The mobile slide-out Server Rail sidebar (Sheet) has a solid background instead of the transparent glassmorphism style used elsewhere in the app.
-2. The mobile bottom nav has both a Settings icon and a Profile avatar icon, but they both navigate to `/settings` -- redundant.
+The scroll area shows a visible track/container behind the scrollbar thumb. The user wants to hide the track and only show the moving thumb indicator across all pages.
 
 ### Changes
 
-**File: `src/components/layout/AppLayout.tsx`**
+**File: `src/components/ui/scroll-area.tsx`**
 
-1. **Fix sidebar transparency**: Update the `SheetContent` on line 75 to add transparency classes matching the app's glassmorphism style (`bg-sidebar-background/30 backdrop-blur-sm` instead of the default solid `bg-background`).
+Update the `ScrollBar` component to make the track background transparent by removing the border and padding styles, so only the thumb (the moving indicator) is visible.
 
-2. **Remove Settings from navItems**: Remove the Settings entry from the `navItems` array (line 50) so only Messages and Friends remain in the bottom nav alongside the Profile avatar. The Profile avatar already links to `/settings`.
-
-| Change | Detail |
+| What | Detail |
 |---|---|
-| Line 50 | Remove `{ to: "/settings", icon: Settings, ... }` from `navItems` |
-| Line 75 | Add `bg-sidebar-background/30 backdrop-blur-sm` classes to `SheetContent` and override the default background |
+| Remove track styling | Remove `border-l border-l-transparent p-[1px]` from vertical and `border-t border-t-transparent p-[1px]` from horizontal orientations |
+| Make track invisible | The track container becomes fully transparent, leaving only the rounded thumb visible |
+
+This is a single-file change that affects all scroll areas app-wide since every `ScrollArea` uses this shared component.
 
