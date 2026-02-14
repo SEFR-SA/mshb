@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import ServerSettingsDialog from "./ServerSettingsDialog";
 
 interface Channel {
   id: string;
@@ -23,19 +24,23 @@ interface Server {
   name: string;
   invite_code: string;
   owner_id: string;
+  icon_url: string | null;
+  banner_url: string | null;
 }
 
 interface Props {
   serverId: string;
   activeChannelId?: string;
+  onChannelSelect?: (channel: { id: string; name: string; type: string }) => void;
 }
 
-const ChannelSidebar = ({ serverId, activeChannelId }: Props) => {
+const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [server, setServer] = useState<Server | null>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState("text");
   const [newCategory, setNewCategory] = useState("Text Channels");
@@ -98,6 +103,11 @@ const ChannelSidebar = ({ serverId, activeChannelId }: Props) => {
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={copyInvite} title={t("servers.copyInvite")}>
               <Copy className="h-3.5 w-3.5" />
             </Button>
+            {isAdmin && (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)} title={t("servers.settings")}>
+                <Settings className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         </div>
 
@@ -116,22 +126,41 @@ const ChannelSidebar = ({ serverId, activeChannelId }: Props) => {
                   </button>
                 )}
               </div>
-              {chs.map((ch) => (
-                <NavLink
-                  key={ch.id}
-                  to={`/server/${serverId}/channel/${ch.id}`}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
-                      isActive || ch.id === activeChannelId
-                        ? "bg-sidebar-accent text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
-                    }`
-                  }
-                >
-                  {ch.type === "voice" ? <Volume2 className="h-4 w-4 shrink-0" /> : <Hash className="h-4 w-4 shrink-0" />}
-                  <span className="truncate">{ch.name}</span>
-                </NavLink>
-              ))}
+              {chs.map((ch) => {
+                if (ch.type === "voice") {
+                  return (
+                    <button
+                      key={ch.id}
+                      onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type })}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
+                        ch.id === activeChannelId
+                          ? "bg-sidebar-accent text-foreground font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
+                      }`}
+                    >
+                      <Volume2 className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{ch.name}</span>
+                    </button>
+                  );
+                }
+                return (
+                  <NavLink
+                    key={ch.id}
+                    to={`/server/${serverId}/channel/${ch.id}`}
+                    onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type })}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
+                        isActive || ch.id === activeChannelId
+                          ? "bg-sidebar-accent text-foreground font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
+                      }`
+                    }
+                  >
+                    <Hash className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{ch.name}</span>
+                  </NavLink>
+                );
+              })}
             </div>
           ))}
         </div>
@@ -176,6 +205,9 @@ const ChannelSidebar = ({ serverId, activeChannelId }: Props) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Server settings dialog */}
+      <ServerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} serverId={serverId} />
     </>
   );
 };
