@@ -1,77 +1,69 @@
 
 
-## "Active Now" Panel on Friends Page
+## Persist Voice Channel Across Navigation + 1-Hour Idle Auto-Disconnect
 
-### What This Does
-Adds a right-side panel to the Friends page (matching the Discord screenshot) that shows which of your accepted friends are currently in a voice channel. Each entry displays the friend's avatar, name, the server name, and the voice channel name. Clicking the voice channel navigates to that server and triggers joining the voice channel.
+### Problem
+`VoiceConnectionManager` is rendered inside `ServerView.tsx`. When navigating to Friends, Inbox, or any other page, `ServerView` unmounts, causing `VoiceConnectionManager` to unmount and trigger its cleanup (which disconnects from voice, stops streams, and removes the DB participant row).
 
----
+### Fix: Move VoiceConnectionManager to AppLayout
 
-### Changes
+**`src/components/layout/AppLayout.tsx`**
 
-#### 1. New Component: `src/components/chat/ActiveNowPanel.tsx`
+- Import `VoiceConnectionManager` and `useVoiceChannel`
+- Render `VoiceConnectionManager` at the layout level (outside of `<Outlet />`), conditionally when `voiceChannel` is not null
+- This ensures the voice connection survives navigation between pages
 
-A self-contained panel component that:
-- Takes the list of accepted friend user IDs as a prop
-- Queries `voice_channel_participants` to find which friends are currently in voice channels
-- Joins with `channels` (to get channel name + server_id) and `servers` (to get server name + icon)
-- Joins with `profiles` (to get friend avatar/display_name)
-- Subscribes to realtime changes on `voice_channel_participants` for live updates
-- Renders each active friend as a card showing:
-  - Friend's avatar + display name
-  - Server icon + server name
-  - Voice channel name (clickable, navigates to `/server/:serverId` with the voice channel)
-- Shows "No one is active right now" when empty
+**`src/pages/ServerView.tsx`**
 
-#### 2. Update `src/pages/Friends.tsx`
+- Remove the `VoiceConnectionManager` rendering (both mobile and desktop blocks)
+- The voice connection is now managed at the layout level, so ServerView no longer needs it
 
-- Import and render `ActiveNowPanel` in a two-column flex layout:
-  - Left (flex-1): existing friends content (tabs, lists)
-  - Right (fixed ~280px width): the Active Now panel
-- Pass the list of accepted friend user IDs to the panel
-- On mobile, hide the panel (hidden on small screens)
+### Add 1-Hour Idle Auto-Disconnect
 
-#### 3. Translations
+**`src/components/server/VoiceConnectionBar.tsx`**
 
-**`src/i18n/en.ts`**
-- `friends.activeNow` -- "Active Now"
-- `friends.noActiveNow` -- "No one is active right now"
-
-**`src/i18n/ar.ts`**
-- Arabic equivalents
+- Add an idle timer that tracks the last time the user was speaking (via the existing volume monitor)
+- Reset the timer every time `is_speaking` becomes `true`
+- If 1 hour passes without any speaking activity, automatically disconnect:
+  - Call `onDisconnect()` to clear voice channel context
+  - The cleanup effect handles the rest (closing peers, removing DB row, etc.)
 
 ---
 
 ### Technical Details
 
-**Query to find active friends in voice channels:**
+**AppLayout change:**
 ```text
-1. Get friend user IDs from the accepted friendships list (already available in Friends.tsx)
-2. Query voice_channel_participants WHERE user_id IN (friendUserIds)
-3. For each participant, fetch the channel (name, server_id) and server (name, icon_url)
-4. For each participant, use the profile already loaded or fetch from profiles
+// Inside AppLayout, after <Outlet />
+{voiceChannel && (
+  <VoiceConnectionManager
+    channelId={voiceChannel.id}
+    channelName={voiceChannel.name}
+    serverId={voiceChannel.serverId}
+    onDisconnect={disconnectVoice}
+  />
+)}
 ```
 
-**Navigation on voice channel click:**
-Navigates to `/server/:serverId` -- the ServerView component will handle showing the server. The channel ID can be passed as a query param or state so the user lands on that voice channel context.
-
-**Layout change in Friends.tsx:**
+**Idle timer logic in VoiceConnectionBar:**
 ```text
-<div className="flex h-full">
-  <div className="flex-1 flex flex-col overflow-hidden">
-    {/* existing tabs and content */}
-  </div>
-  <div className="hidden lg:block w-[280px] border-s">
-    <ActiveNowPanel friendUserIds={[...]} />
-  </div>
-</div>
-```
+const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-**Realtime subscription:**
-Subscribe to `voice_channel_participants` changes to refresh the active list when friends join or leave voice channels.
+// Reset idle timer whenever user speaks
+const resetIdleTimer = useCallback(() => {
+  if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+  idleTimerRef.current = setTimeout(() => {
+    onDisconnect(); // auto-disconnect after 1 hour idle
+  }, 60 * 60 * 1000); // 1 hour
+}, [onDisconnect]);
+
+// Start idle timer on join, reset on speaking
+// In the volume monitor callback: if isSpeaking, call resetIdleTimer()
+// Clear timer on unmount
+```
 
 ### Files Modified
-- **New**: `src/components/chat/ActiveNowPanel.tsx` -- the Active Now panel component
-- `src/pages/Friends.tsx` -- add two-column layout with the panel
-- `src/i18n/en.ts` -- new translation keys
-- `src/i18n/ar.ts` -- Arabic translations
+- `src/components/layout/AppLayout.tsx` -- render VoiceConnectionManager at layout level
+- `src/pages/ServerView.tsx` -- remove VoiceConnectionManager rendering
+- `src/components/server/VoiceConnectionBar.tsx` -- add 1-hour idle auto-disconnect timer
+
