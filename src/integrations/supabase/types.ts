@@ -55,6 +55,44 @@ export type Database = {
           },
         ]
       }
+      channels: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          name: string
+          position: number
+          server_id: string
+          type: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          server_id: string
+          type?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          server_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channels_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dm_threads: {
         Row: {
           created_at: string
@@ -203,6 +241,7 @@ export type Database = {
       messages: {
         Row: {
           author_id: string
+          channel_id: string | null
           content: string
           created_at: string
           deleted_for_everyone: boolean
@@ -217,6 +256,7 @@ export type Database = {
         }
         Insert: {
           author_id: string
+          channel_id?: string | null
           content?: string
           created_at?: string
           deleted_for_everyone?: boolean
@@ -231,6 +271,7 @@ export type Database = {
         }
         Update: {
           author_id?: string
+          channel_id?: string | null
           content?: string
           created_at?: string
           deleted_for_everyone?: boolean
@@ -244,6 +285,13 @@ export type Database = {
           thread_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "messages_group_thread_id_fkey"
             columns: ["group_thread_id"]
@@ -353,6 +401,65 @@ export type Database = {
         }
         Relationships: []
       }
+      server_members: {
+        Row: {
+          id: string
+          joined_at: string
+          role: string
+          server_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          role?: string
+          server_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          role?: string
+          server_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_members_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      servers: {
+        Row: {
+          created_at: string
+          icon_url: string | null
+          id: string
+          invite_code: string
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          invite_code?: string
+          name: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          invite_code?: string
+          name?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
       thread_read_status: {
         Row: {
           group_thread_id: string | null
@@ -397,6 +504,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_invite_code: { Args: never; Returns: string }
       get_email_by_username: { Args: { p_username: string }; Returns: string }
       is_group_admin: {
         Args: { _group_id: string; _user_id: string }
@@ -404,6 +512,14 @@ export type Database = {
       }
       is_group_member: {
         Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_server_admin: {
+        Args: { _server_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_server_member: {
+        Args: { _server_id: string; _user_id: string }
         Returns: boolean
       }
     }
