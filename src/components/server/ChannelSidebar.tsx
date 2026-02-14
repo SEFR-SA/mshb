@@ -437,13 +437,16 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                       </div>
                       {participants.map((p) => (
                         <div key={p.user_id} className="flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground">
-                          <Avatar className={`h-5 w-5 transition-all duration-150 ${speakingUsers.has(p.user_id) ? "ring-2 ring-[#00db21]" : ""}`}>
+                          <Avatar className="h-5 w-5">
                             <AvatarImage src={p.avatar_url || ""} />
                             <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
                               {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <span className="truncate">{p.display_name || p.username || "User"}</span>
+                          {speakingUsers.has(p.user_id) && (
+                            <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
+                          )}
                         </div>
                       ))}
                     </div>
