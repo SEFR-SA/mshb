@@ -250,24 +250,28 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
         <h2 className="font-semibold">{channelName}</h2>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4">
         {messagesLoading ? (
           <MessageSkeleton count={6} />
         ) : (
-          <div className="animate-fade-in space-y-3">
+          <div className="animate-fade-in">
         {hasMore && messages.length > 0 && (
-          <div className="text-center">
+          <div className="text-center mb-2">
             <Button variant="ghost" size="sm" onClick={() => loadMessages(messages[0]?.created_at)} className="text-xs text-muted-foreground">
               {t("chat.loadMore")}
             </Button>
           </div>
         )}
-        {messages.map((msg) => {
+        {messages.map((msg, idx) => {
           const p = profiles.get(msg.author_id);
           const name = p?.display_name || p?.username || "User";
           const isMine = msg.author_id === user?.id;
+          const prev = idx > 0 ? messages[idx - 1] : null;
+          const sameAuthor = prev && prev.author_id === msg.author_id;
+          const timeDiff = prev ? new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
+          const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
           return (
-            <div key={msg.id} className="flex gap-3 hover:bg-muted/30 rounded-lg px-2 py-1 -mx-2 transition-colors group">
+            <div key={msg.id} className={`flex gap-3 hover:bg-muted/30 rounded-lg px-2 py-1 -mx-2 transition-colors group ${isGrouped ? "mt-0.5" : idx === 0 ? "" : "mt-3"}`}>
               <Avatar className="h-9 w-9 mt-0.5 shrink-0">
                 <AvatarImage src={p?.avatar_url || ""} />
                 <AvatarFallback className="bg-primary/20 text-primary text-xs">{name.charAt(0).toUpperCase()}</AvatarFallback>

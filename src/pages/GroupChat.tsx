@@ -323,24 +323,28 @@ const GroupChat = () => {
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto p-4">
         {messagesLoading ? <MessageSkeleton count={6} /> : (
-          <div className="animate-fade-in space-y-2">
+          <div className="animate-fade-in">
         {hasMore && (
-          <div className="text-center">
+          <div className="text-center mb-2">
             <Button variant="ghost" size="sm" onClick={() => messages.length > 0 && loadMessages(messages[0].created_at)} className="text-xs text-muted-foreground">
               {t("chat.loadMore")}
             </Button>
           </div>
         )}
-        {visibleMessages.map((msg) => {
+        {visibleMessages.map((msg, idx) => {
           const isMine = msg.author_id === user?.id;
           const isDeleted = msg.deleted_for_everyone;
           const authorProfile = profiles.get(msg.author_id);
           const msgAny = msg as any;
+          const prev = idx > 0 ? visibleMessages[idx - 1] : null;
+          const sameAuthor = prev && prev.author_id === msg.author_id;
+          const timeDiff = prev ? new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
+          const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
 
           return (
-            <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+            <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
               <div className="flex gap-2 max-w-[75%]">
                 {!isMine && (
                   <Avatar className="h-7 w-7 mt-1 shrink-0">
