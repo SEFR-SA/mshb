@@ -4,7 +4,7 @@ import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, LogIn } from "lucide-react";
+import { Plus, LogIn, MessageSquare, Users } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import CreateServerDialog from "./CreateServerDialog";
 import JoinServerDialog from "./JoinServerDialog";
@@ -62,10 +62,26 @@ const ServerRail = () => {
                 }`
               }
             >
-              <span className="text-lg font-bold">✦</span>
+              <MessageSquare className="h-5 w-5" />
             </NavLink>
           </TooltipTrigger>
           <TooltipContent side="right">{t("nav.inbox")}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <NavLink
+              to="/friends"
+              className={({ isActive }) =>
+                `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
+                  isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20"
+                }`
+              }
+            >
+              <Users className="h-5 w-5" />
+            </NavLink>
+          </TooltipTrigger>
+          <TooltipContent side="right">{t("nav.friends")}</TooltipContent>
         </Tooltip>
 
         <Separator className="w-8 mx-auto" />
