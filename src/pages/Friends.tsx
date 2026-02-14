@@ -173,7 +173,7 @@ const Friends = () => {
         </div>
 
         <Tabs defaultValue="all" className="flex-1 flex flex-col overflow-hidden px-4">
-        <TabsList className="w-full bg-muted/40 backdrop-blur-sm">
+        <TabsList className="w-full bg-muted/20 backdrop-blur-sm">
           <TabsTrigger value="all" className="flex-1">{t("friends.all")}</TabsTrigger>
           <TabsTrigger value="pending" className="flex-1">
             {t("friends.pending")}

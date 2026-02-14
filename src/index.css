@@ -111,7 +111,7 @@
 
 @layer utilities {
   .glass {
-    @apply bg-card/60 backdrop-blur-sm border border-border/40;
+    @apply bg-card/30 backdrop-blur-sm border border-border/40;
   }
 
   .galaxy-gradient {

@@ -380,7 +380,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
   return (
     <>
-      <div className="w-[240px] flex flex-col bg-sidebar-background/60 backdrop-blur-sm border-e border-sidebar-border shrink-0 overflow-hidden">
+      <div className="w-[240px] flex flex-col bg-sidebar-background/30 backdrop-blur-sm border-e border-sidebar-border shrink-0 overflow-hidden">
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
           <h2 className="font-bold text-sm truncate">{server?.name || "..."}</h2>
           <div className="flex gap-1">
