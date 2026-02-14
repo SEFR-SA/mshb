@@ -16,7 +16,11 @@ interface Server {
   icon_url: string | null;
 }
 
-const ServerRail = () => {
+interface ServerRailProps {
+  onNavigate?: () => void;
+}
+
+const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -56,7 +60,7 @@ const ServerRail = () => {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              onClick={() => navigate("/")}
+              onClick={() => { navigate("/"); onNavigate?.(); }}
               className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
                 location.pathname === "/"
                   ? "bg-primary text-primary-foreground rounded-xl"
@@ -72,7 +76,7 @@ const ServerRail = () => {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              onClick={() => navigate("/friends")}
+              onClick={() => { navigate("/friends"); onNavigate?.(); }}
               className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
                 location.pathname === "/friends"
                   ? "bg-primary text-primary-foreground rounded-xl"
@@ -93,6 +97,7 @@ const ServerRail = () => {
             <TooltipTrigger asChild>
               <NavLink
                 to={`/server/${s.id}`}
+                onClick={() => onNavigate?.()}
                 className={({ isActive }) =>
                   `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
                     isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20"

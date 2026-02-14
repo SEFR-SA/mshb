@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,7 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { usePendingFriendRequests } from "@/hooks/usePendingFriendRequests";
-import { MessageSquare, Settings, Users, Download } from "lucide-react";
+import { MessageSquare, Settings, Users, Download, Menu } from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import CallListener from "@/components/chat/CallListener";
 import ServerRail from "@/components/server/ServerRail";
 import { NavLink } from "react-router-dom";
@@ -19,6 +20,7 @@ const AppLayout = () => {
   const { totalUnread } = useUnreadCount();
   const { pendingCount } = usePendingFriendRequests();
   const [installPrompt, setInstallPrompt] = React.useState<any>(null);
+  const [serverDrawerOpen, setServerDrawerOpen] = useState(false);
 
   React.useEffect(() => {
     const handler = (e: Event) => {
@@ -53,9 +55,21 @@ const AppLayout = () => {
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile top header */}
         {isMobile && (
-          <header className="flex items-center justify-between p-3 glass border-b border-border/50">
-            <h1 className="text-lg font-bold text-primary">✦ {t("app.name")}</h1>
-          </header>
+          <>
+            <header className="flex items-center justify-between p-3 glass border-b border-border/50">
+              <div className="flex items-center gap-2">
+                <button onClick={() => setServerDrawerOpen(true)} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <Menu className="h-5 w-5" />
+                </button>
+                <h1 className="text-lg font-bold text-primary">✦ {t("app.name")}</h1>
+              </div>
+            </header>
+            <Sheet open={serverDrawerOpen} onOpenChange={setServerDrawerOpen}>
+              <SheetContent side="left" className="p-0 w-[80px] border-none">
+                <ServerRail onNavigate={() => setServerDrawerOpen(false)} />
+              </SheetContent>
+            </Sheet>
+          </>
         )}
 
         <div className="flex-1 overflow-hidden">
