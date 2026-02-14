@@ -104,6 +104,15 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [useCustomCategory, setUseCustomCategory] = useState(false);
   const [customCategory, setCustomCategory] = useState("");
 
+  // Drag-and-drop state
+  const [dragItem, setDragItem] = useState<string | null>(null);
+  const [dragType, setDragType] = useState<"channel" | "section" | null>(null);
+  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+
+  // Section rename/delete state
+  const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
+  const [renameCategoryValue, setRenameCategoryValue] = useState("");
+
   const toggleCategory = (cat: string) => {
     setCollapsedCategories(prev => {
       const next = new Set(prev);
@@ -337,6 +346,96 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     );
   };
 
+  // --- Rename Section ---
+  const handleRenameCategory = async (oldName: string, newName: string) => {
+    if (!newName.trim() || newName.trim() === oldName) { setRenamingCategory(null); return; }
+    await supabase.from("channels" as any).update({ category: newName.trim() } as any).eq("server_id", serverId).eq("category", oldName);
+    setRenamingCategory(null);
+    toast({ title: "Section renamed" });
+  };
+
+  // --- Drag-and-Drop Handlers ---
+  const handleDragStart = (e: React.DragEvent, id: string, type: "channel" | "section") => {
+    setDragItem(id);
+    setDragType(type);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+  };
+
+  const handleDragEnd = () => {
+    setDragItem(null);
+    setDragType(null);
+    setDragOverTarget(null);
+  };
+
+  const handleChannelDragOver = (e: React.DragEvent, channelId: string) => {
+    if (dragType !== "channel") return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverTarget(channelId);
+  };
+
+  const handleChannelDrop = async (e: React.DragEvent, targetId: string, targetCategory: string) => {
+    e.preventDefault();
+    if (dragType !== "channel" || !dragItem || dragItem === targetId) { handleDragEnd(); return; }
+
+    const allChannels = [...channels];
+    const draggedIdx = allChannels.findIndex(c => c.id === dragItem);
+    const targetIdx = allChannels.findIndex(c => c.id === targetId);
+    if (draggedIdx === -1 || targetIdx === -1) { handleDragEnd(); return; }
+
+    // Move dragged channel to target position
+    const [dragged] = allChannels.splice(draggedIdx, 1);
+    dragged.category = targetCategory;
+    const newTargetIdx = allChannels.findIndex(c => c.id === targetId);
+    allChannels.splice(newTargetIdx, 0, dragged);
+
+    // Optimistic update
+    const updated = allChannels.map((ch, i) => ({ ...ch, position: i }));
+    setChannels(updated);
+    handleDragEnd();
+
+    // Persist positions
+    for (const ch of updated) {
+      await supabase.from("channels" as any).update({ position: ch.position, category: ch.category } as any).eq("id", ch.id);
+    }
+  };
+
+  const handleSectionDragOver = (e: React.DragEvent, category: string) => {
+    if (dragType !== "section") return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverTarget(`section-${category}`);
+  };
+
+  const handleSectionDrop = async (e: React.DragEvent, targetCategory: string) => {
+    e.preventDefault();
+    if (dragType !== "section" || !dragItem || dragItem === targetCategory) { handleDragEnd(); return; }
+
+    const categoryOrder = Object.keys(grouped);
+    const fromIdx = categoryOrder.indexOf(dragItem);
+    const toIdx = categoryOrder.indexOf(targetCategory);
+    if (fromIdx === -1 || toIdx === -1) { handleDragEnd(); return; }
+
+    // Reorder categories
+    const [moved] = categoryOrder.splice(fromIdx, 1);
+    categoryOrder.splice(toIdx, 0, moved);
+
+    // Rebuild channel order based on new category order
+    const reordered: Channel[] = [];
+    categoryOrder.forEach(cat => {
+      const catChannels = grouped[cat] || [];
+      catChannels.forEach(ch => reordered.push(ch));
+    });
+    const updated = reordered.map((ch, i) => ({ ...ch, position: i }));
+    setChannels(updated);
+    handleDragEnd();
+
+    for (const ch of updated) {
+      await supabase.from("channels" as any).update({ position: ch.position } as any).eq("id", ch.id);
+    }
+  };
+
   const renderAdminDropdown = (ch: Channel) => {
     if (!isAdmin) return null;
     return (
@@ -425,18 +524,68 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             <div className="animate-fade-in space-y-4">
           {Object.entries(grouped).map(([category, chs]) => (
             <Collapsible key={category} open={!collapsedCategories.has(category)}>
-              <div className="flex items-center justify-between px-1 mb-1">
-                <CollapsibleTrigger onClick={() => toggleCategory(category)} className="flex items-center gap-1 cursor-pointer hover:text-foreground transition-colors">
-                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${collapsedCategories.has(category) ? '-rotate-90' : ''}`} />
-                  <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wide">{category}</span>
+              <div
+                className={`flex items-center justify-between px-1 mb-1 rounded ${dragOverTarget === `section-${category}` ? 'bg-primary/10' : ''}`}
+                draggable={isAdmin}
+                onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, category, "section"); }}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleSectionDragOver(e, category)}
+                onDrop={(e) => handleSectionDrop(e, category)}
+              >
+                <CollapsibleTrigger onClick={() => toggleCategory(category)} className="flex items-center gap-1 cursor-pointer hover:text-foreground transition-colors flex-1 min-w-0">
+                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 shrink-0 ${collapsedCategories.has(category) ? '-rotate-90' : ''}`} />
+                  {renamingCategory === category ? (
+                    <Input
+                      className="h-5 text-[11px] font-semibold uppercase px-1 py-0"
+                      value={renameCategoryValue}
+                      onChange={(e) => setRenameCategoryValue(e.target.value)}
+                      onBlur={() => handleRenameCategory(category, renameCategoryValue)}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === "Enter") handleRenameCategory(category, renameCategoryValue);
+                        if (e.key === "Escape") setRenamingCategory(null);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      autoFocus
+                    />
+                  ) : (
+                    <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wide truncate">{category}</span>
+                  )}
                 </CollapsibleTrigger>
                 {isAdmin && (
-                  <button
-                    onClick={() => { setNewCategory(category); setNewType(category.toLowerCase().includes("voice") ? "voice" : "text"); setCreateOpen(true); }}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 p-0.5" onClick={(e) => e.stopPropagation()}>
+                          <MoreVertical className="h-3 w-3" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem onClick={() => { setRenamingCategory(category); setRenameCategoryValue(category); }}>
+                          <Pencil className="h-3.5 w-3.5 me-2" />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          disabled={chs.length > 0}
+                          onClick={() => {
+                            if (chs.length > 0) {
+                              toast({ title: "Section not empty", description: "Delete all channels first." });
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 me-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <button
+                      onClick={() => { setNewCategory(category); setNewType(category.toLowerCase().includes("voice") ? "voice" : "text"); setCreateOpen(true); }}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 )}
               </div>
               <CollapsibleContent>
@@ -448,7 +597,15 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   const hasParticipants = participants.length > 0;
                   return (
                     <div key={ch.id}>
-                      <div className="group flex items-center">
+                      {dragOverTarget === ch.id && dragType === "channel" && <div className="h-0.5 bg-primary rounded-full mx-2" />}
+                      <div
+                        className={`group flex items-center ${dragItem === ch.id ? 'opacity-50' : ''}`}
+                        draggable={isAdmin}
+                        onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, ch.id, "channel"); }}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={(e) => handleChannelDragOver(e, ch.id)}
+                        onDrop={(e) => handleChannelDrop(e, ch.id, category)}
+                      >
                         <button
                           onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name })}
                           className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
@@ -480,27 +637,37 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   );
                 }
                 return (
-                  <div key={ch.id} className="group flex items-center">
-                    <NavLink
-                      to={`/server/${serverId}/channel/${ch.id}`}
-                      onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private })}
-                      className={({ isActive }) =>
-                        `flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
-                          isActive || ch.id === activeChannelId
-                            ? "bg-sidebar-accent text-foreground font-medium"
-                            : unreadSet.has(ch.id)
-                              ? "text-foreground font-semibold hover:bg-sidebar-accent/50"
-                              : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
-                        }`
-                      }
+                  <div key={ch.id}>
+                    {dragOverTarget === ch.id && dragType === "channel" && <div className="h-0.5 bg-primary rounded-full mx-2" />}
+                    <div
+                      className={`group flex items-center ${dragItem === ch.id ? 'opacity-50' : ''}`}
+                      draggable={isAdmin}
+                      onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, ch.id, "channel"); }}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={(e) => handleChannelDragOver(e, ch.id)}
+                      onDrop={(e) => handleChannelDrop(e, ch.id, category)}
                     >
-                      <ChannelIcon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{ch.name}</span>
-                      {unreadSet.has(ch.id) && !(activeChannelId === ch.id) && (
-                        <div className="ms-auto w-2 h-2 bg-white rounded-full shrink-0" />
-                      )}
-                    </NavLink>
-                    {renderAdminDropdown(ch)}
+                      <NavLink
+                        to={`/server/${serverId}/channel/${ch.id}`}
+                        onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private })}
+                        className={({ isActive }) =>
+                          `flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
+                            isActive || ch.id === activeChannelId
+                              ? "bg-sidebar-accent text-foreground font-medium"
+                              : unreadSet.has(ch.id)
+                                ? "text-foreground font-semibold hover:bg-sidebar-accent/50"
+                                : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
+                          }`
+                        }
+                      >
+                        <ChannelIcon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{ch.name}</span>
+                        {unreadSet.has(ch.id) && !(activeChannelId === ch.id) && (
+                          <div className="ms-auto w-2 h-2 bg-white rounded-full shrink-0" />
+                        )}
+                      </NavLink>
+                      {renderAdminDropdown(ch)}
+                    </div>
                   </div>
                 );
               })}
