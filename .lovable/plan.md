@@ -1,123 +1,103 @@
 
 
-## Add @Mentions in Server Chat and Voice Channel Presence in Sidebar
+## Discord-Style Persistent Voice Call with Text Channel Browsing
 
-### Feature 1: @Mentions in Server Chat
+### Current Behavior
+When a voice channel is clicked, the entire main content area is replaced with `VoiceChannelPanel`, blocking access to text channels.
 
-Add the ability to mention individual users (`@username`) or all members (`@all`) in server channel messages. Typing `@` will show a dropdown of server members to pick from.
+### New Behavior
+Like Discord: joining a voice channel shows a small **voice status bar** at the bottom of the screen (showing channel name, mute/disconnect controls, and participant count). The main content area continues to show whichever **text channel** the user navigates to. Users can freely browse text channels while remaining connected to voice.
 
-**New Component: `src/components/server/MentionPopup.tsx`**
-- A floating popup that appears above the input when `@` is typed
-- Fetches server members and filters by typed text after `@`
-- Shows an `@all` option at the top
-- Clicking a suggestion inserts the mention text into the input
-- Keyboard navigation (arrow keys + Enter) supported
+### Architecture Change
 
-**Modified: `src/components/server/ServerChannelChat.tsx`**
-- Track cursor position and detect `@` trigger in the input
-- Show `MentionPopup` when user types `@`
-- On mention select, replace the `@partial` text with `@username` or `@all`
-- Render mentions in messages with highlight styling: parse message content for `@username` and `@all` patterns and wrap them in styled spans
-- Create a `renderMessageContent` helper function that replaces `@username` patterns with highlighted `<span>` elements using the loaded profiles map
+The voice session becomes **server-level state** managed in `ServerView.tsx`, not tied to which channel is "active" in the main content area.
 
-**Message Rendering:**
-- `@all` rendered with a distinct background highlight (e.g., `bg-yellow-500/20 text-yellow-300`)
-- `@username` rendered with a primary color highlight (e.g., `bg-primary/20 text-primary`)
-- Current user's own mentions get extra emphasis
-
-### Feature 2: Voice Channel Participants in Sidebar
-
-Show users currently in a voice channel directly under the channel name in the sidebar, similar to Discord's layout. Active voice channels (with participants) show a green speaker icon instead of gray.
-
-**Modified: `src/components/server/ChannelSidebar.tsx`**
-- Fetch voice channel participants from `voice_channel_participants` table for all voice channels in the server
-- Subscribe to real-time changes on `voice_channel_participants` filtered by channel IDs
-- For each voice channel, display participant avatars and names in a nested list below the channel button
-- Change the `Volume2` icon color to `text-green-500` when the channel has one or more participants
-- Each participant row shows a small avatar and their display name, indented under the voice channel
-
-**Layout for voice channels in the sidebar:**
 ```text
-  [green speaker] chilling          1:49:38
-      [avatar] black angel
-      [avatar] SeraphEcho
++------------------+-------------------------------------+-----------------+
+| Channel Sidebar  |   Text Channel Chat (always shown)  | Member List     |
+|                  |                                     |                 |
+|                  |                                     |                 |
+|                  +-------------------------------------+                 |
+|                  | [Voice Bar: "chilling" | Mute | Disconnect]          |
++------------------+-------------------------------------+-----------------+
 ```
 
-### i18n Updates
+### Changes
 
-**`src/i18n/en.ts` and `src/i18n/ar.ts`:**
-- `mentions.all` - "everyone" / label for @all
-- `mentions.noResults` - "No members found"
-- `servers.voiceConnected` - connected duration or count label
+**`src/pages/ServerView.tsx`**
+- Add state: `voiceChannel: { id, name } | null` to track the active voice session independently from the viewed text channel
+- When a voice channel is clicked in the sidebar, set `voiceChannel` state (don't change `activeChannel` -- keep showing current text channel)
+- If no text channel is active when voice is clicked, auto-select the first text channel for the main area
+- Render `VoiceConnectionBar` at the bottom of the main content area when `voiceChannel` is set
+- The main content area always renders `ServerChannelChat` (never `VoiceChannelPanel` full-screen)
+
+**`src/components/server/VoiceConnectionBar.tsx`** (new)
+- A compact bottom bar showing: voice channel name, participant avatars (small), mute toggle, disconnect button
+- Contains all WebRTC logic (extracted from current `VoiceChannelPanel`)
+- Auto-joins voice on mount, leaves on unmount or disconnect click
+- Shows participant count and mute state
+
+**`src/components/server/VoiceChannelPanel.tsx`**
+- Remove WebRTC/join/leave logic (moved to `VoiceConnectionBar`)
+- Keep it as a read-only display: when a voice channel is clicked, it could optionally show a "join voice" prompt or participant grid, but the main content area stays as text chat
+- Alternatively, this component is no longer rendered full-screen -- its participant grid can be embedded inside `VoiceConnectionBar` as an expandable section
+
+**`src/components/server/ChannelSidebar.tsx`**
+- Voice channel click behavior changes: instead of calling `onChannelSelect` with type "voice", call a new `onVoiceChannelSelect` callback
+- Text channel clicks continue working as before
+
+### Detailed Flow
+
+1. User clicks a voice channel in the sidebar
+2. `ServerView` sets `voiceChannel = { id, name }` and keeps the current text channel visible
+3. `VoiceConnectionBar` mounts at the bottom, acquires mic, joins the voice channel (inserts into `voice_channel_participants`, sets up WebRTC signaling)
+4. User can click any text channel -- the main area updates to show that text channel's chat
+5. The voice bar persists at the bottom across text channel navigation
+6. Clicking "Disconnect" in the bar clears `voiceChannel`, unmounts the bar, leaves the voice session
 
 ### Technical Details
 
-**MentionPopup component:**
+**VoiceConnectionBar layout:**
+```text
++-------------------------------------------------------+
+| [green dot] chilling  [avatar][avatar]  [Mute] [Hang] |
++-------------------------------------------------------+
+```
+
+**Props for VoiceConnectionBar:**
 ```typescript
-interface MentionPopupProps {
+interface VoiceConnectionBarProps {
+  channelId: string;
+  channelName: string;
   serverId: string;
-  filter: string; // text after @ 
-  onSelect: (mention: string) => void;
-  onClose: () => void;
+  onDisconnect: () => void;
 }
 ```
-- Fetches `server_members` + profiles for the server
-- Filters by `display_name` or `username` matching the typed filter
-- Positioned absolutely above the input area
 
-**Message content rendering (in ServerChannelChat):**
+**ServerView state changes:**
 ```typescript
-const renderContent = (content: string) => {
-  // Split on @mentions pattern: @username or @all
-  const parts = content.split(/(@\w+)/g);
-  return parts.map((part, i) => {
-    if (part === "@all") {
-      return <span key={i} className="bg-yellow-500/20 text-yellow-400 px-1 rounded font-medium">@all</span>;
-    }
-    if (part.startsWith("@")) {
-      const username = part.slice(1);
-      const matched = [...profiles.values()].find(p => p.username === username);
-      if (matched) {
-        return <span key={i} className="bg-primary/20 text-primary px-1 rounded font-medium">{part}</span>;
-      }
-    }
-    return part;
-  });
-};
+const [activeTextChannel, setActiveTextChannel] = useState<Channel | null>(null);
+const [voiceChannel, setVoiceChannel] = useState<{ id: string; name: string } | null>(null);
 ```
 
-**Voice participants in ChannelSidebar:**
+**ChannelSidebar prop changes:**
 ```typescript
-// Fetch all voice_channel_participants for voice channels in this server
-const [voiceParticipants, setVoiceParticipants] = useState<Map<string, VoiceParticipant[]>>(new Map());
-
-useEffect(() => {
-  const voiceChannelIds = channels.filter(c => c.type === "voice").map(c => c.id);
-  if (voiceChannelIds.length === 0) return;
-  
-  // Fetch participants
-  supabase.from("voice_channel_participants")
-    .select("channel_id, user_id")
-    .in("channel_id", voiceChannelIds)
-    .then(({ data }) => {
-      // Group by channel_id, fetch profiles, update state
-    });
-
-  // Subscribe to realtime changes
-  const sub = supabase.channel(`voice-sidebar-${serverId}`)
-    .on("postgres_changes", { event: "*", schema: "public", table: "voice_channel_participants" }, () => reload())
-    .subscribe();
-  return () => sub.unsubscribe();
-}, [channels]);
+interface Props {
+  serverId: string;
+  activeChannelId?: string;
+  onChannelSelect?: (channel: Channel) => void;
+  onVoiceChannelSelect?: (channel: { id: string; name: string }) => void;
+}
 ```
 
 ### Files Summary
 
 | File | Action | Changes |
 |------|--------|---------|
-| `src/components/server/MentionPopup.tsx` | Create | Mention suggestion dropdown component |
-| `src/components/server/ServerChannelChat.tsx` | Modify | Add mention trigger logic, render mentions with highlights |
-| `src/components/server/ChannelSidebar.tsx` | Modify | Show voice participants under voice channels, green icon for active |
-| `src/i18n/en.ts` | Modify | Add mention-related translation keys |
-| `src/i18n/ar.ts` | Modify | Add Arabic mention translations |
+| `src/components/server/VoiceConnectionBar.tsx` | Create | Compact bottom bar with WebRTC voice, mute, disconnect |
+| `src/pages/ServerView.tsx` | Modify | Separate voice state from text channel state; always render text chat; render VoiceConnectionBar when in voice |
+| `src/components/server/ChannelSidebar.tsx` | Modify | Add `onVoiceChannelSelect` prop; voice clicks use new callback |
+| `src/components/server/VoiceChannelPanel.tsx` | Modify | Simplify to just a join prompt / participant display (no longer full-screen replacement) |
+| `src/i18n/en.ts` | Modify | Add voice bar translation keys |
+| `src/i18n/ar.ts` | Modify | Add Arabic voice bar translations |
 
