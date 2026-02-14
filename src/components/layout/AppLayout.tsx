@@ -7,8 +7,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { usePendingFriendRequests } from "@/hooks/usePendingFriendRequests";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Settings, Users, Download, Mic, MicOff, Headphones, HeadphoneOff } from "lucide-react";
+import { MessageSquare, Settings, Users, Download, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff } from "lucide-react";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
+import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import CallListener from "@/components/chat/CallListener";
 import ServerRail from "@/components/server/ServerRail";
 import { NavLink } from "react-router-dom";
@@ -23,6 +24,7 @@ const AppLayout = () => {
   const { totalUnread } = useUnreadCount();
   const { pendingCount } = usePendingFriendRequests();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
+  const { voiceChannel, disconnectVoice } = useVoiceChannel();
   const { getUserStatus } = usePresence();
   const status = (getUserStatus(profile) || "online") as UserStatus;
   const [installPrompt, setInstallPrompt] = React.useState<any>(null);
@@ -85,6 +87,15 @@ const AppLayout = () => {
             ))}
           </nav>
           <div className="p-3 border-t border-border/50 space-y-2">
+            {voiceChannel && (
+              <div className="flex items-center gap-2 p-2 rounded-md bg-secondary/50">
+                <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                <span className="text-xs font-medium truncate flex-1">#{voiceChannel.name}</span>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={disconnectVoice}>
+                  <PhoneOff className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               {installPrompt && (
                 <Button variant="ghost" size="icon" onClick={handleInstall} title={t("app.install")}>
