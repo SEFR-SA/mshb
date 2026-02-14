@@ -250,6 +250,22 @@ export default {
   emoji: {
     search: "ابحث عن رموز تعبيرية...",
   },
+  gif: {
+    search: "ابحث عن صور متحركة...",
+    trending: "رائج",
+    title: "صور متحركة",
+    poweredBy: "مدعوم من GIPHY",
+  },
+  sticker: {
+    search: "ابحث عن ملصقات...",
+    trending: "رائج",
+    title: "ملصقات",
+    myStickers: "ملصقاتي",
+    upload: "رفع ملصق",
+    delete: "حذف",
+    uploadSuccess: "تم رفع الملصق!",
+    deleteSuccess: "تم حذف الملصق!",
+  },
   groups: {
     create: "إنشاء مجموعة",
     name: "اسم المجموعة",

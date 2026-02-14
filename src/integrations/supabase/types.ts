@@ -125,6 +125,33 @@ export type Database = {
           },
         ]
       }
+      custom_stickers: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          image_url: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          image_url: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dm_threads: {
         Row: {
           created_at: string

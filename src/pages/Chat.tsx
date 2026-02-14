@@ -24,6 +24,8 @@ import VoiceCallUI from "@/components/chat/VoiceCallUI";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import EmojiPicker from "@/components/chat/EmojiPicker";
+import GifPicker from "@/components/chat/GifPicker";
+import StickerPicker from "@/components/chat/StickerPicker";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -432,7 +434,11 @@ const Chat = () => {
                   </div>
                 ) : (
                   <>
-                    {!isDeleted && msgAny.file_url && (
+                    {!isDeleted && msgAny.file_url && (msgAny.file_type === "gif" || msgAny.file_type === "sticker") ? (
+                      <div className="mb-1">
+                        <img src={msgAny.file_url} alt={msgAny.file_type === "gif" ? "GIF" : "Sticker"} className="max-w-[240px] max-h-[200px] rounded-lg object-contain" loading="lazy" />
+                      </div>
+                    ) : !isDeleted && msgAny.file_url ? (
                       <div className="mb-1">
                         <MessageFilePreview
                           fileUrl={msgAny.file_url}
@@ -442,7 +448,7 @@ const Chat = () => {
                           isMine={isMine}
                         />
                       </div>
-                    )}
+                    ) : null}
                     <p className="text-sm whitespace-pre-wrap break-words">
                       {isDeleted ? t("chat.deleted") : msg.content}
                     </p>
@@ -518,6 +524,16 @@ const Chat = () => {
         <div className="flex items-center gap-2">
           <FileAttachmentButton onFileSelect={setSelectedFile} disabled={sending} />
           <EmojiPicker onEmojiSelect={(emoji) => setNewMsg((prev) => prev + emoji)} />
+          <GifPicker onGifSelect={async (url) => {
+            if (!threadId || !user) return;
+            await supabase.from("messages").insert({ thread_id: threadId, author_id: user.id, content: "", file_url: url, file_type: "gif", file_name: "gif" } as any);
+            await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
+          }} />
+          <StickerPicker onStickerSelect={async (url) => {
+            if (!threadId || !user) return;
+            await supabase.from("messages").insert({ thread_id: threadId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
+            await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
+          }} />
           <Input
             value={newMsg}
             onChange={(e) => { setNewMsg(e.target.value); broadcastTyping(); }}

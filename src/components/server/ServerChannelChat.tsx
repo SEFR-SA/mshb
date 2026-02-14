@@ -14,6 +14,8 @@ import MessageFilePreview from "@/components/chat/MessageFilePreview";
 import { Progress } from "@/components/ui/progress";
 import MentionPopup from "./MentionPopup";
 import EmojiPicker from "@/components/chat/EmojiPicker";
+import GifPicker from "@/components/chat/GifPicker";
+import StickerPicker from "@/components/chat/StickerPicker";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -256,11 +258,15 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
-                {msg.file_url && (
+                {msg.file_url && (msg.file_type === "gif" || msg.file_type === "sticker") ? (
+                  <div className="mt-1">
+                    <img src={msg.file_url} alt={msg.file_type === "gif" ? "GIF" : "Sticker"} className="max-w-[240px] max-h-[200px] rounded-lg object-contain" loading="lazy" />
+                  </div>
+                ) : msg.file_url ? (
                   <div className="mt-1">
                     <MessageFilePreview fileUrl={msg.file_url} fileName={msg.file_name || "file"} fileType={msg.file_type || ""} fileSize={msg.file_size || 0} isMine={isMine} />
                   </div>
-                )}
+                ) : null}
                 {msg.content && <p className="text-sm whitespace-pre-wrap break-words">{renderMessageContent(msg.content, profiles, user?.id)}</p>}
               </div>
             </div>
@@ -291,6 +297,14 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
             setSelectedFile(f);
           }} />
           <EmojiPicker onEmojiSelect={(emoji) => { setNewMsg((prev) => prev + emoji); inputRef.current?.focus(); }} />
+          <GifPicker onGifSelect={async (url) => {
+            if (!user) return;
+            await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "gif", file_name: "gif" } as any);
+          }} />
+          <StickerPicker onStickerSelect={async (url) => {
+            if (!user) return;
+            await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
+          }} />
           <Input
             ref={inputRef}
             value={newMsg}
