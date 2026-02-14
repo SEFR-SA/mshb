@@ -14,6 +14,7 @@ import { Search, UserPlus, Check, X, MessageSquare, Trash2 } from "lucide-react"
 import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import ActiveNowPanel from "@/components/chat/ActiveNowPanel";
+import ChatSidebar from "@/components/chat/ChatSidebar";
 
 type Profile = Tables<"profiles">;
 
@@ -167,7 +168,8 @@ const Friends = () => {
 
   return (
     <div className="flex h-full">
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <ChatSidebar />
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <div className="p-4">
           <h2 className="text-xl font-bold mb-3">{t("friends.title")}</h2>
         </div>
