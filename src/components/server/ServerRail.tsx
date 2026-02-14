@@ -101,7 +101,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
             <button
               onClick={() => { navigate("/"); onNavigate?.(); }}
               className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
-                location.pathname === "/"
+                location.pathname === "/" || location.pathname.startsWith("/chat/") || location.pathname.startsWith("/group/")
                   ? "bg-primary text-primary-foreground rounded-xl"
                   : "bg-sidebar-accent/30 text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
               }`}
