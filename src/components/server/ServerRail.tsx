@@ -4,7 +4,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2 } from "lucide-react";
+import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -14,6 +14,8 @@ import JoinServerDialog from "./JoinServerDialog";
 import ServerSettingsDialog from "./ServerSettingsDialog";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
+import { useServerUnread } from "@/hooks/useServerUnread";
+import { useServerVoiceActivity } from "@/hooks/useServerVoiceActivity";
 
 interface Server {
   id: string;
@@ -37,6 +39,10 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const [joinOpen, setJoinOpen] = useState(false);
   const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
   const [deleteServerId, setDeleteServerId] = useState<string | null>(null);
+
+  const serverIds = servers.map((s) => s.id);
+  const unreadMap = useServerUnread(serverIds);
+  const voiceActivityMap = useServerVoiceActivity(serverIds);
 
   useEffect(() => {
     if (!user) return;
@@ -122,61 +128,82 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
         <Separator className="w-8 mx-auto" />
 
         {/* Server icons with context menu */}
-        {servers.map((s) => (
-          <ContextMenu key={s.id}>
-            <Tooltip>
-              <ContextMenuTrigger asChild>
-                <TooltipTrigger asChild>
-                  <NavLink
-                    to={`/server/${s.id}`}
-                    onClick={() => onNavigate?.()}
-                    className={({ isActive }) =>
-                      `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
-                        isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20"
-                      }`
-                    }
-                  >
-                    <Avatar className="h-12 w-12 rounded-[inherit]">
-                      <AvatarImage src={s.icon_url || ""} />
-                      <AvatarFallback className="bg-transparent text-inherit text-sm font-bold rounded-[inherit]">
-                        {s.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </NavLink>
-                </TooltipTrigger>
-              </ContextMenuTrigger>
-              <TooltipContent side="right">{s.name}</TooltipContent>
-            </Tooltip>
-            <ContextMenuContent>
-              <ContextMenuItem onClick={() => setSettingsServerId(s.id)}>
-                <Settings className="h-4 w-4 me-2" />
-                {t("servers.settings")}
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleCopyInvite(s.invite_code)}>
-                <Copy className="h-4 w-4 me-2" />
-                {t("servers.copyInvite")}
-              </ContextMenuItem>
-              {user && s.owner_id !== user.id && (
-                <>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => handleLeaveServer(s.id)}>
-                    <LogOut className="h-4 w-4 me-2" />
-                    {t("servers.leave")}
-                  </ContextMenuItem>
-                </>
-              )}
-              {user && s.owner_id === user.id && (
-                <>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteServerId(s.id)}>
-                    <Trash2 className="h-4 w-4 me-2" />
-                    {t("servers.deleteServer")}
-                  </ContextMenuItem>
-                </>
-              )}
-            </ContextMenuContent>
-          </ContextMenu>
-        ))}
+        {servers.map((s) => {
+          const hasUnread = unreadMap.get(s.id) || false;
+          const voiceActivity = voiceActivityMap.get(s.id);
+
+          return (
+            <ContextMenu key={s.id}>
+              <Tooltip>
+                <ContextMenuTrigger asChild>
+                  <TooltipTrigger asChild>
+                    <div className="relative">
+                      {/* Unread dot on left edge */}
+                      {hasUnread && (
+                        <div className="absolute -start-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full z-10" />
+                      )}
+                      <NavLink
+                        to={`/server/${s.id}`}
+                        onClick={() => onNavigate?.()}
+                        className={({ isActive }) =>
+                          `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
+                            isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20"
+                          }`
+                        }
+                      >
+                        <Avatar className="h-12 w-12 rounded-[inherit]">
+                          <AvatarImage src={s.icon_url || ""} />
+                          <AvatarFallback className="bg-transparent text-inherit text-sm font-bold rounded-[inherit]">
+                            {s.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </NavLink>
+                      {/* Voice/Screen share indicator */}
+                      {voiceActivity?.hasVoice && (
+                        <div className="absolute -bottom-0.5 -end-0.5 bg-green-500 rounded-full p-0.5 z-10">
+                          {voiceActivity.hasScreenShare ? (
+                            <Monitor className="h-2.5 w-2.5 text-white" />
+                          ) : (
+                            <Volume2 className="h-2.5 w-2.5 text-white" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                </ContextMenuTrigger>
+                <TooltipContent side="right">{s.name}</TooltipContent>
+              </Tooltip>
+              <ContextMenuContent>
+                <ContextMenuItem onClick={() => setSettingsServerId(s.id)}>
+                  <Settings className="h-4 w-4 me-2" />
+                  {t("servers.settings")}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => handleCopyInvite(s.invite_code)}>
+                  <Copy className="h-4 w-4 me-2" />
+                  {t("servers.copyInvite")}
+                </ContextMenuItem>
+                {user && s.owner_id !== user.id && (
+                  <>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem onClick={() => handleLeaveServer(s.id)}>
+                      <LogOut className="h-4 w-4 me-2" />
+                      {t("servers.leave")}
+                    </ContextMenuItem>
+                  </>
+                )}
+                {user && s.owner_id === user.id && (
+                  <>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteServerId(s.id)}>
+                      <Trash2 className="h-4 w-4 me-2" />
+                      {t("servers.deleteServer")}
+                    </ContextMenuItem>
+                  </>
+                )}
+              </ContextMenuContent>
+            </ContextMenu>
+          );
+        })}
 
         <Separator className="w-8 mx-auto" />
 

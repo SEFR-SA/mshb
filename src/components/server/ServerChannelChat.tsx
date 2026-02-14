@@ -104,6 +104,18 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
     }
   }, [channelId, loadProfiles, isLocked]);
 
+  // Mark channel as read
+  useEffect(() => {
+    if (isLocked || !user) return;
+    supabase
+      .from("channel_read_status" as any)
+      .upsert(
+        { channel_id: channelId, user_id: user.id, last_read_at: new Date().toISOString() } as any,
+        { onConflict: "channel_id,user_id" } as any
+      )
+      .then();
+  }, [channelId, user, isLocked]);
+
   useEffect(() => {
     if (isLocked) return;
     setMessages([]);
