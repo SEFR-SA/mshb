@@ -122,6 +122,9 @@ export default {
     messageUser: "رسالة @{{name}}",
     accentColor: "لون التمييز",
     resetColor: "إعادة تعيين",
+    colorThemes: "سمات الألوان",
+    customTheme: "مخصص",
+    defaultTheme: "افتراضي",
   },
   presence: {
     online: "متصل",

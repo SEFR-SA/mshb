@@ -49,6 +49,7 @@
     --sidebar-ring: 113 100% 15%;
 
     --online: 142 76% 36%;
+    --theme-gradient: none;
   }
 
   .dark {
@@ -90,6 +91,7 @@
     --sidebar-ring: 113 100% 15%;
 
     --online: 142 76% 46%;
+    --theme-gradient: none;
   }
 }
 

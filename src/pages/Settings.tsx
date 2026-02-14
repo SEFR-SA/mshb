@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme, COLOR_THEME_PRESETS } from "@/contexts/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, LogOut, ImagePlus, Download } from "lucide-react";
+import { Camera, LogOut, ImagePlus, Download, Palette } from "lucide-react";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 
 const STATUSES: UserStatus[] = ["online", "busy", "dnd", "idle", "invisible"];
@@ -24,7 +24,7 @@ const DURATION_MINUTES: Record<string, number | null> = {
 const Settings = () => {
   const { t, i18n } = useTranslation();
   const { user, profile, signOut, refreshProfile } = useAuth();
-  const { theme, setTheme, accentColor, setAccentColor } = useTheme();
+  const { theme, setTheme, accentColor, setAccentColor, colorTheme, setColorTheme } = useTheme();
 
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -35,6 +35,8 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [customColor1, setCustomColor1] = useState("#1a1a2e");
+  const [customColor2, setCustomColor2] = useState("#0f3460");
 
   const p = profile as any;
 
@@ -60,6 +62,14 @@ const Settings = () => {
       setStatusText(profile.status_text || "");
       setAboutMe(p?.about_me || "");
       setStatus((profile as any).status as UserStatus || "online");
+      if (p?.color_theme) {
+        setColorTheme(p.color_theme);
+        if (p.color_theme.startsWith("custom:")) {
+          const parts = p.color_theme.replace("custom:", "").split(",");
+          if (parts[0]) setCustomColor1(parts[0]);
+          if (parts[1]) setCustomColor2(parts[1]);
+        }
+      }
     }
   }, [profile]);
 
@@ -84,7 +94,8 @@ const Settings = () => {
         status,
         status_until: status === "online" ? null : statusUntil,
         language: i18n.language.split('-')[0],
-        theme
+        theme,
+        color_theme: colorTheme,
       } as any)
       .eq("user_id", user.id);
 
@@ -299,6 +310,87 @@ const Settings = () => {
               {i18n.language === "ar" ? "English" : "العربية"}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Color Themes */}
+      <Card className="glass">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Palette className="h-4 w-4" />
+            {t("profile.colorThemes")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+            {COLOR_THEME_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => setColorTheme(preset.id)}
+                className={`h-14 w-full rounded-lg border-2 transition-all hover:scale-105 ${
+                  colorTheme === preset.id ? "border-primary ring-2 ring-primary/30 scale-105" : "border-border"
+                }`}
+                style={
+                  preset.colors.length > 0
+                    ? { background: `linear-gradient(135deg, ${preset.colors.join(", ")})` }
+                    : {}
+                }
+                title={preset.name}
+              >
+                {preset.id === "default" && (
+                  <span className="text-xs text-muted-foreground">{t("profile.defaultTheme")}</span>
+                )}
+              </button>
+            ))}
+            {/* Custom theme swatch */}
+            <button
+              onClick={() => setColorTheme(`custom:${customColor1},${customColor2}`)}
+              className={`h-14 w-full rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center ${
+                colorTheme.startsWith("custom:") ? "border-primary ring-2 ring-primary/30 scale-105" : "border-dashed border-muted-foreground"
+              }`}
+              style={
+                colorTheme.startsWith("custom:")
+                  ? { background: `linear-gradient(135deg, ${customColor1}, ${customColor2})` }
+                  : {}
+              }
+              title={t("profile.customTheme")}
+            >
+              {!colorTheme.startsWith("custom:") && (
+                <Palette className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
+          </div>
+          {/* Custom color pickers */}
+          {colorTheme.startsWith("custom:") && (
+            <div className="flex items-center gap-3 mt-4">
+              <div className="flex items-center gap-2">
+                <label className="h-8 w-8 rounded-full border border-border cursor-pointer overflow-hidden relative">
+                  <div className="h-full w-full" style={{ backgroundColor: customColor1 }} />
+                  <input
+                    type="color"
+                    value={customColor1}
+                    onChange={(e) => {
+                      setCustomColor1(e.target.value);
+                      setColorTheme(`custom:${e.target.value},${customColor2}`);
+                    }}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                </label>
+                <label className="h-8 w-8 rounded-full border border-border cursor-pointer overflow-hidden relative">
+                  <div className="h-full w-full" style={{ backgroundColor: customColor2 }} />
+                  <input
+                    type="color"
+                    value={customColor2}
+                    onChange={(e) => {
+                      setCustomColor2(e.target.value);
+                      setColorTheme(`custom:${customColor1},${e.target.value}`);
+                    }}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
