@@ -27,6 +27,7 @@ import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import EmojiPicker from "@/components/chat/EmojiPicker";
 import GifPicker from "@/components/chat/GifPicker";
 import StickerPicker from "@/components/chat/StickerPicker";
+import { MessageSkeleton } from "@/components/skeletons/SkeletonLoaders";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -58,6 +59,7 @@ const Chat = () => {
   const [isPinned, setIsPinned] = useState(false);
   const [showProfile, setShowProfile] = useState(true);
   const [callSessionId, setCallSessionId] = useState<string | null>(null);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const [isCallerState, setIsCallerState] = useState(false);
 
   const handleCallEnded = useCallback(() => {
@@ -193,11 +195,12 @@ const Chat = () => {
       setMessages((prev) => [...prev, ...data.reverse()].sort((a, b) => a.created_at.localeCompare(b.created_at)));
     } else {
       setMessages(data.reverse());
+      setMessagesLoading(false);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     }
   }, [threadId]);
 
-  useEffect(() => { loadMessages(); }, [loadMessages]);
+  useEffect(() => { setMessagesLoading(true); setHasMore(true); loadMessages(); }, [loadMessages]);
 
   // Mark thread as read on open
   useEffect(() => {
@@ -405,6 +408,8 @@ const Chat = () => {
 
       {/* Messages */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+        {messagesLoading ? <MessageSkeleton count={6} /> : (
+          <div className="animate-fade-in">
         {hasMore && (
           <div className="text-center">
             <Button variant="ghost" size="sm" onClick={loadOlder} className="text-xs text-muted-foreground">
@@ -507,6 +512,8 @@ const Chat = () => {
           </div>
         )}
         <div ref={messagesEndRef} />
+          </div>
+        )}
       </div>
 
       {/* Upload progress */}

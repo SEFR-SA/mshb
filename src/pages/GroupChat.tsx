@@ -23,6 +23,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import EmojiPicker from "@/components/chat/EmojiPicker";
 import GifPicker from "@/components/chat/GifPicker";
 import StickerPicker from "@/components/chat/StickerPicker";
+import { MessageSkeleton } from "@/components/skeletons/SkeletonLoaders";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -57,6 +58,7 @@ const GroupChat = () => {
   const [dragOver, setDragOver] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -142,11 +144,12 @@ const GroupChat = () => {
       setMessages((prev) => [...prev, ...data.reverse()].sort((a, b) => a.created_at.localeCompare(b.created_at)));
     } else {
       setMessages(data.reverse());
+      setMessagesLoading(false);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     }
   }, [groupId]);
 
-  useEffect(() => { loadMessages(); }, [loadMessages]);
+  useEffect(() => { setMessagesLoading(true); setHasMore(true); loadMessages(); }, [loadMessages]);
 
   // Mark as read
   useEffect(() => {
@@ -321,6 +324,8 @@ const GroupChat = () => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        {messagesLoading ? <MessageSkeleton count={6} /> : (
+          <div className="animate-fade-in space-y-2">
         {hasMore && (
           <div className="text-center">
             <Button variant="ghost" size="sm" onClick={() => messages.length > 0 && loadMessages(messages[0].created_at)} className="text-xs text-muted-foreground">
@@ -432,6 +437,8 @@ const GroupChat = () => {
           </div>
         )}
         <div ref={messagesEndRef} />
+          </div>
+        )}
       </div>
 
       {/* Upload progress */}
