@@ -190,11 +190,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                     <div key={ch.id}>
                       <button
                         onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name })}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
-                          ch.id === activeVoiceChannelId
-                            ? "bg-sidebar-accent text-foreground font-medium"
-                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
-                        }`}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
                       >
                         <Volume2 className={`h-4 w-4 shrink-0 ${hasParticipants ? "text-green-500" : ""}`} />
                         <span className="truncate">{ch.name}</span>

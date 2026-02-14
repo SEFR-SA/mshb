@@ -188,27 +188,25 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
 
   return (
     <div className="flex items-center gap-3 px-4 py-2 border-t border-border/50 bg-muted/30">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <div className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
-        <Volume2 className="h-4 w-4 text-green-500 shrink-0" />
-        <span className="text-sm font-medium truncate">{channelName}</span>
-        <div className="flex items-center -space-x-1.5 ms-2">
-          {participants.slice(0, 5).map((p) => (
-            <Avatar key={p.user_id} className="h-6 w-6 border-2 border-background">
-              <AvatarImage src={p.avatar_url || ""} />
-              <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
-                {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          ))}
-          {participants.length > 5 && (
-            <span className="text-xs text-muted-foreground ms-2">+{participants.length - 5}</span>
-          )}
-        </div>
-      </div>
+      <div className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
+      <Volume2 className="h-4 w-4 text-green-500 shrink-0" />
+      <span className="text-sm font-medium truncate">{channelName}</span>
       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={leaveVoice}>
         <PhoneOff className="h-4 w-4" />
       </Button>
+      <div className="flex items-center -space-x-1.5 ms-2">
+        {participants.slice(0, 5).map((p) => (
+          <Avatar key={p.user_id} className="h-6 w-6 border-2 border-background">
+            <AvatarImage src={p.avatar_url || ""} />
+            <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
+              {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        ))}
+        {participants.length > 5 && (
+          <span className="text-xs text-muted-foreground ms-2">+{participants.length - 5}</span>
+        )}
+      </div>
     </div>
   );
 };
