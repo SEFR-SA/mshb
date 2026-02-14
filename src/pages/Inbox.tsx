@@ -43,6 +43,23 @@ const Inbox = () => {
   const [searching, setSearching] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
 
+  // Auto-redirect to last DM thread on mount
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("dm_threads")
+        .select("id")
+        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+        .order("last_message_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data && !cancelled) navigate(`/chat/${data.id}`, { replace: true });
+    })();
+    return () => { cancelled = true; };
+  }, [user, navigate]);
+
   const loadInbox = async () => {
     if (!user) return;
 

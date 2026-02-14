@@ -6,10 +6,12 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePresence } from "@/hooks/usePresence";
+import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Plus, Users, Pin } from "lucide-react";
+import { Search, Plus, Users, Pin, Mic, MicOff, Headphones, HeadphoneOff, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NavLink } from "@/components/NavLink";
 import type { Tables } from "@/integrations/supabase/types";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
@@ -36,7 +38,9 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { getUserStatus } = usePresence();
+  const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
   const navigate = useNavigate();
+  const [myProfile, setMyProfile] = useState<Profile | null>(null);
   const [items, setItems] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
@@ -187,6 +191,13 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
   useEffect(() => {
     loadInbox();
 
+    // Load own profile
+    if (user) {
+      supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle().then(({ data }) => {
+        if (data) setMyProfile(data);
+      });
+    }
+
     const channel = supabase
       .channel("sidebar-inbox-updates")
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => loadInbox())
@@ -335,6 +346,45 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
             })}
           </div>
         )}
+      </div>
+
+      {/* Bottom User Panel */}
+      <div className="border-t border-border/50 mt-auto">
+        <div className="flex items-center gap-1 px-2 py-1.5">
+          <NavLink to="/settings" className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/50 rounded-md px-1 py-0.5">
+            <div className="relative shrink-0">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={myProfile?.avatar_url || ""} />
+                <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                  {(myProfile?.display_name || myProfile?.username || "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {myProfile && (
+                <StatusBadge
+                  status={(getUserStatus(myProfile) === "offline" ? "invisible" : getUserStatus(myProfile)) as UserStatus}
+                  className="absolute bottom-0 end-0"
+                />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate leading-tight">{myProfile?.display_name || myProfile?.username || "User"}</p>
+              {myProfile?.username && <p className="text-[11px] text-muted-foreground truncate leading-tight">@{myProfile.username}</p>}
+            </div>
+          </NavLink>
+          <div className="flex items-center shrink-0">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleGlobalMute}>
+              {globalMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleGlobalDeafen}>
+              {globalDeafened ? <HeadphoneOff className="h-4 w-4 text-destructive" /> : <Headphones className="h-4 w-4" />}
+            </Button>
+            <NavLink to="/settings">
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </NavLink>
+          </div>
+        </div>
       </div>
 
       <CreateGroupDialog open={createGroupOpen} onOpenChange={setCreateGroupOpen} />
