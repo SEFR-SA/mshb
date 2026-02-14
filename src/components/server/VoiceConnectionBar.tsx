@@ -55,15 +55,20 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const channelRef = useRef<any>(null);
   const volumeMonitorsRef = useRef<Array<{ cleanup: () => void }>>([]);
-  const speakingChannelRef = useRef<any>(null);
+  // speakingChannelRef removed — speaking state now stored in DB
+
+  const lastSpeakingRef = useRef<boolean>(false);
 
   const updateSpeaking = useCallback((userId: string, isSpeaking: boolean) => {
-    speakingChannelRef.current?.send({
-      type: "broadcast",
-      event: "voice-speaking",
-      payload: { userId, isSpeaking },
-    });
-  }, []);
+    if (lastSpeakingRef.current === isSpeaking) return;
+    lastSpeakingRef.current = isSpeaking;
+    supabase
+      .from("voice_channel_participants" as any)
+      .update({ is_speaking: isSpeaking } as any)
+      .eq("channel_id", channelId)
+      .eq("user_id", userId)
+      .then();
+  }, [channelId]);
 
   const createPeerConnection = useCallback((peerId: string) => {
     const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
@@ -136,10 +141,6 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         }
         localStreamRef.current = stream;
         setupSignaling();
-        // Create dedicated speaking broadcast channel matching ChannelSidebar listener
-        const spCh = supabase.channel(`voice-speaking-listen-${channelId}`);
-        spCh.subscribe();
-        speakingChannelRef.current = spCh;
         await supabase.from("voice_channel_participants" as any).insert({ channel_id: channelId, user_id: user.id } as any);
         if (mounted) setIsJoined(true);
 
@@ -184,7 +185,6 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         peerConnectionsRef.current.forEach((pc) => pc.close());
         localStreamRef.current?.getTracks().forEach((t) => t.stop());
         channelRef.current?.unsubscribe();
-        speakingChannelRef.current?.unsubscribe();
       }
     };
   }, []);
