@@ -22,6 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { uploadChatFile } from "@/lib/uploadChatFile";
 import VoiceCallUI from "@/components/chat/VoiceCallUI";
 import { useWebRTC } from "@/hooks/useWebRTC";
+import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -60,10 +61,14 @@ const Chat = () => {
     setIsCallerState(false);
   }, []);
 
-  const { callState, isMuted, callDuration, startCall, endCall, toggleMute } = useWebRTC({
+  const { globalMuted, globalDeafened } = useAudioSettings();
+
+  const { callState, isMuted, isDeafened, callDuration, startCall, endCall, toggleMute, toggleDeafen } = useWebRTC({
     sessionId: callSessionId,
     isCaller: isCallerState,
     onEnded: handleCallEnded,
+    initialMuted: globalMuted,
+    initialDeafened: globalDeafened,
   });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -376,11 +381,13 @@ const Chat = () => {
       <VoiceCallUI
         callState={callState}
         isMuted={isMuted}
+        isDeafened={isDeafened}
         callDuration={callDuration}
         otherName={otherProfile?.display_name || otherProfile?.username || "User"}
         otherAvatar={otherProfile?.avatar_url || undefined}
         onEndCall={handleEndCall}
         onToggleMute={toggleMute}
+        onToggleDeafen={toggleDeafen}
       />
 
       {/* Messages */}

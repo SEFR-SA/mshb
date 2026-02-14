@@ -219,6 +219,12 @@ export default {
     text: "Text Channel",
     voice: "Voice Channel",
   },
+  audio: {
+    mute: "Mute",
+    unmute: "Unmute",
+    deafen: "Deafen",
+    undeafen: "Undeafen",
+  },
   mentions: {
     all: "everyone",
     noResults: "No members found",

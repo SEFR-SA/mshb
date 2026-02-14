@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import IncomingCallDialog from "./IncomingCallDialog";
 import VoiceCallUI from "./VoiceCallUI";
@@ -15,6 +16,7 @@ interface IncomingCall {
 
 const CallListener = () => {
   const { user } = useAuth();
+  const { globalMuted, globalDeafened } = useAudioSettings();
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [activeSession, setActiveSession] = useState<string | null>(null);
   const [isCaller, setIsCaller] = useState(false);
@@ -27,10 +29,12 @@ const CallListener = () => {
     setOtherName("");
   }, []);
 
-  const { callState, isMuted, callDuration, startCall, answerCall, endCall, toggleMute } = useWebRTC({
+  const { callState, isMuted, isDeafened, callDuration, startCall, answerCall, endCall, toggleMute, toggleDeafen } = useWebRTC({
     sessionId: activeSession,
     isCaller,
     onEnded: handleCallEnded,
+    initialMuted: globalMuted,
+    initialDeafened: globalDeafened,
   });
 
   // Listen for incoming calls
@@ -144,10 +148,12 @@ const CallListener = () => {
           <VoiceCallUI
             callState={callState}
             isMuted={isMuted}
+            isDeafened={isDeafened}
             callDuration={callDuration}
             otherName={otherName}
             onEndCall={handleEndCall}
             onToggleMute={toggleMute}
+            onToggleDeafen={toggleDeafen}
           />
         </div>
       )}

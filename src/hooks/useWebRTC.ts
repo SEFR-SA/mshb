@@ -14,12 +14,16 @@ interface UseWebRTCOptions {
   sessionId: string | null;
   isCaller: boolean;
   onEnded?: () => void;
+  initialMuted?: boolean;
+  initialDeafened?: boolean;
 }
 
-export function useWebRTC({ sessionId, isCaller, onEnded }: UseWebRTCOptions) {
+export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, initialDeafened = false }: UseWebRTCOptions) {
   const [callState, setCallState] = useState<CallState>("idle");
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(initialMuted);
+  const [isDeafened, setIsDeafened] = useState(initialDeafened);
   const [callDuration, setCallDuration] = useState(0);
+  const remoteAudiosRef = useRef<HTMLAudioElement[]>([]);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -57,17 +61,22 @@ export function useWebRTC({ sessionId, isCaller, onEnded }: UseWebRTCOptions) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
+      // Apply initial mute
+      if (initialMuted) {
+        stream.getAudioTracks().forEach((t) => { t.enabled = false; });
+      }
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
     } catch (error) {
       console.error('[WebRTC] getUserMedia failed:', error);
-      // Continue without audio so the UI still renders
     }
 
     // Play remote audio
     pc.ontrack = (event) => {
       const audio = new Audio();
       audio.srcObject = event.streams[0];
+      audio.muted = initialDeafened;
       audio.play().catch(() => {});
+      remoteAudiosRef.current.push(audio);
     };
 
     pc.onicecandidate = (event) => {
@@ -256,6 +265,19 @@ export function useWebRTC({ sessionId, isCaller, onEnded }: UseWebRTCOptions) {
     }
   }, []);
 
+  const toggleDeafen = useCallback(() => {
+    setIsDeafened((prev) => {
+      const next = !prev;
+      remoteAudiosRef.current.forEach((a) => { a.muted = next; });
+      // Deafen implies mute
+      if (next) {
+        localStreamRef.current?.getAudioTracks().forEach((t) => { t.enabled = false; });
+        setIsMuted(true);
+      }
+      return next;
+    });
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -268,10 +290,12 @@ export function useWebRTC({ sessionId, isCaller, onEnded }: UseWebRTCOptions) {
   return {
     callState,
     isMuted,
+    isDeafened,
     callDuration,
     startCall,
     answerCall,
     endCall,
     toggleMute,
+    toggleDeafen,
   };
 }
