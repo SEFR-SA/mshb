@@ -1,33 +1,56 @@
 
 
-## Screen Share: Upgrade to 1080p 60fps
+## Screen Share: True "Source" Quality at 60fps
 
-### Current State
-Both screen share implementations (`VoiceConnectionBar.tsx` for server voice channels and `useWebRTC.ts` for 1-to-1 calls) use `{ video: true, audio: false }` with no resolution or framerate constraints. The browser defaults to roughly 720p at 15-30fps.
+### Problem
+The current screen share constraints hardcode `width: { ideal: 1920 }, height: { ideal: 1080 }`, which tells the browser to target 1080p. Users with 2K or 4K monitors are being downscaled to 1080p instead of sharing at their native resolution.
 
-### Change
-Update the `getDisplayMedia` constraints in both files to request 1080p at 60fps using `ideal` values (graceful fallback if hardware can't deliver).
+### Solution
+Remove the explicit width/height constraints entirely and only request 60fps. This lets the browser capture at the monitor's native resolution ("Source" quality). Additionally, configure the WebRTC sender encoding to prevent the browser from downscaling under bandwidth pressure.
+
+### Changes
+
+**`src/components/server/VoiceConnectionBar.tsx`**
+
+1. Update `getDisplayMedia` constraints -- remove width/height, keep only frameRate:
+   ```text
+   navigator.mediaDevices.getDisplayMedia({
+     video: { frameRate: { ideal: 60 } },
+     audio: false,
+   })
+   ```
+
+2. After adding the screen share track to each peer connection, configure the RTP sender to prevent downscaling:
+   - Set `degradationPreference` to `"maintain-resolution"` (drop framerate before resolution)
+   - Set `maxBitrate` to 8 Mbps to allow high-fidelity streaming
+   - Apply this in `startScreenShare` (for existing peers) and in `createPeerConnection` (for new peers joining while already sharing)
+
+**`src/hooks/useWebRTC.ts`**
+
+1. Same `getDisplayMedia` constraint change (remove width/height, keep frameRate: 60)
+
+2. Same sender encoding configuration after `pc.addTrack` for the screen share track
+
+### Technical Details
+
+Helper function added to both files:
+```text
+async function configureHighQualitySender(sender: RTCRtpSender, maxBitrate: number) {
+  try {
+    const params = sender.getParameters();
+    if (!params.encodings || params.encodings.length === 0) {
+      params.encodings = [{}];
+    }
+    params.encodings[0].maxBitrate = maxBitrate;
+    params.degradationPreference = "maintain-resolution";
+    await sender.setParameters(params);
+  } catch {}
+}
+```
+
+Called with 8,000,000 (8 Mbps) for screen share senders wherever they are created.
 
 ### Files Modified
-
-**`src/components/server/VoiceConnectionBar.tsx`** -- update `getDisplayMedia` call  
-**`src/hooks/useWebRTC.ts`** -- update `getDisplayMedia` call
-
-Both will change from:
-```text
-navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
-```
-To:
-```text
-navigator.mediaDevices.getDisplayMedia({
-  video: {
-    width: { ideal: 1920 },
-    height: { ideal: 1080 },
-    frameRate: { ideal: 60 },
-  },
-  audio: false,
-})
-```
-
-Using `ideal` ensures the browser targets 1080p/60fps but gracefully falls back on lower-end hardware without throwing errors.
+- `src/components/server/VoiceConnectionBar.tsx` -- source-quality constraints + sender encoding
+- `src/hooks/useWebRTC.ts` -- source-quality constraints + sender encoding
 
