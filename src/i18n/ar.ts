@@ -83,6 +83,10 @@ export default {
     mute: "كتم",
     unmute: "إلغاء الكتم",
     duration: "المدة",
+    shareScreen: "مشاركة الشاشة",
+    stopSharing: "إيقاف المشاركة",
+    userSharing: "{{name}} يشارك شاشته",
+    youAreSharing: "أنت تشارك شاشتك",
   },
   actions: {
     edit: "تعديل",

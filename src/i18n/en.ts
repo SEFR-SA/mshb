@@ -83,6 +83,10 @@ export default {
     mute: "Mute",
     unmute: "Unmute",
     duration: "Duration",
+    shareScreen: "Share Screen",
+    stopSharing: "Stop Sharing",
+    userSharing: "{{name}} is sharing their screen",
+    youAreSharing: "You are sharing your screen",
   },
   actions: {
     edit: "Edit",

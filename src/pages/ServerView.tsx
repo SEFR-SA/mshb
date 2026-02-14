@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import ChannelSidebar from "@/components/server/ChannelSidebar";
 import ServerChannelChat from "@/components/server/ServerChannelChat";
 import ServerMemberList from "@/components/server/ServerMemberList";
+import ScreenShareViewer from "@/components/server/ScreenShareViewer";
 import VoiceConnectionManager from "@/components/server/VoiceConnectionBar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ const ServerView = () => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const { t } = useTranslation();
-  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice } = useVoiceChannel();
+  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStream, screenSharerName } = useVoiceChannel();
   const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean } | null>(null);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [showMembers, setShowMembers] = useState(!isMobile);
@@ -168,6 +169,9 @@ const ServerView = () => {
       <div className="flex h-full">
         <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
         <div className="flex-1 flex flex-col min-h-0">
+          {remoteScreenStream && (
+            <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} />
+          )}
           <div className="flex-1 min-h-0">{renderMainContent()}</div>
         </div>
         {voiceChannel && (

@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PhoneOff, Mic, MicOff, Volume2, HeadphoneOff } from "lucide-react";
+import { PhoneOff, Mic, MicOff, Volume2, HeadphoneOff, Monitor, MonitorOff } from "lucide-react";
 import type { CallState } from "@/hooks/useWebRTC";
 
 interface VoiceCallUIProps {
@@ -15,6 +15,10 @@ interface VoiceCallUIProps {
   onEndCall: () => void;
   onToggleMute: () => void;
   onToggleDeafen: () => void;
+  isScreenSharing?: boolean;
+  remoteScreenStream?: MediaStream | null;
+  onStartScreenShare?: () => void;
+  onStopScreenShare?: () => void;
 }
 
 const formatDuration = (seconds: number) => {
@@ -23,7 +27,24 @@ const formatDuration = (seconds: number) => {
   return `${m}:${s}`;
 };
 
-const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, otherAvatar, onEndCall, onToggleMute, onToggleDeafen }: VoiceCallUIProps) => {
+const ScreenShareVideo = ({ stream }: { stream: MediaStream }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      className="w-full max-h-[400px] rounded-lg bg-black object-contain"
+    />
+  );
+};
+
+const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, otherAvatar, onEndCall, onToggleMute, onToggleDeafen, isScreenSharing, remoteScreenStream, onStartScreenShare, onStopScreenShare }: VoiceCallUIProps) => {
   const { t } = useTranslation();
 
   if (callState === "idle" || callState === "ended") return null;
@@ -34,7 +55,6 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
     <div className="flex flex-col items-center justify-center gap-4 py-8 bg-card/80 backdrop-blur-sm border-b border-border/50 min-h-[200px]">
       {callState === "ringing" ? (
         <>
-          {/* Pulsing avatar ring */}
           <div className="relative">
             <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" style={{ width: 88, height: 88, top: -4, left: -4 }} />
             <Avatar className="h-20 w-20 ring-4 ring-primary/30">
@@ -52,7 +72,19 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
         </>
       ) : (
         <>
-          {/* Connected state */}
+          {/* Remote screen share */}
+          {remoteScreenStream && (
+            <div className="w-full px-4 space-y-1">
+              <p className="text-xs text-muted-foreground text-center">{t("calls.userSharing", { name: otherName })}</p>
+              <ScreenShareVideo stream={remoteScreenStream} />
+            </div>
+          )}
+
+          {/* Local sharing indicator */}
+          {isScreenSharing && !remoteScreenStream && (
+            <p className="text-xs text-green-500 font-medium">{t("calls.youAreSharing")}</p>
+          )}
+
           <div className="relative">
             <Avatar className="h-[72px] w-[72px]">
               <AvatarImage src={otherAvatar || ""} />
@@ -84,6 +116,17 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
             >
               {isDeafened ? <HeadphoneOff className="h-5 w-5 text-destructive" /> : <Volume2 className="h-5 w-5" />}
             </Button>
+            {onStartScreenShare && onStopScreenShare && (
+              <Button
+                variant={isScreenSharing ? "secondary" : "ghost"}
+                size="icon"
+                className="h-10 w-10 rounded-full"
+                onClick={isScreenSharing ? onStopScreenShare : onStartScreenShare}
+                title={isScreenSharing ? t("calls.stopSharing") : t("calls.shareScreen")}
+              >
+                {isScreenSharing ? <MonitorOff className="h-5 w-5 text-green-500" /> : <Monitor className="h-5 w-5" />}
+              </Button>
+            )}
             <Button variant="destructive" size="icon" className="h-10 w-10 rounded-full" onClick={onEndCall} title={t("calls.endCall")}>
               <PhoneOff className="h-5 w-5" />
             </Button>
