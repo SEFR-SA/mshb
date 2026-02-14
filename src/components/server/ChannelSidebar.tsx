@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock } from "lucide-react";
+import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -13,6 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import ServerSettingsDialog from "./ServerSettingsDialog";
 
@@ -71,6 +73,17 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [serverMembers, setServerMembers] = useState<ServerMember[]>([]);
   const [voiceParticipants, setVoiceParticipants] = useState<Map<string, VoiceParticipant[]>>(new Map());
 
+  // Edit/Delete/Manage members state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editChannel, setEditChannel] = useState<Channel | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editIsPrivate, setEditIsPrivate] = useState(false);
+  const [editMembers, setEditMembers] = useState<string[]>([]);
+  const [manageMembersOpen, setManageMembersOpen] = useState(false);
+  const [manageMembersChannel, setManageMembersChannel] = useState<Channel | null>(null);
+  const [manageMembersSelected, setManageMembersSelected] = useState<string[]>([]);
+  const [deleteChannelId, setDeleteChannelId] = useState<string | null>(null);
+
   const isAdmin = server?.owner_id === user?.id;
 
   useEffect(() => {
@@ -89,7 +102,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     return () => { channel.unsubscribe(); };
   }, [serverId]);
 
-  // Fetch server members for private channel member picker
   const fetchServerMembers = useCallback(async () => {
     const { data } = await supabase
       .from("server_members" as any)
@@ -105,7 +117,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setServerMembers((profiles || []) as ServerMember[]);
   }, [serverId, user?.id]);
 
-  // Fetch voice participants
   const fetchVoiceParticipants = useCallback(async () => {
     const voiceChannelIds = channels.filter((c) => c.type === "voice").map((c) => c.id);
     if (voiceChannelIds.length === 0) { setVoiceParticipants(new Map()); return; }
@@ -142,7 +153,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     fetchVoiceParticipants();
   }, [fetchVoiceParticipants]);
 
-  // Realtime for voice participants
   useEffect(() => {
     if (channels.filter((c) => c.type === "voice").length === 0) return;
     const sub = supabase
@@ -163,7 +173,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     } as any).select().maybeSingle();
 
     if (newChannel && isPrivate) {
-      // Add selected members + creator to channel_members
       const membersToAdd = [...selectedMembers, user?.id].filter(Boolean).map((uid) => ({
         channel_id: (newChannel as any).id,
         user_id: uid,
@@ -192,6 +201,86 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     window.location.href = "/";
   };
 
+  // --- Edit Channel ---
+  const openEditDialog = async (ch: Channel) => {
+    setEditChannel(ch);
+    setEditName(ch.name);
+    setEditIsPrivate(ch.is_private);
+    setEditMembers([]);
+    if (ch.is_private) {
+      await loadChannelMembers(ch.id, setEditMembers);
+    }
+    if (serverMembers.length === 0) await fetchServerMembers();
+    setEditOpen(true);
+  };
+
+  const handleEditChannel = async () => {
+    if (!editChannel || !editName.trim()) return;
+    const name = editName.trim().toLowerCase().replace(/\s+/g, "-");
+    await supabase.from("channels" as any).update({ name, is_private: editIsPrivate } as any).eq("id", editChannel.id);
+
+    if (!editIsPrivate && editChannel.is_private) {
+      // Switched from private to public — remove all channel_members
+      await supabase.from("channel_members" as any).delete().eq("channel_id", editChannel.id);
+    } else if (editIsPrivate) {
+      // Sync members
+      await syncChannelMembers(editChannel.id, editMembers);
+    }
+
+    toast({ title: t("channels.updated") });
+    setEditOpen(false);
+    setEditChannel(null);
+  };
+
+  // --- Manage Members ---
+  const openManageMembers = async (ch: Channel) => {
+    setManageMembersChannel(ch);
+    setManageMembersSelected([]);
+    await loadChannelMembers(ch.id, setManageMembersSelected);
+    if (serverMembers.length === 0) await fetchServerMembers();
+    setManageMembersOpen(true);
+  };
+
+  const handleSaveMembers = async () => {
+    if (!manageMembersChannel) return;
+    await syncChannelMembers(manageMembersChannel.id, manageMembersSelected);
+    toast({ title: t("channels.updated") });
+    setManageMembersOpen(false);
+    setManageMembersChannel(null);
+  };
+
+  // --- Delete Channel ---
+  const handleDeleteChannel = async () => {
+    if (!deleteChannelId) return;
+    await supabase.from("channels" as any).delete().eq("id", deleteChannelId);
+    toast({ title: t("channels.deleted") });
+    setDeleteChannelId(null);
+  };
+
+  // --- Helpers ---
+  const loadChannelMembers = async (channelId: string, setter: React.Dispatch<React.SetStateAction<string[]>>) => {
+    const { data } = await supabase.from("channel_members" as any).select("user_id").eq("channel_id", channelId);
+    if (data) {
+      setter((data as any[]).map((d) => d.user_id).filter((id: string) => id !== user?.id));
+    }
+  };
+
+  const syncChannelMembers = async (channelId: string, selectedIds: string[]) => {
+    const { data: existing } = await supabase.from("channel_members" as any).select("user_id").eq("channel_id", channelId);
+    const existingIds = (existing as any[] || []).map((d) => d.user_id);
+    const allSelected = [...new Set([...selectedIds, user?.id].filter(Boolean) as string[])];
+
+    const toAdd = allSelected.filter((id) => !existingIds.includes(id));
+    const toRemove = existingIds.filter((id: string) => !allSelected.includes(id));
+
+    if (toAdd.length > 0) {
+      await supabase.from("channel_members" as any).insert(toAdd.map((uid) => ({ channel_id: channelId, user_id: uid })) as any);
+    }
+    if (toRemove.length > 0) {
+      await supabase.from("channel_members" as any).delete().eq("channel_id", channelId).in("user_id", toRemove);
+    }
+  };
+
   const grouped = channels.reduce<Record<string, Channel[]>>((acc, ch) => {
     (acc[ch.category] = acc[ch.category] || []).push(ch);
     return acc;
@@ -202,6 +291,65 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
   };
+
+  const renderAdminDropdown = (ch: Channel) => {
+    if (!isAdmin) return null;
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-0.5 rounded transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreVertical className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={() => openEditDialog(ch)}>
+            <Pencil className="h-3.5 w-3.5 me-2" />
+            {t("channels.edit")}
+          </DropdownMenuItem>
+          {ch.is_private && (
+            <DropdownMenuItem onClick={() => openManageMembers(ch)}>
+              <Users className="h-3.5 w-3.5 me-2" />
+              {t("channels.manageMembers")}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem className="text-destructive" onClick={() => setDeleteChannelId(ch.id)}>
+            <Trash2 className="h-3.5 w-3.5 me-2" />
+            {t("channels.delete")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
+  const renderMemberPicker = (selected: string[], toggle: (id: string) => void) => (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">{t("channels.selectMembers")}</Label>
+      <ScrollArea className="h-[200px] border border-border rounded-md p-2">
+        {serverMembers.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">{t("common.loading")}</p>
+        ) : (
+          serverMembers.map((m) => (
+            <label key={m.user_id} className="flex items-center gap-3 py-1.5 px-1 rounded hover:bg-muted/50 cursor-pointer">
+              <Checkbox
+                checked={selected.includes(m.user_id)}
+                onCheckedChange={() => toggle(m.user_id)}
+              />
+              <Avatar className="h-6 w-6">
+                <AvatarImage src={m.avatar_url || ""} />
+                <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
+                  {(m.display_name || m.username || "U").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm truncate">{m.display_name || m.username || "User"}</span>
+            </label>
+          ))
+        )}
+      </ScrollArea>
+    </div>
+  );
 
   return (
     <>
@@ -242,13 +390,16 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   const hasParticipants = participants.length > 0;
                   return (
                     <div key={ch.id}>
-                      <button
-                        onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name })}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
-                      >
-                        <ChannelIcon className={`h-4 w-4 shrink-0 ${hasParticipants && !ch.is_private ? "text-green-500" : ""}`} />
-                        <span className="truncate">{ch.name}</span>
-                      </button>
+                      <div className="group flex items-center">
+                        <button
+                          onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name })}
+                          className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
+                        >
+                          <ChannelIcon className={`h-4 w-4 shrink-0 ${hasParticipants && !ch.is_private ? "text-green-500" : ""}`} />
+                          <span className="truncate">{ch.name}</span>
+                        </button>
+                        {renderAdminDropdown(ch)}
+                      </div>
                       {participants.map((p) => (
                         <div key={p.user_id} className="flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground">
                           <Avatar className="h-5 w-5">
@@ -264,21 +415,23 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   );
                 }
                 return (
-                  <NavLink
-                    key={ch.id}
-                    to={`/server/${serverId}/channel/${ch.id}`}
-                    onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private })}
-                    className={({ isActive }) =>
-                      `flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
-                        isActive || ch.id === activeChannelId
-                          ? "bg-sidebar-accent text-foreground font-medium"
-                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
-                      }`
-                    }
-                  >
-                    <ChannelIcon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{ch.name}</span>
-                  </NavLink>
+                  <div key={ch.id} className="group flex items-center">
+                    <NavLink
+                      to={`/server/${serverId}/channel/${ch.id}`}
+                      onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private })}
+                      className={({ isActive }) =>
+                        `flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
+                          isActive || ch.id === activeChannelId
+                            ? "bg-sidebar-accent text-foreground font-medium"
+                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
+                        }`
+                      }
+                    >
+                      <ChannelIcon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{ch.name}</span>
+                    </NavLink>
+                    {renderAdminDropdown(ch)}
+                  </div>
                 );
               })}
             </div>
@@ -295,6 +448,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         </div>
       </div>
 
+      {/* Create Channel Dialog */}
       <Dialog open={createOpen} onOpenChange={(open) => {
         setCreateOpen(open);
         if (!open) { setIsPrivate(false); setSelectedMembers([]); }
@@ -334,32 +488,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
               />
             </div>
 
-            {isPrivate && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">{t("channels.selectMembers")}</Label>
-                <ScrollArea className="h-[200px] border border-border rounded-md p-2">
-                  {serverMembers.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">{t("common.loading")}</p>
-                  ) : (
-                    serverMembers.map((m) => (
-                      <label key={m.user_id} className="flex items-center gap-3 py-1.5 px-1 rounded hover:bg-muted/50 cursor-pointer">
-                        <Checkbox
-                          checked={selectedMembers.includes(m.user_id)}
-                          onCheckedChange={() => toggleMember(m.user_id)}
-                        />
-                        <Avatar className="h-6 w-6">
-                          <AvatarImage src={m.avatar_url || ""} />
-                          <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
-                            {(m.display_name || m.username || "U").charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm truncate">{m.display_name || m.username || "User"}</span>
-                      </label>
-                    ))
-                  )}
-                </ScrollArea>
-              </div>
-            )}
+            {isPrivate && renderMemberPicker(selectedMembers, toggleMember)}
 
             <Button onClick={handleCreateChannel} disabled={!newName.trim()} className="w-full">
               {t("channels.create")}
@@ -367,6 +496,80 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Channel Dialog */}
+      <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) setEditChannel(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("channels.edit")}</DialogTitle>
+            <DialogDescription>{t("channels.editDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder={t("channels.namePlaceholder")}
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleEditChannel()}
+            />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="edit-private-toggle" className="text-sm font-medium">{t("channels.private")}</Label>
+                <p className="text-xs text-muted-foreground">{t("channels.privateDesc")}</p>
+              </div>
+              <Switch
+                id="edit-private-toggle"
+                checked={editIsPrivate}
+                onCheckedChange={(checked) => {
+                  setEditIsPrivate(checked);
+                  if (checked && serverMembers.length === 0) fetchServerMembers();
+                }}
+              />
+            </div>
+
+            {editIsPrivate && renderMemberPicker(editMembers, (id) =>
+              setEditMembers((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
+            )}
+
+            <Button onClick={handleEditChannel} disabled={!editName.trim()} className="w-full">
+              {t("actions.save")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Members Dialog */}
+      <Dialog open={manageMembersOpen} onOpenChange={(open) => { setManageMembersOpen(open); if (!open) setManageMembersChannel(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("channels.manageMembers")}</DialogTitle>
+            <DialogDescription>{t("channels.manageMembersDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {renderMemberPicker(manageMembersSelected, (id) =>
+              setManageMembersSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
+            )}
+            <Button onClick={handleSaveMembers} className="w-full">
+              {t("actions.save")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Channel Confirmation */}
+      <AlertDialog open={!!deleteChannelId} onOpenChange={(open) => { if (!open) setDeleteChannelId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("channels.delete")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("channels.deleteConfirm")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteChannel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {t("channels.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ServerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} serverId={serverId} />
     </>
