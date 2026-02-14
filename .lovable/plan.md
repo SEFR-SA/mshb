@@ -1,66 +1,73 @@
 
-## Fix Voice Call UI Not Appearing
 
-### Issues Identified
+## Fix: Voice Call UI Not Appearing
 
-1. **Silent failure in `setupPeerConnection()`**: The `useWebRTC.ts` hook calls `navigator.mediaDevices.getUserMedia()` at line 57 without try-catch error handling. If the microphone isn't accessible (common in preview/test environments), the promise rejects silently and `setCallState("ringing")` never executes because the component fails before returning the peer connection.
+### Root Cause
 
-2. **Timing issue with sessionId**: In `Chat.tsx`, the `initiateCall()` function:
-   - Inserts a call session into the database
-   - Sets `callSessionId` state
-   - Calls `startCall()` after a 500ms timeout
-   - However, `startCall()` depends on `sessionId` being non-null, and it's created from the `useWebRTC` hook which receives `callSessionId` as a prop
-   - The timeout helps, but it's unreliable
+In `Chat.tsx`, the `initiateCall` function does:
+
+```typescript
+setCallSessionId(data.id);    // React state update (batched, not immediate)
+setIsCallerState(true);        // Also batched
+setTimeout(() => startCall(), 500);  // startCall still sees sessionId = null
+```
+
+The `startCall` function from `useWebRTC` is a memoized callback that captures `sessionId` from the **current render**. Even after 500ms, React may have re-rendered, but the `startCall` reference inside `initiateCall`'s closure is still the old one where `sessionId` was `null`. So it hits `if (!sessionId) return;` and does nothing.
 
 ### Solution
 
-**File: `src/hooks/useWebRTC.ts`**
-- Wrap `navigator.mediaDevices.getUserMedia()` in a try-catch block
-- Log errors to console for debugging
-- If getUserMedia fails, still set `callState = "ringing"` so the UI appears
-- The UI will show but audio won't work - this allows testing the UI/UX without microphone access
-- Add console.error for debugging
+**1. `src/hooks/useWebRTC.ts`** -- Make `startCall` accept an optional `overrideSessionId` parameter so it doesn't depend on React state timing:
 
-**File: `src/pages/Chat.tsx`** (optional improvement)
-- Ensure the call state is properly initialized before calling functions
-- The current implementation should work with the above fix, but we can make it more robust
-
-### Technical Details
-
-**In `useWebRTC.ts`, `setupPeerConnection()` function:**
 ```typescript
-const setupPeerConnection = useCallback(async () => {
-  try {
-    const pc = new RTCPeerConnection(ICE_SERVERS);
-    pcRef.current = pc;
+const startCall = useCallback(async (overrideSessionId?: string) => {
+  const sid = overrideSessionId || sessionId;
+  if (!sid) return;
+  setCallState("ringing");
+  const pc = await setupPeerConnection();
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    localStreamRef.current = stream;
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-    // ... rest of code
-  } catch (error) {
-    console.error('[WebRTC] getUserMedia failed:', error);
-    // Still return a peer connection so the UI can work
-    const pc = new RTCPeerConnection(ICE_SERVERS);
-    pcRef.current = pc;
-    pc.onconnectionstatechange = () => {
-      // ... existing logic
-    };
-    return pc;
-  }
-}, [cleanup, startDurationTimer]);
+  setTimeout(() => {
+    channelRef.current?.send({
+      type: "broadcast",
+      event: "call-offer",
+      payload: { sdp: offer },
+    });
+  }, 1000);
+}, [sessionId, setupPeerConnection]);
 ```
 
-This allows the ringing UI to appear even without microphone access, making it testable in sandbox/preview environments.
+**2. `src/pages/Chat.tsx`** -- Pass the session ID directly to `startCall` instead of relying on state:
+
+```typescript
+const initiateCall = async () => {
+  if (!threadId || !user || !otherId || callSessionId) return;
+  const { data } = await supabase
+    .from("call_sessions")
+    .insert({ caller_id: user.id, callee_id: otherId, thread_id: threadId } as any)
+    .select("id")
+    .single();
+  if (data) {
+    setCallSessionId(data.id);
+    setIsCallerState(true);
+    // Pass session ID directly -- don't rely on state update
+    setTimeout(() => startCall(data.id), 500);
+  }
+};
+```
+
+**3. Also fix the signaling channel setup** -- The `useEffect` in `useWebRTC` that sets up the broadcast channel (line 106) depends on `sessionId`. But since `startCall` may fire before the channel effect runs, the `channelRef.current` may still be `null` when the offer is sent. To fix this, `startCall` should also set up the channel inline if it's not yet available, or we ensure the channel is ready before sending the offer.
+
+The safest approach: in `startCall`, if `channelRef.current` is null, create and subscribe the channel inline before sending the offer.
 
 ### Files to Modify
 
-| File | Change |
+| File | Changes |
 |------|--------|
-| `src/hooks/useWebRTC.ts` | Add try-catch around `getUserMedia()` call in `setupPeerConnection()` function |
+| `src/hooks/useWebRTC.ts` | Add `overrideSessionId` param to `startCall`; ensure channel is ready before sending offer |
+| `src/pages/Chat.tsx` | Pass `data.id` directly to `startCall(data.id)` |
 
 ### Expected Result
 
-- When clicking "Start Voice Call", the ringing UI panel will appear with the other user's avatar and "Calling..." text
-- The connected state will appear when both users accept the call (if both have audio access)
-- If microphone is unavailable, the UI still renders for testing purposes, with an error logged to console
+Clicking "Start Voice Call" will immediately show the ringing UI with the pulsing avatar animation and "Calling..." text, regardless of React state timing.
+
