@@ -82,3 +82,45 @@ export const FriendListSkeleton = ({ count = 6 }: { count?: number }) => (
     ))}
   </div>
 );
+
+export const SettingsSkeleton = () => (
+  <div className="p-4 max-w-lg mx-auto space-y-6">
+    {/* Banner */}
+    <Skeleton className="h-36 w-full rounded-lg" />
+    {/* Avatar + name */}
+    <div className="flex items-center gap-4 -mt-12 ps-4">
+      <Skeleton className="h-20 w-20 rounded-full border-4 border-background shrink-0" />
+      <div className="mt-8 space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-20" />
+      </div>
+    </div>
+    {/* Profile card */}
+    <div className="rounded-lg border border-border p-6 space-y-4">
+      <Skeleton className="h-4 w-24 mb-2" />
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-9 w-full rounded-md" />
+        </div>
+      ))}
+    </div>
+    {/* Theme card */}
+    <div className="rounded-lg border border-border p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-3 w-16" />
+        <Skeleton className="h-6 w-12 rounded-full" />
+      </div>
+      <div className="flex gap-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-8 rounded-full" />
+        ))}
+      </div>
+    </div>
+    {/* Buttons */}
+    <div className="space-y-3">
+      <Skeleton className="h-10 w-full rounded-md" />
+      <Skeleton className="h-10 w-full rounded-md" />
+    </div>
+  </div>
+);

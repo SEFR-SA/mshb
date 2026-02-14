@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Camera, LogOut, ImagePlus, Download, Palette } from "lucide-react";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
+import { SettingsSkeleton } from "@/components/skeletons/SkeletonLoaders";
 
 const STATUSES: UserStatus[] = ["online", "busy", "dnd", "idle", "invisible"];
 const DURATIONS = ["15m", "1h", "8h", "24h", "3d", "forever"] as const;
@@ -162,8 +163,10 @@ const Settings = () => {
 
   const initials = (profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase();
 
+  if (!profile) return <SettingsSkeleton />;
+
   return (
-    <div className="p-4 max-w-lg mx-auto space-y-6 overflow-y-auto h-full">
+    <div className="p-4 max-w-lg mx-auto space-y-6 overflow-y-auto h-full animate-fade-in">
       <h2 className="text-xl font-bold">{t("profile.title")}</h2>
 
       {/* Banner */}
