@@ -110,6 +110,8 @@ export default {
     banner: "الغلاف",
     uploadBanner: "رفع صورة الغلاف",
     memberSince: "عضو منذ",
+    joinedServer: "انضم للسيرفر",
+    messageUser: "رسالة @{{name}}",
   },
   presence: {
     online: "متصل",
