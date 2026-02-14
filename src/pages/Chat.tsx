@@ -23,6 +23,7 @@ import { uploadChatFile } from "@/lib/uploadChatFile";
 import VoiceCallUI from "@/components/chat/VoiceCallUI";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
+import EmojiPicker from "@/components/chat/EmojiPicker";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -516,6 +517,7 @@ const Chat = () => {
       <div className="p-3 glass border-t border-border/50">
         <div className="flex items-center gap-2">
           <FileAttachmentButton onFileSelect={setSelectedFile} disabled={sending} />
+          <EmojiPicker onEmojiSelect={(emoji) => setNewMsg((prev) => prev + emoji)} />
           <Input
             value={newMsg}
             onChange={(e) => { setNewMsg(e.target.value); broadcastTyping(); }}

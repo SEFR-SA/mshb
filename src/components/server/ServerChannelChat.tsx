@@ -13,6 +13,7 @@ import FileAttachmentButton from "@/components/chat/FileAttachmentButton";
 import MessageFilePreview from "@/components/chat/MessageFilePreview";
 import { Progress } from "@/components/ui/progress";
 import MentionPopup from "./MentionPopup";
+import EmojiPicker from "@/components/chat/EmojiPicker";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -271,6 +272,7 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
             if (f.size > MAX_FILE_SIZE) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
             setSelectedFile(f);
           }} />
+          <EmojiPicker onEmojiSelect={(emoji) => { setNewMsg((prev) => prev + emoji); inputRef.current?.focus(); }} />
           <Input
             ref={inputRef}
             value={newMsg}
