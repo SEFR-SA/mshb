@@ -2,12 +2,12 @@ import React from "react";
 import { Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme } from "@/contexts/ThemeContext";
+
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { usePendingFriendRequests } from "@/hooks/usePendingFriendRequests";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Settings, Moon, Sun, Globe, LogOut, Users, Download, Mic, MicOff, Headphones, HeadphoneOff } from "lucide-react";
+import { MessageSquare, Settings, Users, Download, Mic, MicOff, Headphones, HeadphoneOff } from "lucide-react";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import CallListener from "@/components/chat/CallListener";
 import ServerRail from "@/components/server/ServerRail";
@@ -18,8 +18,7 @@ import { usePresence } from "@/hooks/usePresence";
 
 const AppLayout = () => {
   const { t, i18n } = useTranslation();
-  const { user, profile, signOut } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { user, profile } = useAuth();
   const isMobile = useIsMobile();
   const { totalUnread } = useUnreadCount();
   const { pendingCount } = usePendingFriendRequests();
@@ -41,13 +40,6 @@ const AppLayout = () => {
     if (!installPrompt) return;
     installPrompt.prompt();
     setInstallPrompt(null);
-  };
-
-  const toggleLang = () => {
-    const next = i18n.language === "ar" ? "en" : "ar";
-    i18n.changeLanguage(next);
-    document.documentElement.dir = next === "ar" ? "rtl" : "ltr";
-    document.documentElement.lang = next;
   };
 
   const navItems = [
@@ -94,20 +86,16 @@ const AppLayout = () => {
           </nav>
           <div className="p-3 border-t border-border/50 space-y-2">
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={toggleTheme} title={theme === "dark" ? t("profile.light") : t("profile.dark")}>
-                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-              <Button variant="ghost" size="icon" onClick={toggleLang} title={i18n.language === "ar" ? "English" : "العربية"}>
-                <Globe className="h-4 w-4" />
-              </Button>
               {installPrompt && (
                 <Button variant="ghost" size="icon" onClick={handleInstall} title={t("app.install")}>
                   <Download className="h-4 w-4" />
                 </Button>
               )}
-              <Button variant="ghost" size="icon" onClick={signOut} title={t("auth.logout")}>
-                <LogOut className="h-4 w-4" />
-              </Button>
+              <NavLink to="/settings">
+                <Button variant="ghost" size="icon" title={t("nav.settings")}>
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </NavLink>
             </div>
             <div className="flex items-center gap-2">
               <NavLink to="/settings" className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors flex-1 min-w-0">
@@ -154,14 +142,6 @@ const AppLayout = () => {
         {isMobile && (
           <header className="flex items-center justify-between p-3 glass border-b border-border/50">
             <h1 className="text-lg font-bold text-primary">✦ {t("app.name")}</h1>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" onClick={toggleTheme}>
-                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-              <Button variant="ghost" size="icon" onClick={toggleLang}>
-                <Globe className="h-4 w-4" />
-              </Button>
-            </div>
           </header>
         )}
 
