@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { MemberListSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -42,6 +43,7 @@ const ServerMemberList = ({ serverId }: Props) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -60,6 +62,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       setMembers(
         (data as any[]).map((m) => ({ ...m, profile: profileMap.get(m.user_id) }))
       );
+      setLoading(false);
     };
     load();
 
@@ -125,6 +128,10 @@ const ServerMemberList = ({ serverId }: Props) => {
         <h3 className="text-xs font-semibold uppercase text-muted-foreground">{t("servers.members")} — {members.length}</h3>
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-4">
+        {loading ? (
+          <MemberListSkeleton count={8} />
+        ) : (
+          <div className="animate-fade-in space-y-4">
         {sortedGroups.map(([label, mems]) => (
           <div key={label}>
             <span className="text-[11px] font-semibold uppercase text-muted-foreground px-1">{label} — {mems.length}</span>
@@ -223,6 +230,8 @@ const ServerMemberList = ({ serverId }: Props) => {
             </div>
           </div>
         ))}
+          </div>
+        )}
       </div>
     </div>
   );

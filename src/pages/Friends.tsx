@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { FriendListSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +34,7 @@ const Friends = () => {
 
   const [friends, setFriends] = useState<FriendshipWithProfile[]>([]);
   const [pending, setPending] = useState<FriendshipWithProfile[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [searching, setSearching] = useState(false);
@@ -66,6 +68,7 @@ const Friends = () => {
 
     setFriends(withProfiles.filter((f) => f.status === "accepted"));
     setPending(withProfiles.filter((f) => f.status === "pending"));
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -185,30 +188,36 @@ const Friends = () => {
 
         {/* All Friends */}
         <TabsContent value="all" className="flex-1 overflow-y-auto mt-3 space-y-1">
-          {friends.length === 0 && (
-            <p className="text-center text-muted-foreground py-8">{t("friends.noFriends")}</p>
-          )}
-          {friends.map((f) => (
-            <div key={f.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="relative">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={f.profile?.avatar_url || ""} />
-                  <AvatarFallback className="bg-primary/20 text-primary">{initials(f.profile)}</AvatarFallback>
-                </Avatar>
-                <StatusBadge status={(getUserStatus(f.profile) === "offline" ? "invisible" : getUserStatus(f.profile)) as UserStatus} className="absolute bottom-0 end-0" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{f.profile?.display_name || f.profile?.username || "User"}</p>
-                {f.profile?.username && <p className="text-xs text-muted-foreground">@{f.profile.username}</p>}
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => startDM(f.requester_id === user?.id ? f.addressee_id : f.requester_id)} title="Message">
-                <MessageSquare className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => removeFriend(f.id)} title={t("friends.remove")}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
+          {loading ? (
+            <FriendListSkeleton count={6} />
+          ) : (
+            <div className="animate-fade-in space-y-1">
+              {friends.length === 0 && (
+                <p className="text-center text-muted-foreground py-8">{t("friends.noFriends")}</p>
+              )}
+              {friends.map((f) => (
+                <div key={f.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="relative">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={f.profile?.avatar_url || ""} />
+                      <AvatarFallback className="bg-primary/20 text-primary">{initials(f.profile)}</AvatarFallback>
+                    </Avatar>
+                    <StatusBadge status={(getUserStatus(f.profile) === "offline" ? "invisible" : getUserStatus(f.profile)) as UserStatus} className="absolute bottom-0 end-0" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{f.profile?.display_name || f.profile?.username || "User"}</p>
+                    {f.profile?.username && <p className="text-xs text-muted-foreground">@{f.profile.username}</p>}
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => startDM(f.requester_id === user?.id ? f.addressee_id : f.requester_id)} title="Message">
+                    <MessageSquare className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => removeFriend(f.id)} title={t("friends.remove")}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </TabsContent>
 
         {/* Pending */}

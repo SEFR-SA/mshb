@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { MessageSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { getEmojiClass } from "@/lib/emojiUtils";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
@@ -59,6 +60,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -100,6 +102,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
       setMessages((prev) => [...reversed, ...prev]);
     } else {
       setMessages(reversed);
+      setMessagesLoading(false);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     }
   }, [channelId, loadProfiles, isLocked]);
@@ -120,6 +123,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
     if (isLocked) return;
     setMessages([]);
     setHasMore(true);
+    setMessagesLoading(true);
     loadMessages();
   }, [channelId, isLocked]);
 
@@ -247,6 +251,10 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {messagesLoading ? (
+          <MessageSkeleton count={6} />
+        ) : (
+          <div className="animate-fade-in space-y-3">
         {hasMore && messages.length > 0 && (
           <div className="text-center">
             <Button variant="ghost" size="sm" onClick={() => loadMessages(messages[0]?.created_at)} className="text-xs text-muted-foreground">
@@ -286,6 +294,8 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
           );
         })}
         <div ref={messagesEndRef} />
+          </div>
+        )}
       </div>
 
       <div className="p-3 border-t border-border/50">
