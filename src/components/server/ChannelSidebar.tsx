@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown } from "lucide-react";
+import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
 import { ChannelListSkeleton } from "@/components/skeletons/SkeletonLoaders";
@@ -101,6 +101,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [manageMembersSelected, setManageMembersSelected] = useState<string[]>([]);
   const [deleteChannelId, setDeleteChannelId] = useState<string | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [useCustomCategory, setUseCustomCategory] = useState(false);
+  const [customCategory, setCustomCategory] = useState("");
 
   const toggleCategory = (cat: string) => {
     setCollapsedCategories(prev => {
@@ -197,13 +199,17 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   // Speaking state is now driven by is_speaking column in voice_channel_participants
   // The existing postgres_changes subscription (line 168-173) already refetches on changes
 
+  const existingCategories = useMemo(() => [...new Set(channels.map(ch => ch.category))], [channels]);
+
   const handleCreateChannel = async () => {
     if (!newName.trim() || newName.trim().length > 17) return;
+    const categoryToSave = useCustomCategory ? customCategory.trim() : newCategory;
+    if (!categoryToSave) return;
     const { data: newChannel } = await supabase.from("channels" as any).insert({
       server_id: serverId,
       name: newName.trim().toLowerCase().replace(/\s+/g, "-"),
       type: newType,
-      category: newCategory,
+      category: categoryToSave,
       is_private: isPrivate,
     } as any).select().maybeSingle();
 
@@ -220,6 +226,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setNewName("");
     setIsPrivate(false);
     setSelectedMembers([]);
+    setUseCustomCategory(false);
+    setCustomCategory("");
     setCreateOpen(false);
   };
 
@@ -398,9 +406,14 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
               <Copy className="h-3.5 w-3.5" />
             </Button>
             {isAdmin && (
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)} title={t("servers.settings")}>
-                <Settings className="h-3.5 w-3.5" />
-              </Button>
+              <>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setUseCustomCategory(true); setCustomCategory(""); setNewCategory(""); setCreateOpen(true); }} title="Create Section">
+                  <FolderPlus className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)} title={t("servers.settings")}>
+                  <Settings className="h-3.5 w-3.5" />
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -579,7 +592,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       {/* Create Channel Dialog */}
       <Dialog open={createOpen} onOpenChange={(open) => {
         setCreateOpen(open);
-        if (!open) { setIsPrivate(false); setSelectedMembers([]); }
+        if (!open) { setIsPrivate(false); setSelectedMembers([]); setUseCustomCategory(false); setCustomCategory(""); }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -587,6 +600,40 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             <DialogDescription>{t("channels.createDesc")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            {/* Category selector */}
+            <div>
+              <Label className="text-sm font-medium">Section</Label>
+              <Select
+                value={useCustomCategory ? "__new__" : newCategory}
+                onValueChange={(val) => {
+                  if (val === "__new__") {
+                    setUseCustomCategory(true);
+                    setCustomCategory("");
+                  } else {
+                    setUseCustomCategory(false);
+                    setNewCategory(val);
+                  }
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
+                <SelectContent>
+                  {existingCategories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                  <SelectItem value="__new__">+ New Section...</SelectItem>
+                </SelectContent>
+              </Select>
+              {useCustomCategory && (
+                <Input
+                  className="mt-2"
+                  placeholder="Section name"
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  autoFocus
+                />
+              )}
+            </div>
+
             <div>
               <Input
                 placeholder={t("channels.namePlaceholder")}
