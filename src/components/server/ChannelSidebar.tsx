@@ -72,6 +72,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [serverMembers, setServerMembers] = useState<ServerMember[]>([]);
   const [voiceParticipants, setVoiceParticipants] = useState<Map<string, VoiceParticipant[]>>(new Map());
+  const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
 
   // Edit/Delete/Manage members state
   const [editOpen, setEditOpen] = useState(false);
@@ -161,6 +162,29 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       .subscribe();
     return () => { sub.unsubscribe(); };
   }, [serverId, fetchVoiceParticipants]);
+
+  // Subscribe to speaking broadcasts from voice channels
+  useEffect(() => {
+    const voiceChannelIds = channels.filter((c) => c.type === "voice").map((c) => c.id);
+    if (voiceChannelIds.length === 0) return;
+
+    const subs = voiceChannelIds.map((chId) => {
+      return supabase
+        .channel(`voice-signal-${chId}`)
+        .on("broadcast", { event: "voice-speaking" }, ({ payload }) => {
+          if (!payload) return;
+          setSpeakingUsers((prev) => {
+            const next = new Set(prev);
+            if (payload.isSpeaking) next.add(payload.userId);
+            else next.delete(payload.userId);
+            return next;
+          });
+        })
+        .subscribe();
+    });
+
+    return () => { subs.forEach((s) => s.unsubscribe()); };
+  }, [channels]);
 
   const handleCreateChannel = async () => {
     if (!newName.trim()) return;
@@ -404,7 +428,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                       </div>
                       {participants.map((p) => (
                         <div key={p.user_id} className="flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground">
-                          <Avatar className="h-5 w-5">
+                          <Avatar className={`h-5 w-5 transition-all duration-150 ${speakingUsers.has(p.user_id) ? "ring-2 ring-[#00db21]" : ""}`}>
                             <AvatarImage src={p.avatar_url || ""} />
                             <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
                               {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
