@@ -151,9 +151,37 @@ export function useWebRTC({ sessionId, isCaller, onEnded }: UseWebRTCOptions) {
     };
   }, [sessionId, isCaller, cleanup, processQueuedCandidates]);
 
-  const startCall = useCallback(async () => {
-    if (!sessionId) return;
+  const startCall = useCallback(async (overrideSessionId?: string) => {
+    const sid = overrideSessionId || sessionId;
+    if (!sid) return;
     setCallState("ringing");
+
+    // Ensure signaling channel is ready before sending offer
+    if (!channelRef.current) {
+      const channel = supabase.channel(`call-${sid}`);
+      channelRef.current = channel;
+      channel
+        .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
+          const pc = pcRef.current;
+          if (!pc) return;
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+          await processQueuedCandidates();
+        })
+        .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
+          const pc = pcRef.current;
+          if (!pc) return;
+          if (pc.remoteDescription) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch {}
+          } else {
+            iceCandidateQueue.current.push(payload.candidate);
+          }
+        })
+        .on("broadcast", { event: "call-end" }, () => {
+          cleanup();
+        })
+        .subscribe();
+    }
+
     const pc = await setupPeerConnection();
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -166,7 +194,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded }: UseWebRTCOptions) {
         payload: { sdp: offer },
       });
     }, 1000);
-  }, [sessionId, setupPeerConnection]);
+  }, [sessionId, setupPeerConnection, cleanup, processQueuedCandidates]);
 
   const answerCall = useCallback(async () => {
     if (!sessionId) return;

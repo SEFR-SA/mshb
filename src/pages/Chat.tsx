@@ -117,7 +117,8 @@ const Chat = () => {
     if (data) {
       setCallSessionId(data.id);
       setIsCallerState(true);
-      setTimeout(() => startCall(), 500);
+      // Pass session ID directly to bypass React state timing
+      startCall(data.id);
     }
   };
 
