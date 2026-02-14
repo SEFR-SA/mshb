@@ -218,6 +218,12 @@ export default {
     namePlaceholder: "قناة-جديدة",
     text: "قناة نصية",
     voice: "قناة صوتية",
+    private: "خاصة",
+    public: "عامة",
+    privateDesc: "فقط الأعضاء المحددون يمكنهم الوصول إلى هذه القناة",
+    selectMembers: "اختر الأعضاء",
+    privateChannel: "هذه القناة خاصة",
+    noAccess: "ليس لديك صلاحية الوصول إلى هذه القناة. اطلب من المشرف إضافتك.",
   },
   audio: {
     mute: "كتم الميكروفون",

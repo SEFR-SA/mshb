@@ -218,6 +218,12 @@ export default {
     namePlaceholder: "new-channel",
     text: "Text Channel",
     voice: "Voice Channel",
+    private: "Private",
+    public: "Public",
+    privateDesc: "Only selected members can access this channel",
+    selectMembers: "Select Members",
+    privateChannel: "This channel is private",
+    noAccess: "You don't have access to this channel. Ask an admin to add you.",
   },
   audio: {
     mute: "Mute",

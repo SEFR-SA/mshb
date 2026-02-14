@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import ChannelSidebar from "@/components/server/ChannelSidebar";
 import ServerChannelChat from "@/components/server/ServerChannelChat";
@@ -13,20 +14,37 @@ import { Menu, Users } from "lucide-react";
 const ServerView = () => {
   const { serverId, channelId } = useParams<{ serverId: string; channelId?: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const isMobile = useIsMobile();
-  const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string } | null>(null);
+  const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean } | null>(null);
+  const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [voiceChannel, setVoiceChannel] = useState<{ id: string; name: string } | null>(null);
   const [showMembers, setShowMembers] = useState(!isMobile);
+
+  // Check access for private channels
+  useEffect(() => {
+    if (!activeChannel || !user) { setHasAccess(true); return; }
+    if (!activeChannel.is_private) { setHasAccess(true); return; }
+    // Check if user is in channel_members
+    supabase.from("channel_members" as any)
+      .select("id")
+      .eq("channel_id", activeChannel.id)
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setHasAccess(!!data);
+      });
+  }, [activeChannel?.id, activeChannel?.is_private, user?.id]);
 
   // Auto-select first text channel if none specified
   useEffect(() => {
     if (!serverId) return;
     if (channelId) {
-      supabase.from("channels" as any).select("id, name, type").eq("id", channelId).maybeSingle()
+      supabase.from("channels" as any).select("id, name, type, is_private").eq("id", channelId).maybeSingle()
         .then(({ data }) => { if (data) setActiveChannel(data as any); });
       return;
     }
-    supabase.from("channels" as any).select("id, name, type").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
+    supabase.from("channels" as any).select("id, name, type, is_private").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
       .then(({ data }) => {
         if (data && (data as any[]).length > 0) {
           const ch = (data as any[])[0];
@@ -35,8 +53,7 @@ const ServerView = () => {
       });
   }, [serverId, channelId, navigate]);
 
-  const handleChannelSelect = (channel: { id: string; name: string; type: string }) => {
-    // Only set text channels as the active viewed channel
+  const handleChannelSelect = (channel: { id: string; name: string; type: string; is_private?: boolean }) => {
     if (channel.type !== "voice") {
       setActiveChannel(channel);
     }
@@ -44,9 +61,8 @@ const ServerView = () => {
 
   const handleVoiceChannelSelect = (channel: { id: string; name: string }) => {
     setVoiceChannel(channel);
-    // If no text channel is active, auto-select the first one
     if (!activeChannel && serverId) {
-      supabase.from("channels" as any).select("id, name, type").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
+      supabase.from("channels" as any).select("id, name, type, is_private").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
         .then(({ data }) => {
           if (data && (data as any[]).length > 0) {
             const ch = (data as any[])[0];
@@ -63,7 +79,7 @@ const ServerView = () => {
     if (!activeChannel) {
       return <div className="flex-1 flex items-center justify-center text-muted-foreground">Select a channel</div>;
     }
-    return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} />;
+    return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} isPrivate={activeChannel.is_private} hasAccess={hasAccess} />;
   };
 
   if (isMobile) {
