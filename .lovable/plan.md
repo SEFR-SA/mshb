@@ -1,103 +1,72 @@
 
 
-## Discord-Style Persistent Voice Call with Text Channel Browsing
+## Universal Mute and Deafen Buttons
 
-### Current Behavior
-When a voice channel is clicked, the entire main content area is replaced with `VoiceChannelPanel`, blocking access to text channels.
+### Overview
+Add persistent mute and deafen toggle buttons next to the user's name/avatar at the bottom of the desktop sidebar. These work as a global audio preference -- when muted/deafened, any voice channel or 1-to-1 call the user joins will start with mic disabled / audio disabled, and the user must manually unmute/undeafen to talk/listen.
 
-### New Behavior
-Like Discord: joining a voice channel shows a small **voice status bar** at the bottom of the screen (showing channel name, mute/disconnect controls, and participant count). The main content area continues to show whichever **text channel** the user navigates to. Users can freely browse text channels while remaining connected to voice.
+### How It Works
 
-### Architecture Change
+1. **Global State via React Context**: Create a new `AudioSettingsContext` that stores `globalMuted` and `globalDeafened` booleans. This context wraps the app so all voice components can read it.
 
-The voice session becomes **server-level state** managed in `ServerView.tsx`, not tied to which channel is "active" in the main content area.
+2. **Sidebar UI**: Next to the user avatar in `AppLayout.tsx`, add two icon buttons:
+   - **Mic / MicOff**: Toggles global mute
+   - **Headphones / HeadphoneOff** (custom via lucide): Toggles global deafen (deafen also implies mute)
 
-```text
-+------------------+-------------------------------------+-----------------+
-| Channel Sidebar  |   Text Channel Chat (always shown)  | Member List     |
-|                  |                                     |                 |
-|                  |                                     |                 |
-|                  +-------------------------------------+                 |
-|                  | [Voice Bar: "chilling" | Mute | Disconnect]          |
-+------------------+-------------------------------------+-----------------+
-```
+3. **Integration with Server Voice (`VoiceConnectionBar.tsx`)**:
+   - On mount (joining a voice channel), read `globalMuted` and `globalDeafened` from context
+   - If globally muted, disable mic track immediately after acquiring it
+   - If globally deafened, also mute all incoming audio elements
+   - The bar's local mute button syncs with the global state
 
-### Changes
+4. **Integration with 1-to-1 Calls (`useWebRTC.ts`)**:
+   - After `getUserMedia`, check global mute/deafen state and disable tracks accordingly
+   - Remote audio playback is suppressed when deafened
+   - Accept an `initialMuted` and `initialDeafened` parameter
 
-**`src/pages/ServerView.tsx`**
-- Add state: `voiceChannel: { id, name } | null` to track the active voice session independently from the viewed text channel
-- When a voice channel is clicked in the sidebar, set `voiceChannel` state (don't change `activeChannel` -- keep showing current text channel)
-- If no text channel is active when voice is clicked, auto-select the first text channel for the main area
-- Render `VoiceConnectionBar` at the bottom of the main content area when `voiceChannel` is set
-- The main content area always renders `ServerChannelChat` (never `VoiceChannelPanel` full-screen)
-
-**`src/components/server/VoiceConnectionBar.tsx`** (new)
-- A compact bottom bar showing: voice channel name, participant avatars (small), mute toggle, disconnect button
-- Contains all WebRTC logic (extracted from current `VoiceChannelPanel`)
-- Auto-joins voice on mount, leaves on unmount or disconnect click
-- Shows participant count and mute state
-
-**`src/components/server/VoiceChannelPanel.tsx`**
-- Remove WebRTC/join/leave logic (moved to `VoiceConnectionBar`)
-- Keep it as a read-only display: when a voice channel is clicked, it could optionally show a "join voice" prompt or participant grid, but the main content area stays as text chat
-- Alternatively, this component is no longer rendered full-screen -- its participant grid can be embedded inside `VoiceConnectionBar` as an expandable section
-
-**`src/components/server/ChannelSidebar.tsx`**
-- Voice channel click behavior changes: instead of calling `onChannelSelect` with type "voice", call a new `onVoiceChannelSelect` callback
-- Text channel clicks continue working as before
-
-### Detailed Flow
-
-1. User clicks a voice channel in the sidebar
-2. `ServerView` sets `voiceChannel = { id, name }` and keeps the current text channel visible
-3. `VoiceConnectionBar` mounts at the bottom, acquires mic, joins the voice channel (inserts into `voice_channel_participants`, sets up WebRTC signaling)
-4. User can click any text channel -- the main area updates to show that text channel's chat
-5. The voice bar persists at the bottom across text channel navigation
-6. Clicking "Disconnect" in the bar clears `voiceChannel`, unmounts the bar, leaves the voice session
-
-### Technical Details
-
-**VoiceConnectionBar layout:**
-```text
-+-------------------------------------------------------+
-| [green dot] chilling  [avatar][avatar]  [Mute] [Hang] |
-+-------------------------------------------------------+
-```
-
-**Props for VoiceConnectionBar:**
-```typescript
-interface VoiceConnectionBarProps {
-  channelId: string;
-  channelName: string;
-  serverId: string;
-  onDisconnect: () => void;
-}
-```
-
-**ServerView state changes:**
-```typescript
-const [activeTextChannel, setActiveTextChannel] = useState<Channel | null>(null);
-const [voiceChannel, setVoiceChannel] = useState<{ id: string; name: string } | null>(null);
-```
-
-**ChannelSidebar prop changes:**
-```typescript
-interface Props {
-  serverId: string;
-  activeChannelId?: string;
-  onChannelSelect?: (channel: Channel) => void;
-  onVoiceChannelSelect?: (channel: { id: string; name: string }) => void;
-}
-```
+5. **Visual Feedback**: When globally muted, the mic icon turns red with a slash. When deafened, the headphones icon turns red. Both states persist across navigation.
 
 ### Files Summary
 
 | File | Action | Changes |
 |------|--------|---------|
-| `src/components/server/VoiceConnectionBar.tsx` | Create | Compact bottom bar with WebRTC voice, mute, disconnect |
-| `src/pages/ServerView.tsx` | Modify | Separate voice state from text channel state; always render text chat; render VoiceConnectionBar when in voice |
-| `src/components/server/ChannelSidebar.tsx` | Modify | Add `onVoiceChannelSelect` prop; voice clicks use new callback |
-| `src/components/server/VoiceChannelPanel.tsx` | Modify | Simplify to just a join prompt / participant display (no longer full-screen replacement) |
-| `src/i18n/en.ts` | Modify | Add voice bar translation keys |
-| `src/i18n/ar.ts` | Modify | Add Arabic voice bar translations |
+| `src/contexts/AudioSettingsContext.tsx` | Create | Context providing `globalMuted`, `globalDeafened`, toggle functions |
+| `src/components/layout/AppLayout.tsx` | Modify | Add mic and deafen buttons next to user avatar at bottom of sidebar |
+| `src/components/server/VoiceConnectionBar.tsx` | Modify | Read global mute/deafen on join; sync local state; suppress remote audio when deafened |
+| `src/hooks/useWebRTC.ts` | Modify | Accept initial mute/deafen; apply on setup; suppress remote audio when deafened |
+| `src/components/chat/CallListener.tsx` | Modify | Pass global mute/deafen state to useWebRTC |
+| `src/components/chat/VoiceCallUI.tsx` | Modify | Add deafen toggle button alongside mute |
+| `src/App.tsx` | Modify | Wrap app with `AudioSettingsProvider` |
+| `src/i18n/en.ts` | Modify | Add mute/deafen translation keys |
+| `src/i18n/ar.ts` | Modify | Add Arabic mute/deafen translations |
+
+### Technical Details
+
+**AudioSettingsContext:**
+```typescript
+interface AudioSettings {
+  globalMuted: boolean;
+  globalDeafened: boolean;
+  toggleGlobalMute: () => void;
+  toggleGlobalDeafen: () => void;
+}
+```
+- Deafen implies mute: toggling deafen ON also sets muted ON
+- Toggling deafen OFF only undeafens; mute stays as-is unless explicitly toggled
+
+**AppLayout sidebar addition (next to user avatar):**
+```text
+[Mic/MicOff] [Headphones/HeadphoneOff]  [Avatar] Username
+                                                  status text
+```
+
+**VoiceConnectionBar integration:**
+- After `getUserMedia`, if `globalMuted`: `stream.getAudioTracks().forEach(t => t.enabled = false)`
+- Store remote audio elements in a ref array; when `globalDeafened` changes, set `.muted` on all of them
+- Subscribe to context changes to live-toggle during an active session
+
+**useWebRTC integration:**
+- Store remote `Audio` elements in a ref
+- On `globalDeafened` change, toggle `.muted` on all remote audio elements
+- On `globalMuted` change, toggle `localStream.getAudioTracks()[0].enabled`
 
