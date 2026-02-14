@@ -3,12 +3,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTranslation } from "react-i18next";
 import ChannelSidebar from "@/components/server/ChannelSidebar";
 import ServerChannelChat from "@/components/server/ServerChannelChat";
 import ServerMemberList from "@/components/server/ServerMemberList";
 import VoiceConnectionBar from "@/components/server/VoiceConnectionBar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Menu, Users } from "lucide-react";
 
 const ServerView = () => {
@@ -16,10 +18,13 @@ const ServerView = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
   const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean } | null>(null);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [voiceChannel, setVoiceChannel] = useState<{ id: string; name: string } | null>(null);
   const [showMembers, setShowMembers] = useState(!isMobile);
+  const [pendingVoiceChannel, setPendingVoiceChannel] = useState<{ id: string; name: string } | null>(null);
+  const [switchDialogOpen, setSwitchDialogOpen] = useState(false);
 
   // Check access for private channels
   useEffect(() => {
@@ -60,6 +65,15 @@ const ServerView = () => {
   };
 
   const handleVoiceChannelSelect = (channel: { id: string; name: string }) => {
+    if (voiceChannel && voiceChannel.id !== channel.id) {
+      setPendingVoiceChannel(channel);
+      setSwitchDialogOpen(true);
+      return;
+    }
+    joinVoiceChannel(channel);
+  };
+
+  const joinVoiceChannel = (channel: { id: string; name: string }) => {
     setVoiceChannel(channel);
     if (!activeChannel && serverId) {
       supabase.from("channels" as any).select("id, name, type, is_private").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
@@ -73,6 +87,17 @@ const ServerView = () => {
     }
   };
 
+  const confirmSwitch = async () => {
+    if (voiceChannel && user) {
+      await supabase.from("voice_channel_participants").delete().eq("channel_id", voiceChannel.id).eq("user_id", user.id);
+    }
+    if (pendingVoiceChannel) {
+      joinVoiceChannel(pendingVoiceChannel);
+    }
+    setSwitchDialogOpen(false);
+    setPendingVoiceChannel(null);
+  };
+
   if (!serverId) return null;
 
   const renderMainContent = () => {
@@ -82,54 +107,81 @@ const ServerView = () => {
     return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} isPrivate={activeChannel.is_private} hasAccess={hasAccess} />;
   };
 
+  const switchDialog = (
+    <AlertDialog open={switchDialogOpen} onOpenChange={setSwitchDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("channels.switchVoice")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("channels.switchVoiceDesc", { name: pendingVoiceChannel?.name })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => { setSwitchDialogOpen(false); setPendingVoiceChannel(null); }}>
+            {t("common.cancel")}
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={confirmSwitch}>
+            {t("common.confirm")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   if (isMobile) {
     return (
-      <div className="flex flex-col h-full">
-        <div className="flex items-center gap-1 p-2 border-b border-border/50">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8"><Menu className="h-4 w-4" /></Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-[280px]">
-              <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
-            </SheetContent>
-          </Sheet>
-          <span className="text-sm font-medium flex-1 truncate">#{activeChannel?.name || "..."}</span>
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8"><Users className="h-4 w-4" /></Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="p-0 w-[280px]">
-              <ServerMemberList serverId={serverId} />
-            </SheetContent>
-          </Sheet>
+      <>
+        <div className="flex flex-col h-full">
+          <div className="flex items-center gap-1 p-2 border-b border-border/50">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8"><Menu className="h-4 w-4" /></Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-[280px]">
+                <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
+              </SheetContent>
+            </Sheet>
+            <span className="text-sm font-medium flex-1 truncate">#{activeChannel?.name || "..."}</span>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8"><Users className="h-4 w-4" /></Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="p-0 w-[280px]">
+                <ServerMemberList serverId={serverId} />
+              </SheetContent>
+            </Sheet>
+          </div>
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 min-h-0">{renderMainContent()}</div>
+            {voiceChannel && (
+              <VoiceConnectionBar channelId={voiceChannel.id} channelName={voiceChannel.name} serverId={serverId} onDisconnect={() => setVoiceChannel(null)} />
+            )}
+          </div>
         </div>
+        {switchDialog}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex h-full">
+        <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 min-h-0">{renderMainContent()}</div>
           {voiceChannel && (
             <VoiceConnectionBar channelId={voiceChannel.id} channelName={voiceChannel.name} serverId={serverId} onDisconnect={() => setVoiceChannel(null)} />
           )}
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-full">
-      <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex-1 min-h-0">{renderMainContent()}</div>
-        {voiceChannel && (
-          <VoiceConnectionBar channelId={voiceChannel.id} channelName={voiceChannel.name} serverId={serverId} onDisconnect={() => setVoiceChannel(null)} />
+        {showMembers && <ServerMemberList serverId={serverId} />}
+        {!showMembers && (
+          <Button variant="ghost" size="icon" className="absolute top-3 end-3" onClick={() => setShowMembers(true)}>
+            <Users className="h-4 w-4" />
+          </Button>
         )}
       </div>
-      {showMembers && <ServerMemberList serverId={serverId} />}
-      {!showMembers && (
-        <Button variant="ghost" size="icon" className="absolute top-3 end-3" onClick={() => setShowMembers(true)}>
-          <Users className="h-4 w-4" />
-        </Button>
-      )}
-    </div>
+      {switchDialog}
+    </>
   );
 };
 

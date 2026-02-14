@@ -137,6 +137,8 @@ export default {
     loading: "Loading...",
     error: "Something went wrong",
     retry: "Retry",
+    confirm: "Confirm",
+    cancel: "Cancel",
   },
   notifications: {
     newMessage: "You have a new message",
@@ -232,6 +234,8 @@ export default {
     updated: "Channel updated",
     manageMembers: "Manage Members",
     manageMembersDesc: "Add or remove members from this private channel.",
+    switchVoice: "You Sure?",
+    switchVoiceDesc: "Looks like you're in another voice channel. Are you sure you want to switch to {{name}}?",
   },
   audio: {
     mute: "Mute",

@@ -137,6 +137,8 @@ export default {
     loading: "جارٍ التحميل...",
     error: "حدث خطأ ما",
     retry: "إعادة المحاولة",
+    confirm: "تأكيد",
+    cancel: "إلغاء",
   },
   notifications: {
     newMessage: "لديك رسالة جديدة",
@@ -232,6 +234,8 @@ export default {
     updated: "تم تحديث القناة",
     manageMembers: "إدارة الأعضاء",
     manageMembersDesc: "إضافة أو إزالة أعضاء من هذه القناة الخاصة.",
+    switchVoice: "هل أنت متأكد؟",
+    switchVoiceDesc: "يبدو أنك في قناة صوتية أخرى. هل أنت متأكد أنك تريد الانتقال إلى {{name}}؟",
   },
   audio: {
     mute: "كتم الميكروفون",
