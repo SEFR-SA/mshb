@@ -27,6 +27,7 @@ import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import EmojiPicker from "@/components/chat/EmojiPicker";
 import GifPicker from "@/components/chat/GifPicker";
 import StickerPicker from "@/components/chat/StickerPicker";
+import ChatInputActions from "@/components/chat/ChatInputActions";
 import { MessageSkeleton } from "@/components/skeletons/SkeletonLoaders";
 
 type Message = Tables<"messages">;
@@ -543,18 +544,21 @@ const Chat = () => {
       {/* Composer */}
       <div className="p-3 glass border-t border-border/50">
         <div className="flex items-center gap-2">
-          <FileAttachmentButton onFileSelect={setSelectedFile} disabled={sending} />
-          <EmojiPicker onEmojiSelect={(emoji) => setNewMsg((prev) => prev + emoji)} />
-          <GifPicker onGifSelect={async (url) => {
-            if (!threadId || !user) return;
-            await supabase.from("messages").insert({ thread_id: threadId, author_id: user.id, content: "", file_url: url, file_type: "gif", file_name: "gif" } as any);
-            await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
-          }} />
-          <StickerPicker onStickerSelect={async (url) => {
-            if (!threadId || !user) return;
-            await supabase.from("messages").insert({ thread_id: threadId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
-            await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
-          }} />
+          <ChatInputActions
+            onFileSelect={setSelectedFile}
+            onEmojiSelect={(emoji) => setNewMsg((prev) => prev + emoji)}
+            onGifSelect={async (url) => {
+              if (!threadId || !user) return;
+              await supabase.from("messages").insert({ thread_id: threadId, author_id: user.id, content: "", file_url: url, file_type: "gif", file_name: "gif" } as any);
+              await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
+            }}
+            onStickerSelect={async (url) => {
+              if (!threadId || !user) return;
+              await supabase.from("messages").insert({ thread_id: threadId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
+              await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
+            }}
+            disabled={sending}
+          />
           <Input
             value={newMsg}
             onChange={(e) => { setNewMsg(e.target.value); broadcastTyping(); }}

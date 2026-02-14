@@ -23,6 +23,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import EmojiPicker from "@/components/chat/EmojiPicker";
 import GifPicker from "@/components/chat/GifPicker";
 import StickerPicker from "@/components/chat/StickerPicker";
+import ChatInputActions from "@/components/chat/ChatInputActions";
 import { MessageSkeleton } from "@/components/skeletons/SkeletonLoaders";
 
 type Message = Tables<"messages">;
@@ -468,18 +469,21 @@ const GroupChat = () => {
       {/* Composer */}
       <div className="p-3 glass border-t border-border/50">
         <div className="flex items-center gap-2">
-          <FileAttachmentButton onFileSelect={setSelectedFile} disabled={sending} />
-          <EmojiPicker onEmojiSelect={(emoji) => setNewMsg((prev) => prev + emoji)} />
-          <GifPicker onGifSelect={async (url) => {
-            if (!groupId || !user) return;
-            await supabase.from("messages").insert({ group_thread_id: groupId, author_id: user.id, content: "", file_url: url, file_type: "gif", file_name: "gif" } as any);
-            await supabase.from("group_threads").update({ last_message_at: new Date().toISOString() } as any).eq("id", groupId);
-          }} />
-          <StickerPicker onStickerSelect={async (url) => {
-            if (!groupId || !user) return;
-            await supabase.from("messages").insert({ group_thread_id: groupId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
-            await supabase.from("group_threads").update({ last_message_at: new Date().toISOString() } as any).eq("id", groupId);
-          }} />
+          <ChatInputActions
+            onFileSelect={setSelectedFile}
+            onEmojiSelect={(emoji) => setNewMsg((prev) => prev + emoji)}
+            onGifSelect={async (url) => {
+              if (!groupId || !user) return;
+              await supabase.from("messages").insert({ group_thread_id: groupId, author_id: user.id, content: "", file_url: url, file_type: "gif", file_name: "gif" } as any);
+              await supabase.from("group_threads").update({ last_message_at: new Date().toISOString() } as any).eq("id", groupId);
+            }}
+            onStickerSelect={async (url) => {
+              if (!groupId || !user) return;
+              await supabase.from("messages").insert({ group_thread_id: groupId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
+              await supabase.from("group_threads").update({ last_message_at: new Date().toISOString() } as any).eq("id", groupId);
+            }}
+            disabled={sending}
+          />
           <Input
             value={newMsg}
             onChange={(e) => { setNewMsg(e.target.value); broadcastTyping(); }}
