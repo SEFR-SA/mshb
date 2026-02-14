@@ -1,69 +1,33 @@
 
 
-## Persist Voice Channel Across Navigation + 1-Hour Idle Auto-Disconnect
+## Screen Share: Upgrade to 1080p 60fps
 
-### Problem
-`VoiceConnectionManager` is rendered inside `ServerView.tsx`. When navigating to Friends, Inbox, or any other page, `ServerView` unmounts, causing `VoiceConnectionManager` to unmount and trigger its cleanup (which disconnects from voice, stops streams, and removes the DB participant row).
+### Current State
+Both screen share implementations (`VoiceConnectionBar.tsx` for server voice channels and `useWebRTC.ts` for 1-to-1 calls) use `{ video: true, audio: false }` with no resolution or framerate constraints. The browser defaults to roughly 720p at 15-30fps.
 
-### Fix: Move VoiceConnectionManager to AppLayout
-
-**`src/components/layout/AppLayout.tsx`**
-
-- Import `VoiceConnectionManager` and `useVoiceChannel`
-- Render `VoiceConnectionManager` at the layout level (outside of `<Outlet />`), conditionally when `voiceChannel` is not null
-- This ensures the voice connection survives navigation between pages
-
-**`src/pages/ServerView.tsx`**
-
-- Remove the `VoiceConnectionManager` rendering (both mobile and desktop blocks)
-- The voice connection is now managed at the layout level, so ServerView no longer needs it
-
-### Add 1-Hour Idle Auto-Disconnect
-
-**`src/components/server/VoiceConnectionBar.tsx`**
-
-- Add an idle timer that tracks the last time the user was speaking (via the existing volume monitor)
-- Reset the timer every time `is_speaking` becomes `true`
-- If 1 hour passes without any speaking activity, automatically disconnect:
-  - Call `onDisconnect()` to clear voice channel context
-  - The cleanup effect handles the rest (closing peers, removing DB row, etc.)
-
----
-
-### Technical Details
-
-**AppLayout change:**
-```text
-// Inside AppLayout, after <Outlet />
-{voiceChannel && (
-  <VoiceConnectionManager
-    channelId={voiceChannel.id}
-    channelName={voiceChannel.name}
-    serverId={voiceChannel.serverId}
-    onDisconnect={disconnectVoice}
-  />
-)}
-```
-
-**Idle timer logic in VoiceConnectionBar:**
-```text
-const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-// Reset idle timer whenever user speaks
-const resetIdleTimer = useCallback(() => {
-  if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-  idleTimerRef.current = setTimeout(() => {
-    onDisconnect(); // auto-disconnect after 1 hour idle
-  }, 60 * 60 * 1000); // 1 hour
-}, [onDisconnect]);
-
-// Start idle timer on join, reset on speaking
-// In the volume monitor callback: if isSpeaking, call resetIdleTimer()
-// Clear timer on unmount
-```
+### Change
+Update the `getDisplayMedia` constraints in both files to request 1080p at 60fps using `ideal` values (graceful fallback if hardware can't deliver).
 
 ### Files Modified
-- `src/components/layout/AppLayout.tsx` -- render VoiceConnectionManager at layout level
-- `src/pages/ServerView.tsx` -- remove VoiceConnectionManager rendering
-- `src/components/server/VoiceConnectionBar.tsx` -- add 1-hour idle auto-disconnect timer
+
+**`src/components/server/VoiceConnectionBar.tsx`** -- update `getDisplayMedia` call  
+**`src/hooks/useWebRTC.ts`** -- update `getDisplayMedia` call
+
+Both will change from:
+```text
+navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+```
+To:
+```text
+navigator.mediaDevices.getDisplayMedia({
+  video: {
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    frameRate: { ideal: 60 },
+  },
+  audio: false,
+})
+```
+
+Using `ideal` ensures the browser targets 1080p/60fps but gracefully falls back on lower-end hardware without throwing errors.
 
