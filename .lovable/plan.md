@@ -1,82 +1,66 @@
 
+## Fix Voice Call UI Not Appearing
 
-## Enhanced Voice Call UI -- Discord-Style Split Panel
+### Issues Identified
 
-### Overview
-Replace the current thin call indicator bar with a full Discord-style voice call panel that splits the chat area vertically. When a call is active, the top portion of the chat becomes a dedicated call interface showing avatars, status, duration, and controls -- while the messages and composer remain visible below.
+1. **Silent failure in `setupPeerConnection()`**: The `useWebRTC.ts` hook calls `navigator.mediaDevices.getUserMedia()` at line 57 without try-catch error handling. If the microphone isn't accessible (common in preview/test environments), the promise rejects silently and `setCallState("ringing")` never executes because the component fails before returning the peer connection.
 
-### UI Design
+2. **Timing issue with sessionId**: In `Chat.tsx`, the `initiateCall()` function:
+   - Inserts a call session into the database
+   - Sets `callSessionId` state
+   - Calls `startCall()` after a 500ms timeout
+   - However, `startCall()` depends on `sessionId` being non-null, and it's created from the `useWebRTC` hook which receives `callSessionId` as a prop
+   - The timeout helps, but it's unreliable
 
-**Ringing State** (waiting for the other person to answer):
-- Dark panel taking roughly 40% of the chat height
-- Other user's avatar (large, centered) with a pulsing ring animation
-- "Calling [Name]..." text
-- Subtle animated dots or pulse effect to indicate waiting
-- End Call (red) button centered below
+### Solution
 
-**Connected State** (call in progress):
-- Same dark panel area
-- Both users' avatars side by side (or the other user's avatar prominently)
-- Green "Connected" badge
-- Live duration timer (MM:SS) prominently displayed
-- Control buttons row: Mute/Unmute, End Call
-- Subtle audio wave animation to indicate active call
+**File: `src/hooks/useWebRTC.ts`**
+- Wrap `navigator.mediaDevices.getUserMedia()` in a try-catch block
+- Log errors to console for debugging
+- If getUserMedia fails, still set `callState = "ringing"` so the UI appears
+- The UI will show but audio won't work - this allows testing the UI/UX without microphone access
+- Add console.error for debugging
 
-**Layout Split**:
-```text
-+------------------------------------------+
-|  Chat Header (with call button grayed)   |
-+------------------------------------------+
-|                                          |
-|          VOICE CALL PANEL                |
-|    [Avatar]   Calling User...            |
-|              00:23                       |
-|       [Mute]  [End Call]                 |
-|                                          |
-+------------------------------------------+
-|  Messages area (scrollable, shorter)     |
-|  ...                                     |
-+------------------------------------------+
-|  Composer                                |
-+------------------------------------------+
+**File: `src/pages/Chat.tsx`** (optional improvement)
+- Ensure the call state is properly initialized before calling functions
+- The current implementation should work with the above fix, but we can make it more robust
+
+### Technical Details
+
+**In `useWebRTC.ts`, `setupPeerConnection()` function:**
+```typescript
+const setupPeerConnection = useCallback(async () => {
+  try {
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+    pcRef.current = pc;
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    localStreamRef.current = stream;
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    // ... rest of code
+  } catch (error) {
+    console.error('[WebRTC] getUserMedia failed:', error);
+    // Still return a peer connection so the UI can work
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+    pcRef.current = pc;
+    pc.onconnectionstatechange = () => {
+      // ... existing logic
+    };
+    return pc;
+  }
+}, [cleanup, startDurationTimer]);
 ```
 
-### Changes
-
-**`src/components/chat/VoiceCallUI.tsx`** -- Complete redesign:
-- Instead of a single-line bar, render a vertical panel with `min-h-[200px]` and dark background (`bg-background/95` or similar)
-- **Ringing**: Large avatar with pulse animation ring, "Calling [Name]..." text, single End Call button
-- **Connected**: Avatar with green status dot, "[Name] -- Connected" label, `MM:SS` timer in large text, row of control buttons (Mute + End Call)
-- Accept `otherAvatar` prop (avatar URL) in addition to `otherName`
-- Smooth transitions between states using CSS transitions
-
-**`src/pages/Chat.tsx`** -- Pass avatar to VoiceCallUI:
-- Pass `otherProfile?.avatar_url` as a new `otherAvatar` prop to `VoiceCallUI`
-
-### VoiceCallUI Component Details
-
-Props to add:
-- `otherAvatar?: string` -- avatar URL of the other user
-
-Ringing layout:
-- Container: `flex flex-col items-center justify-center gap-4 py-8 bg-card/80 backdrop-blur border-b`
-- Large avatar (80x80) with animated pulsing ring border (`animate-pulse` on a ring element around the avatar)
-- Text: "Calling [otherName]..." with `animate-pulse` opacity
-- End Call button (red, rounded pill shape)
-
-Connected layout:
-- Container: same base styling, slightly different background tint (green accent)
-- Large avatar (72x72) with a small green dot
-- Name + "Connected" label
-- Duration timer in `text-2xl font-mono`
-- Button row: Mute toggle (ghost style, changes icon) + End Call (destructive)
+This allows the ringing UI to appear even without microphone access, making it testable in sandbox/preview environments.
 
 ### Files to Modify
 
-| File | Changes |
+| File | Change |
 |------|--------|
-| `src/components/chat/VoiceCallUI.tsx` | Full redesign with split panel UI |
-| `src/pages/Chat.tsx` | Pass `otherAvatar` prop |
+| `src/hooks/useWebRTC.ts` | Add try-catch around `getUserMedia()` call in `setupPeerConnection()` function |
 
-No database or i18n changes needed -- existing translation keys (`calls.calling`, `calls.connected`, etc.) already cover everything.
+### Expected Result
 
+- When clicking "Start Voice Call", the ringing UI panel will appear with the other user's avatar and "Calling..." text
+- The connected state will appear when both users accept the call (if both have audio access)
+- If microphone is unavailable, the UI still renders for testing purposes, with an error logged to console
