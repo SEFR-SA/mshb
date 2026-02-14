@@ -12,6 +12,7 @@ import Chat from "@/pages/Chat";
 import Friends from "@/pages/Friends";
 import GroupChat from "@/pages/GroupChat";
 import Settings from "@/pages/Settings";
+import ServerView from "@/pages/ServerView";
 import NotFound from "@/pages/NotFound";
 import "@/i18n";
 
@@ -39,6 +40,8 @@ const App = () => (
                 <Route path="chat/:threadId" element={<Chat />} />
                 <Route path="friends" element={<Friends />} />
                 <Route path="group/:groupId" element={<GroupChat />} />
+                <Route path="server/:serverId" element={<ServerView />} />
+                <Route path="server/:serverId/channel/:channelId" element={<ServerView />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
               <Route path="*" element={<NotFound />} />
