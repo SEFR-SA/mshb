@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Paperclip } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200 MB
 
 interface FileAttachmentButtonProps {
   onFileSelect: (file: File) => void;

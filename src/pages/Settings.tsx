@@ -24,7 +24,7 @@ const DURATION_MINUTES: Record<string, number | null> = {
 const Settings = () => {
   const { t, i18n } = useTranslation();
   const { user, profile, signOut, refreshProfile } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, accentColor, setAccentColor } = useTheme();
 
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -254,6 +254,43 @@ const Settings = () => {
               <span className="text-sm text-muted-foreground">{t("profile.light")}</span>
               <Switch checked={theme === "dark"} onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")} />
               <span className="text-sm text-muted-foreground">{t("profile.dark")}</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>{t("profile.accentColor")}</Label>
+            <div className="flex items-center gap-2 flex-wrap">
+              {[
+                { hex: "#084f00", label: "Green" },
+                { hex: "#2563eb", label: "Blue" },
+                { hex: "#7c3aed", label: "Purple" },
+                { hex: "#dc2626", label: "Red" },
+                { hex: "#ea580c", label: "Orange" },
+                { hex: "#0d9488", label: "Teal" },
+              ].map((preset) => (
+                <button
+                  key={preset.hex}
+                  onClick={() => setAccentColor(preset.hex)}
+                  className={`h-8 w-8 rounded-full border-2 transition-transform hover:scale-110 ${
+                    accentColor === preset.hex ? "border-foreground scale-110" : "border-transparent"
+                  }`}
+                  style={{ backgroundColor: preset.hex }}
+                  title={preset.label}
+                />
+              ))}
+              <label className="h-8 w-8 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center cursor-pointer hover:border-foreground transition-colors overflow-hidden relative" title="Custom">
+                <span className="text-xs text-muted-foreground">+</span>
+                <input
+                  type="color"
+                  value={accentColor}
+                  onChange={(e) => setAccentColor(e.target.value)}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </label>
+              {accentColor !== "#084f00" && (
+                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setAccentColor("#084f00")}>
+                  {t("profile.resetColor")}
+                </Button>
+              )}
             </div>
           </div>
           <div className="flex items-center justify-between">

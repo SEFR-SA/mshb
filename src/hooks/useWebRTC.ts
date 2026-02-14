@@ -158,11 +158,20 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     const pc = pcRef.current;
     if (!pc || isCameraOn) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
+      });
       cameraStreamRef.current = stream;
       const videoTrack = stream.getVideoTracks()[0];
       const sender = pc.addTrack(videoTrack, stream);
       cameraSenderRef.current = sender;
+      try {
+        const params = sender.getParameters();
+        if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+        params.encodings[0].maxBitrate = 4_000_000;
+        (params as any).degradationPreference = "maintain-resolution";
+        await sender.setParameters(params);
+      } catch {}
       setIsCameraOn(true);
       setLocalCameraStream(stream);
 

@@ -19,7 +19,7 @@ import GifPicker from "@/components/chat/GifPicker";
 import StickerPicker from "@/components/chat/StickerPicker";
 
 const PAGE_SIZE = 50;
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_FILE_SIZE = 200 * 1024 * 1024;
 
 interface Props {
   channelId: string;
@@ -176,7 +176,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
 
   const sendMessage = async () => {
     if ((!newMsg.trim() && !selectedFile) || !user || sending) return;
-    const content = newMsg.trim().slice(0, 2000);
+    const content = newMsg.trim().slice(0, 5000);
     setSending(true);
     setNewMsg("");
     const file = selectedFile;
@@ -328,7 +328,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
             }}
             placeholder={`${t("chat.placeholder")} #${channelName}`}
             className="flex-1"
-            maxLength={2000}
+            maxLength={5000}
           />
           <Button size="icon" onClick={sendMessage} disabled={(!newMsg.trim() && !selectedFile) || sending}>
             <Send className="h-4 w-4" />
