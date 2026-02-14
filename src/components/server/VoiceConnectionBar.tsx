@@ -377,6 +377,27 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     };
   }, [channelId, user, setupSignaling, createPeerConnection, updateSpeaking]);
 
+  // Mute: toggle local audio tracks
+  useEffect(() => {
+    localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = !globalMuted; });
+  }, [globalMuted]);
+
+  // Deafen: mute/unmute all remote audio elements
+  useEffect(() => {
+    remoteAudiosRef.current.forEach(a => { a.muted = globalDeafened; });
+  }, [globalDeafened]);
+
+  // Sync mute/deafen state to database
+  useEffect(() => {
+    if (!user || !isJoined) return;
+    supabase
+      .from("voice_channel_participants" as any)
+      .update({ is_muted: globalMuted, is_deafened: globalDeafened } as any)
+      .eq("channel_id", channelId)
+      .eq("user_id", user.id)
+      .then();
+  }, [globalMuted, globalDeafened, isJoined, user, channelId]);
+
   // Cleanup on unmount (disconnect)
   useEffect(() => {
     return () => {

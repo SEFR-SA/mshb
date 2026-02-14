@@ -594,6 +594,8 @@ export type Database = {
         Row: {
           channel_id: string
           id: string
+          is_deafened: boolean
+          is_muted: boolean
           is_screen_sharing: boolean
           is_speaking: boolean
           joined_at: string
@@ -602,6 +604,8 @@ export type Database = {
         Insert: {
           channel_id: string
           id?: string
+          is_deafened?: boolean
+          is_muted?: boolean
           is_screen_sharing?: boolean
           is_speaking?: boolean
           joined_at?: string
@@ -610,6 +614,8 @@ export type Database = {
         Update: {
           channel_id?: string
           id?: string
+          is_deafened?: boolean
+          is_muted?: boolean
           is_screen_sharing?: boolean
           is_speaking?: boolean
           joined_at?: string
