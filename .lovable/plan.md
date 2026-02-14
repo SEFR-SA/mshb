@@ -1,78 +1,123 @@
 
 
-## Fix Server Creation and Display Issues
+## Add @Mentions in Server Chat and Voice Channel Presence in Sidebar
 
-### Root Cause
+### Feature 1: @Mentions in Server Chat
 
-There are **circular RLS policy dependencies** preventing server creation and display:
+Add the ability to mention individual users (`@username`) or all members (`@all`) in server channel messages. Typing `@` will show a dropdown of server members to pick from.
 
-1. **Server INSERT fails (403)**: The `CreateServerDialog` calls `.insert(...).select("id")`. The `.select("id")` triggers a SELECT check on the `servers` table. The SELECT policy requires `is_server_member(auth.uid(), id)`, but the user isn't a member yet (the membership row hasn't been inserted). So the INSERT+SELECT combo is rejected.
+**New Component: `src/components/server/MentionPopup.tsx`**
+- A floating popup that appears above the input when `@` is typed
+- Fetches server members and filters by typed text after `@`
+- Shows an `@all` option at the top
+- Clicking a suggestion inserts the mention text into the input
+- Keyboard navigation (arrow keys + Enter) supported
 
-2. **Server Members INSERT fails**: The policy for inserting into `server_members` has an `EXISTS (SELECT 1 FROM servers WHERE id = ... AND owner_id = auth.uid())` check. This sub-query is subject to the `servers` SELECT RLS policy, which again requires `is_server_member` -- creating a circular dependency.
+**Modified: `src/components/server/ServerChannelChat.tsx`**
+- Track cursor position and detect `@` trigger in the input
+- Show `MentionPopup` when user types `@`
+- On mention select, replace the `@partial` text with `@username` or `@all`
+- Render mentions in messages with highlight styling: parse message content for `@username` and `@all` patterns and wrap them in styled spans
+- Create a `renderMessageContent` helper function that replaces `@username` patterns with highlighted `<span>` elements using the loaded profiles map
 
-3. **Join Server fails**: When joining via invite code, the user first does `SELECT id FROM servers WHERE invite_code = ?`. This fails because the SELECT policy requires membership, but the user isn't a member yet.
+**Message Rendering:**
+- `@all` rendered with a distinct background highlight (e.g., `bg-yellow-500/20 text-yellow-300`)
+- `@username` rendered with a primary color highlight (e.g., `bg-primary/20 text-primary`)
+- Current user's own mentions get extra emphasis
 
-4. **Servers not displaying (even when inserted via DB)**: The `ServerRail` first fetches `server_members`, then fetches servers using those IDs. The servers SELECT policy requires `is_server_member`, which works IF the membership exists. If you inserted a server directly in the DB without a corresponding `server_members` row, it won't show.
+### Feature 2: Voice Channel Participants in Sidebar
 
-### Fix: Database Migration
+Show users currently in a voice channel directly under the channel name in the sidebar, similar to Discord's layout. Active voice channels (with participants) show a green speaker icon instead of gray.
 
-Update three RLS policies to break the circular dependencies:
+**Modified: `src/components/server/ChannelSidebar.tsx`**
+- Fetch voice channel participants from `voice_channel_participants` table for all voice channels in the server
+- Subscribe to real-time changes on `voice_channel_participants` filtered by channel IDs
+- For each voice channel, display participant avatars and names in a nested list below the channel button
+- Change the `Volume2` icon color to `text-green-500` when the channel has one or more participants
+- Each participant row shows a small avatar and their display name, indented under the voice channel
 
-**1. `servers` SELECT policy** -- Allow owners and any authenticated user to read by invite code:
-```sql
-DROP POLICY "Members can view servers" ON public.servers;
-CREATE POLICY "Members can view servers" ON public.servers FOR SELECT
-  USING (
-    public.is_server_member(auth.uid(), id) 
-    OR owner_id = auth.uid()
-  );
+**Layout for voice channels in the sidebar:**
+```text
+  [green speaker] chilling          1:49:38
+      [avatar] black angel
+      [avatar] SeraphEcho
 ```
 
-**2. `server_members` INSERT policy** -- Allow self-insert for any authenticated user (needed for both creation and joining):
-```sql
-DROP POLICY "Admin can add members" ON public.server_members;
-CREATE POLICY "Admin can add members" ON public.server_members FOR INSERT
-  WITH CHECK (
-    public.is_server_admin(auth.uid(), server_id) 
-    OR (auth.uid() = user_id)
-  );
+### i18n Updates
+
+**`src/i18n/en.ts` and `src/i18n/ar.ts`:**
+- `mentions.all` - "everyone" / label for @all
+- `mentions.noResults` - "No members found"
+- `servers.voiceConnected` - connected duration or count label
+
+### Technical Details
+
+**MentionPopup component:**
+```typescript
+interface MentionPopupProps {
+  serverId: string;
+  filter: string; // text after @ 
+  onSelect: (mention: string) => void;
+  onClose: () => void;
+}
+```
+- Fetches `server_members` + profiles for the server
+- Filters by `display_name` or `username` matching the typed filter
+- Positioned absolutely above the input area
+
+**Message content rendering (in ServerChannelChat):**
+```typescript
+const renderContent = (content: string) => {
+  // Split on @mentions pattern: @username or @all
+  const parts = content.split(/(@\w+)/g);
+  return parts.map((part, i) => {
+    if (part === "@all") {
+      return <span key={i} className="bg-yellow-500/20 text-yellow-400 px-1 rounded font-medium">@all</span>;
+    }
+    if (part.startsWith("@")) {
+      const username = part.slice(1);
+      const matched = [...profiles.values()].find(p => p.username === username);
+      if (matched) {
+        return <span key={i} className="bg-primary/20 text-primary px-1 rounded font-medium">{part}</span>;
+      }
+    }
+    return part;
+  });
+};
 ```
 
-**3. `channels` INSERT policy** -- The owner creates a channel immediately after inserting themselves as a member. Since `is_server_admin` is SECURITY DEFINER (bypasses RLS), this should work once the member row exists. No change needed here.
+**Voice participants in ChannelSidebar:**
+```typescript
+// Fetch all voice_channel_participants for voice channels in this server
+const [voiceParticipants, setVoiceParticipants] = useState<Map<string, VoiceParticipant[]>>(new Map());
 
-### Fix: Join Server Flow
+useEffect(() => {
+  const voiceChannelIds = channels.filter(c => c.type === "voice").map(c => c.id);
+  if (voiceChannelIds.length === 0) return;
+  
+  // Fetch participants
+  supabase.from("voice_channel_participants")
+    .select("channel_id, user_id")
+    .in("channel_id", voiceChannelIds)
+    .then(({ data }) => {
+      // Group by channel_id, fetch profiles, update state
+    });
 
-The join flow needs to look up a server by invite code, but the SELECT policy won't match for non-members. Two options:
-- **Option A**: Add `OR invite_code IS NOT NULL` to SELECT (too permissive)
-- **Option B (chosen)**: Create a SECURITY DEFINER function `get_server_by_invite_code(text)` that bypasses RLS to look up the server ID
-
-```sql
-CREATE OR REPLACE FUNCTION public.get_server_id_by_invite(p_code text)
-RETURNS uuid
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT id FROM public.servers WHERE invite_code = p_code LIMIT 1;
-$$;
+  // Subscribe to realtime changes
+  const sub = supabase.channel(`voice-sidebar-${serverId}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "voice_channel_participants" }, () => reload())
+    .subscribe();
+  return () => sub.unsubscribe();
+}, [channels]);
 ```
 
-Then update `JoinServerDialog.tsx` to call `.rpc("get_server_id_by_invite", { p_code: code.trim() })` instead of querying the table directly.
+### Files Summary
 
-### Fix: `server_members` Update Policy
+| File | Action | Changes |
+|------|--------|---------|
+| `src/components/server/MentionPopup.tsx` | Create | Mention suggestion dropdown component |
+| `src/components/server/ServerChannelChat.tsx` | Modify | Add mention trigger logic, render mentions with highlights |
+| `src/components/server/ChannelSidebar.tsx` | Modify | Show voice participants under voice channels, green icon for active |
+| `src/i18n/en.ts` | Modify | Add mention-related translation keys |
+| `src/i18n/ar.ts` | Modify | Add Arabic mention translations |
 
-Currently there's an `Admin can update member roles` policy. We need to make sure it allows the owner to promote/demote. The current `is_server_admin` function checks for `role IN ('owner', 'admin')`, so this should already work.
-
-### Summary of Changes
-
-| File/Resource | Change |
-|---|---|
-| **New SQL migration** | Fix `servers` SELECT policy (add `OR owner_id = auth.uid()`); fix `server_members` INSERT policy (allow self-insert); add `get_server_id_by_invite` function |
-| `src/components/server/JoinServerDialog.tsx` | Use RPC function instead of direct table query for invite code lookup |
-
-### Technical Notes
-
-- The `is_server_member` and `is_server_admin` functions are `SECURITY DEFINER`, so they bypass RLS when checking membership. This is correct and intentional.
-- The self-insert allowance on `server_members` is safe because the role defaults to `'member'` and the user can only insert their own `user_id` (enforced by `auth.uid() = user_id`).
-- The `servers` SELECT policy adding `owner_id = auth.uid()` is safe -- owners should always be able to see their own servers.
