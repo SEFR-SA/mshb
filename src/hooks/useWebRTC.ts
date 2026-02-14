@@ -203,17 +203,21 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     if (!pc || isScreenSharing) return;
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 60 },
-        },
+        video: { frameRate: { ideal: 60 } },
         audio: false,
       });
       screenStreamRef.current = stream;
       const videoTrack = stream.getVideoTracks()[0];
       const sender = pc.addTrack(videoTrack, stream);
       screenSenderRef.current = sender;
+      // Prevent resolution downscaling
+      try {
+        const params = sender.getParameters();
+        if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+        params.encodings[0].maxBitrate = 8_000_000;
+        (params as any).degradationPreference = "maintain-resolution";
+        await sender.setParameters(params);
+      } catch {}
       setIsScreenSharing(true);
 
       videoTrack.onended = () => {
