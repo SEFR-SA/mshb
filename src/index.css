@@ -114,6 +114,12 @@
   *::-webkit-scrollbar-thumb {
     background-color: #4E5058;
     border-radius: 10px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  *:hover::-webkit-scrollbar-thumb {
+    opacity: 1;
   }
 
   *::-webkit-scrollbar-thumb:hover {
