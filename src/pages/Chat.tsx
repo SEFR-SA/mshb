@@ -407,23 +407,27 @@ const Chat = () => {
       />
 
       {/* Messages */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
         {messagesLoading ? <MessageSkeleton count={6} /> : (
           <div className="animate-fade-in">
         {hasMore && (
-          <div className="text-center">
+          <div className="text-center mb-2">
             <Button variant="ghost" size="sm" onClick={loadOlder} className="text-xs text-muted-foreground">
               {t("chat.loadMore")}
             </Button>
           </div>
         )}
-        {visibleMessages.map((msg) => {
+        {visibleMessages.map((msg, idx) => {
           const isMine = msg.author_id === user?.id;
           const isDeleted = msg.deleted_for_everyone;
           const msgAny = msg as any;
+          const prev = idx > 0 ? visibleMessages[idx - 1] : null;
+          const sameAuthor = prev && prev.author_id === msg.author_id;
+          const timeDiff = prev ? new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
+          const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
 
           return (
-            <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+            <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
               <div className={`group relative max-w-[75%] rounded-2xl px-4 py-2 ${
                 isDeleted
                   ? "bg-muted/50 italic text-muted-foreground"
