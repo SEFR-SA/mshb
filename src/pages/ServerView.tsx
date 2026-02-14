@@ -5,7 +5,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import ChannelSidebar from "@/components/server/ChannelSidebar";
 import ServerChannelChat from "@/components/server/ServerChannelChat";
 import ServerMemberList from "@/components/server/ServerMemberList";
-import VoiceChannelPanel from "@/components/server/VoiceChannelPanel";
+import VoiceConnectionBar from "@/components/server/VoiceConnectionBar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu, Users } from "lucide-react";
@@ -15,6 +15,7 @@ const ServerView = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string } | null>(null);
+  const [voiceChannel, setVoiceChannel] = useState<{ id: string; name: string } | null>(null);
   const [showMembers, setShowMembers] = useState(!isMobile);
 
   // Auto-select first text channel if none specified
@@ -35,9 +36,24 @@ const ServerView = () => {
   }, [serverId, channelId, navigate]);
 
   const handleChannelSelect = (channel: { id: string; name: string; type: string }) => {
-    setActiveChannel(channel);
-    if (channel.type === "voice") {
-      // Don't navigate for voice channels - show voice panel in place
+    // Only set text channels as the active viewed channel
+    if (channel.type !== "voice") {
+      setActiveChannel(channel);
+    }
+  };
+
+  const handleVoiceChannelSelect = (channel: { id: string; name: string }) => {
+    setVoiceChannel(channel);
+    // If no text channel is active, auto-select the first one
+    if (!activeChannel && serverId) {
+      supabase.from("channels" as any).select("id, name, type").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
+        .then(({ data }) => {
+          if (data && (data as any[]).length > 0) {
+            const ch = (data as any[])[0];
+            setActiveChannel(ch as any);
+            navigate(`/server/${serverId}/channel/${ch.id}`, { replace: true });
+          }
+        });
     }
   };
 
@@ -46,9 +62,6 @@ const ServerView = () => {
   const renderMainContent = () => {
     if (!activeChannel) {
       return <div className="flex-1 flex items-center justify-center text-muted-foreground">Select a channel</div>;
-    }
-    if (activeChannel.type === "voice") {
-      return <VoiceChannelPanel channelId={activeChannel.id} channelName={activeChannel.name} serverId={serverId} />;
     }
     return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} />;
   };
@@ -62,7 +75,7 @@ const ServerView = () => {
               <Button variant="ghost" size="icon" className="h-8 w-8"><Menu className="h-4 w-4" /></Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-[280px]">
-              <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} />
+              <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
             </SheetContent>
           </Sheet>
           <span className="text-sm font-medium flex-1 truncate">#{activeChannel?.name || "..."}</span>
@@ -75,15 +88,25 @@ const ServerView = () => {
             </SheetContent>
           </Sheet>
         </div>
-        {renderMainContent()}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 min-h-0">{renderMainContent()}</div>
+          {voiceChannel && (
+            <VoiceConnectionBar channelId={voiceChannel.id} channelName={voiceChannel.name} serverId={serverId} onDisconnect={() => setVoiceChannel(null)} />
+          )}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex h-full">
-      <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} />
-      {renderMainContent()}
+      <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 min-h-0">{renderMainContent()}</div>
+        {voiceChannel && (
+          <VoiceConnectionBar channelId={voiceChannel.id} channelName={voiceChannel.name} serverId={serverId} onDisconnect={() => setVoiceChannel(null)} />
+        )}
+      </div>
       {showMembers && <ServerMemberList serverId={serverId} />}
       {!showMembers && (
         <Button variant="ghost" size="icon" className="absolute top-3 end-3" onClick={() => setShowMembers(true)}>

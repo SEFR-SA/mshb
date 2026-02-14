@@ -40,9 +40,11 @@ interface Props {
   serverId: string;
   activeChannelId?: string;
   onChannelSelect?: (channel: { id: string; name: string; type: string }) => void;
+  onVoiceChannelSelect?: (channel: { id: string; name: string }) => void;
+  activeVoiceChannelId?: string;
 }
 
-const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect }: Props) => {
+const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceChannelSelect, activeVoiceChannelId }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [server, setServer] = useState<Server | null>(null);
@@ -187,9 +189,9 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect }: Props) =
                   return (
                     <div key={ch.id}>
                       <button
-                        onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type })}
+                        onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name })}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
-                          ch.id === activeChannelId
+                          ch.id === activeVoiceChannelId
                             ? "bg-sidebar-accent text-foreground font-medium"
                             : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
                         }`}

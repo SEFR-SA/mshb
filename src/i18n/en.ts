@@ -209,6 +209,8 @@ export default {
     connected: "connected",
     joinVoice: "Join Voice",
     voiceEmpty: "No one is in this voice channel yet",
+    voiceConnected: "Voice Connected",
+    disconnect: "Disconnect",
   },
   channels: {
     create: "Create Channel",
