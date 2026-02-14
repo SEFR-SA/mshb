@@ -355,6 +355,7 @@ const Chat = () => {
         isMuted={isMuted}
         callDuration={callDuration}
         otherName={otherProfile?.display_name || otherProfile?.username || "User"}
+        otherAvatar={otherProfile?.avatar_url || undefined}
         onEndCall={handleEndCall}
         onToggleMute={toggleMute}
       />
