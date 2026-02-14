@@ -7,7 +7,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Settings2, Users, Upload } from "lucide-react";
+import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Settings2, Users, Upload, Pin, PinOff, UserRound, UserRoundX } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
@@ -51,11 +51,13 @@ const GroupChat = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const [showMembers, setShowMembers] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Load group info
+  // Load group info + pin status
   useEffect(() => {
     if (!groupId || !user) return;
     (async () => {
@@ -87,8 +89,28 @@ const GroupChat = () => {
         profs?.forEach((p) => map.set(p.user_id, p));
         setProfiles(map);
       }
+
+      // Check pin status
+      const { data: pin } = await supabase
+        .from("pinned_chats")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("group_thread_id", groupId)
+        .maybeSingle();
+      setIsPinned(!!pin);
     })();
   }, [groupId, user]);
+
+  const togglePin = async () => {
+    if (!groupId || !user) return;
+    if (isPinned) {
+      await supabase.from("pinned_chats").delete().eq("user_id", user.id).eq("group_thread_id", groupId);
+      setIsPinned(false);
+    } else {
+      await supabase.from("pinned_chats").insert({ user_id: user.id, group_thread_id: groupId } as any);
+      setIsPinned(true);
+    }
+  };
 
   // Load hidden
   useEffect(() => {
@@ -280,9 +302,17 @@ const GroupChat = () => {
             {t("groups.memberCount", { count: memberCount })}
           </p>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
-          <Settings2 className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={togglePin} title={isPinned ? t("chat.unpinChat") : t("chat.pinChat")}>
+            {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowMembers(!showMembers)} title={showMembers ? t("chat.hideProfile") : t("chat.showProfile")}>
+            {showMembers ? <UserRoundX className="h-4 w-4" /> : <UserRound className="h-4 w-4" />}
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
+            <Settings2 className="h-5 w-5" />
+          </Button>
+        </div>
       </header>
 
       {/* Messages */}
@@ -452,13 +482,15 @@ const GroupChat = () => {
     <div className="flex h-full overflow-hidden">
       <ChatSidebar activeThreadId={groupId} />
       {chatPanel}
-      <GroupMembersPanel
-        profiles={profiles}
-        memberRoles={memberRoles}
-        groupName={groupName}
-        memberCount={memberCount}
-        groupAvatarUrl={groupAvatarUrl}
-      />
+      {showMembers && (
+        <GroupMembersPanel
+          profiles={profiles}
+          memberRoles={memberRoles}
+          groupName={groupName}
+          memberCount={memberCount}
+          groupAvatarUrl={groupAvatarUrl}
+        />
+      )}
     </div>
   );
 };

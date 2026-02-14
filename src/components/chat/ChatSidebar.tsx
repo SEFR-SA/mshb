@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePresence } from "@/hooks/usePresence";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Plus, Users } from "lucide-react";
+import { Search, Plus, Users, Pin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Tables } from "@/integrations/supabase/types";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
@@ -37,6 +37,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
   const { getUserStatus } = usePresence();
   const navigate = useNavigate();
   const [items, setItems] = useState<InboxItem[]>([]);
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [searching, setSearching] = useState(false);
@@ -44,6 +45,18 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
 
   const loadInbox = async () => {
     if (!user) return;
+
+    // Load pinned chats
+    const { data: pins } = await supabase
+      .from("pinned_chats")
+      .select("thread_id, group_thread_id")
+      .eq("user_id", user.id);
+    const pinSet = new Set<string>();
+    pins?.forEach((p: any) => {
+      if (p.thread_id) pinSet.add(p.thread_id);
+      if (p.group_thread_id) pinSet.add(p.group_thread_id);
+    });
+    setPinnedIds(pinSet);
 
     const { data: rawThreads } = await supabase
       .from("dm_threads")
@@ -157,6 +170,9 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
     }
 
     const all = [...dmItems, ...groupItems].sort((a, b) => {
+      const aPin = pinSet.has(a.id) ? 0 : 1;
+      const bPin = pinSet.has(b.id) ? 0 : 1;
+      if (aPin !== bPin) return aPin - bPin;
       const aTime = a.lastMessageAt || "";
       const bTime = b.lastMessageAt || "";
       return bTime.localeCompare(aTime);
@@ -263,35 +279,47 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
 
       {/* Thread List */}
       <div className="flex-1 overflow-y-auto px-2 space-y-0.5">
-        {items.map((item) => {
+        {/* Pinned section */}
+        {items.some((item) => pinnedIds.has(item.id)) && (
+          <>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2 pb-1 flex items-center gap-1">
+              <Pin className="h-3 w-3" /> {t("chat.pinned")}
+            </p>
+            {items.filter((item) => pinnedIds.has(item.id)).map((item) => {
+              const isActive = item.id === activeThreadId;
+              return (
+                <button key={item.id} onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
+                  className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
+                  <div className="relative shrink-0">
+                    <Avatar className="h-9 w-9"><AvatarImage src={item.avatarUrl} /><AvatarFallback className="bg-primary/20 text-primary text-sm">{item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                    {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium truncate">{item.name}</p>
+                      {item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
+                  </div>
+                </button>
+              );
+            })}
+            <div className="border-b border-border/30 my-1" />
+          </>
+        )}
+        {items.filter((item) => !pinnedIds.has(item.id)).map((item) => {
           const isActive = item.id === activeThreadId;
           return (
-            <button
-              key={item.id}
-              onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
-              className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${
-                isActive ? "bg-muted" : "hover:bg-muted/50"
-              }`}
-            >
+            <button key={item.id} onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
+              className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
               <div className="relative shrink-0">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={item.avatarUrl} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                    {item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                {item.type === "dm" && item.otherProfile && (
-                  <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />
-                )}
+                <Avatar className="h-9 w-9"><AvatarImage src={item.avatarUrl} /><AvatarFallback className="bg-primary/20 text-primary text-sm">{item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium truncate">{item.name}</p>
-                  {item.unreadCount > 0 && (
-                    <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">
-                      {item.unreadCount}
-                    </span>
-                  )}
+                  {item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
               </div>

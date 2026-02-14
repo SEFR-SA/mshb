@@ -8,7 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Upload } from "lucide-react";
+import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Upload, Pin, PinOff, UserRound, UserRoundX, Phone } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
@@ -20,6 +20,8 @@ import FileAttachmentButton from "@/components/chat/FileAttachmentButton";
 import MessageFilePreview from "@/components/chat/MessageFilePreview";
 import { Progress } from "@/components/ui/progress";
 import { uploadChatFile } from "@/lib/uploadChatFile";
+import VoiceCallUI from "@/components/chat/VoiceCallUI";
+import { useWebRTC } from "@/hooks/useWebRTC";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -48,12 +50,27 @@ const Chat = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const [showProfile, setShowProfile] = useState(true);
+  const [callSessionId, setCallSessionId] = useState<string | null>(null);
+  const [isCallerState, setIsCallerState] = useState(false);
+
+  const handleCallEnded = useCallback(() => {
+    setCallSessionId(null);
+    setIsCallerState(false);
+  }, []);
+
+  const { callState, isMuted, callDuration, startCall, endCall, toggleMute } = useWebRTC({
+    sessionId: callSessionId,
+    isCaller: isCallerState,
+    onEnded: handleCallEnded,
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout>>();
 
-  // Load thread info
+  // Load thread info + pin status
   useEffect(() => {
     if (!threadId || !user) return;
     (async () => {
@@ -67,8 +84,49 @@ const Chat = () => {
       setOtherId(oid);
       const { data: prof } = await supabase.from("profiles").select("*").eq("user_id", oid).maybeSingle();
       setOtherProfile(prof);
+
+      // Check pin status
+      const { data: pin } = await supabase
+        .from("pinned_chats")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("thread_id", threadId)
+        .maybeSingle();
+      setIsPinned(!!pin);
     })();
   }, [threadId, user]);
+
+  const togglePin = async () => {
+    if (!threadId || !user) return;
+    if (isPinned) {
+      await supabase.from("pinned_chats").delete().eq("user_id", user.id).eq("thread_id", threadId);
+      setIsPinned(false);
+    } else {
+      await supabase.from("pinned_chats").insert({ user_id: user.id, thread_id: threadId } as any);
+      setIsPinned(true);
+    }
+  };
+
+  const initiateCall = async () => {
+    if (!threadId || !user || !otherId || callSessionId) return;
+    const { data } = await supabase
+      .from("call_sessions")
+      .insert({ caller_id: user.id, callee_id: otherId, thread_id: threadId } as any)
+      .select("id")
+      .single();
+    if (data) {
+      setCallSessionId(data.id);
+      setIsCallerState(true);
+      setTimeout(() => startCall(), 500);
+    }
+  };
+
+  const handleEndCall = async () => {
+    if (callSessionId) {
+      await supabase.from("call_sessions").update({ status: "ended", ended_at: new Date().toISOString() } as any).eq("id", callSessionId);
+    }
+    endCall();
+  };
 
   // Load hidden message IDs
   useEffect(() => {
@@ -278,7 +336,28 @@ const Chat = () => {
                 : t("presence.offline")}
           </p>
         </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={initiateCall} disabled={!!callSessionId} title={t("chat.startCall")}>
+            <Phone className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={togglePin} title={isPinned ? t("chat.unpinChat") : t("chat.pinChat")}>
+            {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowProfile(!showProfile)} title={showProfile ? t("chat.hideProfile") : t("chat.showProfile")}>
+            {showProfile ? <UserRoundX className="h-4 w-4" /> : <UserRound className="h-4 w-4" />}
+          </Button>
+        </div>
       </header>
+
+      {/* Voice Call Bar */}
+      <VoiceCallUI
+        callState={callState}
+        isMuted={isMuted}
+        callDuration={callDuration}
+        otherName={otherProfile?.display_name || otherProfile?.username || "User"}
+        onEndCall={handleEndCall}
+        onToggleMute={toggleMute}
+      />
 
       {/* Messages */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -432,7 +511,7 @@ const Chat = () => {
     <div className="flex h-full overflow-hidden">
       <ChatSidebar activeThreadId={threadId} />
       {chatPanel}
-      <UserProfilePanel profile={otherProfile} statusLabel={otherStatus} />
+      {showProfile && <UserProfilePanel profile={otherProfile} statusLabel={otherStatus} />}
     </div>
   );
 };

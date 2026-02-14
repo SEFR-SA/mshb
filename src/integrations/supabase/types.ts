@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      call_sessions: {
+        Row: {
+          callee_id: string
+          caller_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          started_at: string | null
+          status: string
+          thread_id: string | null
+        }
+        Insert: {
+          callee_id: string
+          caller_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          thread_id?: string | null
+        }
+        Update: {
+          callee_id?: string
+          caller_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          thread_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_sessions_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "dm_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dm_threads: {
         Row: {
           created_at: string
@@ -212,6 +253,45 @@ export type Database = {
           },
           {
             foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "dm_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pinned_chats: {
+        Row: {
+          group_thread_id: string | null
+          id: string
+          pinned_at: string
+          thread_id: string | null
+          user_id: string
+        }
+        Insert: {
+          group_thread_id?: string | null
+          id?: string
+          pinned_at?: string
+          thread_id?: string | null
+          user_id: string
+        }
+        Update: {
+          group_thread_id?: string | null
+          id?: string
+          pinned_at?: string
+          thread_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pinned_chats_group_thread_id_fkey"
+            columns: ["group_thread_id"]
+            isOneToOne: false
+            referencedRelation: "group_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pinned_chats_thread_id_fkey"
             columns: ["thread_id"]
             isOneToOne: false
             referencedRelation: "dm_threads"
