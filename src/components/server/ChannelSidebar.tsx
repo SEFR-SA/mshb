@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff } from "lucide-react";
+import { useChannelUnread } from "@/hooks/useChannelUnread";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -97,6 +98,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
   const isAdmin = server?.owner_id === user?.id;
 
+  const textChannelIds = useMemo(() => channels.filter((c) => c.type === "text").map((c) => c.id), [channels]);
+  const unreadSet = useChannelUnread(textChannelIds);
   useEffect(() => {
     const load = async () => {
       const { data: s } = await supabase.from("servers" as any).select("*").eq("id", serverId).maybeSingle();
@@ -443,12 +446,17 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                         `flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
                           isActive || ch.id === activeChannelId
                             ? "bg-sidebar-accent text-foreground font-medium"
-                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
+                            : unreadSet.has(ch.id)
+                              ? "text-foreground font-semibold hover:bg-sidebar-accent/50"
+                              : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
                         }`
                       }
                     >
                       <ChannelIcon className="h-4 w-4 shrink-0" />
                       <span className="truncate">{ch.name}</span>
+                      {unreadSet.has(ch.id) && !(activeChannelId === ch.id) && (
+                        <div className="ms-auto w-2 h-2 bg-white rounded-full shrink-0" />
+                      )}
                     </NavLink>
                     {renderAdminDropdown(ch)}
                   </div>

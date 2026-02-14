@@ -158,6 +158,16 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
 
       setIsScreenSharing(true);
 
+      // Update is_screen_sharing in DB
+      if (user) {
+        supabase
+          .from("voice_channel_participants" as any)
+          .update({ is_screen_sharing: true } as any)
+          .eq("channel_id", channelId)
+          .eq("user_id", user.id)
+          .then();
+      }
+
       // Broadcast that we started sharing
       channelRef.current?.send({
         type: "broadcast", event: "voice-screen-share",
@@ -184,6 +194,16 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current = null;
     setIsScreenSharing(false);
+
+    // Update is_screen_sharing in DB
+    if (user) {
+      supabase
+        .from("voice_channel_participants" as any)
+        .update({ is_screen_sharing: false } as any)
+        .eq("channel_id", channelId)
+        .eq("user_id", user.id)
+        .then();
+    }
 
     channelRef.current?.send({
       type: "broadcast", event: "voice-screen-share",
