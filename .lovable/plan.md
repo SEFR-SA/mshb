@@ -1,88 +1,77 @@
 
 
-## Fix Mute/Deafen & Add Voice Status Indicators
+## "Active Now" Panel on Friends Page
 
-### Problem
-The mute and deafen buttons in the channel sidebar toggle UI state (`globalMuted`/`globalDeafened` in AudioSettingsContext) but the VoiceConnectionBar never reacts to these changes. The local audio tracks are not disabled and remote audio elements are not muted, so the buttons have no actual effect.
+### What This Does
+Adds a right-side panel to the Friends page (matching the Discord screenshot) that shows which of your accepted friends are currently in a voice channel. Each entry displays the friend's avatar, name, the server name, and the voice channel name. Clicking the voice channel navigates to that server and triggers joining the voice channel.
 
-### Fix 1: Make Mute Actually Work
+---
 
-**`src/components/server/VoiceConnectionBar.tsx`**
+### Changes
 
-Add a `useEffect` that watches `globalMuted` and toggles the local audio stream's tracks:
-- When `globalMuted` becomes `true`, disable all audio tracks on `localStreamRef.current`
-- When `globalMuted` becomes `false`, re-enable them
+#### 1. New Component: `src/components/chat/ActiveNowPanel.tsx`
 
-### Fix 2: Make Deafen Actually Work
+A self-contained panel component that:
+- Takes the list of accepted friend user IDs as a prop
+- Queries `voice_channel_participants` to find which friends are currently in voice channels
+- Joins with `channels` (to get channel name + server_id) and `servers` (to get server name + icon)
+- Joins with `profiles` (to get friend avatar/display_name)
+- Subscribes to realtime changes on `voice_channel_participants` for live updates
+- Renders each active friend as a card showing:
+  - Friend's avatar + display name
+  - Server icon + server name
+  - Voice channel name (clickable, navigates to `/server/:serverId` with the voice channel)
+- Shows "No one is active right now" when empty
 
-**`src/components/server/VoiceConnectionBar.tsx`**
+#### 2. Update `src/pages/Friends.tsx`
 
-Add a `useEffect` that watches `globalDeafened` and mutes/unmutes all remote audio elements:
-- When `globalDeafened` becomes `true`, set `audio.muted = true` on every element in `remoteAudiosRef`
-- When `globalDeafened` becomes `false`, set `audio.muted = false`
-- Also update the existing `pc.ontrack` handler (line 115) to use a ref for deafened state so new audio elements respect the current deafen state
+- Import and render `ActiveNowPanel` in a two-column flex layout:
+  - Left (flex-1): existing friends content (tabs, lists)
+  - Right (fixed ~280px width): the Active Now panel
+- Pass the list of accepted friend user IDs to the panel
+- On mobile, hide the panel (hidden on small screens)
 
-### Fix 3: Sync Mute/Deafen State to Database
+#### 3. Translations
 
-**Database migration**: Add `is_muted` and `is_deafened` boolean columns (default `false`) to `voice_channel_participants`
+**`src/i18n/en.ts`**
+- `friends.activeNow` -- "Active Now"
+- `friends.noActiveNow` -- "No one is active right now"
 
-**`src/components/server/VoiceConnectionBar.tsx`**
-
-Add a `useEffect` that watches `globalMuted` and `globalDeafened` and updates the participant's row in `voice_channel_participants`.
-
-### Fix 4: Show Mute/Deafen Indicators Next to Participant Names
-
-**`src/components/server/ChannelSidebar.tsx`**
-
-- Update the `VoiceParticipant` interface to include `is_muted` and `is_deafened`
-- Update `fetchVoiceParticipants` to also select `is_muted, is_deafened`
-- In the participant list (around line 423-435), add icons next to the user's name:
-  - If `is_deafened`: show a `HeadphoneOff` icon (red)
-  - Else if `is_muted`: show a `MicOff` icon (red)
-  - The existing speaking indicator (green mic) should only show when the user is NOT muted
+**`src/i18n/ar.ts`**
+- Arabic equivalents
 
 ---
 
 ### Technical Details
 
-**Mute effect** (new in VoiceConnectionBar):
+**Query to find active friends in voice channels:**
 ```text
-useEffect(() => {
-  localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = !globalMuted; });
-}, [globalMuted]);
+1. Get friend user IDs from the accepted friendships list (already available in Friends.tsx)
+2. Query voice_channel_participants WHERE user_id IN (friendUserIds)
+3. For each participant, fetch the channel (name, server_id) and server (name, icon_url)
+4. For each participant, use the profile already loaded or fetch from profiles
 ```
 
-**Deafen effect** (new in VoiceConnectionBar):
+**Navigation on voice channel click:**
+Navigates to `/server/:serverId` -- the ServerView component will handle showing the server. The channel ID can be passed as a query param or state so the user lands on that voice channel context.
+
+**Layout change in Friends.tsx:**
 ```text
-useEffect(() => {
-  remoteAudiosRef.current.forEach(a => { a.muted = globalDeafened; });
-}, [globalDeafened]);
+<div className="flex h-full">
+  <div className="flex-1 flex flex-col overflow-hidden">
+    {/* existing tabs and content */}
+  </div>
+  <div className="hidden lg:block w-[280px] border-s">
+    <ActiveNowPanel friendUserIds={[...]} />
+  </div>
+</div>
 ```
 
-**DB update effect** (new in VoiceConnectionBar):
-```text
-useEffect(() => {
-  if (!user || !isJoined) return;
-  supabase.from("voice_channel_participants")
-    .update({ is_muted: globalMuted, is_deafened: globalDeafened })
-    .eq("channel_id", channelId)
-    .eq("user_id", user.id)
-    .then();
-}, [globalMuted, globalDeafened, isJoined, user, channelId]);
-```
-
-**Participant indicator** (updated in ChannelSidebar):
-```text
-{p.is_deafened ? (
-  <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
-) : p.is_muted ? (
-  <MicOff className="h-3 w-3 text-destructive shrink-0" />
-) : p.is_speaking ? (
-  <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
-) : null}
-```
+**Realtime subscription:**
+Subscribe to `voice_channel_participants` changes to refresh the active list when friends join or leave voice channels.
 
 ### Files Modified
-- **New migration**: add `is_muted` and `is_deafened` columns to `voice_channel_participants`
-- `src/components/server/VoiceConnectionBar.tsx` -- add effects for mute, deafen, and DB sync
-- `src/components/server/ChannelSidebar.tsx` -- update participant interface, query, and display with mute/deafen icons
+- **New**: `src/components/chat/ActiveNowPanel.tsx` -- the Active Now panel component
+- `src/pages/Friends.tsx` -- add two-column layout with the panel
+- `src/i18n/en.ts` -- new translation keys
+- `src/i18n/ar.ts` -- Arabic translations
