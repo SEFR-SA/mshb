@@ -1,31 +1,21 @@
 
 
-## Fix Messages Icon Active State in Server Rail
+## Fix Mobile Sidebar Transparency and Remove Duplicate Settings Icon
 
 ### Problem
-The Messages (home) icon in the Server Rail only shows the accent color when the route is exactly `/`. However, since the app now auto-redirects to the last DM thread (`/chat/:threadId`), the icon loses its active styling. The Friends icon works correctly because `/friends` remains the route.
+1. The mobile slide-out Server Rail sidebar (Sheet) has a solid background instead of the transparent glassmorphism style used elsewhere in the app.
+2. The mobile bottom nav has both a Settings icon and a Profile avatar icon, but they both navigate to `/settings` -- redundant.
 
-### Solution
-Update the active condition for the Messages button in `src/components/server/ServerRail.tsx` to also match `/chat/*` and `/group/*` routes, since those are all part of the "Messages" section.
+### Changes
 
-### Technical Details
+**File: `src/components/layout/AppLayout.tsx`**
 
-**File: `src/components/server/ServerRail.tsx` (line 103-106)**
+1. **Fix sidebar transparency**: Update the `SheetContent` on line 75 to add transparency classes matching the app's glassmorphism style (`bg-sidebar-background/30 backdrop-blur-sm` instead of the default solid `bg-background`).
 
-Change the condition from:
-```
-location.pathname === "/"
-```
-To:
-```
-location.pathname === "/" || location.pathname.startsWith("/chat/") || location.pathname.startsWith("/group/")
-```
+2. **Remove Settings from navItems**: Remove the Settings entry from the `navItems` array (line 50) so only Messages and Friends remain in the bottom nav alongside the Profile avatar. The Profile avatar already links to `/settings`.
 
-This ensures the Messages icon stays highlighted with the user's accent color whenever they are viewing any DM thread, group chat, or the inbox -- all routes that fall under "Messages."
-
-### Files Modified
-
-| File | Changes |
+| Change | Detail |
 |---|---|
-| `src/components/server/ServerRail.tsx` | Update active state condition for Messages button to include `/chat/*` and `/group/*` routes |
+| Line 50 | Remove `{ to: "/settings", icon: Settings, ... }` from `navItems` |
+| Line 75 | Add `bg-sidebar-background/30 backdrop-blur-sm` classes to `SheetContent` and override the default background |
 
