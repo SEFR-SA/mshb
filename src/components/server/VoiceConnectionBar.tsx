@@ -50,7 +50,7 @@ interface VoiceConnectionManagerProps {
 const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect }: VoiceConnectionManagerProps) => {
   const { user } = useAuth();
   const { globalMuted, globalDeafened } = useAudioSettings();
-  const { isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName } = useVoiceChannel();
+  const { isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsCameraOn, setLocalCameraStream, setRemoteCameraStream } = useVoiceChannel();
   const [isJoined, setIsJoined] = useState(false);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudiosRef = useRef<HTMLAudioElement[]>([]);
@@ -59,6 +59,9 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const volumeMonitorsRef = useRef<Array<{ cleanup: () => void }>>([]);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const cameraSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
+  const remoteCameraExpectedRef = useRef<Set<string>>(new Set());
 
   const lastSpeakingRef = useRef<boolean>(false);
 
@@ -87,11 +90,25 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         screenSendersRef.current.set(peerId, sender);
       }
     }
+    // If already camera sharing, add the video track to the new peer
+    if (cameraStreamRef.current) {
+      const videoTrack = cameraStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        const sender = pc.addTrack(videoTrack, cameraStreamRef.current);
+        cameraSendersRef.current.set(peerId, sender);
+      }
+    }
     pc.ontrack = (e) => {
       if (e.track.kind === "video") {
-        // Remote screen share
-        setRemoteScreenStream(e.streams[0]);
-        e.track.onended = () => setRemoteScreenStream(null);
+        if (remoteCameraExpectedRef.current.has(peerId)) {
+          remoteCameraExpectedRef.current.delete(peerId);
+          setRemoteCameraStream(e.streams[0]);
+          e.track.onended = () => setRemoteCameraStream(null);
+        } else {
+          // Remote screen share
+          setRemoteScreenStream(e.streams[0]);
+          e.track.onended = () => setRemoteScreenStream(null);
+        }
       } else {
         const audio = new Audio();
         audio.srcObject = e.streams[0];
@@ -123,7 +140,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       } catch {}
     };
     return pc;
-  }, [user, updateSpeaking, setRemoteScreenStream]);
+  }, [user, updateSpeaking, setRemoteScreenStream, setRemoteCameraStream]);
 
   // Screen share toggle handler
   const startScreenShare = useCallback(async () => {
@@ -174,6 +191,52 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     });
   }, [user, setIsScreenSharing]);
 
+  // Camera
+  const startCamera = useCallback(async () => {
+    if (cameraStreamRef.current) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      cameraStreamRef.current = stream;
+      const videoTrack = stream.getVideoTracks()[0];
+
+      peerConnectionsRef.current.forEach((pc, peerId) => {
+        const sender = pc.addTrack(videoTrack, stream);
+        cameraSendersRef.current.set(peerId, sender);
+      });
+
+      setIsCameraOn(true);
+      setLocalCameraStream(stream);
+
+      channelRef.current?.send({
+        type: "broadcast", event: "voice-camera",
+        payload: { userId: user!.id, sharing: true },
+      });
+
+      videoTrack.onended = () => stopCamera();
+    } catch {
+      // Camera permission denied
+    }
+  }, [user, setIsCameraOn, setLocalCameraStream]);
+
+  const stopCamera = useCallback(() => {
+    peerConnectionsRef.current.forEach((pc, peerId) => {
+      const sender = cameraSendersRef.current.get(peerId);
+      if (sender) {
+        try { pc.removeTrack(sender); } catch {}
+      }
+    });
+    cameraSendersRef.current.clear();
+    cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
+    cameraStreamRef.current = null;
+    setIsCameraOn(false);
+    setLocalCameraStream(null);
+
+    channelRef.current?.send({
+      type: "broadcast", event: "voice-camera",
+      payload: { userId: user?.id, sharing: false },
+    });
+  }, [user, setIsCameraOn, setLocalCameraStream]);
+
   // Listen for toggle-screen-share custom event from ChannelSidebar
   useEffect(() => {
     const handler = () => {
@@ -186,6 +249,19 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     window.addEventListener("toggle-screen-share", handler);
     return () => window.removeEventListener("toggle-screen-share", handler);
   }, [startScreenShare, stopScreenShare]);
+
+  // Listen for toggle-camera custom event from ChannelSidebar
+  useEffect(() => {
+    const handler = () => {
+      if (cameraStreamRef.current) {
+        stopCamera();
+      } else {
+        startCamera();
+      }
+    };
+    window.addEventListener("toggle-camera", handler);
+    return () => window.removeEventListener("toggle-camera", handler);
+  }, [startCamera, stopCamera]);
 
   const setupSignaling = useCallback(() => {
     if (channelRef.current) return;
@@ -223,8 +299,16 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         setScreenSharerName(null);
       }
     })
+    .on("broadcast", { event: "voice-camera" }, ({ payload }) => {
+      if (payload.userId === user?.id) return;
+      if (payload.sharing) {
+        remoteCameraExpectedRef.current.add(payload.userId);
+      } else {
+        setRemoteCameraStream(null);
+      }
+    })
     .subscribe();
-  }, [channelId, user, createPeerConnection, setRemoteScreenStream, setScreenSharerName]);
+  }, [channelId, user, createPeerConnection, setRemoteScreenStream, setScreenSharerName, setRemoteCameraStream]);
 
   // Auto-join on mount
   useEffect(() => {
@@ -283,6 +367,14 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       setIsScreenSharing(false);
       setRemoteScreenStream(null);
       setScreenSharerName(null);
+
+      // Stop camera
+      cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
+      cameraStreamRef.current = null;
+      cameraSendersRef.current.clear();
+      setIsCameraOn(false);
+      setLocalCameraStream(null);
+      setRemoteCameraStream(null);
 
       volumeMonitorsRef.current.forEach((m) => m.cleanup());
       volumeMonitorsRef.current = [];

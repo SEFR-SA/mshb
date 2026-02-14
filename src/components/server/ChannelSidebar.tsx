@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff } from "lucide-react";
+import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -68,7 +68,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
-  const { voiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName } = useVoiceChannel();
+  const { voiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName, isCameraOn } = useVoiceChannel();
   const { getUserStatus } = usePresence();
   const status = (getUserStatus(profile) || "online") as UserStatus;
   const [server, setServer] = useState<Server | null>(null);
@@ -468,9 +468,20 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
               <Button
                 variant="ghost"
                 size="icon"
+                className={`h-7 w-7 shrink-0 ${isCameraOn ? "text-green-500" : ""}`}
+                onClick={() => {
+                  const event = new CustomEvent("toggle-camera");
+                  window.dispatchEvent(event);
+                }}
+                title={isCameraOn ? t("calls.stopCamera") : t("calls.startCamera")}
+              >
+                {isCameraOn ? <VideoOff className="h-3.5 w-3.5" /> : <Video className="h-3.5 w-3.5" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 className={`h-7 w-7 shrink-0 ${isScreenSharing ? "text-green-500" : ""}`}
                 onClick={() => {
-                  // Screen share toggle is handled by broadcasting to VoiceConnectionManager
                   const event = new CustomEvent("toggle-screen-share");
                   window.dispatchEvent(event);
                 }}

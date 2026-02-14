@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PhoneOff, Mic, MicOff, Volume2, HeadphoneOff, Monitor, MonitorOff } from "lucide-react";
+import { PhoneOff, Mic, MicOff, Volume2, HeadphoneOff, Monitor, MonitorOff, Video, VideoOff, PictureInPicture2 } from "lucide-react";
 import type { CallState } from "@/hooks/useWebRTC";
 
 interface VoiceCallUIProps {
@@ -19,6 +19,11 @@ interface VoiceCallUIProps {
   remoteScreenStream?: MediaStream | null;
   onStartScreenShare?: () => void;
   onStopScreenShare?: () => void;
+  isCameraOn?: boolean;
+  localCameraStream?: MediaStream | null;
+  remoteCameraStream?: MediaStream | null;
+  onStartCamera?: () => void;
+  onStopCamera?: () => void;
 }
 
 const formatDuration = (seconds: number) => {
@@ -27,24 +32,71 @@ const formatDuration = (seconds: number) => {
   return `${m}:${s}`;
 };
 
-const ScreenShareVideo = ({ stream }: { stream: MediaStream }) => {
+const VideoElement = ({ stream, showPiP, label, className }: { stream: MediaStream; showPiP?: boolean; label?: string; className?: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { t } = useTranslation();
+
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.srcObject = stream;
     }
   }, [stream]);
+
+  const handlePiP = async () => {
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+    } else if (videoRef.current) {
+      await videoRef.current.requestPictureInPicture();
+    }
+  };
+
   return (
-    <video
-      ref={videoRef}
-      autoPlay
-      playsInline
-      className="w-full max-h-[400px] rounded-lg bg-black object-contain"
-    />
+    <div className={`relative ${className || ""}`}>
+      {label && <p className="text-xs text-muted-foreground text-center mb-1">{label}</p>}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        className="w-full max-h-[400px] rounded-lg bg-black object-contain"
+      />
+      {showPiP && (
+        <Button
+          variant="secondary"
+          size="icon"
+          className="absolute top-2 end-2 h-7 w-7 opacity-70 hover:opacity-100"
+          onClick={handlePiP}
+          title={t("calls.pip")}
+        >
+          <PictureInPicture2 className="h-3.5 w-3.5" />
+        </Button>
+      )}
+    </div>
   );
 };
 
-const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, otherAvatar, onEndCall, onToggleMute, onToggleDeafen, isScreenSharing, remoteScreenStream, onStartScreenShare, onStopScreenShare }: VoiceCallUIProps) => {
+const SelfView = ({ stream }: { stream: MediaStream }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+
+  return (
+    <div className="absolute bottom-2 end-2 z-10">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="w-[120px] h-[90px] rounded-lg bg-black object-cover border-2 border-border/50"
+      />
+    </div>
+  );
+};
+
+const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, otherAvatar, onEndCall, onToggleMute, onToggleDeafen, isScreenSharing, remoteScreenStream, onStartScreenShare, onStopScreenShare, isCameraOn, localCameraStream, remoteCameraStream, onStartCamera, onStopCamera }: VoiceCallUIProps) => {
   const { t } = useTranslation();
 
   if (callState === "idle" || callState === "ended") return null;
@@ -52,7 +104,7 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
   const initial = (otherName || "?").charAt(0).toUpperCase();
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 py-8 bg-card/80 backdrop-blur-sm border-b border-border/50 min-h-[200px]">
+    <div className="relative flex flex-col items-center justify-center gap-4 py-8 bg-card/80 backdrop-blur-sm border-b border-border/50 min-h-[200px]">
       {callState === "ringing" ? (
         <>
           <div className="relative">
@@ -74,9 +126,15 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
         <>
           {/* Remote screen share */}
           {remoteScreenStream && (
-            <div className="w-full px-4 space-y-1">
-              <p className="text-xs text-muted-foreground text-center">{t("calls.userSharing", { name: otherName })}</p>
-              <ScreenShareVideo stream={remoteScreenStream} />
+            <div className="w-full px-4">
+              <VideoElement stream={remoteScreenStream} showPiP label={t("calls.userSharing", { name: otherName })} />
+            </div>
+          )}
+
+          {/* Remote camera */}
+          {remoteCameraStream && (
+            <div className="w-full px-4 max-w-[300px]">
+              <VideoElement stream={remoteCameraStream} showPiP label={t("calls.userCamera", { name: otherName })} className="rounded-xl overflow-hidden" />
             </div>
           )}
 
@@ -116,6 +174,17 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
             >
               {isDeafened ? <HeadphoneOff className="h-5 w-5 text-destructive" /> : <Volume2 className="h-5 w-5" />}
             </Button>
+            {onStartCamera && onStopCamera && (
+              <Button
+                variant={isCameraOn ? "secondary" : "ghost"}
+                size="icon"
+                className="h-10 w-10 rounded-full"
+                onClick={isCameraOn ? onStopCamera : onStartCamera}
+                title={isCameraOn ? t("calls.stopCamera") : t("calls.startCamera")}
+              >
+                {isCameraOn ? <VideoOff className="h-5 w-5 text-green-500" /> : <Video className="h-5 w-5" />}
+              </Button>
+            )}
             {onStartScreenShare && onStopScreenShare && (
               <Button
                 variant={isScreenSharing ? "secondary" : "ghost"}
@@ -131,6 +200,9 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
               <PhoneOff className="h-5 w-5" />
             </Button>
           </div>
+
+          {/* Self-view overlay */}
+          {localCameraStream && <SelfView stream={localCameraStream} />}
         </>
       )}
     </div>

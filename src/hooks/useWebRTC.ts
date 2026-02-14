@@ -25,12 +25,18 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
   const [callDuration, setCallDuration] = useState(0);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [remoteScreenStream, setRemoteScreenStream] = useState<MediaStream | null>(null);
+  const [isCameraOn, setIsCameraOn] = useState(false);
+  const [localCameraStream, setLocalCameraStream] = useState<MediaStream | null>(null);
+  const [remoteCameraStream, setRemoteCameraStream] = useState<MediaStream | null>(null);
   const remoteAudiosRef = useRef<HTMLAudioElement[]>([]);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenSenderRef = useRef<RTCRtpSender | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const cameraSenderRef = useRef<RTCRtpSender | null>(null);
+  const remoteCameraExpectedRef = useRef(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const durationInterval = useRef<ReturnType<typeof setInterval>>();
   const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]);
@@ -42,8 +48,14 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current = null;
     screenSenderRef.current = null;
+    cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
+    cameraStreamRef.current = null;
+    cameraSenderRef.current = null;
     setIsScreenSharing(false);
     setRemoteScreenStream(null);
+    setIsCameraOn(false);
+    setLocalCameraStream(null);
+    setRemoteCameraStream(null);
     pcRef.current?.close();
     pcRef.current = null;
     if (channelRef.current) {
@@ -80,8 +92,14 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
 
     pc.ontrack = (event) => {
       if (event.track.kind === "video") {
-        setRemoteScreenStream(event.streams[0]);
-        event.track.onended = () => setRemoteScreenStream(null);
+        if (remoteCameraExpectedRef.current) {
+          remoteCameraExpectedRef.current = false;
+          setRemoteCameraStream(event.streams[0]);
+          event.track.onended = () => setRemoteCameraStream(null);
+        } else {
+          setRemoteScreenStream(event.streams[0]);
+          event.track.onended = () => setRemoteScreenStream(null);
+        }
       } else {
         const audio = new Audio();
         audio.srcObject = event.streams[0];
@@ -133,6 +151,50 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
     }
     iceCandidateQueue.current = [];
+  }, []);
+
+  // Camera
+  const startCamera = useCallback(async () => {
+    const pc = pcRef.current;
+    if (!pc || isCameraOn) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      cameraStreamRef.current = stream;
+      const videoTrack = stream.getVideoTracks()[0];
+      const sender = pc.addTrack(videoTrack, stream);
+      cameraSenderRef.current = sender;
+      setIsCameraOn(true);
+      setLocalCameraStream(stream);
+
+      // Signal remote that camera is on
+      channelRef.current?.send({
+        type: "broadcast",
+        event: "camera-toggle",
+        payload: { on: true },
+      });
+
+      videoTrack.onended = () => stopCamera();
+    } catch {
+      // Camera permission denied
+    }
+  }, [isCameraOn]);
+
+  const stopCamera = useCallback(() => {
+    const pc = pcRef.current;
+    if (cameraSenderRef.current && pc) {
+      try { pc.removeTrack(cameraSenderRef.current); } catch {}
+    }
+    cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
+    cameraStreamRef.current = null;
+    cameraSenderRef.current = null;
+    setIsCameraOn(false);
+    setLocalCameraStream(null);
+
+    channelRef.current?.send({
+      type: "broadcast",
+      event: "camera-toggle",
+      payload: { on: false },
+    });
   }, []);
 
   // Screen sharing
@@ -207,6 +269,10 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       .on("broadcast", { event: "call-end" }, () => {
         cleanup();
       })
+      .on("broadcast", { event: "camera-toggle" }, ({ payload }) => {
+        remoteCameraExpectedRef.current = !!payload.on;
+        if (!payload.on) setRemoteCameraStream(null);
+      })
       .subscribe();
 
     return () => {
@@ -241,6 +307,10 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
         })
         .on("broadcast", { event: "call-end" }, () => {
           cleanup();
+        })
+        .on("broadcast", { event: "camera-toggle" }, ({ payload }) => {
+          remoteCameraExpectedRef.current = !!payload.on;
+          if (!payload.on) setRemoteCameraStream(null);
         })
         .subscribe();
     }
@@ -292,6 +362,10 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
         .on("broadcast", { event: "call-end" }, () => {
           cleanup();
         })
+        .on("broadcast", { event: "camera-toggle" }, ({ payload }) => {
+          remoteCameraExpectedRef.current = !!payload.on;
+          if (!payload.on) setRemoteCameraStream(null);
+        })
         .subscribe();
     }
 
@@ -334,6 +408,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     return () => {
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+      cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
       pcRef.current?.close();
       if (durationInterval.current) clearInterval(durationInterval.current);
     };
@@ -346,6 +421,9 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     callDuration,
     isScreenSharing,
     remoteScreenStream,
+    isCameraOn,
+    localCameraStream,
+    remoteCameraStream,
     startCall,
     answerCall,
     endCall,
@@ -353,5 +431,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     toggleDeafen,
     startScreenShare,
     stopScreenShare,
+    startCamera,
+    stopCamera,
   };
 }

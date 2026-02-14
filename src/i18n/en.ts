@@ -87,6 +87,10 @@ export default {
     stopSharing: "Stop Sharing",
     userSharing: "{{name}} is sharing their screen",
     youAreSharing: "You are sharing your screen",
+    startCamera: "Start Camera",
+    stopCamera: "Stop Camera",
+    pip: "Picture in Picture",
+    userCamera: "{{name}}'s camera",
   },
   actions: {
     edit: "Edit",
