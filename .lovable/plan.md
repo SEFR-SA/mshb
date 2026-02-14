@@ -1,62 +1,62 @@
 
 
-## Apply Color Theme to All Components
+## Add Collapsible Channel Sections
 
-### Problem
-When a user selects a color theme (gradient background), several components have fully opaque backgrounds that block the gradient from showing through. The affected areas are:
-1. Settings page cards (Profile, Theme, Color Themes)
-2. Server Rail icon buttons
-3. Search users input field (Inbox page)
-4. "New Group" button (Inbox page)
-5. Friends page tab bar (All Friends / Pending / Add Friend)
-6. Text channel header bar
-7. Text channel name container / channel sidebar
+### Overview
+Make each channel category (e.g. "Text Channels", "Voice Channels") collapsible with a chevron arrow indicator. Arrow points down when expanded (channels visible), points sideways when collapsed (channels hidden). Uses the existing Radix `Collapsible` component already available in the project.
 
-### Solution
-Make backgrounds semi-transparent so the gradient shows through, while keeping them fully opaque when no color theme is active (default theme).
+### Changes
 
-### Technical Approach
+**File: `src/components/server/ChannelSidebar.tsx`**
 
-**1. Update `.glass` utility class** (`src/index.css`)
-Change from `bg-card` to `bg-card/80` so cards become translucent over the gradient:
-```css
-.glass {
-  @apply bg-card/80 backdrop-blur-sm border border-border/50;
-}
+1. Import `ChevronDown` from lucide-react and `Collapsible, CollapsibleTrigger, CollapsibleContent` from the UI components
+2. Add a `collapsedCategories` state (`Set<string>`) to track which categories are collapsed
+3. Wrap each category's channel list in a `Collapsible` component:
+   - The category header becomes a `CollapsibleTrigger` with a rotating chevron icon
+   - The channel list becomes `CollapsibleContent`
+   - Chevron rotates from pointing down (open) to pointing right (collapsed) via a CSS `rotate` transition
+4. The "+" button for admins remains visible even when collapsed
+
+**Visual behavior:**
+- All categories start expanded by default
+- Clicking the category name or chevron toggles visibility
+- Chevron arrow: points down = expanded, points right = collapsed
+- Smooth animation on expand/collapse
+
+### Technical Details
+
 ```
+// State
+const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
-**2. Update Settings page cards** (`src/pages/Settings.tsx`)
-The three `<Card className="glass">` elements already use `.glass`, so they will automatically pick up the change from step 1.
+const toggleCategory = (cat: string) => {
+  setCollapsedCategories(prev => {
+    const next = new Set(prev);
+    next.has(cat) ? next.delete(cat) : next.add(cat);
+    return next;
+  });
+};
 
-**3. Update Server Rail** (`src/components/server/ServerRail.tsx`)
-- Change the rail container from `bg-sidebar-background` to `bg-sidebar-background/80 backdrop-blur-sm`
-- Change server icon buttons from `bg-sidebar-accent` to `bg-sidebar-accent/80`
-
-**4. Update Search input and "New Group" button** (`src/pages/Inbox.tsx`)
-- The `<Input>` component uses `bg-background` from its base class. Override with `bg-background/60 backdrop-blur-sm` on the search input.
-- The "New Group" `<Button variant="outline">` will naturally become more transparent via the outline variant.
-
-**5. Update Friends TabsList** (`src/pages/Friends.tsx`)
-- The `<TabsList>` uses `bg-muted` by default. Override with `className="w-full bg-muted/60 backdrop-blur-sm"`.
-- The active `TabsTrigger` uses `data-[state=active]:bg-background`; no change needed (it will be slightly transparent too).
-
-**6. Update Channel header** (`src/components/server/ServerChannelChat.tsx`)
-- The header already uses `glass` class, so it picks up the change from step 1.
-
-**7. Update Channel Sidebar** (`src/components/server/ChannelSidebar.tsx`)
-- Change container from `bg-sidebar-background` to `bg-sidebar-background/80 backdrop-blur-sm`
-
-**8. Update Input base component** (`src/components/ui/input.tsx`)
-- Change `bg-background` to `bg-background/60` so all inputs across the app become semi-transparent over gradients.
+// In render, wrap each category:
+<Collapsible open={!collapsedCategories.has(category)}>
+  <div className="flex items-center justify-between px-1 mb-1">
+    <CollapsibleTrigger onClick={() => toggleCategory(category)} className="flex items-center gap-1 ...">
+      <ChevronDown className={`h-3 w-3 transition-transform ${collapsedCategories.has(category) ? '-rotate-90' : ''}`} />
+      <span className="text-[11px] font-semibold uppercase ...">{category}</span>
+    </CollapsibleTrigger>
+    {isAdmin && <Plus button />}
+  </div>
+  <CollapsibleContent>
+    {chs.map((ch) => ( /* existing channel rendering */ ))}
+  </CollapsibleContent>
+</Collapsible>
+```
 
 ### Files Modified
 
 | File | Changes |
 |---|---|
-| `src/index.css` | Update `.glass` to use `bg-card/80 backdrop-blur-sm` |
-| `src/components/ui/input.tsx` | Change `bg-background` to `bg-background/60` |
-| `src/components/server/ServerRail.tsx` | Semi-transparent rail and icon backgrounds |
-| `src/components/server/ChannelSidebar.tsx` | Semi-transparent sidebar background |
-| `src/pages/Friends.tsx` | Semi-transparent TabsList |
-| `src/pages/Inbox.tsx` | Semi-transparent search input area |
+| `src/components/server/ChannelSidebar.tsx` | Add collapsible category sections with chevron toggle |
+
+No database changes required -- the existing `category` column on `channels` already provides the grouping.
 
