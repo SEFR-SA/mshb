@@ -99,6 +99,10 @@
   * {
     @apply border-border;
     scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  *:hover {
     scrollbar-color: #4E5058 transparent;
   }
 
@@ -112,14 +116,12 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background-color: #4E5058;
+    background-color: rgba(78, 80, 88, 0);
     border-radius: 10px;
-    opacity: 0;
-    transition: opacity 0.3s;
   }
 
   *:hover::-webkit-scrollbar-thumb {
-    opacity: 1;
+    background-color: rgba(78, 80, 88, 1);
   }
 
   *::-webkit-scrollbar-thumb:hover {
