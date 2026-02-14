@@ -171,6 +171,8 @@ export default {
     requestAccepted: "Friend request accepted!",
     incoming: "Incoming",
     outgoing: "Outgoing",
+    activeNow: "Active Now",
+    noActiveNow: "No one is active right now",
   },
   files: {
     tooLarge: "File is too large. Maximum size is 10 MB.",

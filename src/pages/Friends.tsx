@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,7 @@ import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { Search, UserPlus, Check, X, MessageSquare, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
+import ActiveNowPanel from "@/components/chat/ActiveNowPanel";
 
 type Profile = Tables<"profiles">;
 
@@ -156,13 +157,19 @@ const Friends = () => {
   const initials = (p: Profile | null) =>
     (p?.display_name || p?.username || "?").charAt(0).toUpperCase();
 
-  return (
-    <div className="flex flex-col h-full">
-      <div className="p-4">
-        <h2 className="text-xl font-bold mb-3">{t("friends.title")}</h2>
-      </div>
+  const friendUserIds = useMemo(() => 
+    friends.map((f) => f.requester_id === user?.id ? f.addressee_id : f.requester_id),
+    [friends, user]
+  );
 
-      <Tabs defaultValue="all" className="flex-1 flex flex-col overflow-hidden px-4">
+  return (
+    <div className="flex h-full">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="p-4">
+          <h2 className="text-xl font-bold mb-3">{t("friends.title")}</h2>
+        </div>
+
+        <Tabs defaultValue="all" className="flex-1 flex flex-col overflow-hidden px-4">
         <TabsList className="w-full">
           <TabsTrigger value="all" className="flex-1">{t("friends.all")}</TabsTrigger>
           <TabsTrigger value="pending" className="flex-1">
@@ -278,7 +285,12 @@ const Friends = () => {
             )}
           </div>
         </TabsContent>
-      </Tabs>
+        </Tabs>
+      </div>
+
+      <div className="hidden lg:block w-[280px] border-s border-border">
+        <ActiveNowPanel friendUserIds={friendUserIds} />
+      </div>
     </div>
   );
 };
