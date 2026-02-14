@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload } from "lucide-react";
+import { Send, Hash, Upload, Lock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { uploadChatFile } from "@/lib/uploadChatFile";
 import FileAttachmentButton from "@/components/chat/FileAttachmentButton";
@@ -21,6 +21,8 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 interface Props {
   channelId: string;
   channelName: string;
+  isPrivate?: boolean;
+  hasAccess?: boolean;
 }
 
 const renderMessageContent = (content: string, profiles: Map<string, any>, currentUserId?: string) => {
@@ -45,7 +47,7 @@ const renderMessageContent = (content: string, profiles: Map<string, any>, curre
   });
 };
 
-const ServerChannelChat = ({ channelId, channelName }: Props) => {
+const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { serverId } = useParams<{ serverId: string }>();
@@ -59,11 +61,11 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
   const [dragOver, setDragOver] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Mention state
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
   const [mentionStart, setMentionStart] = useState<number | null>(null);
+
+  const isLocked = isPrivate && hasAccess === false;
 
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
@@ -79,6 +81,7 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
   }, [profiles]);
 
   const loadMessages = useCallback(async (before?: string) => {
+    if (isLocked) return;
     let query = (supabase.from("messages") as any)
       .select("*")
       .eq("channel_id", channelId)
@@ -96,15 +99,17 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
       setMessages(reversed);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     }
-  }, [channelId, loadProfiles]);
+  }, [channelId, loadProfiles, isLocked]);
 
   useEffect(() => {
+    if (isLocked) return;
     setMessages([]);
     setHasMore(true);
     loadMessages();
-  }, [channelId]);
+  }, [channelId, isLocked]);
 
   useEffect(() => {
+    if (isLocked) return;
     const channel = supabase
       .channel(`channel-chat-${channelId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `channel_id=eq.${channelId}` }, (payload) => {
@@ -118,19 +123,16 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
       })
       .subscribe();
     return () => { channel.unsubscribe(); };
-  }, [channelId, loadProfiles]);
+  }, [channelId, loadProfiles, isLocked]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setNewMsg(val);
-
     const pos = e.target.selectionStart || 0;
-    // Find the last @ before cursor
     const textBeforeCursor = val.slice(0, pos);
     const atIndex = textBeforeCursor.lastIndexOf("@");
     if (atIndex !== -1) {
       const textAfterAt = textBeforeCursor.slice(atIndex + 1);
-      // Only trigger if no space in the filter text
       if (!/\s/.test(textAfterAt)) {
         setMentionOpen(true);
         setMentionStart(atIndex);
@@ -164,7 +166,6 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
     setNewMsg("");
     const file = selectedFile;
     setSelectedFile(null);
-
     try {
       let fileData: any = null;
       if (file) {
@@ -197,6 +198,23 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
     setSelectedFile(file);
   };
 
+  // Locked state for private channels without access
+  if (isLocked) {
+    return (
+      <div className="flex flex-col h-full min-w-0 flex-1">
+        <header className="flex items-center gap-2 p-3 glass border-b border-border/50">
+          <Lock className="h-5 w-5 text-muted-foreground" />
+          <h2 className="font-semibold">{channelName}</h2>
+        </header>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground px-6">
+          <Lock className="h-12 w-12 opacity-40" />
+          <h3 className="text-lg font-semibold text-foreground">{t("channels.privateChannel")}</h3>
+          <p className="text-sm text-center max-w-sm">{t("channels.noAccess")}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full min-w-0 flex-1 relative" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
       {dragOver && (
@@ -209,7 +227,7 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
       )}
 
       <header className="flex items-center gap-2 p-3 glass border-b border-border/50">
-        <Hash className="h-5 w-5 text-muted-foreground" />
+        {isPrivate ? <Lock className="h-5 w-5 text-muted-foreground" /> : <Hash className="h-5 w-5 text-muted-foreground" />}
         <h2 className="font-semibold">{channelName}</h2>
       </header>
 
@@ -278,7 +296,7 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
             value={newMsg}
             onChange={handleInputChange}
             onKeyDown={(e) => {
-              if (mentionOpen) return; // Let MentionPopup handle keys
+              if (mentionOpen) return;
               if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
             }}
             placeholder={`${t("chat.placeholder")} #${channelName}`}

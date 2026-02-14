@@ -55,11 +55,41 @@ export type Database = {
           },
         ]
       }
+      channel_members: {
+        Row: {
+          added_at: string
+          channel_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          channel_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          channel_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_members_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channels: {
         Row: {
           category: string
           created_at: string
           id: string
+          is_private: boolean
           name: string
           position: number
           server_id: string
@@ -69,6 +99,7 @@ export type Database = {
           category?: string
           created_at?: string
           id?: string
+          is_private?: boolean
           name: string
           position?: number
           server_id: string
@@ -78,6 +109,7 @@ export type Database = {
           category?: string
           created_at?: string
           id?: string
+          is_private?: boolean
           name?: string
           position?: number
           server_id?: string
@@ -539,6 +571,11 @@ export type Database = {
       generate_invite_code: { Args: never; Returns: string }
       get_email_by_username: { Args: { p_username: string }; Returns: string }
       get_server_id_by_invite: { Args: { p_code: string }; Returns: string }
+      is_channel_member: {
+        Args: { _channel_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_channel_private: { Args: { _channel_id: string }; Returns: boolean }
       is_group_admin: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
