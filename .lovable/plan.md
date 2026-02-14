@@ -1,28 +1,58 @@
 
 
-## Fix Speaking Ring Not Showing
+## Add Mobile Sidebar Button to Access Servers
 
-### Root Cause
-The ChannelSidebar (line 182) subscribes to `voice-signal-${chId}` to listen for `voice-speaking` broadcasts. However, VoiceConnectionManager (line 97) already creates and subscribes to a channel with the exact same name (`voice-signal-${channelId}`). In Supabase Realtime, `supabase.channel('same-name')` returns the same channel instance -- so the sidebar's `.on("broadcast", ...)` handler is added to an already-subscribed channel and never fires.
+### Problem
+On mobile, the Server Rail is hidden (`{!isMobile && <ServerRail />}`). Users on Messages, Friends, Settings, or Profile pages have no way to navigate to their servers.
 
-### Fix
-Use a distinct channel name for the sidebar's speaking listener so it gets its own independent subscription.
+### Solution
+Add a hamburger/menu button in the mobile top header (line 56-58) that opens a Sheet (slide-in drawer) containing the ServerRail component. This follows the common mobile pattern of a slide-out navigation panel.
 
 ### Changes
 
-**`src/components/server/ChannelSidebar.tsx`** (line 182)
+**`src/components/layout/AppLayout.tsx`**
 
-Change the channel name from:
-```
-supabase.channel(`voice-signal-${chId}`)
-```
-to:
-```
-supabase.channel(`voice-speaking-listen-${chId}`)
-```
+1. Add state: `const [serverDrawerOpen, setServerDrawerOpen] = useState(false)`
+2. Import `Sheet`, `SheetContent`, `SheetTrigger` from `@/components/ui/sheet`, and `Menu` icon from `lucide-react`
+3. Add a `Menu` button to the left side of the mobile header (line 57):
+   ```
+   <button onClick={() => setServerDrawerOpen(true)}>
+     <Menu className="h-5 w-5" />
+   </button>
+   ```
+4. Add a `Sheet` with `side="left"` that renders `<ServerRail />` inside it, styled to fit the drawer
 
-This ensures the sidebar gets its own channel subscription that properly receives the `voice-speaking` broadcast events, while the VoiceConnectionManager keeps its separate channel for signaling (offers, answers, ICE candidates).
+**`src/components/server/ServerRail.tsx`**
+
+5. Accept an optional `onNavigate` callback prop so the drawer can close when a server/nav item is clicked
+6. Call `onNavigate?.()` inside the navigate handlers and server NavLink `onClick`
+
+### Visual Result
+
+```text
+Mobile Header (before):
++------------------------------------------+
+|  * Galaxy Chat                           |
++------------------------------------------+
+
+Mobile Header (after):
++------------------------------------------+
+| [=]  * Galaxy Chat                       |
++------------------------------------------+
+
+Tapping [=] slides in from left:
++----------------+
+| [Messages]     |
+| [Friends]      |
+| -------------- |
+| Server 1       |
+| Server 2       |
+| -------------- |
+| [+] Create     |
+| [->] Join      |
++----------------+
+```
 
 ### Files Modified
-- `src/components/server/ChannelSidebar.tsx` -- rename the speaking broadcast listener channel to avoid collision
-
+- `src/components/layout/AppLayout.tsx` -- add Menu button in mobile header + Sheet with ServerRail
+- `src/components/server/ServerRail.tsx` -- add optional `onNavigate` prop to close drawer on navigation
