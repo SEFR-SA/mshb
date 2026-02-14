@@ -18,6 +18,7 @@ import MentionPopup from "./MentionPopup";
 import EmojiPicker from "@/components/chat/EmojiPicker";
 import GifPicker from "@/components/chat/GifPicker";
 import StickerPicker from "@/components/chat/StickerPicker";
+import ChatInputActions from "@/components/chat/ChatInputActions";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
@@ -319,19 +320,22 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
               onClose={() => setMentionOpen(false)}
             />
           )}
-          <FileAttachmentButton onFileSelect={(f) => {
-            if (f.size > MAX_FILE_SIZE) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
-            setSelectedFile(f);
-          }} />
-          <EmojiPicker onEmojiSelect={(emoji) => { setNewMsg((prev) => prev + emoji); inputRef.current?.focus(); }} />
-          <GifPicker onGifSelect={async (url) => {
-            if (!user) return;
-            await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "gif", file_name: "gif" } as any);
-          }} />
-          <StickerPicker onStickerSelect={async (url) => {
-            if (!user) return;
-            await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
-          }} />
+          <ChatInputActions
+            onFileSelect={(f) => {
+              if (f.size > MAX_FILE_SIZE) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
+              setSelectedFile(f);
+            }}
+            onEmojiSelect={(emoji) => { setNewMsg((prev) => prev + emoji); inputRef.current?.focus(); }}
+            onGifSelect={async (url) => {
+              if (!user) return;
+              await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "gif", file_name: "gif" } as any);
+            }}
+            onStickerSelect={async (url) => {
+              if (!user) return;
+              await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
+            }}
+            disabled={sending}
+          />
           <Input
             ref={inputRef}
             value={newMsg}
