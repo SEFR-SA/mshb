@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
+import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 
 /** Monitor a MediaStream's volume via AnalyserNode and call back with isSpeaking */
 function createVolumeMonitor(
@@ -49,13 +50,15 @@ interface VoiceConnectionManagerProps {
 const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect }: VoiceConnectionManagerProps) => {
   const { user } = useAuth();
   const { globalMuted, globalDeafened } = useAudioSettings();
+  const { isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName } = useVoiceChannel();
   const [isJoined, setIsJoined] = useState(false);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudiosRef = useRef<HTMLAudioElement[]>([]);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const channelRef = useRef<any>(null);
   const volumeMonitorsRef = useRef<Array<{ cleanup: () => void }>>([]);
-  // speakingChannelRef removed — speaking state now stored in DB
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const screenSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
 
   const lastSpeakingRef = useRef<boolean>(false);
 
@@ -76,16 +79,30 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => pc.addTrack(track, localStreamRef.current!));
     }
+    // If already screen sharing, add the video track to the new peer
+    if (screenStreamRef.current) {
+      const videoTrack = screenStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        const sender = pc.addTrack(videoTrack, screenStreamRef.current);
+        screenSendersRef.current.set(peerId, sender);
+      }
+    }
     pc.ontrack = (e) => {
-      const audio = new Audio();
-      audio.srcObject = e.streams[0];
-      audio.muted = globalDeafened;
-      audio.play().catch(() => {});
-      remoteAudiosRef.current.push(audio);
-      const monitor = createVolumeMonitor(e.streams[0], (isSpeaking) => {
-        updateSpeaking(peerId, isSpeaking);
-      });
-      volumeMonitorsRef.current.push(monitor);
+      if (e.track.kind === "video") {
+        // Remote screen share
+        setRemoteScreenStream(e.streams[0]);
+        e.track.onended = () => setRemoteScreenStream(null);
+      } else {
+        const audio = new Audio();
+        audio.srcObject = e.streams[0];
+        audio.muted = globalDeafened;
+        audio.play().catch(() => {});
+        remoteAudiosRef.current.push(audio);
+        const monitor = createVolumeMonitor(e.streams[0], (isSpeaking) => {
+          updateSpeaking(peerId, isSpeaking);
+        });
+        volumeMonitorsRef.current.push(monitor);
+      }
     };
     pc.onicecandidate = (e) => {
       if (e.candidate && user) {
@@ -95,8 +112,80 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         });
       }
     };
+    pc.onnegotiationneeded = async () => {
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        channelRef.current?.send({
+          type: "broadcast", event: "voice-offer",
+          payload: { sdp: offer, senderId: user!.id, targetId: peerId },
+        });
+      } catch {}
+    };
     return pc;
-  }, [user, updateSpeaking]);
+  }, [user, updateSpeaking, setRemoteScreenStream]);
+
+  // Screen share toggle handler
+  const startScreenShare = useCallback(async () => {
+    if (screenStreamRef.current) return;
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      screenStreamRef.current = stream;
+      const videoTrack = stream.getVideoTracks()[0];
+
+      // Add track to all peer connections
+      peerConnectionsRef.current.forEach((pc, peerId) => {
+        const sender = pc.addTrack(videoTrack, stream);
+        screenSendersRef.current.set(peerId, sender);
+      });
+
+      setIsScreenSharing(true);
+
+      // Broadcast that we started sharing
+      channelRef.current?.send({
+        type: "broadcast", event: "voice-screen-share",
+        payload: { userId: user!.id, sharing: true },
+      });
+
+      videoTrack.onended = () => {
+        stopScreenShare();
+      };
+    } catch {
+      // User cancelled
+    }
+  }, [user, setIsScreenSharing]);
+
+  const stopScreenShare = useCallback(() => {
+    // Remove senders from peer connections
+    peerConnectionsRef.current.forEach((pc, peerId) => {
+      const sender = screenSendersRef.current.get(peerId);
+      if (sender) {
+        try { pc.removeTrack(sender); } catch {}
+      }
+    });
+    screenSendersRef.current.clear();
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenStreamRef.current = null;
+    setIsScreenSharing(false);
+
+    channelRef.current?.send({
+      type: "broadcast", event: "voice-screen-share",
+      payload: { userId: user?.id, sharing: false },
+    });
+  }, [user, setIsScreenSharing]);
+
+  // Listen for toggle-screen-share custom event from ChannelSidebar
+  useEffect(() => {
+    const handler = () => {
+      if (screenStreamRef.current) {
+        stopScreenShare();
+      } else {
+        startScreenShare();
+      }
+    };
+    window.addEventListener("toggle-screen-share", handler);
+    return () => window.removeEventListener("toggle-screen-share", handler);
+  }, [startScreenShare, stopScreenShare]);
 
   const setupSignaling = useCallback(() => {
     if (channelRef.current) return;
@@ -104,7 +193,10 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     channelRef.current = ch;
     ch.on("broadcast", { event: "voice-offer" }, async ({ payload }) => {
       if (!user || payload.targetId !== user.id) return;
-      const pc = createPeerConnection(payload.senderId);
+      let pc = peerConnectionsRef.current.get(payload.senderId);
+      if (!pc) {
+        pc = createPeerConnection(payload.senderId);
+      }
       await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -124,8 +216,15 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       const pc = peerConnectionsRef.current.get(payload.userId);
       if (pc) { pc.close(); peerConnectionsRef.current.delete(payload.userId); }
     })
+    .on("broadcast", { event: "voice-screen-share" }, ({ payload }) => {
+      if (payload.userId === user?.id) return;
+      if (!payload.sharing) {
+        setRemoteScreenStream(null);
+        setScreenSharerName(null);
+      }
+    })
     .subscribe();
-  }, [channelId, user, createPeerConnection]);
+  }, [channelId, user, createPeerConnection, setRemoteScreenStream, setScreenSharerName]);
 
   // Auto-join on mount
   useEffect(() => {
@@ -177,6 +276,14 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   // Cleanup on unmount (disconnect)
   useEffect(() => {
     return () => {
+      // Stop screen share
+      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
+      screenSendersRef.current.clear();
+      setIsScreenSharing(false);
+      setRemoteScreenStream(null);
+      setScreenSharerName(null);
+
       volumeMonitorsRef.current.forEach((m) => m.cleanup());
       volumeMonitorsRef.current = [];
       if (user) {

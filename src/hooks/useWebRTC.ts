@@ -23,10 +23,14 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
   const [isMuted, setIsMuted] = useState(initialMuted);
   const [isDeafened, setIsDeafened] = useState(initialDeafened);
   const [callDuration, setCallDuration] = useState(0);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [remoteScreenStream, setRemoteScreenStream] = useState<MediaStream | null>(null);
   const remoteAudiosRef = useRef<HTMLAudioElement[]>([]);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const screenSenderRef = useRef<RTCRtpSender | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const durationInterval = useRef<ReturnType<typeof setInterval>>();
   const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]);
@@ -35,6 +39,11 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     if (durationInterval.current) clearInterval(durationInterval.current);
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenStreamRef.current = null;
+    screenSenderRef.current = null;
+    setIsScreenSharing(false);
+    setRemoteScreenStream(null);
     pcRef.current?.close();
     pcRef.current = null;
     if (channelRef.current) {
@@ -61,7 +70,6 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
-      // Apply initial mute
       if (initialMuted) {
         stream.getAudioTracks().forEach((t) => { t.enabled = false; });
       }
@@ -70,13 +78,17 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       console.error('[WebRTC] getUserMedia failed:', error);
     }
 
-    // Play remote audio
     pc.ontrack = (event) => {
-      const audio = new Audio();
-      audio.srcObject = event.streams[0];
-      audio.muted = initialDeafened;
-      audio.play().catch(() => {});
-      remoteAudiosRef.current.push(audio);
+      if (event.track.kind === "video") {
+        setRemoteScreenStream(event.streams[0]);
+        event.track.onended = () => setRemoteScreenStream(null);
+      } else {
+        const audio = new Audio();
+        audio.srcObject = event.streams[0];
+        audio.muted = initialDeafened;
+        audio.play().catch(() => {});
+        remoteAudiosRef.current.push(audio);
+      }
     };
 
     pc.onicecandidate = (event) => {
@@ -87,6 +99,18 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
           payload: { candidate: event.candidate.toJSON() },
         });
       }
+    };
+
+    pc.onnegotiationneeded = async () => {
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        channelRef.current?.send({
+          type: "broadcast",
+          event: "call-offer",
+          payload: { sdp: offer },
+        });
+      } catch {}
     };
 
     pc.onconnectionstatechange = () => {
@@ -111,6 +135,37 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     iceCandidateQueue.current = [];
   }, []);
 
+  // Screen sharing
+  const startScreenShare = useCallback(async () => {
+    const pc = pcRef.current;
+    if (!pc || isScreenSharing) return;
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      screenStreamRef.current = stream;
+      const videoTrack = stream.getVideoTracks()[0];
+      const sender = pc.addTrack(videoTrack, stream);
+      screenSenderRef.current = sender;
+      setIsScreenSharing(true);
+
+      videoTrack.onended = () => {
+        stopScreenShare();
+      };
+    } catch {
+      // User cancelled the picker
+    }
+  }, [isScreenSharing]);
+
+  const stopScreenShare = useCallback(() => {
+    const pc = pcRef.current;
+    if (screenSenderRef.current && pc) {
+      try { pc.removeTrack(screenSenderRef.current); } catch {}
+    }
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenStreamRef.current = null;
+    screenSenderRef.current = null;
+    setIsScreenSharing(false);
+  }, []);
+
   // Join broadcast channel for signaling
   useEffect(() => {
     if (!sessionId) return;
@@ -120,7 +175,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
 
     channel
       .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
-        if (isCaller) return; // callee handles offers
+        if (isCaller) return;
         const pc = pcRef.current;
         if (!pc) return;
         await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
@@ -134,7 +189,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
         });
       })
       .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
-        if (!isCaller) return; // caller handles answers
+        if (!isCaller) return;
         const pc = pcRef.current;
         if (!pc) return;
         await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
@@ -165,7 +220,6 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     if (!sid) return;
     setCallState("ringing");
 
-    // Ensure signaling channel is ready before sending offer
     if (!channelRef.current) {
       const channel = supabase.channel(`call-${sid}`);
       channelRef.current = channel;
@@ -195,7 +249,6 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    // Small delay to ensure channel is subscribed on both sides
     setTimeout(() => {
       channelRef.current?.send({
         type: "broadcast",
@@ -210,7 +263,6 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     if (!sid) return;
     setCallState("ringing");
 
-    // Ensure signaling channel is ready (bypass stale closure)
     if (!channelRef.current) {
       const channel = supabase.channel(`call-${sid}`);
       channelRef.current = channel;
@@ -269,7 +321,6 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     setIsDeafened((prev) => {
       const next = !prev;
       remoteAudiosRef.current.forEach((a) => { a.muted = next; });
-      // Deafen implies mute
       if (next) {
         localStreamRef.current?.getAudioTracks().forEach((t) => { t.enabled = false; });
         setIsMuted(true);
@@ -282,6 +333,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
   useEffect(() => {
     return () => {
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       pcRef.current?.close();
       if (durationInterval.current) clearInterval(durationInterval.current);
     };
@@ -292,10 +344,14 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     isMuted,
     isDeafened,
     callDuration,
+    isScreenSharing,
+    remoteScreenStream,
     startCall,
     answerCall,
     endCall,
     toggleMute,
     toggleDeafen,
+    startScreenShare,
+    stopScreenShare,
   };
 }
