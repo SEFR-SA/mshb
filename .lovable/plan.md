@@ -1,24 +1,41 @@
 
 
-## Fix Messages and Friends Icon Alignment and Container Styling
+## Remove Nav Links from AppLayout Sidebar and Merge User Panel into ChannelSidebar
 
-### Problem
-The Messages and Friends icons at the top of the Server Rail appear without a visible container background and look misaligned compared to the Create Server (+) and Join Server buttons below, even though they share similar CSS classes.
-
-### Solution
-Ensure the Messages and Friends NavLink buttons have explicit background styling that matches the Create/Join buttons visually. The fix is in the inactive state class -- make sure it renders a visible container background identical to the other buttons.
+### Overview
+Since Messages and Friends are now accessible from the Server Rail, and Settings is accessible from the sidebar bottom, the desktop sidebar nav in AppLayout is redundant. We will remove the entire desktop sidebar from AppLayout and move the user panel (voice status, audio controls, user profile + settings) into the bottom of ChannelSidebar -- matching Discord's layout where the user panel sits at the bottom of the channel sidebar.
 
 ### Changes
 
-**`src/components/server/ServerRail.tsx`**
+**1. `src/components/layout/AppLayout.tsx`**
+- Remove the entire desktop `<aside>` block (lines 62-148) which contains the nav items and the bottom user panel
+- Keep everything else: Server Rail, mobile header, mobile bottom nav, main content area
+- The desktop layout becomes: ServerRail | Main Content (with ChannelSidebar rendered inside ServerView's Outlet)
 
-Update lines 59-62 (Messages button) and 75-78 (Friends button) to ensure their className exactly matches the styling of the Create and Join buttons below. The key fix is ensuring `bg-sidebar-accent` is consistently applied and the buttons are properly centered within the 72px rail:
+**2. `src/components/server/ChannelSidebar.tsx`**
+- Replace the current bottom section (lines 467-474, just a "Leave" button) with a full Discord-style user panel:
+  - Voice connection status row (when connected): green indicator + channel name + disconnect button
+  - Audio controls row: Mute, Deafen, Settings (link to /settings), and Leave Server button
+  - User profile row: Avatar with status badge, display name, username
+- Import needed hooks: `useAudioSettings`, `useVoiceChannel`, `useAuth` (already imported), `usePresence`
+- Import needed icons: `Mic`, `MicOff`, `Headphones`, `HeadphoneOff`, `PhoneOff`
+- Import `StatusBadge`, `Avatar` components (Avatar already imported)
 
-- Messages button (line 60-61): Keep the `w-12 h-12 rounded-2xl` sizing and add consistent background
-- Friends button (line 76-77): Same treatment
+### Visual Layout (ChannelSidebar Bottom)
 
-Both buttons should use the exact same inactive state styling: `bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20 hover:text-primary hover:rounded-xl` -- note the `hover:text-primary` which the Create/Join buttons have but the nav buttons are missing.
+```text
++------------------------------------------+
+| [green dot] Voice Connected               |
+| #channel-name           [Disconnect]      |
++------------------------------------------+
+| [Mute] [Deafen] [Settings] [Leave]       |
++------------------------------------------+
+| [Avatar+Status]  DisplayName              |
+|                  @username                |
++------------------------------------------+
+```
 
 ### Files Modified
-- `src/components/server/ServerRail.tsx` -- add `hover:text-primary` to Messages and Friends button inactive states to match Create/Join button styling exactly
+- `src/components/layout/AppLayout.tsx` -- remove desktop sidebar entirely
+- `src/components/server/ChannelSidebar.tsx` -- add user panel with voice status, audio controls, and profile to bottom
 
