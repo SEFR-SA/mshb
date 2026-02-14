@@ -1,42 +1,62 @@
 
 
-## Add Skeleton Loading to the Messages (Inbox) Page
+## Apply Color Theme to All Components
 
-### Overview
-The Inbox page (`src/pages/Inbox.tsx`) currently shows an empty state while DM and group threads are being fetched. This will add a shimmer skeleton loading state using the existing `SidebarItemSkeleton` component.
+### Problem
+When a user selects a color theme (gradient background), several components have fully opaque backgrounds that block the gradient from showing through. The affected areas are:
+1. Settings page cards (Profile, Theme, Color Themes)
+2. Server Rail icon buttons
+3. Search users input field (Inbox page)
+4. "New Group" button (Inbox page)
+5. Friends page tab bar (All Friends / Pending / Add Friend)
+6. Text channel header bar
+7. Text channel name container / channel sidebar
 
-### Changes
+### Solution
+Make backgrounds semi-transparent so the gradient shows through, while keeping them fully opaque when no color theme is active (default theme).
 
-**File: `src/pages/Inbox.tsx`**
+### Technical Approach
 
-1. Add a `loading` state initialized to `true`
-2. Set `loading = false` at the end of `loadInbox()` after items are populated
-3. In the thread list area, show `SidebarItemSkeleton` (count=8) while loading
-4. Wrap the real thread list in `animate-fade-in` for a smooth transition
-5. Import `SidebarItemSkeleton` from `@/components/skeletons/SkeletonLoaders`
-
-**Pattern:**
+**1. Update `.glass` utility class** (`src/index.css`)
+Change from `bg-card` to `bg-card/80` so cards become translucent over the gradient:
+```css
+.glass {
+  @apply bg-card/80 backdrop-blur-sm border border-border/50;
+}
 ```
-const [loading, setLoading] = useState(true);
 
-// End of loadInbox():
-setItems(all);
-setLoading(false);
+**2. Update Settings page cards** (`src/pages/Settings.tsx`)
+The three `<Card className="glass">` elements already use `.glass`, so they will automatically pick up the change from step 1.
 
-// In JSX thread list area:
-{loading ? (
-  <SidebarItemSkeleton count={8} />
-) : (
-  <div className="animate-fade-in">
-    {items.length === 0 && !search.trim() && ( /* empty state */ )}
-    {items.map((item) => ( /* thread buttons */ ))}
-  </div>
-)}
-```
+**3. Update Server Rail** (`src/components/server/ServerRail.tsx`)
+- Change the rail container from `bg-sidebar-background` to `bg-sidebar-background/80 backdrop-blur-sm`
+- Change server icon buttons from `bg-sidebar-accent` to `bg-sidebar-accent/80`
+
+**4. Update Search input and "New Group" button** (`src/pages/Inbox.tsx`)
+- The `<Input>` component uses `bg-background` from its base class. Override with `bg-background/60 backdrop-blur-sm` on the search input.
+- The "New Group" `<Button variant="outline">` will naturally become more transparent via the outline variant.
+
+**5. Update Friends TabsList** (`src/pages/Friends.tsx`)
+- The `<TabsList>` uses `bg-muted` by default. Override with `className="w-full bg-muted/60 backdrop-blur-sm"`.
+- The active `TabsTrigger` uses `data-[state=active]:bg-background`; no change needed (it will be slightly transparent too).
+
+**6. Update Channel header** (`src/components/server/ServerChannelChat.tsx`)
+- The header already uses `glass` class, so it picks up the change from step 1.
+
+**7. Update Channel Sidebar** (`src/components/server/ChannelSidebar.tsx`)
+- Change container from `bg-sidebar-background` to `bg-sidebar-background/80 backdrop-blur-sm`
+
+**8. Update Input base component** (`src/components/ui/input.tsx`)
+- Change `bg-background` to `bg-background/60` so all inputs across the app become semi-transparent over gradients.
 
 ### Files Modified
 
 | File | Changes |
 |---|---|
-| `src/pages/Inbox.tsx` | Add `loading` state, show `SidebarItemSkeleton` while fetching, fade-in real content |
+| `src/index.css` | Update `.glass` to use `bg-card/80 backdrop-blur-sm` |
+| `src/components/ui/input.tsx` | Change `bg-background` to `bg-background/60` |
+| `src/components/server/ServerRail.tsx` | Semi-transparent rail and icon backgrounds |
+| `src/components/server/ChannelSidebar.tsx` | Semi-transparent sidebar background |
+| `src/pages/Friends.tsx` | Semi-transparent TabsList |
+| `src/pages/Inbox.tsx` | Semi-transparent search input area |
 
