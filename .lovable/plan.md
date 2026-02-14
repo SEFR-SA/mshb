@@ -1,20 +1,23 @@
 
 
-## Hide Scrollbar Track Globally
+## Hide Scrollbar Track, Show Only Thumb
 
 ### Problem
-The scroll area shows a visible track/container behind the scrollbar thumb. The user wants to hide the track and only show the moving thumb indicator across all pages.
+The `ScrollAreaScrollbar` element (the track) has a visible white/light background behind the gray thumb. We need to make the track fully transparent so only the moving thumb indicator is visible.
 
 ### Changes
 
 **File: `src/components/ui/scroll-area.tsx`**
 
-Update the `ScrollBar` component to make the track background transparent by removing the border and padding styles, so only the thumb (the moving indicator) is visible.
+1. Add `bg-transparent` to the `ScrollAreaScrollbar` className to ensure the track has no background color
+2. Optionally narrow the scrollbar width slightly (from `w-2.5` to `w-2`) for a subtler look
+3. Ensure the thumb retains its `bg-border` color so it remains visible
 
 | What | Detail |
 |---|---|
-| Remove track styling | Remove `border-l border-l-transparent p-[1px]` from vertical and `border-t border-t-transparent p-[1px]` from horizontal orientations |
-| Make track invisible | The track container becomes fully transparent, leaving only the rounded thumb visible |
+| Track background | Add `bg-transparent` to the scrollbar track container |
+| Track width | Optionally reduce from `w-2.5` to `w-2` for a cleaner look |
+| Thumb | Keep `bg-border` on the thumb -- this is the gray moving indicator |
 
-This is a single-file change that affects all scroll areas app-wide since every `ScrollArea` uses this shared component.
+Single-file change affecting all scroll areas globally.
 
