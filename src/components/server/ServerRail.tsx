@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,6 +19,8 @@ interface Server {
 const ServerRail = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [servers, setServers] = useState<Server[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
@@ -53,33 +55,32 @@ const ServerRail = () => {
         {/* Home button */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <NavLink
-              to="/"
-              end
-              className={({ isActive }) =>
-                `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
-                  isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
-                }`
-              }
+            <button
+              onClick={() => navigate("/")}
+              className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
+                location.pathname === "/"
+                  ? "bg-primary text-primary-foreground rounded-xl"
+                  : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
+              }`}
             >
               <MessageSquare className="h-5 w-5" />
-            </NavLink>
+            </button>
           </TooltipTrigger>
           <TooltipContent side="right">{t("nav.inbox")}</TooltipContent>
         </Tooltip>
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <NavLink
-              to="/friends"
-              className={({ isActive }) =>
-                `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
-                  isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
-                }`
-              }
+            <button
+              onClick={() => navigate("/friends")}
+              className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
+                location.pathname === "/friends"
+                  ? "bg-primary text-primary-foreground rounded-xl"
+                  : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
+              }`}
             >
               <Users className="h-5 w-5" />
-            </NavLink>
+            </button>
           </TooltipTrigger>
           <TooltipContent side="right">{t("nav.friends")}</TooltipContent>
         </Tooltip>
