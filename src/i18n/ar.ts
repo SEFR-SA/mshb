@@ -209,6 +209,8 @@ export default {
     connected: "متصل",
     joinVoice: "انضمام للصوت",
     voiceEmpty: "لا يوجد أحد في هذه القناة الصوتية بعد",
+    voiceConnected: "متصل بالصوت",
+    disconnect: "قطع الاتصال",
   },
   channels: {
     create: "إنشاء قناة",
