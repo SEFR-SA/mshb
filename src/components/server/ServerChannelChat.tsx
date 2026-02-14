@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { getEmojiClass } from "@/lib/emojiUtils";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -267,7 +268,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
                     <MessageFilePreview fileUrl={msg.file_url} fileName={msg.file_name || "file"} fileType={msg.file_type || ""} fileSize={msg.file_size || 0} isMine={isMine} />
                   </div>
                 ) : null}
-                {msg.content && <p className="text-sm whitespace-pre-wrap break-words">{renderMessageContent(msg.content, profiles, user?.id)}</p>}
+                {msg.content && <p className={`whitespace-pre-wrap break-words ${getEmojiClass(msg.content) || 'text-sm'}`}>{renderMessageContent(msg.content, profiles, user?.id)}</p>}
               </div>
             </div>
           );

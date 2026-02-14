@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { getEmojiClass } from "@/lib/emojiUtils";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -383,7 +384,7 @@ const GroupChat = () => {
                           />
                         </div>
                       ) : null}
-                      <p className="text-sm whitespace-pre-wrap break-words">
+                      <p className={`whitespace-pre-wrap break-words ${!isDeleted && getEmojiClass(msg.content) ? getEmojiClass(msg.content) : 'text-sm'}`}>
                         {isDeleted ? t("chat.deleted") : msg.content}
                       </p>
                       <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
