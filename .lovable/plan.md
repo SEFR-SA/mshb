@@ -1,125 +1,133 @@
 
 
-## Video Call & Picture-in-Picture Features
+## Server Activity Indicators
 
 ### What This Does
-1. **Video Call**: Adds a camera toggle button to both 1-to-1 calls and server voice channels, allowing users to share their webcam feed alongside audio. The remote camera feed displays as a video element in the call UI.
-2. **Picture-in-Picture (PiP)**: Adds a PiP button on screen share and video viewers so users can pop the video into a floating browser-native PiP window, letting them continue chatting while watching.
+Adds two Discord-style indicators to the Server Rail and Channel Sidebar:
+
+1. **Voice/Screen Share indicator on server icons**: A small icon appears below/beside each server avatar in the rail showing activity -- a screen share icon (monitor) when someone is sharing their screen in a voice channel, or a speaker icon when users are in a voice channel but not screen sharing.
+
+2. **Unread message dot on server icons**: A white dot appears on the left edge of server icons in the rail when there are unread messages in any text channel. The same dot also appears next to individual text channels in the Channel Sidebar.
 
 ---
 
 ### Changes
 
-#### 1. Video Call in 1-to-1 Calls
+#### 1. Database: New `channel_read_status` table
 
-**`src/hooks/useWebRTC.ts`**
+Create a new table to track when each user last read each server text channel:
 
-- Add state: `isCameraOn`, `localCameraStream`, `remoteCameraStream`
-- Add refs: `cameraStreamRef`, `cameraSenderRef`
-- Add `startCamera()`: calls `getUserMedia({ video: true })`, adds video track to peer connection (triggers renegotiation)
-- Add `stopCamera()`: removes video track sender, stops camera stream
-- Update `pc.ontrack`: distinguish between camera video tracks and screen share video tracks using a label/metadata convention -- screen share tracks come from `getDisplayMedia` and camera tracks from `getUserMedia`. We'll track which sender is which to differentiate. A simpler approach: maintain a `isScreenSharing` flag and when a second video track arrives while the local user is NOT screen sharing, treat it as a camera feed.
-- Actually, the cleanest approach: use stream IDs. Screen share streams and camera streams have different stream objects. We'll broadcast a signaling message (`"camera-toggle"`) so the remote side knows which stream is camera vs screen.
-- Export: `isCameraOn`, `remoteCameraStream`, `startCamera`, `stopCamera`
-- Cleanup camera on `cleanup()`
+- `id` (uuid, primary key)
+- `channel_id` (uuid, references channels)
+- `user_id` (uuid)
+- `last_read_at` (timestamptz)
+- Unique constraint on (channel_id, user_id)
+- RLS policies: users can read/upsert their own rows
 
-**`src/components/chat/VoiceCallUI.tsx`**
+Also add an `is_screen_sharing` boolean column to `voice_channel_participants` so the server rail can query who is screen sharing without relying on signaling events.
 
-- Add props: `isCameraOn`, `remoteCameraStream`, `localCameraStream`, `onStartCamera`, `onStopCamera`
-- Add `Video`/`VideoOff` icons from lucide-react
-- Add camera toggle button in the controls row (between deafen and screen share)
-- When `remoteCameraStream` exists, show a video element displaying the remote camera (smaller than screen share, circular or rectangular with rounded corners)
-- When `localCameraStream` exists, show a small self-view in the corner (picture-in-picture style overlay)
-- Add a PiP button (lucide `PictureInPicture2` icon) on remote video elements (both screen share and camera) that calls `videoElement.requestPictureInPicture()`
+#### 2. Database: Enable realtime for `channel_read_status`
 
-**`src/pages/Chat.tsx`**
+So unread indicators update live when users read channels or new messages arrive.
 
-- Destructure new `isCameraOn`, `remoteCameraStream`, `startCamera`, `stopCamera` from `useWebRTC`
-- Pass them as props to `VoiceCallUI`
+#### 3. Server Rail -- Voice/Screen Share Indicator
 
-#### 2. Video Call in Server Voice Channels
+**`src/components/server/ServerRail.tsx`**
 
-**`src/contexts/VoiceChannelContext.tsx`**
+- For each server, query `voice_channel_participants` joined with `channels` to check if anyone is in a voice channel for that server.
+- If any participant has `is_screen_sharing = true`, show a small screen share icon (Monitor) on the server avatar.
+- Otherwise, if any participants exist, show a speaker icon (Volume2).
+- Subscribe to realtime changes on `voice_channel_participants` to keep indicators live.
+- The indicator is rendered as a small icon badge at the bottom-right of the server avatar.
 
-- Add state: `isCameraOn`, `remoteCameraStream`, `localCameraStream`
-- Add setters for all three
+#### 4. Server Rail -- Unread Message Dot
 
-**`src/components/server/VoiceConnectionBar.tsx`**
+**`src/components/server/ServerRail.tsx`**
 
-- Add `cameraStreamRef`, `cameraSendersRef` (Map of peerId to sender)
-- Add `startCamera()`: calls `getUserMedia({ video: true })`, adds video track to all peer connections
-- Add `stopCamera()`: removes video senders, stops stream
-- Broadcast `"voice-camera"` signaling event with userId and on/off state
-- In `pc.ontrack`: detect video tracks -- differentiate camera vs screen by checking signaling events. When a `"voice-camera"` event is received with `sharing: true`, mark the next incoming video track from that peer as camera.
-- Expose camera streams via `VoiceChannelContext`
-- Listen for `"toggle-camera"` CustomEvent from ChannelSidebar (same pattern as screen share)
+- For each server, query `messages` where `channel_id` is in that server's channels, and `created_at` is after the user's `last_read_at` from `channel_read_status`, and `author_id != current user`.
+- If count > 0, show a small white dot on the start (left in LTR) edge of the server icon.
+- Subscribe to realtime on `messages` (channel_id-based) and `channel_read_status` for live updates.
+- Create a custom hook `useServerUnread` to encapsulate this logic.
+
+#### 5. Channel Sidebar -- Unread Dot on Text Channels
 
 **`src/components/server/ChannelSidebar.tsx`**
 
-- Add a camera toggle button in the voice connection bar (next to screen share button)
-- Dispatches `"toggle-camera"` CustomEvent
+- Track which text channels have unread messages using the same `channel_read_status` table.
+- Show a small white dot next to unread channel names (or bold the channel name, Discord-style).
+- When a user navigates to a channel, upsert `channel_read_status` with the current timestamp to mark it as read.
 
-**`src/pages/ServerView.tsx`**
+#### 6. Mark Channel as Read
 
-- When `remoteCameraStream` exists from context, render a camera video viewer (similar to ScreenShareViewer but styled as a smaller video feed)
+**`src/components/server/ServerChannelChat.tsx`**
 
-#### 3. Picture-in-Picture Mode
+- When the component mounts or when the user views a channel, upsert `channel_read_status` with `last_read_at = now()`.
+- This clears the unread indicator for that channel.
 
-**`src/components/chat/VoiceCallUI.tsx`**
+#### 7. VoiceConnectionBar -- Update `is_screen_sharing` in DB
 
-- Add a PiP button (small icon button) overlaid on the `ScreenShareVideo` and camera video components
-- On click, calls `videoRef.current.requestPictureInPicture()`
-- The `ScreenShareVideo` sub-component will be updated to accept an optional `showPiP` prop and render the button
+**`src/components/server/VoiceConnectionBar.tsx`**
 
-**`src/components/server/ScreenShareViewer.tsx`**
+- When screen sharing starts, update `voice_channel_participants` to set `is_screen_sharing = true` for the current user.
+- When screen sharing stops, set it back to `false`.
+- This allows the Server Rail to query screen share state from the database.
 
-- Add a PiP button in the header bar next to the sharer name
-- On click, calls `videoRef.current.requestPictureInPicture()`
+#### 8. Translations
 
-#### 4. Translations
+**`src/i18n/en.ts`** and **`src/i18n/ar.ts`**
 
-**`src/i18n/en.ts`**
-
-- `calls.startCamera` -- "Start Camera"
-- `calls.stopCamera` -- "Stop Camera"
-- `calls.pip` -- "Picture in Picture"
-- `calls.userCamera` -- "{{name}}'s camera"
-
-**`src/i18n/ar.ts`**
-
-- Arabic equivalents
+- No new visible text needed (indicators are icon-only).
 
 ---
 
 ### Technical Details
 
-**Differentiating camera vs screen share video tracks**: Since WebRTC `ontrack` events don't inherently label the source, we use signaling. When a user starts their camera, they broadcast a `"camera-toggle"` event. The remote side stores a flag per peer so when the next video track arrives, it knows whether it's camera or screen share. In 1-to-1 calls, we can track this more simply since there's only one peer.
-
-**Picture-in-Picture API usage**:
+**Unread detection query pattern** (per server):
 ```text
-const handlePiP = async (videoRef) => {
-  if (document.pictureInPictureElement) {
-    await document.exitPictureInPicture();
-  } else if (videoRef.current) {
-    await videoRef.current.requestPictureInPicture();
-  }
-};
+-- Get unread count for all channels in a server
+SELECT c.id 
+FROM channels c
+LEFT JOIN channel_read_status crs 
+  ON crs.channel_id = c.id AND crs.user_id = :userId
+WHERE c.server_id = :serverId 
+  AND c.type = 'text'
+  AND EXISTS (
+    SELECT 1 FROM messages m 
+    WHERE m.channel_id = c.id 
+      AND m.author_id != :userId
+      AND (crs.last_read_at IS NULL OR m.created_at > crs.last_read_at)
+  )
 ```
 
-**Camera video layout in VoiceCallUI**:
-- Remote camera: displayed as a rounded rectangle (max 300px) above the avatar area
-- Local camera (self-view): small 120x90 overlay in the bottom-right corner of the call area
-- PiP button: small icon in the top-right corner of each video element
+**Voice activity indicator logic**:
+```text
+For each server:
+  1. Query voice_channel_participants JOIN channels WHERE server_id = serverId
+  2. If any row has is_screen_sharing = true -> show Monitor icon
+  3. Else if any rows exist -> show Volume2 icon  
+  4. Else -> show nothing
+```
+
+**White unread dot styling** (on server rail):
+```text
+<div className="absolute -start-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full" />
+```
+
+**Marking as read** (in ServerChannelChat on mount):
+```text
+await supabase.from("channel_read_status")
+  .upsert({ channel_id, user_id, last_read_at: new Date().toISOString() }, 
+    { onConflict: "channel_id,user_id" });
+```
+
+### New Hook
+
+**`src/hooks/useServerUnread.ts`** -- encapsulates the unread logic for all servers, returns a `Map<serverId, boolean>` indicating which servers have unread messages. Subscribes to realtime for live updates.
 
 ### Files Modified
-- `src/hooks/useWebRTC.ts` -- add camera start/stop/stream management
-- `src/components/chat/VoiceCallUI.tsx` -- add camera button, video display, PiP buttons, self-view
-- `src/pages/Chat.tsx` -- pass camera props to VoiceCallUI
-- `src/components/server/VoiceConnectionBar.tsx` -- add camera logic for multi-peer
-- `src/contexts/VoiceChannelContext.tsx` -- add camera state
-- `src/components/server/ChannelSidebar.tsx` -- add camera toggle button in voice bar
-- `src/components/server/ScreenShareViewer.tsx` -- add PiP button
-- `src/pages/ServerView.tsx` -- render camera viewer
-- `src/i18n/en.ts` -- new translation keys
-- `src/i18n/ar.ts` -- Arabic translations
-
+- **New migration**: create `channel_read_status` table, add `is_screen_sharing` column to `voice_channel_participants`
+- **New**: `src/hooks/useServerUnread.ts` -- unread detection hook
+- `src/components/server/ServerRail.tsx` -- add voice activity indicator + unread dot
+- `src/components/server/ChannelSidebar.tsx` -- add unread dot per channel
+- `src/components/server/ServerChannelChat.tsx` -- mark channel as read on view
+- `src/components/server/VoiceConnectionBar.tsx` -- update `is_screen_sharing` in DB
