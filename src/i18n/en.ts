@@ -213,6 +213,9 @@ export default {
     voiceEmpty: "No one is in this voice channel yet",
     voiceConnected: "Voice Connected",
     disconnect: "Disconnect",
+    deleteServer: "Delete Server",
+    deleteServerConfirm: "Are you sure? This will permanently delete the server and all its channels.",
+    serverDeleted: "Server deleted",
   },
   channels: {
     create: "Create Channel",

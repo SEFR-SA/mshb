@@ -213,6 +213,9 @@ export default {
     voiceEmpty: "لا يوجد أحد في هذه القناة الصوتية بعد",
     voiceConnected: "متصل بالصوت",
     disconnect: "قطع الاتصال",
+    deleteServer: "حذف السيرفر",
+    deleteServerConfirm: "هل أنت متأكد؟ سيؤدي هذا إلى حذف السيرفر وجميع قنواته نهائيًا.",
+    serverDeleted: "تم حذف السيرفر",
   },
   channels: {
     create: "إنشاء قناة",
