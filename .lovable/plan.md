@@ -1,133 +1,88 @@
 
 
-## Server Activity Indicators
+## Fix Mute/Deafen & Add Voice Status Indicators
 
-### What This Does
-Adds two Discord-style indicators to the Server Rail and Channel Sidebar:
+### Problem
+The mute and deafen buttons in the channel sidebar toggle UI state (`globalMuted`/`globalDeafened` in AudioSettingsContext) but the VoiceConnectionBar never reacts to these changes. The local audio tracks are not disabled and remote audio elements are not muted, so the buttons have no actual effect.
 
-1. **Voice/Screen Share indicator on server icons**: A small icon appears below/beside each server avatar in the rail showing activity -- a screen share icon (monitor) when someone is sharing their screen in a voice channel, or a speaker icon when users are in a voice channel but not screen sharing.
-
-2. **Unread message dot on server icons**: A white dot appears on the left edge of server icons in the rail when there are unread messages in any text channel. The same dot also appears next to individual text channels in the Channel Sidebar.
-
----
-
-### Changes
-
-#### 1. Database: New `channel_read_status` table
-
-Create a new table to track when each user last read each server text channel:
-
-- `id` (uuid, primary key)
-- `channel_id` (uuid, references channels)
-- `user_id` (uuid)
-- `last_read_at` (timestamptz)
-- Unique constraint on (channel_id, user_id)
-- RLS policies: users can read/upsert their own rows
-
-Also add an `is_screen_sharing` boolean column to `voice_channel_participants` so the server rail can query who is screen sharing without relying on signaling events.
-
-#### 2. Database: Enable realtime for `channel_read_status`
-
-So unread indicators update live when users read channels or new messages arrive.
-
-#### 3. Server Rail -- Voice/Screen Share Indicator
-
-**`src/components/server/ServerRail.tsx`**
-
-- For each server, query `voice_channel_participants` joined with `channels` to check if anyone is in a voice channel for that server.
-- If any participant has `is_screen_sharing = true`, show a small screen share icon (Monitor) on the server avatar.
-- Otherwise, if any participants exist, show a speaker icon (Volume2).
-- Subscribe to realtime changes on `voice_channel_participants` to keep indicators live.
-- The indicator is rendered as a small icon badge at the bottom-right of the server avatar.
-
-#### 4. Server Rail -- Unread Message Dot
-
-**`src/components/server/ServerRail.tsx`**
-
-- For each server, query `messages` where `channel_id` is in that server's channels, and `created_at` is after the user's `last_read_at` from `channel_read_status`, and `author_id != current user`.
-- If count > 0, show a small white dot on the start (left in LTR) edge of the server icon.
-- Subscribe to realtime on `messages` (channel_id-based) and `channel_read_status` for live updates.
-- Create a custom hook `useServerUnread` to encapsulate this logic.
-
-#### 5. Channel Sidebar -- Unread Dot on Text Channels
-
-**`src/components/server/ChannelSidebar.tsx`**
-
-- Track which text channels have unread messages using the same `channel_read_status` table.
-- Show a small white dot next to unread channel names (or bold the channel name, Discord-style).
-- When a user navigates to a channel, upsert `channel_read_status` with the current timestamp to mark it as read.
-
-#### 6. Mark Channel as Read
-
-**`src/components/server/ServerChannelChat.tsx`**
-
-- When the component mounts or when the user views a channel, upsert `channel_read_status` with `last_read_at = now()`.
-- This clears the unread indicator for that channel.
-
-#### 7. VoiceConnectionBar -- Update `is_screen_sharing` in DB
+### Fix 1: Make Mute Actually Work
 
 **`src/components/server/VoiceConnectionBar.tsx`**
 
-- When screen sharing starts, update `voice_channel_participants` to set `is_screen_sharing = true` for the current user.
-- When screen sharing stops, set it back to `false`.
-- This allows the Server Rail to query screen share state from the database.
+Add a `useEffect` that watches `globalMuted` and toggles the local audio stream's tracks:
+- When `globalMuted` becomes `true`, disable all audio tracks on `localStreamRef.current`
+- When `globalMuted` becomes `false`, re-enable them
 
-#### 8. Translations
+### Fix 2: Make Deafen Actually Work
 
-**`src/i18n/en.ts`** and **`src/i18n/ar.ts`**
+**`src/components/server/VoiceConnectionBar.tsx`**
 
-- No new visible text needed (indicators are icon-only).
+Add a `useEffect` that watches `globalDeafened` and mutes/unmutes all remote audio elements:
+- When `globalDeafened` becomes `true`, set `audio.muted = true` on every element in `remoteAudiosRef`
+- When `globalDeafened` becomes `false`, set `audio.muted = false`
+- Also update the existing `pc.ontrack` handler (line 115) to use a ref for deafened state so new audio elements respect the current deafen state
+
+### Fix 3: Sync Mute/Deafen State to Database
+
+**Database migration**: Add `is_muted` and `is_deafened` boolean columns (default `false`) to `voice_channel_participants`
+
+**`src/components/server/VoiceConnectionBar.tsx`**
+
+Add a `useEffect` that watches `globalMuted` and `globalDeafened` and updates the participant's row in `voice_channel_participants`.
+
+### Fix 4: Show Mute/Deafen Indicators Next to Participant Names
+
+**`src/components/server/ChannelSidebar.tsx`**
+
+- Update the `VoiceParticipant` interface to include `is_muted` and `is_deafened`
+- Update `fetchVoiceParticipants` to also select `is_muted, is_deafened`
+- In the participant list (around line 423-435), add icons next to the user's name:
+  - If `is_deafened`: show a `HeadphoneOff` icon (red)
+  - Else if `is_muted`: show a `MicOff` icon (red)
+  - The existing speaking indicator (green mic) should only show when the user is NOT muted
 
 ---
 
 ### Technical Details
 
-**Unread detection query pattern** (per server):
+**Mute effect** (new in VoiceConnectionBar):
 ```text
--- Get unread count for all channels in a server
-SELECT c.id 
-FROM channels c
-LEFT JOIN channel_read_status crs 
-  ON crs.channel_id = c.id AND crs.user_id = :userId
-WHERE c.server_id = :serverId 
-  AND c.type = 'text'
-  AND EXISTS (
-    SELECT 1 FROM messages m 
-    WHERE m.channel_id = c.id 
-      AND m.author_id != :userId
-      AND (crs.last_read_at IS NULL OR m.created_at > crs.last_read_at)
-  )
+useEffect(() => {
+  localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = !globalMuted; });
+}, [globalMuted]);
 ```
 
-**Voice activity indicator logic**:
+**Deafen effect** (new in VoiceConnectionBar):
 ```text
-For each server:
-  1. Query voice_channel_participants JOIN channels WHERE server_id = serverId
-  2. If any row has is_screen_sharing = true -> show Monitor icon
-  3. Else if any rows exist -> show Volume2 icon  
-  4. Else -> show nothing
+useEffect(() => {
+  remoteAudiosRef.current.forEach(a => { a.muted = globalDeafened; });
+}, [globalDeafened]);
 ```
 
-**White unread dot styling** (on server rail):
+**DB update effect** (new in VoiceConnectionBar):
 ```text
-<div className="absolute -start-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full" />
+useEffect(() => {
+  if (!user || !isJoined) return;
+  supabase.from("voice_channel_participants")
+    .update({ is_muted: globalMuted, is_deafened: globalDeafened })
+    .eq("channel_id", channelId)
+    .eq("user_id", user.id)
+    .then();
+}, [globalMuted, globalDeafened, isJoined, user, channelId]);
 ```
 
-**Marking as read** (in ServerChannelChat on mount):
+**Participant indicator** (updated in ChannelSidebar):
 ```text
-await supabase.from("channel_read_status")
-  .upsert({ channel_id, user_id, last_read_at: new Date().toISOString() }, 
-    { onConflict: "channel_id,user_id" });
+{p.is_deafened ? (
+  <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
+) : p.is_muted ? (
+  <MicOff className="h-3 w-3 text-destructive shrink-0" />
+) : p.is_speaking ? (
+  <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
+) : null}
 ```
-
-### New Hook
-
-**`src/hooks/useServerUnread.ts`** -- encapsulates the unread logic for all servers, returns a `Map<serverId, boolean>` indicating which servers have unread messages. Subscribes to realtime for live updates.
 
 ### Files Modified
-- **New migration**: create `channel_read_status` table, add `is_screen_sharing` column to `voice_channel_participants`
-- **New**: `src/hooks/useServerUnread.ts` -- unread detection hook
-- `src/components/server/ServerRail.tsx` -- add voice activity indicator + unread dot
-- `src/components/server/ChannelSidebar.tsx` -- add unread dot per channel
-- `src/components/server/ServerChannelChat.tsx` -- mark channel as read on view
-- `src/components/server/VoiceConnectionBar.tsx` -- update `is_screen_sharing` in DB
+- **New migration**: add `is_muted` and `is_deafened` columns to `voice_channel_participants`
+- `src/components/server/VoiceConnectionBar.tsx` -- add effects for mute, deafen, and DB sync
+- `src/components/server/ChannelSidebar.tsx` -- update participant interface, query, and display with mute/deafen icons
