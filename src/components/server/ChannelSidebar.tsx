@@ -252,9 +252,11 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   // --- Delete Channel ---
   const handleDeleteChannel = async () => {
     if (!deleteChannelId) return;
-    await supabase.from("channels" as any).delete().eq("id", deleteChannelId);
-    toast({ title: t("channels.deleted") });
+    const idToDelete = deleteChannelId;
     setDeleteChannelId(null);
+    setChannels(prev => prev.filter(c => c.id !== idToDelete));
+    await supabase.from("channels" as any).delete().eq("id", idToDelete);
+    toast({ title: t("channels.deleted") });
   };
 
   // --- Helpers ---
