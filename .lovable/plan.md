@@ -1,73 +1,62 @@
 
 
-## Fix: Voice Call UI Not Appearing
+## Fix Username Check and Duplicate Email Detection on Signup
 
-### Root Cause
+### Issue 1: Username Shows "Available" When It Is Taken
 
-In `Chat.tsx`, the `initiateCall` function does:
+**Problem**: The username uniqueness check uses an exact (case-sensitive) match: `.eq("username", username.trim())`. If the database contains `"Risk_ii"` and a user types `"risk_ii"`, the query returns no match and incorrectly displays "Username is available."
 
-```typescript
-setCallSessionId(data.id);    // React state update (batched, not immediate)
-setIsCallerState(true);        // Also batched
-setTimeout(() => startCall(), 500);  // startCall still sees sessionId = null
-```
+Meanwhile, the login function (`get_email_by_username`) uses `lower()` for case-insensitive matching -- so there is an inconsistency.
 
-The `startCall` function from `useWebRTC` is a memoized callback that captures `sessionId` from the **current render**. Even after 500ms, React may have re-rendered, but the `startCall` reference inside `initiateCall`'s closure is still the old one where `sessionId` was `null`. So it hits `if (!sessionId) return;` and does nothing.
-
-### Solution
-
-**1. `src/hooks/useWebRTC.ts`** -- Make `startCall` accept an optional `overrideSessionId` parameter so it doesn't depend on React state timing:
+**Fix**: Use `.ilike()` instead of `.eq()` for case-insensitive comparison in the username check query.
 
 ```typescript
-const startCall = useCallback(async (overrideSessionId?: string) => {
-  const sid = overrideSessionId || sessionId;
-  if (!sid) return;
-  setCallState("ringing");
-  const pc = await setupPeerConnection();
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
+// Before
+.eq("username", username.trim())
 
-  setTimeout(() => {
-    channelRef.current?.send({
-      type: "broadcast",
-      event: "call-offer",
-      payload: { sdp: offer },
-    });
-  }, 1000);
-}, [sessionId, setupPeerConnection]);
+// After  
+.ilike("username", username.trim())
 ```
 
-**2. `src/pages/Chat.tsx`** -- Pass the session ID directly to `startCall` instead of relying on state:
+---
+
+### Issue 2: Duplicate Email Accepted on Signup
+
+**Problem**: When signing up with an already-registered email, Supabase intentionally returns a success response (HTTP 200) to prevent email enumeration. The app then shows a "Check your email" message, even though no real confirmation email is sent.
+
+**Fix**: After a successful `signUp` call, inspect the returned user data. Supabase signals a duplicate by returning a user object with an empty `identities` array. We can detect this and show an appropriate error message.
 
 ```typescript
-const initiateCall = async () => {
-  if (!threadId || !user || !otherId || callSessionId) return;
-  const { data } = await supabase
-    .from("call_sessions")
-    .insert({ caller_id: user.id, callee_id: otherId, thread_id: threadId } as any)
-    .select("id")
-    .single();
-  if (data) {
-    setCallSessionId(data.id);
-    setIsCallerState(true);
-    // Pass session ID directly -- don't rely on state update
-    setTimeout(() => startCall(data.id), 500);
-  }
-};
+const { data, error } = await signUp(email, password, username.trim());
+if (error) {
+  // show error
+} else if (data?.user?.identities?.length === 0) {
+  // Email already registered
+  toast({ title: "This email is already registered. Please log in instead.", variant: "destructive" });
+} else {
+  toast({ title: t("auth.checkEmail") });
+}
 ```
 
-**3. Also fix the signaling channel setup** -- The `useEffect` in `useWebRTC` that sets up the broadcast channel (line 106) depends on `sessionId`. But since `startCall` may fire before the channel effect runs, the `channelRef.current` may still be `null` when the offer is sent. To fix this, `startCall` should also set up the channel inline if it's not yet available, or we ensure the channel is ready before sending the offer.
+This requires updating the `signUp` function in `AuthContext.tsx` to return the full response data (not just the error).
 
-The safest approach: in `startCall`, if `channelRef.current` is null, create and subscribe the channel inline before sending the offer.
+---
+
+### Technical Details
+
+**File: `src/contexts/AuthContext.tsx`**
+- Change `signUp` return type from `{ error }` to `{ error, data }` so the caller can inspect `data.user.identities`
+- Update the interface `AuthContextType` accordingly
+
+**File: `src/pages/Auth.tsx`**
+- In the username check `useEffect` (around line 39): replace `.eq("username", ...)` with `.ilike("username", ...)`
+- In `handleSubmit` for the signup branch: check `data?.user?.identities?.length === 0` and show "Email already registered" error instead of the success toast
+- Add a translation key reference or inline message for the duplicate email case
 
 ### Files to Modify
 
 | File | Changes |
-|------|--------|
-| `src/hooks/useWebRTC.ts` | Add `overrideSessionId` param to `startCall`; ensure channel is ready before sending offer |
-| `src/pages/Chat.tsx` | Pass `data.id` directly to `startCall(data.id)` |
-
-### Expected Result
-
-Clicking "Start Voice Call" will immediately show the ringing UI with the pulsing avatar animation and "Calling..." text, regardless of React state timing.
+|------|---------|
+| `src/contexts/AuthContext.tsx` | Return `data` from `signUp`; update interface |
+| `src/pages/Auth.tsx` | Case-insensitive username check; detect duplicate email |
 
