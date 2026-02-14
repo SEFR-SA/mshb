@@ -219,6 +219,12 @@ export default {
     text: "قناة نصية",
     voice: "قناة صوتية",
   },
+  audio: {
+    mute: "كتم الميكروفون",
+    unmute: "إلغاء كتم الميكروفون",
+    deafen: "كتم الصوت",
+    undeafen: "إلغاء كتم الصوت",
+  },
   mentions: {
     all: "الجميع",
     noResults: "لم يتم العثور على أعضاء",

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { AudioSettingsProvider } from "@/contexts/AudioSettingsContext";
 import AppLayout from "@/components/layout/AppLayout";
 import Auth from "@/pages/Auth";
 import Inbox from "@/pages/Inbox";
@@ -28,6 +29,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
+      <AudioSettingsProvider>
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
@@ -49,6 +51,7 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
+      </AudioSettingsProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );

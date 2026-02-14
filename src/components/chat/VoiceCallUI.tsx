@@ -2,17 +2,19 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PhoneOff, Mic, MicOff } from "lucide-react";
+import { PhoneOff, Mic, MicOff, Volume2, HeadphoneOff } from "lucide-react";
 import type { CallState } from "@/hooks/useWebRTC";
 
 interface VoiceCallUIProps {
   callState: CallState;
   isMuted: boolean;
+  isDeafened: boolean;
   callDuration: number;
   otherName: string;
   otherAvatar?: string;
   onEndCall: () => void;
   onToggleMute: () => void;
+  onToggleDeafen: () => void;
 }
 
 const formatDuration = (seconds: number) => {
@@ -21,7 +23,7 @@ const formatDuration = (seconds: number) => {
   return `${m}:${s}`;
 };
 
-const VoiceCallUI = ({ callState, isMuted, callDuration, otherName, otherAvatar, onEndCall, onToggleMute }: VoiceCallUIProps) => {
+const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, otherAvatar, onEndCall, onToggleMute, onToggleDeafen }: VoiceCallUIProps) => {
   const { t } = useTranslation();
 
   if (callState === "idle" || callState === "ended") return null;
@@ -72,6 +74,15 @@ const VoiceCallUI = ({ callState, isMuted, callDuration, otherName, otherAvatar,
               title={isMuted ? t("calls.unmute") : t("calls.mute")}
             >
               {isMuted ? <MicOff className="h-5 w-5 text-destructive" /> : <Mic className="h-5 w-5" />}
+            </Button>
+            <Button
+              variant={isDeafened ? "secondary" : "ghost"}
+              size="icon"
+              className="h-10 w-10 rounded-full"
+              onClick={onToggleDeafen}
+              title={isDeafened ? t("audio.undeafen") : t("audio.deafen")}
+            >
+              {isDeafened ? <HeadphoneOff className="h-5 w-5 text-destructive" /> : <Volume2 className="h-5 w-5" />}
             </Button>
             <Button variant="destructive" size="icon" className="h-10 w-10 rounded-full" onClick={onEndCall} title={t("calls.endCall")}>
               <PhoneOff className="h-5 w-5" />

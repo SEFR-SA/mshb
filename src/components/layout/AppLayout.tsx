@@ -7,7 +7,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { usePendingFriendRequests } from "@/hooks/usePendingFriendRequests";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Settings, Moon, Sun, Globe, LogOut, Users, Download } from "lucide-react";
+import { MessageSquare, Settings, Moon, Sun, Globe, LogOut, Users, Download, Mic, MicOff, Headphones, HeadphoneOff } from "lucide-react";
+import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import CallListener from "@/components/chat/CallListener";
 import ServerRail from "@/components/server/ServerRail";
 import { NavLink } from "react-router-dom";
@@ -20,6 +21,7 @@ const AppLayout = () => {
   const isMobile = useIsMobile();
   const { totalUnread } = useUnreadCount();
   const { pendingCount } = usePendingFriendRequests();
+  const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
   const [installPrompt, setInstallPrompt] = React.useState<any>(null);
 
   React.useEffect(() => {
@@ -103,16 +105,36 @@ const AppLayout = () => {
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
-            <NavLink to="/settings" className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={profile?.avatar_url || ""} />
-                <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
-              </Avatar>
-              <div className="text-sm truncate">
-                <p className="font-medium truncate">{profile?.display_name || profile?.username || "User"}</p>
-                <p className="text-xs text-muted-foreground truncate">{profile?.status_text || ""}</p>
-              </div>
-            </NavLink>
+            <div className="flex items-center gap-2">
+              <NavLink to="/settings" className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors flex-1 min-w-0">
+                <Avatar className="h-8 w-8 shrink-0">
+                  <AvatarImage src={profile?.avatar_url || ""} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
+                </Avatar>
+                <div className="text-sm truncate">
+                  <p className="font-medium truncate">{profile?.display_name || profile?.username || "User"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{profile?.status_text || ""}</p>
+                </div>
+              </NavLink>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={toggleGlobalMute}
+                title={globalMuted ? t("audio.unmute") : t("audio.mute")}
+              >
+                {globalMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={toggleGlobalDeafen}
+                title={globalDeafened ? t("audio.undeafen") : t("audio.deafen")}
+              >
+                {globalDeafened ? <HeadphoneOff className="h-4 w-4 text-destructive" /> : <Headphones className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
         </aside>
       )}
