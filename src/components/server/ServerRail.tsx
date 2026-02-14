@@ -4,16 +4,23 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, LogIn, MessageSquare, Users } from "lucide-react";
+import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import CreateServerDialog from "./CreateServerDialog";
 import JoinServerDialog from "./JoinServerDialog";
+import ServerSettingsDialog from "./ServerSettingsDialog";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "@/hooks/use-toast";
 
 interface Server {
   id: string;
   name: string;
   icon_url: string | null;
+  owner_id: string;
+  invite_code: string;
 }
 
 interface ServerRailProps {
@@ -28,6 +35,8 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const [servers, setServers] = useState<Server[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
+  const [deleteServerId, setDeleteServerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -40,7 +49,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
       const ids = memberships.map((m: any) => m.server_id);
       const { data } = await supabase
         .from("servers" as any)
-        .select("id, name, icon_url")
+        .select("id, name, icon_url, owner_id, invite_code")
         .in("id", ids);
       setServers((data as any) || []);
     };
@@ -52,6 +61,27 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
       .subscribe();
     return () => { channel.unsubscribe(); };
   }, [user]);
+
+  const handleCopyInvite = (inviteCode: string) => {
+    navigator.clipboard.writeText(inviteCode);
+    toast({ title: t("servers.copiedInvite") });
+  };
+
+  const handleLeaveServer = async (serverId: string) => {
+    if (!user) return;
+    await supabase.from("server_members" as any).delete().eq("server_id", serverId).eq("user_id", user.id);
+    setServers((prev) => prev.filter((s) => s.id !== serverId));
+    navigate("/");
+  };
+
+  const handleDeleteServer = async () => {
+    if (!deleteServerId) return;
+    await supabase.from("servers" as any).delete().eq("id", deleteServerId);
+    setServers((prev) => prev.filter((s) => s.id !== deleteServerId));
+    setDeleteServerId(null);
+    toast({ title: t("servers.serverDeleted") });
+    navigate("/");
+  };
 
   return (
     <>
@@ -91,29 +121,61 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
 
         <Separator className="w-8 mx-auto" />
 
-        {/* Server icons */}
+        {/* Server icons with context menu */}
         {servers.map((s) => (
-          <Tooltip key={s.id}>
-            <TooltipTrigger asChild>
-              <NavLink
-                to={`/server/${s.id}`}
-                onClick={() => onNavigate?.()}
-                className={({ isActive }) =>
-                  `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
-                    isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20"
-                  }`
-                }
-              >
-                <Avatar className="h-12 w-12 rounded-[inherit]">
-                  <AvatarImage src={s.icon_url || ""} />
-                  <AvatarFallback className="bg-transparent text-inherit text-sm font-bold rounded-[inherit]">
-                    {s.name.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              </NavLink>
-            </TooltipTrigger>
-            <TooltipContent side="right">{s.name}</TooltipContent>
-          </Tooltip>
+          <ContextMenu key={s.id}>
+            <Tooltip>
+              <ContextMenuTrigger asChild>
+                <TooltipTrigger asChild>
+                  <NavLink
+                    to={`/server/${s.id}`}
+                    onClick={() => onNavigate?.()}
+                    className={({ isActive }) =>
+                      `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
+                        isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20"
+                      }`
+                    }
+                  >
+                    <Avatar className="h-12 w-12 rounded-[inherit]">
+                      <AvatarImage src={s.icon_url || ""} />
+                      <AvatarFallback className="bg-transparent text-inherit text-sm font-bold rounded-[inherit]">
+                        {s.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </NavLink>
+                </TooltipTrigger>
+              </ContextMenuTrigger>
+              <TooltipContent side="right">{s.name}</TooltipContent>
+            </Tooltip>
+            <ContextMenuContent>
+              <ContextMenuItem onClick={() => setSettingsServerId(s.id)}>
+                <Settings className="h-4 w-4 me-2" />
+                {t("servers.settings")}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => handleCopyInvite(s.invite_code)}>
+                <Copy className="h-4 w-4 me-2" />
+                {t("servers.copyInvite")}
+              </ContextMenuItem>
+              {user && s.owner_id !== user.id && (
+                <>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem onClick={() => handleLeaveServer(s.id)}>
+                    <LogOut className="h-4 w-4 me-2" />
+                    {t("servers.leave")}
+                  </ContextMenuItem>
+                </>
+              )}
+              {user && s.owner_id === user.id && (
+                <>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteServerId(s.id)}>
+                    <Trash2 className="h-4 w-4 me-2" />
+                    {t("servers.deleteServer")}
+                  </ContextMenuItem>
+                </>
+              )}
+            </ContextMenuContent>
+          </ContextMenu>
         ))}
 
         <Separator className="w-8 mx-auto" />
@@ -147,6 +209,25 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
 
       <CreateServerDialog open={createOpen} onOpenChange={setCreateOpen} />
       <JoinServerDialog open={joinOpen} onOpenChange={setJoinOpen} />
+      {settingsServerId && (
+        <ServerSettingsDialog
+          serverId={settingsServerId}
+          open={!!settingsServerId}
+          onOpenChange={(open) => { if (!open) setSettingsServerId(null); }}
+        />
+      )}
+      <Dialog open={!!deleteServerId} onOpenChange={(open) => { if (!open) setDeleteServerId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("servers.deleteServer")}</DialogTitle>
+            <DialogDescription>{t("servers.deleteServerConfirm")}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteServerId(null)}>{t("common.cancel")}</Button>
+            <Button variant="destructive" onClick={handleDeleteServer}>{t("servers.deleteServer")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
