@@ -96,23 +96,6 @@ const AppLayout = () => {
                   <Settings className="h-4 w-4" />
                 </Button>
               </NavLink>
-            </div>
-            <div className="flex items-center gap-2">
-              <NavLink to="/settings" className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors flex-1 min-w-0">
-                <div className="relative shrink-0">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile?.avatar_url || ""} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
-                  </Avatar>
-                  <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0" />
-                </div>
-                <div className="truncate">
-                  <p className="text-sm font-medium truncate">{profile?.display_name || profile?.username || "User"}</p>
-                  {profile?.username && (
-                    <p className="text-[11px] text-muted-foreground truncate">@{profile.username}</p>
-                  )}
-                </div>
-              </NavLink>
               <Button
                 variant="ghost"
                 size="icon"
@@ -131,6 +114,23 @@ const AppLayout = () => {
               >
                 {globalDeafened ? <HeadphoneOff className="h-4 w-4 text-destructive" /> : <Headphones className="h-4 w-4" />}
               </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <NavLink to="/settings" className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors flex-1 min-w-0">
+                <div className="relative shrink-0">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={profile?.avatar_url || ""} />
+                    <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
+                  </Avatar>
+                  <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0" />
+                </div>
+                <div className="truncate">
+                  <p className="text-sm font-medium truncate">{profile?.display_name || profile?.username || "User"}</p>
+                  {profile?.username && (
+                    <p className="text-[11px] text-muted-foreground truncate">@{profile.username}</p>
+                  )}
+                </div>
+              </NavLink>
             </div>
           </div>
         </aside>
