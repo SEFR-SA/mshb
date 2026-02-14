@@ -54,9 +54,14 @@ export function useWebRTC({ sessionId, isCaller, onEnded }: UseWebRTCOptions) {
     const pc = new RTCPeerConnection(ICE_SERVERS);
     pcRef.current = pc;
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    localStreamRef.current = stream;
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStreamRef.current = stream;
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    } catch (error) {
+      console.error('[WebRTC] getUserMedia failed:', error);
+      // Continue without audio so the UI still renders
+    }
 
     // Play remote audio
     pc.ontrack = (event) => {
