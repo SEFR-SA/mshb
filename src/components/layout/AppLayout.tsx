@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
@@ -10,12 +11,14 @@ import { MessageSquare, Settings, Users, Download, Menu } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import CallListener from "@/components/chat/CallListener";
 import ServerRail from "@/components/server/ServerRail";
+import VoiceConnectionManager from "@/components/server/VoiceConnectionBar";
 import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const AppLayout = () => {
   const { t, i18n } = useTranslation();
   const { user, profile } = useAuth();
+  const { voiceChannel, disconnectVoice } = useVoiceChannel();
   const isMobile = useIsMobile();
   const { totalUnread } = useUnreadCount();
   const { pendingCount } = usePendingFriendRequests();
@@ -75,6 +78,15 @@ const AppLayout = () => {
         <div className="flex-1 overflow-hidden">
           <Outlet />
         </div>
+
+        {voiceChannel && (
+          <VoiceConnectionManager
+            channelId={voiceChannel.id}
+            channelName={voiceChannel.name}
+            serverId={voiceChannel.serverId}
+            onDisconnect={disconnectVoice}
+          />
+        )}
 
         {/* Mobile bottom nav */}
         {isMobile && (
