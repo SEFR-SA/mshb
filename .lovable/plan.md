@@ -1,58 +1,36 @@
 
 
-## Add Mobile Sidebar Button to Access Servers
+## Fix Speaking Indicator - Channel Name Mismatch
 
-### Problem
-On mobile, the Server Rail is hidden (`{!isMobile && <ServerRail />}`). Users on Messages, Friends, Settings, or Profile pages have no way to navigate to their servers.
+### Root Cause
+The previous fix changed the ChannelSidebar listener to `voice-speaking-listen-${chId}`, but the VoiceConnectionManager still sends speaking broadcasts on `voice-signal-${channelId}` (via `channelRef.current`). Since these are different channel names, the sidebar never receives speaking events.
 
 ### Solution
-Add a hamburger/menu button in the mobile top header (line 56-58) that opens a Sheet (slide-in drawer) containing the ServerRail component. This follows the common mobile pattern of a slide-out navigation panel.
+In `VoiceConnectionManager`, send `voice-speaking` broadcasts on a dedicated channel matching what the sidebar listens to (`voice-speaking-listen-${channelId}`), instead of piggybacking on the signaling channel. Additionally, switch from the ring approach to showing a green mic icon next to speaking users -- this is more visible and reliable at small avatar sizes.
 
 ### Changes
 
-**`src/components/layout/AppLayout.tsx`**
+**`src/components/server/VoiceConnectionBar.tsx`**
 
-1. Add state: `const [serverDrawerOpen, setServerDrawerOpen] = useState(false)`
-2. Import `Sheet`, `SheetContent`, `SheetTrigger` from `@/components/ui/sheet`, and `Menu` icon from `lucide-react`
-3. Add a `Menu` button to the left side of the mobile header (line 57):
-   ```
-   <button onClick={() => setServerDrawerOpen(true)}>
-     <Menu className="h-5 w-5" />
-   </button>
-   ```
-4. Add a `Sheet` with `side="left"` that renders `<ServerRail />` inside it, styled to fit the drawer
+1. Create a separate broadcast channel for speaking state: `voice-speaking-listen-${channelId}`
+2. Update the `updateSpeaking` callback to send on this dedicated channel instead of `channelRef.current`
+3. Clean up this channel on unmount
 
-**`src/components/server/ServerRail.tsx`**
+**`src/components/server/ChannelSidebar.tsx`** (line 438-448)
 
-5. Accept an optional `onNavigate` callback prop so the drawer can close when a server/nav item is clicked
-6. Call `onNavigate?.()` inside the navigate handlers and server NavLink `onClick`
+4. Replace the `ring-2 ring-[#00db21]` avatar styling with a green `Mic` icon that appears next to the user's name when they are speaking:
+   - Remove the ring class from the Avatar
+   - Add a green `Mic` icon (`text-[#00db21]`) that conditionally renders when `speakingUsers.has(p.user_id)` is true
 
-### Visual Result
+### Technical Details
 
-```text
-Mobile Header (before):
-+------------------------------------------+
-|  * Galaxy Chat                           |
-+------------------------------------------+
-
-Mobile Header (after):
-+------------------------------------------+
-| [=]  * Galaxy Chat                       |
-+------------------------------------------+
-
-Tapping [=] slides in from left:
-+----------------+
-| [Messages]     |
-| [Friends]      |
-| -------------- |
-| Server 1       |
-| Server 2       |
-| -------------- |
-| [+] Create     |
-| [->] Join      |
-+----------------+
-```
+The dedicated speaking channel approach:
+- VoiceConnectionManager creates `supabase.channel('voice-speaking-listen-${channelId}')` and subscribes
+- Speaking updates are sent via this channel's `.send()` method
+- ChannelSidebar already listens on `voice-speaking-listen-${chId}` -- no changes needed on that side
+- The signaling channel (`voice-signal-${channelId}`) remains untouched for WebRTC offers/answers/ICE
 
 ### Files Modified
-- `src/components/layout/AppLayout.tsx` -- add Menu button in mobile header + Sheet with ServerRail
-- `src/components/server/ServerRail.tsx` -- add optional `onNavigate` prop to close drawer on navigation
+- `src/components/server/VoiceConnectionBar.tsx` -- send speaking broadcasts on dedicated channel
+- `src/components/server/ChannelSidebar.tsx` -- replace ring with green mic icon for speaking users
+
