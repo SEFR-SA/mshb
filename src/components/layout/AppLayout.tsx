@@ -8,6 +8,7 @@ import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { usePendingFriendRequests } from "@/hooks/usePendingFriendRequests";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Settings, Moon, Sun, Globe, LogOut, Users, Download } from "lucide-react";
+import CallListener from "@/components/chat/CallListener";
 import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -53,6 +54,7 @@ const AppLayout = () => {
 
   return (
     <div className="flex h-screen galaxy-gradient overflow-hidden">
+      <CallListener />
       {/* Desktop Sidebar */}
       {!isMobile && (
         <aside className="w-64 flex flex-col glass border-e border-border/50 shrink-0">
