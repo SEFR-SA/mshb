@@ -115,6 +115,13 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       if (videoTrack) {
         const sender = pc.addTrack(videoTrack, cameraStreamRef.current);
         cameraSendersRef.current.set(peerId, sender);
+        try {
+          const params = sender.getParameters();
+          if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+          params.encodings[0].maxBitrate = 4_000_000;
+          (params as any).degradationPreference = "maintain-resolution";
+          sender.setParameters(params);
+        } catch {}
       }
     }
     pc.ontrack = (e) => {
@@ -244,14 +251,23 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const startCamera = useCallback(async () => {
     if (cameraStreamRef.current) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
+      });
       cameraStreamRef.current = stream;
       const videoTrack = stream.getVideoTracks()[0];
 
-      peerConnectionsRef.current.forEach((pc, peerId) => {
+      for (const [peerId, pc] of peerConnectionsRef.current) {
         const sender = pc.addTrack(videoTrack, stream);
         cameraSendersRef.current.set(peerId, sender);
-      });
+        try {
+          const params = sender.getParameters();
+          if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+          params.encodings[0].maxBitrate = 4_000_000;
+          (params as any).degradationPreference = "maintain-resolution";
+          await sender.setParameters(params);
+        } catch {}
+      }
 
       setIsCameraOn(true);
       setLocalCameraStream(stream);

@@ -120,6 +120,8 @@ export default {
     memberSince: "Member Since",
     joinedServer: "Joined Server",
     messageUser: "Message @{{name}}",
+    accentColor: "Accent Color",
+    resetColor: "Reset",
   },
   presence: {
     online: "Online",
@@ -175,7 +177,7 @@ export default {
     noActiveNow: "No one is active right now",
   },
   files: {
-    tooLarge: "File is too large. Maximum size is 10 MB.",
+    tooLarge: "File is too large. Maximum size is 200 MB.",
     uploadError: "Failed to upload file.",
     download: "Download",
     attachment: "Attachment",

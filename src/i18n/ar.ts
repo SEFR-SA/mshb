@@ -120,6 +120,8 @@ export default {
     memberSince: "عضو منذ",
     joinedServer: "انضم للسيرفر",
     messageUser: "رسالة @{{name}}",
+    accentColor: "لون التمييز",
+    resetColor: "إعادة تعيين",
   },
   presence: {
     online: "متصل",
@@ -175,7 +177,7 @@ export default {
     noActiveNow: "لا يوجد أحد نشط الآن",
   },
   files: {
-    tooLarge: "الملف كبير جداً. الحد الأقصى هو ١٠ ميغابايت.",
+    tooLarge: "الملف كبير جداً. الحد الأقصى هو ٢٠٠ ميغابايت.",
     uploadError: "فشل رفع الملف.",
     download: "تحميل",
     attachment: "مرفق",

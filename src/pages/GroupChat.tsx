@@ -28,7 +28,7 @@ type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
 const PAGE_SIZE = 30;
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_FILE_SIZE = 200 * 1024 * 1024;
 
 const GroupChat = () => {
   const { t } = useTranslation();
@@ -210,7 +210,7 @@ const GroupChat = () => {
 
   const sendMessage = async () => {
     if ((!newMsg.trim() && !selectedFile) || !groupId || !user || sending) return;
-    const content = newMsg.trim().slice(0, 2000);
+    const content = newMsg.trim().slice(0, 5000);
     setSending(true);
     setNewMsg("");
     const file = selectedFile;
@@ -254,7 +254,7 @@ const GroupChat = () => {
 
   const editMessage = async (msgId: string) => {
     if (!editContent.trim()) return;
-    await supabase.from("messages").update({ content: editContent.trim().slice(0, 2000), edited_at: new Date().toISOString() }).eq("id", msgId);
+    await supabase.from("messages").update({ content: editContent.trim().slice(0, 5000), edited_at: new Date().toISOString() }).eq("id", msgId);
     setEditingId(null);
     setEditContent("");
   };
@@ -475,7 +475,7 @@ const GroupChat = () => {
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendMessage())}
             placeholder={t("chat.placeholder")}
             className="flex-1"
-            maxLength={2000}
+            maxLength={5000}
           />
           <Button size="icon" onClick={sendMessage} disabled={(!newMsg.trim() && !selectedFile) || sending}>
             <Send className="h-4 w-4" />
