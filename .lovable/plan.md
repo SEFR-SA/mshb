@@ -1,71 +1,84 @@
 
 
-## 1. Simplify VoiceConnectionBar
+## Replace Purple Galaxy Theme with Discord-Style Theme
 
-Remove the local mute and deafen buttons from `VoiceConnectionBar` since they are now redundant (universal buttons exist in the sidebar). Move the disconnect (hang up) button to sit right next to the voice channel name for a cleaner, compact layout.
+### Overview
+Replace all purple galaxy styling with a Discord-inspired color scheme. The primary action color for buttons becomes `#084f00` (deep green). Light and dark modes will match Discord's neutral gray palette. All galaxy-specific CSS utilities (`galaxy-gradient`, `galaxy-glow`, `text-galaxy-glow`) will be replaced with simple solid backgrounds.
 
-**Modified: `src/components/server/VoiceConnectionBar.tsx`**
-- Remove the `toggleMute`, `toggleDeafen` functions and their associated state syncing with global context
-- Remove `isMuted`, `isDeafened` local state (no longer needed for UI)
-- Keep WebRTC logic, participant display, and `leaveVoice`
-- New layout: `[green dot] [speaker icon] channelName [avatars] [PhoneOff button]` -- all in one row, disconnect button right after the name/avatars
-- Remove unused imports (`Mic`, `MicOff`, `HeadphoneOff`)
+### Color Mapping (from Discord screenshots)
 
-## 2. Add Emoji Picker to All Chat Inputs
+**Dark Mode** (matching the dark Discord screenshot):
+- Background (main content): `#313338` (gray, ~220 7% 20%)
+- Sidebar background: `#2b2d31` (slightly darker gray, ~220 6% 18%)
+- Server rail / deepest layer: `#1e1f22` (darkest gray, ~220 6% 13%)
+- Card/popover: `#2b2d31`
+- Text: `#f2f3f5` (near white)
+- Muted text: `#949ba4` (gray)
+- Border: `#3f4147`
+- Input background: `#1e1f22`
+- Accent/active channel: `#404249`
 
-Add a smiley face button next to the text input in both server text channels and 1-to-1 DMs. Clicking it opens a popover with categorized emoji grid (similar to Discord).
+**Light Mode** (matching the light Discord screenshot):
+- Background: `#ffffff`
+- Sidebar background: `#f2f3f5`
+- Server rail: `#e3e5e8`
+- Card/popover: `#ffffff`
+- Text: `#060607` (near black)
+- Muted text: `#5c6470`
+- Border: `#e1e2e4`
+- Input background: `#e3e5e8`
+- Accent/hover: `#eaebed`
 
-**New Component: `src/components/chat/EmojiPicker.tsx`**
-- A button (Smile icon from lucide) that opens a Popover
-- Inside the popover: category tabs (Smileys, People, Animals, Food, Travel, Objects, Symbols, Flags) using horizontal scrollable tab buttons
-- Each category shows a grid of native Unicode emojis
-- Clicking an emoji calls `onEmojiSelect(emoji: string)` callback and closes the popover
-- Optional search/filter input at the top to filter emojis by name
-- Compact design: roughly 300px wide, 350px tall popover
-- Uses Radix Popover component already in the project
+**Primary (both modes):** `#084f00` -- used for buttons, links, active indicators, rings. HSL approximation: `113 100% 15%`. Lighter grades for hover/foreground as needed.
 
-**Modified: `src/components/server/ServerChannelChat.tsx`**
-- Import and add `EmojiPicker` in the composer bar, between the file attachment button and the text input
-- On emoji select, insert the emoji at the current cursor position in the input and refocus
+### Changes
 
-**Modified: `src/pages/Chat.tsx`**
-- Same change: add `EmojiPicker` in the composer bar between file attachment and input
-- On emoji select, append/insert emoji into the message input
+**`src/index.css`**
+- Replace all `:root` (light) CSS variables with Discord light mode values
+- Replace all `.dark` CSS variables with Discord dark mode values
+- Set `--primary` to green `#084f00` in both modes (HSL: `113 100% 15%`)
+- Set `--primary-foreground` to white
+- Remove `--galaxy-glow`, `--galaxy-deep`, `--galaxy-nebula`, `--galaxy-star` variables from both modes
+- Replace `.glass` utility: change from `bg-card/60 backdrop-blur-xl` to just `bg-card` (solid, no glassmorphism)
+- Replace `.galaxy-gradient` utility with `background: hsl(var(--background))` (solid background)
+- Remove `.galaxy-glow` and `.text-galaxy-glow` utilities (or make them no-ops)
+- Update sidebar variables to match Discord's slightly darker sidebar color
 
-**Modified: `src/i18n/en.ts` and `src/i18n/ar.ts`**
-- Add translation keys for emoji picker: `emoji.search`, `emoji.categories.*` (smileys, people, animals, food, travel, objects, symbols, flags)
+**`tailwind.config.ts`**
+- Remove the `galaxy` color definitions (`glow`, `deep`, `nebula`, `star`)
+- Keep all other color mappings (they reference CSS variables which will be updated)
 
-### Technical Details
+**`src/components/layout/AppLayout.tsx`**
+- Remove `galaxy-gradient` class from root div, replace with `bg-background`
+- Remove `text-galaxy-glow` from the app name heading
+- Remove the `star` character or keep it plain without glow
 
-**EmojiPicker component structure:**
-```typescript
-interface EmojiPickerProps {
-  onEmojiSelect: (emoji: string) => void;
-}
-```
+**`src/pages/Auth.tsx`**
+- Remove `galaxy-gradient` from container div, use `bg-background`
+- Remove `galaxy-glow` from Card
+- Remove `text-galaxy-glow` from title
+- Keep the card styled with `glass` (which will now be solid `bg-card`)
 
-- Uses a static data structure of categorized emojis (no external dependency needed -- native Unicode emojis)
-- Each category is an object: `{ name: string, translationKey: string, emojis: string[] }`
-- Around 50-80 popular emojis per category for performance
-- Search filters across all categories by emoji name/keyword
-- Grid layout: `grid-cols-8` with each emoji as a clickable button
+**`src/App.tsx`**
+- Remove `galaxy-gradient` from the loading screen div
 
-**Emoji insertion logic (for both chats):**
-```typescript
-const handleEmojiSelect = (emoji: string) => {
-  setNewMsg((prev) => prev + emoji);
-  inputRef.current?.focus();
-};
-```
+**`src/contexts/ThemeContext.tsx`**
+- Rename localStorage key from `galaxy-theme` to `app-theme` (cosmetic cleanup)
 
 ### Files Summary
 
 | File | Action | Changes |
 |------|--------|---------|
-| `src/components/server/VoiceConnectionBar.tsx` | Modify | Remove mute/deafen buttons; place disconnect next to channel name |
-| `src/components/chat/EmojiPicker.tsx` | Create | Emoji picker popover component with categories and search |
-| `src/components/server/ServerChannelChat.tsx` | Modify | Add EmojiPicker button in composer |
-| `src/pages/Chat.tsx` | Modify | Add EmojiPicker button in composer |
-| `src/i18n/en.ts` | Modify | Add emoji-related translation keys |
-| `src/i18n/ar.ts` | Modify | Add Arabic emoji translations |
+| `src/index.css` | Modify | Replace all color variables with Discord palette; green primary; remove galaxy utilities |
+| `tailwind.config.ts` | Modify | Remove galaxy color definitions |
+| `src/components/layout/AppLayout.tsx` | Modify | Remove galaxy classes |
+| `src/pages/Auth.tsx` | Modify | Remove galaxy classes |
+| `src/App.tsx` | Modify | Remove galaxy-gradient from loading screen |
+| `src/contexts/ThemeContext.tsx` | Modify | Rename localStorage key |
+
+### What stays the same
+- All page layouts, component structure, and routing remain unchanged
+- The `glass` class still exists but becomes a solid `bg-card` with border (no blur)
+- All shadcn/ui components automatically pick up new colors through CSS variables
+- Online status color stays green
 
