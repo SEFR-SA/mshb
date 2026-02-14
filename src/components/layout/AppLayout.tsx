@@ -6,16 +6,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { usePendingFriendRequests } from "@/hooks/usePendingFriendRequests";
-import { Button } from "@/components/ui/button";
-import { MessageSquare, Settings, Users, Download, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff } from "lucide-react";
-import { useAudioSettings } from "@/contexts/AudioSettingsContext";
-import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
+import { MessageSquare, Settings, Users, Download } from "lucide-react";
 import CallListener from "@/components/chat/CallListener";
 import ServerRail from "@/components/server/ServerRail";
 import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
-import { usePresence } from "@/hooks/usePresence";
 
 const AppLayout = () => {
   const { t, i18n } = useTranslation();
@@ -23,10 +18,6 @@ const AppLayout = () => {
   const isMobile = useIsMobile();
   const { totalUnread } = useUnreadCount();
   const { pendingCount } = usePendingFriendRequests();
-  const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
-  const { voiceChannel, disconnectVoice } = useVoiceChannel();
-  const { getUserStatus } = usePresence();
-  const status = (getUserStatus(profile) || "online") as UserStatus;
   const [installPrompt, setInstallPrompt] = React.useState<any>(null);
 
   React.useEffect(() => {
@@ -58,95 +49,6 @@ const AppLayout = () => {
       <CallListener />
       {/* Server Rail */}
       {!isMobile && <ServerRail />}
-      {/* Desktop Sidebar */}
-      {!isMobile && (
-        <aside className="w-64 flex flex-col glass border-e border-border/50 shrink-0">
-          <div className="p-4 border-b border-border/50">
-            <h1 className="text-lg font-bold text-primary">{t("app.name")}</h1>
-          </div>
-          <nav className="flex-1 p-2 space-y-1">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === "/"}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                    isActive ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`
-                }
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
-                {item.badge > 0 && (
-                  <span className="ms-auto inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-primary text-primary-foreground text-[11px] font-bold px-1.5">
-                    {item.badge}
-                  </span>
-                )}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="p-3 border-t border-border/50 space-y-2">
-            {voiceChannel && (
-              <div className="flex items-center gap-2 p-2 rounded-md bg-secondary/50">
-                <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
-                <span className="text-xs font-medium truncate flex-1">#{voiceChannel.name}</span>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={disconnectVoice}>
-                  <PhoneOff className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              {installPrompt && (
-                <Button variant="ghost" size="icon" onClick={handleInstall} title={t("app.install")}>
-                  <Download className="h-4 w-4" />
-                </Button>
-              )}
-              <NavLink to="/settings">
-                <Button variant="ghost" size="icon" title={t("nav.settings")}>
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </NavLink>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                onClick={toggleGlobalMute}
-                title={globalMuted ? t("audio.unmute") : t("audio.mute")}
-              >
-                {globalMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                onClick={toggleGlobalDeafen}
-                title={globalDeafened ? t("audio.undeafen") : t("audio.deafen")}
-              >
-                {globalDeafened ? <HeadphoneOff className="h-4 w-4 text-destructive" /> : <Headphones className="h-4 w-4" />}
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <NavLink to="/settings" className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors flex-1 min-w-0">
-                <div className="relative shrink-0">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile?.avatar_url || ""} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
-                  </Avatar>
-                  <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0" />
-                </div>
-                <div className="truncate">
-                  <p className="text-sm font-medium truncate">{profile?.display_name || profile?.username || "User"}</p>
-                  {profile?.username && (
-                    <p className="text-[11px] text-muted-foreground truncate">@{profile.username}</p>
-                  )}
-                </div>
-              </NavLink>
-            </div>
-          </div>
-        </aside>
-      )}
-
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile top header */}

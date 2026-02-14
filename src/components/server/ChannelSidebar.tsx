@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users } from "lucide-react";
+import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -17,6 +17,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import ServerSettingsDialog from "./ServerSettingsDialog";
+import { useAudioSettings } from "@/contexts/AudioSettingsContext";
+import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
+import { usePresence } from "@/hooks/usePresence";
+import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
+import { NavLink as RouterNavLink } from "react-router-dom";
 
 interface Channel {
   id: string;
@@ -60,7 +65,11 @@ interface Props {
 
 const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceChannelSelect, activeVoiceChannelId }: Props) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
+  const { voiceChannel, disconnectVoice } = useVoiceChannel();
+  const { getUserStatus } = usePresence();
+  const status = (getUserStatus(profile) || "online") as UserStatus;
   const [server, setServer] = useState<Server | null>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
@@ -464,13 +473,57 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
           ))}
         </div>
 
-        <div className="p-2 border-t border-sidebar-border flex gap-1">
-          {!isAdmin && (
-            <Button variant="ghost" size="sm" className="flex-1 text-xs text-destructive" onClick={leaveServer}>
-              <LogOut className="h-3.5 w-3.5 me-1" />
-              {t("servers.leave")}
-            </Button>
+        {/* User Panel */}
+        <div className="border-t border-sidebar-border">
+          {/* Voice connection status */}
+          {voiceChannel && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-sidebar-accent/50">
+              <div className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
+              <span className="text-xs font-medium truncate flex-1">#{voiceChannel.name}</span>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={disconnectVoice}>
+                <PhoneOff className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           )}
+
+          {/* Audio controls + settings + leave */}
+          <div className="flex items-center gap-1 px-2 py-1.5">
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={toggleGlobalMute} title={globalMuted ? t("audio.unmute") : t("audio.mute")}>
+              {globalMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={toggleGlobalDeafen} title={globalDeafened ? t("audio.undeafen") : t("audio.deafen")}>
+              {globalDeafened ? <HeadphoneOff className="h-4 w-4 text-destructive" /> : <Headphones className="h-4 w-4" />}
+            </Button>
+            <RouterNavLink to="/settings">
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title={t("nav.settings")}>
+                <Settings className="h-4 w-4" />
+              </Button>
+            </RouterNavLink>
+            {!isAdmin && (
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 ms-auto" onClick={leaveServer} title={t("servers.leave")}>
+                <LogOut className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* User profile row */}
+          <RouterNavLink to="/settings" className="flex items-center gap-2 px-2 py-1.5 hover:bg-sidebar-accent/50 transition-colors">
+            <div className="relative shrink-0">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={profile?.avatar_url || ""} />
+                <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                  {(profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0" />
+            </div>
+            <div className="truncate">
+              <p className="text-sm font-medium truncate">{profile?.display_name || profile?.username || "User"}</p>
+              {profile?.username && (
+                <p className="text-[11px] text-muted-foreground truncate">@{profile.username}</p>
+              )}
+            </div>
+          </RouterNavLink>
         </div>
       </div>
 
