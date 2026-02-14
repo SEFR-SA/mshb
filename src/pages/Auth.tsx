@@ -110,11 +110,11 @@ const Auth = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center galaxy-gradient p-4">
-      <Card className="w-full max-w-md glass galaxy-glow">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md glass">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-galaxy-glow">
-            <span className="text-primary">✦</span> {t("app.name")} <span className="text-primary">✦</span>
+          <CardTitle className="text-2xl font-bold">
+            {t("app.name")}
           </CardTitle>
           <CardDescription>
             {mode === "login" ? t("auth.login") : mode === "signup" ? t("auth.signup") : t("auth.resetPassword")}

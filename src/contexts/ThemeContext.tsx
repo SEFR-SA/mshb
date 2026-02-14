@@ -12,7 +12,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const stored = localStorage.getItem("galaxy-theme");
+    const stored = localStorage.getItem("app-theme");
     return (stored === "light" ? "light" : "dark") as Theme;
   });
 
@@ -20,7 +20,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     root.classList.remove("dark", "light");
     root.classList.add(theme);
-    localStorage.setItem("galaxy-theme", theme);
+    localStorage.setItem("app-theme", theme);
   }, [theme]);
 
   const setTheme = (t: Theme) => setThemeState(t);
