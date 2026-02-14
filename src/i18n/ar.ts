@@ -87,6 +87,10 @@ export default {
     stopSharing: "إيقاف المشاركة",
     userSharing: "{{name}} يشارك شاشته",
     youAreSharing: "أنت تشارك شاشتك",
+    startCamera: "بدء الكاميرا",
+    stopCamera: "إيقاف الكاميرا",
+    pip: "صورة في صورة",
+    userCamera: "كاميرا {{name}}",
   },
   actions: {
     edit: "تعديل",

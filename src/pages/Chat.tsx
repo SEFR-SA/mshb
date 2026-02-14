@@ -67,7 +67,7 @@ const Chat = () => {
 
   const { globalMuted, globalDeafened } = useAudioSettings();
 
-  const { callState, isMuted, isDeafened, callDuration, isScreenSharing, remoteScreenStream, startCall, endCall, toggleMute, toggleDeafen, startScreenShare, stopScreenShare } = useWebRTC({
+  const { callState, isMuted, isDeafened, callDuration, isScreenSharing, remoteScreenStream, isCameraOn, localCameraStream, remoteCameraStream, startCall, endCall, toggleMute, toggleDeafen, startScreenShare, stopScreenShare, startCamera, stopCamera } = useWebRTC({
     sessionId: callSessionId,
     isCaller: isCallerState,
     onEnded: handleCallEnded,
@@ -396,6 +396,11 @@ const Chat = () => {
         remoteScreenStream={remoteScreenStream}
         onStartScreenShare={startScreenShare}
         onStopScreenShare={stopScreenShare}
+        isCameraOn={isCameraOn}
+        localCameraStream={localCameraStream}
+        remoteCameraStream={remoteCameraStream}
+        onStartCamera={startCamera}
+        onStopCamera={stopCamera}
       />
 
       {/* Messages */}

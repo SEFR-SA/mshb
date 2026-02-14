@@ -1,14 +1,13 @@
 import React, { useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Monitor, PictureInPicture2 } from "lucide-react";
+import { Video, PictureInPicture2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface ScreenShareViewerProps {
+interface CameraViewerProps {
   stream: MediaStream;
-  sharerName: string;
 }
 
-const ScreenShareViewer = ({ stream, sharerName }: ScreenShareViewerProps) => {
+const CameraViewer = ({ stream }: CameraViewerProps) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -29,8 +28,8 @@ const ScreenShareViewer = ({ stream, sharerName }: ScreenShareViewerProps) => {
   return (
     <div className="flex flex-col bg-background border-b border-border">
       <div className="flex items-center gap-2 px-4 py-2 bg-card/80 border-b border-border/50">
-        <Monitor className="h-4 w-4 text-green-500" />
-        <span className="text-sm font-medium flex-1">{t("calls.userSharing", { name: sharerName })}</span>
+        <Video className="h-4 w-4 text-green-500" />
+        <span className="text-sm font-medium flex-1">{t("calls.startCamera")}</span>
         <Button
           variant="ghost"
           size="icon"
@@ -41,16 +40,16 @@ const ScreenShareViewer = ({ stream, sharerName }: ScreenShareViewerProps) => {
           <PictureInPicture2 className="h-3.5 w-3.5" />
         </Button>
       </div>
-      <div className="flex items-center justify-center bg-black/90 min-h-[300px] max-h-[500px]">
+      <div className="flex items-center justify-center bg-black/90 max-h-[300px]">
         <video
           ref={videoRef}
           autoPlay
           playsInline
-          className="w-full h-full object-contain max-h-[500px]"
+          className="w-full h-full object-contain max-h-[300px]"
         />
       </div>
     </div>
   );
 };
 
-export default ScreenShareViewer;
+export default CameraViewer;
