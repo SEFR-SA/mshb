@@ -47,7 +47,7 @@ const AppLayout = () => {
   const navItems = [
     { to: "/", icon: MessageSquare, label: t("nav.inbox"), badge: totalUnread },
     { to: "/friends", icon: Users, label: t("nav.friends"), badge: pendingCount },
-    { to: "/settings", icon: Settings, label: t("nav.settings"), badge: 0 },
+    
   ];
 
   const initials = (profile?.display_name || profile?.username || user?.email || "?")
@@ -72,7 +72,7 @@ const AppLayout = () => {
               </div>
             </header>
             <Sheet open={serverDrawerOpen} onOpenChange={setServerDrawerOpen}>
-              <SheetContent side="left" className="p-0 w-[80px] border-none">
+              <SheetContent side="left" className="p-0 w-[80px] border-none bg-sidebar/30 backdrop-blur-sm">
                 <ServerRail onNavigate={() => setServerDrawerOpen(false)} />
               </SheetContent>
             </Sheet>
