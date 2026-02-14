@@ -1,183 +1,78 @@
 
 
-## Implement Discord-Style Server (Guild) Architecture
+## Fix Server Creation and Display Issues
 
-This is a major feature that adds a full server/guild system to Galaxy Chat, inspired by Discord's layout. It involves database schema changes, new tables, RLS policies, and significant frontend UI work.
+### Root Cause
 
-### Phase 1: Database Schema
+There are **circular RLS policy dependencies** preventing server creation and display:
 
-Create three new tables and update the messages table:
+1. **Server INSERT fails (403)**: The `CreateServerDialog` calls `.insert(...).select("id")`. The `.select("id")` triggers a SELECT check on the `servers` table. The SELECT policy requires `is_server_member(auth.uid(), id)`, but the user isn't a member yet (the membership row hasn't been inserted). So the INSERT+SELECT combo is rejected.
 
-**New Tables:**
+2. **Server Members INSERT fails**: The policy for inserting into `server_members` has an `EXISTS (SELECT 1 FROM servers WHERE id = ... AND owner_id = auth.uid())` check. This sub-query is subject to the `servers` SELECT RLS policy, which again requires `is_server_member` -- creating a circular dependency.
 
-1. **`servers`** -- The guild/server entity
-   - `id` (uuid, PK, default gen_random_uuid())
-   - `name` (text, not null)
-   - `icon_url` (text, nullable)
-   - `owner_id` (uuid, not null) -- references the creator
-   - `invite_code` (text, unique, not null) -- random 8-char code for invites
-   - `created_at` (timestamptz, default now())
+3. **Join Server fails**: When joining via invite code, the user first does `SELECT id FROM servers WHERE invite_code = ?`. This fails because the SELECT policy requires membership, but the user isn't a member yet.
 
-2. **`channels`** -- Text/voice channels within a server
-   - `id` (uuid, PK, default gen_random_uuid())
-   - `server_id` (uuid, not null, FK to servers.id ON DELETE CASCADE)
-   - `name` (text, not null)
-   - `type` (text, not null, default 'text') -- 'text' or 'voice'
-   - `category` (text, default 'general') -- grouping label
-   - `position` (integer, default 0) -- ordering
-   - `created_at` (timestamptz, default now())
+4. **Servers not displaying (even when inserted via DB)**: The `ServerRail` first fetches `server_members`, then fetches servers using those IDs. The servers SELECT policy requires `is_server_member`, which works IF the membership exists. If you inserted a server directly in the DB without a corresponding `server_members` row, it won't show.
 
-3. **`server_members`** -- Many-to-many users-to-servers
-   - `id` (uuid, PK, default gen_random_uuid())
-   - `server_id` (uuid, not null, FK to servers.id ON DELETE CASCADE)
-   - `user_id` (uuid, not null)
-   - `role` (text, not null, default 'member') -- 'owner', 'admin', 'member'
-   - `joined_at` (timestamptz, default now())
-   - UNIQUE(server_id, user_id)
+### Fix: Database Migration
 
-**Updated Table:**
+Update three RLS policies to break the circular dependencies:
 
-4. **`messages`** -- Add a `channel_id` column
-   - `channel_id` (uuid, nullable, FK to channels.id ON DELETE CASCADE)
-
-**Helper Functions (SECURITY DEFINER):**
-- `is_server_member(uuid, uuid)` -- checks if user is in a server
-- `is_server_admin(uuid, uuid)` -- checks if user is owner or admin
-- `generate_invite_code()` -- generates a random 8-char alphanumeric code
-
-**RLS Policies:**
-- `servers`: Members can SELECT; owner can INSERT (with check); owner/admin can UPDATE; no DELETE
-- `channels`: Server members can SELECT; admin/owner can INSERT, UPDATE, DELETE
-- `server_members`: Server members can SELECT themselves; admin/owner can INSERT/DELETE; self can DELETE (leave)
-- `messages`: Existing policies extended -- if `channel_id` is set, check server membership via the channel's server_id
-
-**Realtime:** Enable realtime for `channels` and `server_members` tables.
-
-### Phase 2: Frontend -- New Components
-
-**New Files to Create:**
-
-| File | Purpose |
-|------|---------|
-| `src/pages/ServerView.tsx` | Main server page: channel sidebar + chat area + member list |
-| `src/components/server/ServerRail.tsx` | Leftmost vertical rail of circular server icons + "+" button |
-| `src/components/server/ChannelSidebar.tsx` | Channel list grouped by category (Text Channels / Voice Channels) |
-| `src/components/server/ServerMemberList.tsx` | Right panel showing members grouped by role |
-| `src/components/server/CreateServerDialog.tsx` | Modal for creating a new server (name input) |
-| `src/components/server/ServerChannelChat.tsx` | Chat view for a specific channel (reuses message patterns from Chat.tsx) |
-| `src/components/server/JoinServerDialog.tsx` | Modal for joining via invite code |
-
-### Phase 3: Frontend -- Layout Changes
-
-**`src/components/layout/AppLayout.tsx`** -- Add a server icon in the nav (e.g., a "Servers" nav item or integrate the ServerRail as a persistent left rail).
-
-**`src/App.tsx`** -- Add new routes:
-- `/server/:serverId` -- Server view (defaults to first text channel)
-- `/server/:serverId/channel/:channelId` -- Specific channel view
-
-**Desktop Layout (inside ServerView):**
-
-```text
-+--------+------------------+---------------------+-----------------+
-| Server | Channel Sidebar  |   Channel Chat      | Member List     |
-| Rail   | (server name,    |   (messages for      | (grouped by     |
-| (icons)| channel groups)  |   selected channel)  | role/status)    |
-| ~56px  | ~220px           |   flex-1             | ~220px          |
-+--------+------------------+---------------------+-----------------+
+**1. `servers` SELECT policy** -- Allow owners and any authenticated user to read by invite code:
+```sql
+DROP POLICY "Members can view servers" ON public.servers;
+CREATE POLICY "Members can view servers" ON public.servers FOR SELECT
+  USING (
+    public.is_server_member(auth.uid(), id) 
+    OR owner_id = auth.uid()
+  );
 ```
 
-**Mobile Layout:** Single-column with a drawer/sheet for the channel sidebar, collapsing the member list.
+**2. `server_members` INSERT policy** -- Allow self-insert for any authenticated user (needed for both creation and joining):
+```sql
+DROP POLICY "Admin can add members" ON public.server_members;
+CREATE POLICY "Admin can add members" ON public.server_members FOR INSERT
+  WITH CHECK (
+    public.is_server_admin(auth.uid(), server_id) 
+    OR (auth.uid() = user_id)
+  );
+```
 
-### Phase 4: Server Creation Flow
+**3. `channels` INSERT policy** -- The owner creates a channel immediately after inserting themselves as a member. Since `is_server_admin` is SECURITY DEFINER (bypasses RLS), this should work once the member row exists. No change needed here.
 
-When a user creates a server:
-1. Insert into `servers` (name, owner_id, generated invite_code)
-2. Insert into `server_members` (server_id, user_id, role='owner')
-3. Insert a default channel: `#general` (type='text', category='Text Channels')
-4. Navigate to `/server/{new_server_id}`
+### Fix: Join Server Flow
 
-### Phase 5: Channel Switching and Real-time Messaging
-
-- Clicking a text channel navigates to `/server/:serverId/channel/:channelId`
-- `ServerChannelChat` fetches messages where `channel_id = channelId`
-- Real-time subscription filters on `channel_id=eq.{channelId}` so only messages for the active channel appear
-- Sending a message inserts with `channel_id` set (no `thread_id` or `group_thread_id`)
-
-### Phase 6: i18n Updates
-
-Add translation keys to `src/i18n/en.ts` and `src/i18n/ar.ts`:
-- `servers.create`, `servers.name`, `servers.invite`, `servers.joinServer`, `servers.members`, `servers.leave`, `servers.settings`, `servers.inviteCode`, `servers.copyInvite`
-- `channels.text`, `channels.voice`, `channels.create`, `channels.name`, `channels.category`
-- Role labels: `servers.owner`, `servers.admin`, `servers.member`
-
-### Technical Details
-
-**SQL Migration (summary):**
+The join flow needs to look up a server by invite code, but the SELECT policy won't match for non-members. Two options:
+- **Option A**: Add `OR invite_code IS NOT NULL` to SELECT (too permissive)
+- **Option B (chosen)**: Create a SECURITY DEFINER function `get_server_by_invite_code(text)` that bypasses RLS to look up the server ID
 
 ```sql
--- servers table
-CREATE TABLE public.servers ( ... );
-ALTER TABLE public.servers ENABLE ROW LEVEL SECURITY;
-
--- channels table
-CREATE TABLE public.channels ( ... );
-ALTER TABLE public.channels ENABLE ROW LEVEL SECURITY;
-
--- server_members table
-CREATE TABLE public.server_members ( ... );
-ALTER TABLE public.server_members ENABLE ROW LEVEL SECURITY;
-
--- Add channel_id to messages
-ALTER TABLE public.messages ADD COLUMN channel_id uuid REFERENCES public.channels(id) ON DELETE CASCADE;
-
--- Helper functions
-CREATE FUNCTION public.is_server_member(...) ...
-CREATE FUNCTION public.is_server_admin(...) ...
-CREATE FUNCTION public.generate_invite_code() ...
-
--- RLS policies for all new tables
--- Update messages RLS to include channel_id path
-
--- Enable realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE public.servers;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.channels;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.server_members;
+CREATE OR REPLACE FUNCTION public.get_server_id_by_invite(p_code text)
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT id FROM public.servers WHERE invite_code = p_code LIMIT 1;
+$$;
 ```
 
-**Messages RLS update:** The existing SELECT policy on messages checks `thread_id` or `group_thread_id`. We need to add a third OR branch:
-```sql
-OR (channel_id IS NOT NULL AND is_server_member(auth.uid(), (SELECT server_id FROM channels WHERE id = messages.channel_id)))
-```
+Then update `JoinServerDialog.tsx` to call `.rpc("get_server_id_by_invite", { p_code: code.trim() })` instead of querying the table directly.
 
-Similarly for INSERT.
+### Fix: `server_members` Update Policy
 
-**Files Modified:**
+Currently there's an `Admin can update member roles` policy. We need to make sure it allows the owner to promote/demote. The current `is_server_admin` function checks for `role IN ('owner', 'admin')`, so this should already work.
 
-| File | Changes |
-|------|---------|
-| `src/App.tsx` | Add `/server/:serverId` and `/server/:serverId/channel/:channelId` routes |
-| `src/components/layout/AppLayout.tsx` | Add ServerRail as leftmost column; add "Servers" nav item for mobile |
-| `src/i18n/en.ts` | Add server/channel translation keys |
-| `src/i18n/ar.ts` | Add Arabic server/channel translation keys |
+### Summary of Changes
 
-**Files Created:**
+| File/Resource | Change |
+|---|---|
+| **New SQL migration** | Fix `servers` SELECT policy (add `OR owner_id = auth.uid()`); fix `server_members` INSERT policy (allow self-insert); add `get_server_id_by_invite` function |
+| `src/components/server/JoinServerDialog.tsx` | Use RPC function instead of direct table query for invite code lookup |
 
-| File | Purpose |
-|------|---------|
-| `src/pages/ServerView.tsx` | Server layout orchestrator |
-| `src/components/server/ServerRail.tsx` | Vertical server icon list |
-| `src/components/server/ChannelSidebar.tsx` | Channel list with categories |
-| `src/components/server/ServerMemberList.tsx` | Right-side member panel |
-| `src/components/server/CreateServerDialog.tsx` | Create server modal |
-| `src/components/server/JoinServerDialog.tsx` | Join via invite code modal |
-| `src/components/server/ServerChannelChat.tsx` | Channel message view |
+### Technical Notes
 
-### Implementation Order
-
-1. Run database migration (tables, functions, RLS, realtime)
-2. Create all server components
-3. Update AppLayout with ServerRail
-4. Add routes in App.tsx
-5. Update i18n files
-6. Test end-to-end
-
+- The `is_server_member` and `is_server_admin` functions are `SECURITY DEFINER`, so they bypass RLS when checking membership. This is correct and intentional.
+- The self-insert allowance on `server_members` is safe because the role defaults to `'member'` and the user can only insert their own `user_id` (enforced by `auth.uid() = user_id`).
+- The `servers` SELECT policy adding `owner_id = auth.uid()` is safe -- owners should always be able to see their own servers.
