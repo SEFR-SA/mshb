@@ -179,7 +179,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
     const subs = voiceChannelIds.map((chId) => {
       return supabase
-        .channel(`voice-signal-${chId}`)
+        .channel(`voice-speaking-listen-${chId}`)
         .on("broadcast", { event: "voice-speaking" }, ({ payload }) => {
           if (!payload) return;
           setSpeakingUsers((prev) => {
