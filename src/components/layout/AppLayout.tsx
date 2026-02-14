@@ -56,7 +56,7 @@ const AppLayout = () => {
     .charAt(0).toUpperCase();
 
   return (
-    <div className="flex h-screen galaxy-gradient overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden">
       <CallListener />
       {/* Server Rail */}
       {!isMobile && <ServerRail />}
@@ -64,7 +64,7 @@ const AppLayout = () => {
       {!isMobile && (
         <aside className="w-64 flex flex-col glass border-e border-border/50 shrink-0">
           <div className="p-4 border-b border-border/50">
-            <h1 className="text-lg font-bold text-primary text-galaxy-glow">✦ {t("app.name")}</h1>
+            <h1 className="text-lg font-bold text-primary">{t("app.name")}</h1>
           </div>
           <nav className="flex-1 p-2 space-y-1">
             {navItems.map((item) => (

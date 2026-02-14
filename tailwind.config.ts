@@ -61,12 +61,6 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        galaxy: {
-          glow: "hsl(var(--galaxy-glow))",
-          deep: "hsl(var(--galaxy-deep))",
-          nebula: "hsl(var(--galaxy-nebula))",
-          star: "hsl(var(--galaxy-star))",
-        },
         online: "hsl(var(--online))",
       },
       borderRadius: {
