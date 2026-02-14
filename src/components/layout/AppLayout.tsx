@@ -72,7 +72,7 @@ const AppLayout = () => {
               </div>
             </header>
             <Sheet open={serverDrawerOpen} onOpenChange={setServerDrawerOpen}>
-              <SheetContent side="left" className="p-0 w-[80px] border-none bg-sidebar/30 backdrop-blur-sm [&>button]:hidden">
+              <SheetContent side="left" className="p-0 w-[72px] border-none !bg-transparent [&>button]:hidden">
                 <ServerRail onNavigate={() => setServerDrawerOpen(false)} />
               </SheetContent>
             </Sheet>
