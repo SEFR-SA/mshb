@@ -171,6 +171,8 @@ export default {
     requestAccepted: "تم قبول طلب الصداقة!",
     incoming: "واردة",
     outgoing: "صادرة",
+    activeNow: "نشط الآن",
+    noActiveNow: "لا يوجد أحد نشط الآن",
   },
   files: {
     tooLarge: "الملف كبير جداً. الحد الأقصى هو ١٠ ميغابايت.",
