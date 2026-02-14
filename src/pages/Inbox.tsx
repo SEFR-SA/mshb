@@ -42,6 +42,7 @@ const Inbox = () => {
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [searching, setSearching] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [redirecting, setRedirecting] = useState(true);
 
   // Auto-redirect to last DM thread on mount
   useEffect(() => {
@@ -55,7 +56,11 @@ const Inbox = () => {
         .order("last_message_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (data && !cancelled) navigate(`/chat/${data.id}`, { replace: true });
+      if (data && !cancelled) {
+        navigate(`/chat/${data.id}`, { replace: true });
+      } else if (!cancelled) {
+        setRedirecting(false);
+      }
     })();
     return () => { cancelled = true; };
   }, [user, navigate]);
@@ -238,6 +243,8 @@ const Inbox = () => {
       .single();
     if (newThread) navigate(`/chat/${newThread.id}`);
   };
+
+  if (redirecting) return null;
 
   return (
     <div className="flex flex-col h-full">
