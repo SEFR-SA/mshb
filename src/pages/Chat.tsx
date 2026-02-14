@@ -129,6 +129,28 @@ const Chat = () => {
     endCall();
   };
 
+  // Listen for callee declining/ending the call via DB status
+  useEffect(() => {
+    if (!callSessionId) return;
+    const channel = supabase
+      .channel(`call-status-${callSessionId}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "call_sessions",
+        filter: `id=eq.${callSessionId}`,
+      }, (payload) => {
+        const status = (payload.new as any).status;
+        if (status === "ended" || status === "declined") {
+          endCall();
+          setCallSessionId(null);
+          setIsCallerState(false);
+        }
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [callSessionId, endCall]);
+
   // Load hidden message IDs
   useEffect(() => {
     if (!user) return;

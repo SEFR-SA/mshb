@@ -87,8 +87,8 @@ const CallListener = () => {
       .eq("id", incomingCall.sessionId);
 
     setIncomingCall(null);
-    // answerCall will be triggered by useEffect when activeSession changes
-    setTimeout(() => answerCall(), 500);
+    // Pass session ID directly to bypass stale closure
+    answerCall(incomingCall.sessionId);
   }, [incomingCall, answerCall]);
 
   const handleDecline = useCallback(async () => {
@@ -107,6 +107,26 @@ const CallListener = () => {
       .update({ status: "ended", ended_at: new Date().toISOString() } as any)
       .eq("id", activeSession);
     endCall();
+  }, [activeSession, endCall]);
+
+  // Listen for the other side ending/declining the call via DB status
+  useEffect(() => {
+    if (!activeSession) return;
+    const channel = supabase
+      .channel(`call-status-${activeSession}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "call_sessions",
+        filter: `id=eq.${activeSession}`,
+      }, (payload) => {
+        const status = (payload.new as any).status;
+        if (status === "ended" || status === "declined") {
+          endCall();
+        }
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
   }, [activeSession, endCall]);
 
   return (

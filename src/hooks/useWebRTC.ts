@@ -196,12 +196,46 @@ export function useWebRTC({ sessionId, isCaller, onEnded }: UseWebRTCOptions) {
     }, 1000);
   }, [sessionId, setupPeerConnection, cleanup, processQueuedCandidates]);
 
-  const answerCall = useCallback(async () => {
-    if (!sessionId) return;
+  const answerCall = useCallback(async (overrideSessionId?: string) => {
+    const sid = overrideSessionId || sessionId;
+    if (!sid) return;
     setCallState("ringing");
+
+    // Ensure signaling channel is ready (bypass stale closure)
+    if (!channelRef.current) {
+      const channel = supabase.channel(`call-${sid}`);
+      channelRef.current = channel;
+      channel
+        .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
+          const pc = pcRef.current;
+          if (!pc) return;
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+          await processQueuedCandidates();
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          channel.send({
+            type: "broadcast",
+            event: "call-answer",
+            payload: { sdp: answer },
+          });
+        })
+        .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
+          const pc = pcRef.current;
+          if (!pc) return;
+          if (pc.remoteDescription) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch {}
+          } else {
+            iceCandidateQueue.current.push(payload.candidate);
+          }
+        })
+        .on("broadcast", { event: "call-end" }, () => {
+          cleanup();
+        })
+        .subscribe();
+    }
+
     await setupPeerConnection();
-    // The offer will come via broadcast and be handled by the channel listener
-  }, [sessionId, setupPeerConnection]);
+  }, [sessionId, setupPeerConnection, cleanup, processQueuedCandidates]);
 
   const endCall = useCallback(() => {
     channelRef.current?.send({
