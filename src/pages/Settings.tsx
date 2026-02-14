@@ -243,10 +243,6 @@ const Settings = () => {
             </div>
           )}
           <div className="space-y-2">
-            <Label>{t("profile.statusText")}</Label>
-            <Input value={statusText} onChange={(e) => setStatusText(e.target.value)} placeholder={t("profile.statusText")} />
-          </div>
-          <div className="space-y-2">
             <Label>{t("profile.aboutMeLabel")}</Label>
             <Textarea
               value={aboutMe}
