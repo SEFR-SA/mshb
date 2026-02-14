@@ -1,40 +1,116 @@
 
 
-## Fix VoiceConnectionBar Layout and Voice Channel Hover Issue
+## Add Private/Public Channel Support
 
-### Issue 1: VoiceConnectionBar - Disconnect Button Position
+### Overview
+Add the ability to create channels as private or public. Private channels restrict access to selected server members only. Non-allowed members see a lock icon and a "This channel is private" message instead of the channel content.
 
-The current layout pushes the disconnect button to the far right because the inner div has `flex-1`, creating a spacer effect. The disconnect button needs to sit immediately next to the channel name, not separated by flex spacing.
+### Database Changes
 
-**Current layout:** `[green dot] [volume] [channelName] [avatars .......... spacer] [PhoneOff]`
-**Target layout:** `[green dot] [volume] [channelName] [PhoneOff] [avatars]`
+**1. Add `is_private` column to `channels` table**
+```sql
+ALTER TABLE public.channels ADD COLUMN is_private boolean NOT NULL DEFAULT false;
+```
 
-**File: `src/components/server/VoiceConnectionBar.tsx`**
-- Restructure the JSX so the `PhoneOff` disconnect button comes right after the channel name
-- Move participant avatars to after the disconnect button (or remove `flex-1` from the inner div)
-- Remove `flex-1 min-w-0` from the inner wrapper so items stay compact
+**2. Create `channel_members` table** for tracking who has access to private channels
+```sql
+CREATE TABLE public.channel_members (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel_id uuid NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL,
+  added_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(channel_id, user_id)
+);
 
-### Issue 2: Voice Channel Hover Stays After Joining
+ALTER TABLE public.channel_members ENABLE ROW LEVEL SECURITY;
+```
 
-In `ChannelSidebar.tsx`, when a voice channel is clicked (joined), it gets `activeVoiceChannelId` matching, which applies `bg-sidebar-accent` permanently. The user wants NO persistent highlight on voice channels — only a hover effect that appears on mouse hover and disappears when not hovering.
+**3. Create a `is_channel_member` security definer function** to avoid RLS recursion
+```sql
+CREATE OR REPLACE FUNCTION public.is_channel_member(_user_id uuid, _channel_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = 'public'
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.channel_members
+    WHERE user_id = _user_id AND channel_id = _channel_id
+  )
+$$;
+```
 
-**File: `src/components/server/ChannelSidebar.tsx`**
-- Remove the active state styling for voice channels (remove the `ch.id === activeVoiceChannelId` conditional that applies `bg-sidebar-accent`)
-- Keep only the hover effect: `hover:bg-sidebar-accent/50` for all voice channels regardless of whether they are joined
-- The voice channel's "active" state is already visually indicated by the `VoiceConnectionBar` at the bottom and the green icon when participants are present
+**4. Create a helper function** to check if a channel is private
+```sql
+CREATE OR REPLACE FUNCTION public.is_channel_private(_channel_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = 'public'
+AS $$
+  SELECT COALESCE(
+    (SELECT is_private FROM public.channels WHERE id = _channel_id),
+    false
+  )
+$$;
+```
 
-### Issue 3: Clean Up Dead Code - VoiceChannelPanel
+**5. RLS policies for `channel_members`**
+- SELECT: server members can view channel members (need to know who's in the channel)
+- INSERT: server admins only
+- DELETE: server admins only
 
-`VoiceChannelPanel.tsx` is not imported or used anywhere in the app. It still contains local mute/disconnect controls. It should be deleted as dead code.
+**6. Update `channels` SELECT RLS policy** to account for private channels:
+- Public channels: visible to all server members (existing behavior)
+- Private channels: visible only to channel members (show in sidebar with lock icon, but content blocked)
+- Actually, we want ALL channels visible in the sidebar (so users see the lock icon). The content restriction happens at the message level and in the UI.
 
-**File: `src/components/server/VoiceChannelPanel.tsx`**
-- Delete this file entirely (it is unused)
+So the `channels` SELECT policy stays as-is (all server members see all channels). The restriction is enforced:
+- On `messages` -- update the existing SELECT/INSERT policies to also check channel membership for private channels
+- In the UI -- show lock icon and block content for non-members
+
+**7. Update `messages` RLS policies** for channel messages to check private channel access:
+- Current policy for channel messages: `is_server_member(auth.uid(), channels.server_id)`
+- New logic: `is_server_member(...) AND (NOT is_channel_private(channel_id) OR is_channel_member(auth.uid(), channel_id))`
+
+### Frontend Changes
+
+**`src/components/server/ChannelSidebar.tsx`**
+- Add `is_private` to the Channel interface
+- Add state for the create dialog: `isPrivate` toggle (Switch), and `selectedMembers` (array of user IDs)
+- When `isPrivate` is toggled on, show a member selection list (checkboxes with server member avatars/names)
+- Fetch server members when private is toggled on
+- On create: insert the channel, then if private, insert rows into `channel_members` for selected users (plus the creator automatically)
+- In the channel list: show a Lock icon instead of Hash for private channels
+- For voice channels that are private: show Lock icon as well
+
+**`src/components/server/ServerChannelChat.tsx`**
+- Accept an `isPrivate` and `hasAccess` prop
+- If `isPrivate && !hasAccess`, show a locked state: lock icon + "This channel is private" message instead of the chat
+- Otherwise render normally
+
+**`src/pages/ServerView.tsx`**
+- When loading the active channel, also fetch its `is_private` flag
+- Check if the current user is in `channel_members` for private channels
+- Pass `isPrivate` and `hasAccess` to `ServerChannelChat`
+
+**`src/i18n/en.ts` and `src/i18n/ar.ts`**
+- Add keys: `channels.private`, `channels.public`, `channels.privateDesc`, `channels.selectMembers`, `channels.privateChannel`, `channels.noAccess`
 
 ### Files Summary
 
 | File | Action | Changes |
 |------|--------|---------|
-| `src/components/server/VoiceConnectionBar.tsx` | Modify | Move disconnect button right after channel name |
-| `src/components/server/ChannelSidebar.tsx` | Modify | Remove persistent active highlight on voice channels; keep hover-only |
-| `src/components/server/VoiceChannelPanel.tsx` | Delete | Remove unused dead code |
+| Database migration | Create | Add `is_private` column, `channel_members` table, helper functions, RLS policies |
+| `src/components/server/ChannelSidebar.tsx` | Modify | Private toggle + member selection in create dialog; lock icon for private channels |
+| `src/components/server/ServerChannelChat.tsx` | Modify | Show locked state when user lacks access |
+| `src/pages/ServerView.tsx` | Modify | Check channel privacy and user access |
+| `src/i18n/en.ts` | Modify | Add private channel translation keys |
+| `src/i18n/ar.ts` | Modify | Add Arabic translations |
+
+### How It Works
+
+1. Admin creates a channel and toggles "Private" on
+2. A member picker appears showing all server members with checkboxes
+3. Admin selects who can access the channel, then creates it
+4. The channel appears in the sidebar for ALL members, but with a lock icon for private ones
+5. Members without access see a "This channel is private" message with a lock icon when they click it
+6. Members with access see and use the channel normally
+7. RLS on messages ensures non-members physically cannot read/write messages in private channels
 
