@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { uploadChatFile } from "@/lib/uploadChatFile";
 import FileAttachmentButton from "@/components/chat/FileAttachmentButton";
 import MessageFilePreview from "@/components/chat/MessageFilePreview";
 import { Progress } from "@/components/ui/progress";
+import MentionPopup from "./MentionPopup";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -20,9 +22,32 @@ interface Props {
   channelName: string;
 }
 
+const renderMessageContent = (content: string, profiles: Map<string, any>, currentUserId?: string) => {
+  const parts = content.split(/(@\w+)/g);
+  return parts.map((part, i) => {
+    if (part === "@all") {
+      return <span key={i} className="bg-yellow-500/20 text-yellow-400 px-1 rounded font-medium">@all</span>;
+    }
+    if (part.startsWith("@")) {
+      const username = part.slice(1);
+      const matched = [...profiles.values()].find((p: any) => p.username === username);
+      if (matched) {
+        const isMe = matched.user_id === currentUserId;
+        return (
+          <span key={i} className={`px-1 rounded font-medium ${isMe ? "bg-primary/30 text-primary" : "bg-primary/20 text-primary"}`}>
+            {part}
+          </span>
+        );
+      }
+    }
+    return part;
+  });
+};
+
 const ServerChannelChat = ({ channelId, channelName }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { serverId } = useParams<{ serverId: string }>();
   const [messages, setMessages] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<Map<string, any>>(new Map());
   const [newMsg, setNewMsg] = useState("");
@@ -32,6 +57,12 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Mention state
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState("");
+  const [mentionStart, setMentionStart] = useState<number | null>(null);
 
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
@@ -47,8 +78,7 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
   }, [profiles]);
 
   const loadMessages = useCallback(async (before?: string) => {
-    let query = (supabase
-      .from("messages") as any)
+    let query = (supabase.from("messages") as any)
       .select("*")
       .eq("channel_id", channelId)
       .order("created_at", { ascending: false })
@@ -58,7 +88,7 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
     if (!data) return;
     if (data.length < PAGE_SIZE) setHasMore(false);
     const reversed = data.reverse();
-    loadProfiles(reversed.map((m) => m.author_id));
+    loadProfiles(reversed.map((m: any) => m.author_id));
     if (before) {
       setMessages((prev) => [...reversed, ...prev]);
     } else {
@@ -73,7 +103,6 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
     loadMessages();
   }, [channelId]);
 
-  // Realtime
   useEffect(() => {
     const channel = supabase
       .channel(`channel-chat-${channelId}`)
@@ -89,6 +118,43 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
       .subscribe();
     return () => { channel.unsubscribe(); };
   }, [channelId, loadProfiles]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setNewMsg(val);
+
+    const pos = e.target.selectionStart || 0;
+    // Find the last @ before cursor
+    const textBeforeCursor = val.slice(0, pos);
+    const atIndex = textBeforeCursor.lastIndexOf("@");
+    if (atIndex !== -1) {
+      const textAfterAt = textBeforeCursor.slice(atIndex + 1);
+      // Only trigger if no space in the filter text
+      if (!/\s/.test(textAfterAt)) {
+        setMentionOpen(true);
+        setMentionStart(atIndex);
+        setMentionFilter(textAfterAt);
+        return;
+      }
+    }
+    setMentionOpen(false);
+  };
+
+  const handleMentionSelect = (mention: string) => {
+    if (mentionStart === null) return;
+    const before = newMsg.slice(0, mentionStart);
+    const cursorPos = inputRef.current?.selectionStart || newMsg.length;
+    const after = newMsg.slice(cursorPos);
+    const newValue = `${before}${mention} ${after}`;
+    setNewMsg(newValue);
+    setMentionOpen(false);
+    setMentionStart(null);
+    setTimeout(() => {
+      const newCursor = before.length + mention.length + 1;
+      inputRef.current?.setSelectionRange(newCursor, newCursor);
+      inputRef.current?.focus();
+    }, 0);
+  };
 
   const sendMessage = async () => {
     if ((!newMsg.trim() && !selectedFile) || !user || sending) return;
@@ -141,13 +207,11 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
         </div>
       )}
 
-      {/* Header */}
       <header className="flex items-center gap-2 p-3 glass border-b border-border/50">
         <Hash className="h-5 w-5 text-muted-foreground" />
         <h2 className="font-semibold">{channelName}</h2>
       </header>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {hasMore && messages.length > 0 && (
           <div className="text-center">
@@ -178,7 +242,7 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
                     <MessageFilePreview fileUrl={msg.file_url} fileName={msg.file_name || "file"} fileType={msg.file_type || ""} fileSize={msg.file_size || 0} isMine={isMine} />
                   </div>
                 )}
-                {msg.content && <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>}
+                {msg.content && <p className="text-sm whitespace-pre-wrap break-words">{renderMessageContent(msg.content, profiles, user?.id)}</p>}
               </div>
             </div>
           );
@@ -186,7 +250,6 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <div className="p-3 border-t border-border/50">
         {uploadProgress !== null && <Progress value={uploadProgress} className="mb-2 h-1" />}
         {selectedFile && (
@@ -195,15 +258,27 @@ const ServerChannelChat = ({ channelId, channelName }: Props) => {
             <Button variant="ghost" size="sm" onClick={() => setSelectedFile(null)} className="h-6 text-xs">{t("actions.cancel")}</Button>
           </div>
         )}
-        <div className="flex items-center gap-2">
+        <div className="relative flex items-center gap-2">
+          {mentionOpen && serverId && (
+            <MentionPopup
+              serverId={serverId}
+              filter={mentionFilter}
+              onSelect={handleMentionSelect}
+              onClose={() => setMentionOpen(false)}
+            />
+          )}
           <FileAttachmentButton onFileSelect={(f) => {
             if (f.size > MAX_FILE_SIZE) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
             setSelectedFile(f);
           }} />
           <Input
+            ref={inputRef}
             value={newMsg}
-            onChange={(e) => setNewMsg(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendMessage())}
+            onChange={handleInputChange}
+            onKeyDown={(e) => {
+              if (mentionOpen) return; // Let MentionPopup handle keys
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+            }}
             placeholder={`${t("chat.placeholder")} #${channelName}`}
             className="flex-1"
             maxLength={2000}

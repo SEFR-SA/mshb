@@ -217,6 +217,10 @@ export default {
     text: "Text Channel",
     voice: "Voice Channel",
   },
+  mentions: {
+    all: "everyone",
+    noResults: "No members found",
+  },
   groups: {
     create: "Create Group",
     name: "Group Name",

@@ -217,6 +217,10 @@ export default {
     text: "قناة نصية",
     voice: "قناة صوتية",
   },
+  mentions: {
+    all: "الجميع",
+    noResults: "لم يتم العثور على أعضاء",
+  },
   groups: {
     create: "إنشاء مجموعة",
     name: "اسم المجموعة",
