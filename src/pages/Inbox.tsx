@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import type { Tables } from "@/integrations/supabase/types";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
+import { SidebarItemSkeleton } from "@/components/skeletons/SkeletonLoaders";
 
 type Profile = Tables<"profiles">;
 type Thread = Tables<"dm_threads">;
@@ -36,6 +37,7 @@ const Inbox = () => {
   const { isOnline, getUserStatus } = usePresence();
   const navigate = useNavigate();
   const [items, setItems] = useState<InboxItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [searching, setSearching] = useState(false);
@@ -165,6 +167,7 @@ const Inbox = () => {
     });
 
     setItems(all);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -273,54 +276,60 @@ const Inbox = () => {
 
       {/* Thread List */}
       <div className="flex-1 overflow-y-auto">
-        {items.length === 0 && !search.trim() && (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <MessageSquareIcon className="h-12 w-12 mb-2 opacity-30" />
-            <p>{t("inbox.noThreads")}</p>
-            <p className="text-sm">{t("inbox.startChat")}</p>
+        {loading ? (
+          <SidebarItemSkeleton count={8} />
+        ) : (
+          <div className="animate-fade-in">
+            {items.length === 0 && !search.trim() && (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <MessageSquareIcon className="h-12 w-12 mb-2 opacity-30" />
+                <p>{t("inbox.noThreads")}</p>
+                <p className="text-sm">{t("inbox.startChat")}</p>
+              </div>
+            )}
+            {items.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
+                className="flex items-center gap-3 w-full p-3 px-4 hover:bg-muted/50 transition-colors text-start border-b border-border/30"
+              >
+                <div className="relative">
+                  <Avatar className="h-11 w-11">
+                    <AvatarImage src={item.avatarUrl} />
+                    <AvatarFallback className="bg-primary/20 text-primary">
+                      {item.type === "group" ? <Users className="h-5 w-5" /> : item.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {item.type === "dm" && item.otherProfile && (
+                    <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium truncate">{item.name}</p>
+                    {item.unreadCount > 0 && (
+                      <span className="ms-2 inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-primary text-primary-foreground text-[11px] font-bold px-1.5">
+                        {item.unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">{item.lastMessage || ""}</p>
+                  {item.type === "group" && (
+                    <p className="text-xs text-muted-foreground/70">
+                      <Users className="h-3 w-3 inline me-1" />
+                      {item.memberCount}
+                    </p>
+                  )}
+                  {item.type === "dm" && getUserStatus(item.otherProfile) === "offline" && item.otherProfile?.last_seen && (
+                    <p className="text-xs text-muted-foreground/70">
+                      {t("presence.lastSeen", { time: formatDistanceToNow(new Date(item.otherProfile.last_seen)) })}
+                    </p>
+                  )}
+                </div>
+              </button>
+            ))}
           </div>
         )}
-        {items.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
-            className="flex items-center gap-3 w-full p-3 px-4 hover:bg-muted/50 transition-colors text-start border-b border-border/30"
-          >
-            <div className="relative">
-              <Avatar className="h-11 w-11">
-                <AvatarImage src={item.avatarUrl} />
-                <AvatarFallback className="bg-primary/20 text-primary">
-                  {item.type === "group" ? <Users className="h-5 w-5" /> : item.name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              {item.type === "dm" && item.otherProfile && (
-                <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <p className="font-medium truncate">{item.name}</p>
-                {item.unreadCount > 0 && (
-                  <span className="ms-2 inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-primary text-primary-foreground text-[11px] font-bold px-1.5">
-                    {item.unreadCount}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground truncate">{item.lastMessage || ""}</p>
-              {item.type === "group" && (
-                <p className="text-xs text-muted-foreground/70">
-                  <Users className="h-3 w-3 inline me-1" />
-                  {item.memberCount}
-                </p>
-              )}
-              {item.type === "dm" && getUserStatus(item.otherProfile) === "offline" && item.otherProfile?.last_seen && (
-                <p className="text-xs text-muted-foreground/70">
-                  {t("presence.lastSeen", { time: formatDistanceToNow(new Date(item.otherProfile.last_seen)) })}
-                </p>
-              )}
-            </div>
-          </button>
-        ))}
       </div>
 
       <CreateGroupDialog open={createGroupOpen} onOpenChange={setCreateGroupOpen} />
