@@ -229,6 +229,9 @@ export default {
     all: "الجميع",
     noResults: "لم يتم العثور على أعضاء",
   },
+  emoji: {
+    search: "ابحث عن رموز تعبيرية...",
+  },
   groups: {
     create: "إنشاء مجموعة",
     name: "اسم المجموعة",

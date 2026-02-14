@@ -229,6 +229,9 @@ export default {
     all: "everyone",
     noResults: "No members found",
   },
+  emoji: {
+    search: "Search emojis...",
+  },
   groups: {
     create: "Create Group",
     name: "Group Name",

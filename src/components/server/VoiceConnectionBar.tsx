@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, PhoneOff, Volume2, HeadphoneOff } from "lucide-react";
+import { PhoneOff, Volume2 } from "lucide-react";
 
 interface Participant {
   user_id: string;
@@ -26,8 +26,6 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
   const { user } = useAuth();
   const { globalMuted, globalDeafened } = useAudioSettings();
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [isMuted, setIsMuted] = useState(globalMuted);
-  const [isDeafened, setIsDeafened] = useState(globalDeafened);
   const [isJoined, setIsJoined] = useState(false);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudiosRef = useRef<HTMLAudioElement[]>([]);
@@ -73,7 +71,7 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
     pc.ontrack = (e) => {
       const audio = new Audio();
       audio.srcObject = e.streams[0];
-      audio.muted = isDeafened;
+      audio.muted = globalDeafened;
       audio.play().catch(() => {});
       remoteAudiosRef.current.push(audio);
     };
@@ -172,7 +170,6 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
     channelRef.current = null;
     await supabase.from("voice_channel_participants" as any).delete().eq("channel_id", channelId).eq("user_id", user.id);
     setIsJoined(false);
-    setIsMuted(false);
     onDisconnect();
   }, [user, channelId, onDisconnect]);
 
@@ -188,34 +185,6 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
     };
   }, []);
 
-  const toggleMute = () => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = !t.enabled; });
-      setIsMuted((prev) => !prev);
-    }
-  };
-
-  const toggleDeafen = () => {
-    const next = !isDeafened;
-    setIsDeafened(next);
-    remoteAudiosRef.current.forEach((a) => { a.muted = next; });
-    // Deafen implies mute
-    if (next && !isMuted) {
-      localStreamRef.current?.getAudioTracks().forEach((t) => { t.enabled = false; });
-      setIsMuted(true);
-    }
-  };
-
-  // Sync with global mute/deafen changes
-  useEffect(() => {
-    setIsMuted(globalMuted);
-    localStreamRef.current?.getAudioTracks().forEach((t) => { t.enabled = !globalMuted; });
-  }, [globalMuted]);
-
-  useEffect(() => {
-    setIsDeafened(globalDeafened);
-    remoteAudiosRef.current.forEach((a) => { a.muted = globalDeafened; });
-  }, [globalDeafened]);
 
   return (
     <div className="flex items-center gap-3 px-4 py-2 border-t border-border/50 bg-muted/30">
@@ -237,17 +206,9 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1.5">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
-          {isMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleDeafen}>
-          {isDeafened ? <HeadphoneOff className="h-4 w-4 text-destructive" /> : <Volume2 className="h-4 w-4" />}
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={leaveVoice}>
-          <PhoneOff className="h-4 w-4" />
-        </Button>
-      </div>
+      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={leaveVoice}>
+        <PhoneOff className="h-4 w-4" />
+      </Button>
     </div>
   );
 };
