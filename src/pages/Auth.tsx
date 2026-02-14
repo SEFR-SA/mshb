@@ -39,7 +39,7 @@ const Auth = () => {
       const { data } = await supabase
         .from("profiles")
         .select("id")
-        .eq("username", username.trim())
+        .ilike("username", username.trim())
         .maybeSingle();
       setUsernameStatus(data ? "taken" : "available");
     }, 300);
@@ -91,9 +91,14 @@ const Auth = () => {
         const { error } = await signIn(identifier.trim(), password);
         if (error) toast({ title: t("auth.loginError"), description: error.message, variant: "destructive" });
       } else if (mode === "signup") {
-        const { error } = await signUp(email, password, username.trim());
-        if (error) toast({ title: t("auth.signupError"), description: error.message, variant: "destructive" });
-        else toast({ title: t("auth.checkEmail") });
+        const { data, error } = await signUp(email, password, username.trim());
+        if (error) {
+          toast({ title: t("auth.signupError"), description: error.message, variant: "destructive" });
+        } else if (data?.user?.identities?.length === 0) {
+          toast({ title: t("auth.emailAlreadyRegistered") || "This email is already registered. Please log in instead.", variant: "destructive" });
+        } else {
+          toast({ title: t("auth.checkEmail") });
+        }
       } else {
         const { error } = await resetPassword(email);
         if (error) toast({ title: t("common.error"), description: error.message, variant: "destructive" });
