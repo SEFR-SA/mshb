@@ -48,6 +48,8 @@ interface VoiceParticipant {
   username: string | null;
   avatar_url: string | null;
   is_speaking: boolean;
+  is_muted: boolean;
+  is_deafened: boolean;
 }
 
 interface ServerMember {
@@ -137,7 +139,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
     const { data } = await supabase
       .from("voice_channel_participants")
-      .select("channel_id, user_id, is_speaking")
+      .select("channel_id, user_id, is_speaking, is_muted, is_deafened")
       .in("channel_id", voiceChannelIds);
     if (!data || data.length === 0) { setVoiceParticipants(new Map()); return; }
 
@@ -158,6 +160,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         username: p?.username || null,
         avatar_url: p?.avatar_url || null,
         is_speaking: !!(d as any).is_speaking,
+        is_muted: !!(d as any).is_muted,
+        is_deafened: !!(d as any).is_deafened,
       });
       grouped.set(d.channel_id, list);
     });
@@ -429,9 +433,13 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                             </AvatarFallback>
                           </Avatar>
                           <span className="truncate">{p.display_name || p.username || "User"}</span>
-                          {p.is_speaking && (
+                          {p.is_deafened ? (
+                            <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
+                          ) : p.is_muted ? (
+                            <MicOff className="h-3 w-3 text-destructive shrink-0" />
+                          ) : p.is_speaking ? (
                             <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
-                          )}
+                          ) : null}
                         </div>
                       ))}
                     </div>
