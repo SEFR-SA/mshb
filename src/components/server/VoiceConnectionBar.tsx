@@ -1,25 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { PhoneOff, Volume2 } from "lucide-react";
-
-interface Participant {
-  user_id: string;
-  display_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-}
-
-interface VoiceConnectionBarProps {
-  channelId: string;
-  channelName: string;
-  serverId: string;
-  onDisconnect: () => void;
-}
 
 /** Monitor a MediaStream's volume via AnalyserNode and call back with isSpeaking */
 function createVolumeMonitor(
@@ -56,13 +38,18 @@ function createVolumeMonitor(
   };
 }
 
-const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: VoiceConnectionBarProps) => {
-  const { t } = useTranslation();
+interface VoiceConnectionManagerProps {
+  channelId: string;
+  channelName: string;
+  serverId: string;
+  onDisconnect: () => void;
+}
+
+/** Headless component — manages WebRTC voice connection with no visible UI */
+const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect }: VoiceConnectionManagerProps) => {
   const { user } = useAuth();
   const { globalMuted, globalDeafened } = useAudioSettings();
-  const [participants, setParticipants] = useState<Participant[]>([]);
   const [isJoined, setIsJoined] = useState(false);
-  const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudiosRef = useRef<HTMLAudioElement[]>([]);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -70,49 +57,12 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
   const volumeMonitorsRef = useRef<Array<{ cleanup: () => void }>>([]);
 
   const updateSpeaking = useCallback((userId: string, isSpeaking: boolean) => {
-    setSpeakingUsers((prev) => {
-      const next = new Set(prev);
-      if (isSpeaking) next.add(userId);
-      else next.delete(userId);
-      return next;
-    });
-    // Broadcast so sidebar can show it too
     channelRef.current?.send({
       type: "broadcast",
       event: "voice-speaking",
       payload: { userId, isSpeaking },
     });
   }, []);
-
-  const loadParticipants = useCallback(async () => {
-    const { data } = await supabase
-      .from("voice_channel_participants" as any)
-      .select("user_id")
-      .eq("channel_id", channelId);
-    if (!data) return;
-    const userIds = (data as any[]).map((p) => p.user_id);
-    if (userIds.length === 0) { setParticipants([]); return; }
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, display_name, username, avatar_url")
-      .in("user_id", userIds);
-    setParticipants((profiles || []).map((p) => ({
-      user_id: p.user_id,
-      display_name: p.display_name,
-      username: p.username,
-      avatar_url: p.avatar_url,
-    })));
-  }, [channelId]);
-
-  // Realtime participant updates
-  useEffect(() => {
-    loadParticipants();
-    const sub = supabase
-      .channel(`voice-bar-${channelId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "voice_channel_participants", filter: `channel_id=eq.${channelId}` }, () => loadParticipants())
-      .subscribe();
-    return () => { sub.unsubscribe(); };
-  }, [channelId, loadParticipants]);
 
   const createPeerConnection = useCallback((peerId: string) => {
     const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
@@ -126,8 +76,6 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
       audio.muted = globalDeafened;
       audio.play().catch(() => {});
       remoteAudiosRef.current.push(audio);
-
-      // Monitor remote user's volume
       const monitor = createVolumeMonitor(e.streams[0], (isSpeaking) => {
         updateSpeaking(peerId, isSpeaking);
       });
@@ -169,8 +117,6 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
     .on("broadcast", { event: "voice-leave" }, ({ payload }) => {
       const pc = peerConnectionsRef.current.get(payload.userId);
       if (pc) { pc.close(); peerConnectionsRef.current.delete(payload.userId); }
-      // Remove from speaking
-      setSpeakingUsers((prev) => { const n = new Set(prev); n.delete(payload.userId); return n; });
     })
     .subscribe();
   }, [channelId, user, createPeerConnection]);
@@ -184,7 +130,6 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         if (!mounted) { stream.getTracks().forEach(t => t.stop()); return; }
-        // Apply global mute on join
         if (globalMuted) {
           stream.getAudioTracks().forEach(t => { t.enabled = false; });
         }
@@ -193,13 +138,11 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
         await supabase.from("voice_channel_participants" as any).insert({ channel_id: channelId, user_id: user.id } as any);
         if (mounted) setIsJoined(true);
 
-        // Monitor local user's volume
         const localMonitor = createVolumeMonitor(stream, (isSpeaking) => {
           updateSpeaking(user.id, isSpeaking);
         });
         volumeMonitorsRef.current.push(localMonitor);
 
-        // Connect to existing participants
         setTimeout(async () => {
           if (!mounted) return;
           const { data } = await supabase.from("voice_channel_participants" as any).select("user_id").eq("channel_id", channelId);
@@ -225,30 +168,13 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
     };
   }, [channelId, user, setupSignaling, createPeerConnection, updateSpeaking]);
 
-  const leaveVoice = useCallback(async () => {
-    if (!user) return;
-    channelRef.current?.send({ type: "broadcast", event: "voice-leave", payload: { userId: user.id } });
-    peerConnectionsRef.current.forEach((pc) => pc.close());
-    peerConnectionsRef.current.clear();
-    localStreamRef.current?.getTracks().forEach((t) => t.stop());
-    localStreamRef.current = null;
-    // Cleanup volume monitors
-    volumeMonitorsRef.current.forEach((m) => m.cleanup());
-    volumeMonitorsRef.current = [];
-    channelRef.current?.unsubscribe();
-    channelRef.current = null;
-    await supabase.from("voice_channel_participants" as any).delete().eq("channel_id", channelId).eq("user_id", user.id);
-    setIsJoined(false);
-    setSpeakingUsers(new Set());
-    onDisconnect();
-  }, [user, channelId, onDisconnect]);
-
-  // Cleanup on unmount
+  // Cleanup on unmount (disconnect)
   useEffect(() => {
     return () => {
       volumeMonitorsRef.current.forEach((m) => m.cleanup());
       volumeMonitorsRef.current = [];
       if (user) {
+        channelRef.current?.send({ type: "broadcast", event: "voice-leave", payload: { userId: user.id } });
         supabase.from("voice_channel_participants" as any).delete().eq("channel_id", channelId).eq("user_id", user.id).then();
         peerConnectionsRef.current.forEach((pc) => pc.close());
         localStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -257,34 +183,7 @@ const VoiceConnectionBar = ({ channelId, channelName, serverId, onDisconnect }: 
     };
   }, []);
 
-  return (
-    <div className="flex items-center gap-3 px-4 py-2 border-t border-border/50 bg-muted/30">
-      <div className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
-      <Volume2 className="h-4 w-4 text-green-500 shrink-0" />
-      <span className="text-sm font-medium truncate">{channelName}</span>
-      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={leaveVoice}>
-        <PhoneOff className="h-4 w-4" />
-      </Button>
-      <div className="flex items-center -space-x-1.5 ms-2">
-        {participants.slice(0, 5).map((p) => (
-          <Avatar
-            key={p.user_id}
-            className={`h-6 w-6 border-2 border-background transition-all duration-150 ${
-              speakingUsers.has(p.user_id) ? "ring-2 ring-[#00db21]" : ""
-            }`}
-          >
-            <AvatarImage src={p.avatar_url || ""} />
-            <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
-              {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-        ))}
-        {participants.length > 5 && (
-          <span className="text-xs text-muted-foreground ms-2">+{participants.length - 5}</span>
-        )}
-      </div>
-    </div>
-  );
+  return null; // Headless — no UI
 };
 
-export default VoiceConnectionBar;
+export default VoiceConnectionManager;

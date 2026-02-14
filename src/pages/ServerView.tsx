@@ -2,12 +2,13 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTranslation } from "react-i18next";
 import ChannelSidebar from "@/components/server/ChannelSidebar";
 import ServerChannelChat from "@/components/server/ServerChannelChat";
 import ServerMemberList from "@/components/server/ServerMemberList";
-import VoiceConnectionBar from "@/components/server/VoiceConnectionBar";
+import VoiceConnectionManager from "@/components/server/VoiceConnectionBar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
@@ -19,9 +20,9 @@ const ServerView = () => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const { t } = useTranslation();
+  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice } = useVoiceChannel();
   const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean } | null>(null);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
-  const [voiceChannel, setVoiceChannel] = useState<{ id: string; name: string } | null>(null);
   const [showMembers, setShowMembers] = useState(!isMobile);
   const [pendingVoiceChannel, setPendingVoiceChannel] = useState<{ id: string; name: string } | null>(null);
   const [switchDialogOpen, setSwitchDialogOpen] = useState(false);
@@ -74,7 +75,7 @@ const ServerView = () => {
   };
 
   const joinVoiceChannel = (channel: { id: string; name: string }) => {
-    setVoiceChannel(channel);
+    setVoiceCtx({ id: channel.id, name: channel.name, serverId: serverId! });
     if (!activeChannel && serverId) {
       supabase.from("channels" as any).select("id, name, type, is_private").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
         .then(({ data }) => {
@@ -88,9 +89,10 @@ const ServerView = () => {
   };
 
   const confirmSwitch = async () => {
-    if (voiceChannel && user) {
-      await supabase.from("voice_channel_participants").delete().eq("channel_id", voiceChannel.id).eq("user_id", user.id);
-    }
+    // Disconnect current voice first
+    disconnectVoice();
+    // Small delay to let cleanup happen
+    await new Promise(r => setTimeout(r, 100));
     if (pendingVoiceChannel) {
       joinVoiceChannel(pendingVoiceChannel);
     }
@@ -151,13 +153,11 @@ const ServerView = () => {
               </SheetContent>
             </Sheet>
           </div>
-          <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex-1 min-h-0">{renderMainContent()}</div>
-            {voiceChannel && (
-              <VoiceConnectionBar channelId={voiceChannel.id} channelName={voiceChannel.name} serverId={serverId} onDisconnect={() => setVoiceChannel(null)} />
-            )}
-          </div>
+          <div className="flex-1 min-h-0">{renderMainContent()}</div>
         </div>
+        {voiceChannel && (
+          <VoiceConnectionManager channelId={voiceChannel.id} channelName={voiceChannel.name} serverId={serverId} onDisconnect={disconnectVoice} />
+        )}
         {switchDialog}
       </>
     );
@@ -169,10 +169,10 @@ const ServerView = () => {
         <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 min-h-0">{renderMainContent()}</div>
-          {voiceChannel && (
-            <VoiceConnectionBar channelId={voiceChannel.id} channelName={voiceChannel.name} serverId={serverId} onDisconnect={() => setVoiceChannel(null)} />
-          )}
         </div>
+        {voiceChannel && (
+          <VoiceConnectionManager channelId={voiceChannel.id} channelName={voiceChannel.name} serverId={serverId} onDisconnect={disconnectVoice} />
+        )}
         {showMembers && <ServerMemberList serverId={serverId} />}
         {!showMembers && (
           <Button variant="ghost" size="icon" className="absolute top-3 end-3" onClick={() => setShowMembers(true)}>
