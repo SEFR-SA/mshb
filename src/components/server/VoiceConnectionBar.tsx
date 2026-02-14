@@ -157,7 +157,14 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const startScreenShare = useCallback(async () => {
     if (screenStreamRef.current) return;
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 60 },
+        },
+        audio: false,
+      });
       screenStreamRef.current = stream;
       const videoTrack = stream.getVideoTracks()[0];
 
