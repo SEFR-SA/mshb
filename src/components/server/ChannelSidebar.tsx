@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
 import ServerSettingsDialog from "./ServerSettingsDialog";
 
@@ -28,6 +29,13 @@ interface Server {
   banner_url: string | null;
 }
 
+interface VoiceParticipant {
+  user_id: string;
+  display_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+}
+
 interface Props {
   serverId: string;
   activeChannelId?: string;
@@ -44,6 +52,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect }: Props) =
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState("text");
   const [newCategory, setNewCategory] = useState("Text Channels");
+  const [voiceParticipants, setVoiceParticipants] = useState<Map<string, VoiceParticipant[]>>(new Map());
 
   const isAdmin = server?.owner_id === user?.id;
 
@@ -62,6 +71,53 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect }: Props) =
       .subscribe();
     return () => { channel.unsubscribe(); };
   }, [serverId]);
+
+  // Fetch voice participants
+  const fetchVoiceParticipants = useCallback(async () => {
+    const voiceChannelIds = channels.filter((c) => c.type === "voice").map((c) => c.id);
+    if (voiceChannelIds.length === 0) { setVoiceParticipants(new Map()); return; }
+
+    const { data } = await supabase
+      .from("voice_channel_participants")
+      .select("channel_id, user_id")
+      .in("channel_id", voiceChannelIds);
+    if (!data || data.length === 0) { setVoiceParticipants(new Map()); return; }
+
+    const userIds = [...new Set(data.map((d) => d.user_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, display_name, username, avatar_url")
+      .in("user_id", userIds);
+
+    const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
+    const grouped = new Map<string, VoiceParticipant[]>();
+    data.forEach((d) => {
+      const p = profileMap.get(d.user_id);
+      const list = grouped.get(d.channel_id) || [];
+      list.push({
+        user_id: d.user_id,
+        display_name: p?.display_name || null,
+        username: p?.username || null,
+        avatar_url: p?.avatar_url || null,
+      });
+      grouped.set(d.channel_id, list);
+    });
+    setVoiceParticipants(grouped);
+  }, [channels]);
+
+  useEffect(() => {
+    fetchVoiceParticipants();
+  }, [fetchVoiceParticipants]);
+
+  // Realtime for voice participants
+  useEffect(() => {
+    if (channels.filter((c) => c.type === "voice").length === 0) return;
+    const sub = supabase
+      .channel(`voice-sidebar-${serverId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "voice_channel_participants" }, () => fetchVoiceParticipants())
+      .subscribe();
+    return () => { sub.unsubscribe(); };
+  }, [serverId, fetchVoiceParticipants]);
 
   const handleCreateChannel = async () => {
     if (!newName.trim()) return;
@@ -96,7 +152,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect }: Props) =
   return (
     <>
       <div className="w-[240px] flex flex-col bg-sidebar-background border-e border-sidebar-border shrink-0 overflow-hidden">
-        {/* Server name header */}
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
           <h2 className="font-bold text-sm truncate">{server?.name || "..."}</h2>
           <div className="flex gap-1">
@@ -111,7 +166,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect }: Props) =
           </div>
         </div>
 
-        {/* Channel list */}
         <div className="flex-1 overflow-y-auto p-2 space-y-4">
           {Object.entries(grouped).map(([category, chs]) => (
             <div key={category}>
@@ -128,19 +182,33 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect }: Props) =
               </div>
               {chs.map((ch) => {
                 if (ch.type === "voice") {
+                  const participants = voiceParticipants.get(ch.id) || [];
+                  const hasParticipants = participants.length > 0;
                   return (
-                    <button
-                      key={ch.id}
-                      onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type })}
-                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
-                        ch.id === activeChannelId
-                          ? "bg-sidebar-accent text-foreground font-medium"
-                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
-                      }`}
-                    >
-                      <Volume2 className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{ch.name}</span>
-                    </button>
+                    <div key={ch.id}>
+                      <button
+                        onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type })}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
+                          ch.id === activeChannelId
+                            ? "bg-sidebar-accent text-foreground font-medium"
+                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
+                        }`}
+                      >
+                        <Volume2 className={`h-4 w-4 shrink-0 ${hasParticipants ? "text-green-500" : ""}`} />
+                        <span className="truncate">{ch.name}</span>
+                      </button>
+                      {participants.map((p) => (
+                        <div key={p.user_id} className="flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={p.avatar_url || ""} />
+                            <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
+                              {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate">{p.display_name || p.username || "User"}</span>
+                        </div>
+                      ))}
+                    </div>
                   );
                 }
                 return (
@@ -165,7 +233,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect }: Props) =
           ))}
         </div>
 
-        {/* Footer actions */}
         <div className="p-2 border-t border-sidebar-border flex gap-1">
           {!isAdmin && (
             <Button variant="ghost" size="sm" className="flex-1 text-xs text-destructive" onClick={leaveServer}>
@@ -176,7 +243,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect }: Props) =
         </div>
       </div>
 
-      {/* Create channel dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -191,9 +257,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect }: Props) =
               onKeyDown={(e) => e.key === "Enter" && handleCreateChannel()}
             />
             <Select value={newType} onValueChange={setNewType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="text">{t("channels.text")}</SelectItem>
                 <SelectItem value="voice">{t("channels.voice")}</SelectItem>
@@ -206,7 +270,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect }: Props) =
         </DialogContent>
       </Dialog>
 
-      {/* Server settings dialog */}
       <ServerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} serverId={serverId} />
     </>
   );
