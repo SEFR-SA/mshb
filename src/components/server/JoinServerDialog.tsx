@@ -24,17 +24,13 @@ const JoinServerDialog = ({ open, onOpenChange }: Props) => {
     if (!code.trim() || !user) return;
     setLoading(true);
     try {
-      const { data: server } = await supabase
-        .from("servers" as any)
-        .select("id")
-        .eq("invite_code", code.trim())
-        .maybeSingle();
-      if (!server) {
+      const { data: serverId } = await supabase
+        .rpc("get_server_id_by_invite", { p_code: code.trim() });
+      if (!serverId) {
         toast({ title: t("servers.invalidCode"), variant: "destructive" });
         setLoading(false);
         return;
       }
-      const serverId = (server as any).id;
       await supabase.from("server_members" as any).insert({
         server_id: serverId,
         user_id: user.id,

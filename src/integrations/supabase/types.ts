@@ -538,6 +538,7 @@ export type Database = {
     Functions: {
       generate_invite_code: { Args: never; Returns: string }
       get_email_by_username: { Args: { p_username: string }; Returns: string }
+      get_server_id_by_invite: { Args: { p_code: string }; Returns: string }
       is_group_admin: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
