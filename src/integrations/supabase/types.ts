@@ -435,6 +435,7 @@ export type Database = {
       }
       servers: {
         Row: {
+          banner_url: string | null
           created_at: string
           icon_url: string | null
           id: string
@@ -443,6 +444,7 @@ export type Database = {
           owner_id: string
         }
         Insert: {
+          banner_url?: string | null
           created_at?: string
           icon_url?: string | null
           id?: string
@@ -451,6 +453,7 @@ export type Database = {
           owner_id: string
         }
         Update: {
+          banner_url?: string | null
           created_at?: string
           icon_url?: string | null
           id?: string
@@ -495,6 +498,35 @@ export type Database = {
             columns: ["thread_id"]
             isOneToOne: false
             referencedRelation: "dm_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_channel_participants: {
+        Row: {
+          channel_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_channel_participants_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
             referencedColumns: ["id"]
           },
         ]
