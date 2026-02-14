@@ -1,80 +1,42 @@
 
 
-## Add Skeleton Loading States to Chat, GroupChat, and Settings
+## Add Skeleton Loading to the Messages (Inbox) Page
 
 ### Overview
-Add shimmer skeleton loading to the DM message area, Group message area, and Settings page while data is being fetched. Uses the existing `MessageSkeleton` component and a new `SettingsSkeleton`.
+The Inbox page (`src/pages/Inbox.tsx`) currently shows an empty state while DM and group threads are being fetched. This will add a shimmer skeleton loading state using the existing `SidebarItemSkeleton` component.
 
----
+### Changes
 
-### 1. New Skeleton: SettingsSkeleton
+**File: `src/pages/Inbox.tsx`**
 
-**File:** `src/components/skeletons/SkeletonLoaders.tsx`
+1. Add a `loading` state initialized to `true`
+2. Set `loading = false` at the end of `loadInbox()` after items are populated
+3. In the thread list area, show `SidebarItemSkeleton` (count=8) while loading
+4. Wrap the real thread list in `animate-fade-in` for a smooth transition
+5. Import `SidebarItemSkeleton` from `@/components/skeletons/SkeletonLoaders`
 
-Add a new `SettingsSkeleton` export that mimics the Settings page layout:
-- A banner placeholder (h-36 rounded rectangle)
-- Avatar circle (h-20 w-20) with two text bars beside it
-- Two Card-shaped blocks with 4-5 label+input skeleton rows each
-- Two full-width button skeletons at the bottom
+**Pattern:**
+```
+const [loading, setLoading] = useState(true);
 
----
+// End of loadInbox():
+setItems(all);
+setLoading(false);
 
-### 2. Chat.tsx -- Message Area Skeleton
-
-**File:** `src/pages/Chat.tsx`
-
-- Add `const [messagesLoading, setMessagesLoading] = useState(true);`
-- In `loadMessages`, after setting messages (the non-`before` branch, line 195), add `setMessagesLoading(false);`
-- Also set `setMessagesLoading(true)` when `threadId` changes (reset on navigation)
-- In the Messages `<div>` (line 407), wrap existing content:
-  ```
-  {messagesLoading ? <MessageSkeleton count={6} /> : (
-    <>
-      {hasMore && ...}
-      {visibleMessages.map(...)}
-    </>
-  )}
-  ```
-- Import `MessageSkeleton` from `@/components/skeletons/SkeletonLoaders`
-
----
-
-### 3. GroupChat.tsx -- Message Area Skeleton
-
-**File:** `src/pages/GroupChat.tsx`
-
-- Add `const [messagesLoading, setMessagesLoading] = useState(true);`
-- In `loadMessages`, after setting messages (non-`before` branch, line 144), add `setMessagesLoading(false);`
-- Reset `setMessagesLoading(true)` when `groupId` changes
-- In the Messages `<div>` (line 323), wrap existing content:
-  ```
-  {messagesLoading ? <MessageSkeleton count={6} /> : (
-    <>
-      {hasMore && ...}
-      {visibleMessages.map(...)}
-    </>
-  )}
-  ```
-- Import `MessageSkeleton` from `@/components/skeletons/SkeletonLoaders`
-
----
-
-### 4. Settings.tsx -- Profile Loading Skeleton
-
-**File:** `src/pages/Settings.tsx`
-
-- The `profile` object comes from `useAuth()` and is `null` until fetched
-- Add a loading check at the top of the return: if `!profile`, render `<SettingsSkeleton />`
-- Import `SettingsSkeleton` from `@/components/skeletons/SkeletonLoaders`
-
----
+// In JSX thread list area:
+{loading ? (
+  <SidebarItemSkeleton count={8} />
+) : (
+  <div className="animate-fade-in">
+    {items.length === 0 && !search.trim() && ( /* empty state */ )}
+    {items.map((item) => ( /* thread buttons */ ))}
+  </div>
+)}
+```
 
 ### Files Modified
 
 | File | Changes |
 |---|---|
-| `src/components/skeletons/SkeletonLoaders.tsx` | Add `SettingsSkeleton` component |
-| `src/pages/Chat.tsx` | Add `messagesLoading` state + `MessageSkeleton` |
-| `src/pages/GroupChat.tsx` | Add `messagesLoading` state + `MessageSkeleton` |
-| `src/pages/Settings.tsx` | Show `SettingsSkeleton` while profile is null |
+| `src/pages/Inbox.tsx` | Add `loading` state, show `SidebarItemSkeleton` while fetching, fade-in real content |
 
