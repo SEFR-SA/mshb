@@ -94,7 +94,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
 
   return (
     <>
-      <div className="w-[72px] flex flex-col items-center py-3 gap-2 bg-sidebar-background/80 backdrop-blur-sm border-e border-sidebar-border shrink-0 overflow-y-auto">
+      <div className="w-[72px] flex flex-col items-center py-3 gap-2 bg-sidebar-background/60 backdrop-blur-sm border-e border-sidebar-border shrink-0 overflow-y-auto">
         {/* Home button */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -103,7 +103,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
               className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
                 location.pathname === "/"
                   ? "bg-primary text-primary-foreground rounded-xl"
-                  : "bg-sidebar-accent/80 text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
+                  : "bg-sidebar-accent/60 text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
               }`}
             >
               <MessageSquare className="h-5 w-5" />
@@ -119,7 +119,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
               className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
                 location.pathname === "/friends"
                   ? "bg-primary text-primary-foreground rounded-xl"
-                  : "bg-sidebar-accent/80 text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
+                  : "bg-sidebar-accent/60 text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
               }`}
             >
               <Users className="h-5 w-5" />
@@ -153,7 +153,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                             onClick={() => onNavigate?.()}
                             className={({ isActive }) =>
                               `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
-                                isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent/80 text-sidebar-foreground hover:bg-primary/20"
+                                isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent/60 text-sidebar-foreground hover:bg-primary/20"
                               }`
                             }
                           >
@@ -219,7 +219,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
           <TooltipTrigger asChild>
             <button
               onClick={() => setCreateOpen(true)}
-              className="flex items-center justify-center w-12 h-12 rounded-2xl bg-sidebar-accent/80 text-sidebar-foreground hover:bg-primary/20 hover:text-primary hover:rounded-xl transition-all"
+              className="flex items-center justify-center w-12 h-12 rounded-2xl bg-sidebar-accent/60 text-sidebar-foreground hover:bg-primary/20 hover:text-primary hover:rounded-xl transition-all"
             >
               <Plus className="h-5 w-5" />
             </button>
@@ -232,7 +232,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
           <TooltipTrigger asChild>
             <button
               onClick={() => setJoinOpen(true)}
-              className="flex items-center justify-center w-12 h-12 rounded-2xl bg-sidebar-accent/80 text-sidebar-foreground hover:bg-primary/20 hover:text-primary hover:rounded-xl transition-all"
+              className="flex items-center justify-center w-12 h-12 rounded-2xl bg-sidebar-accent/60 text-sidebar-foreground hover:bg-primary/20 hover:text-primary hover:rounded-xl transition-all"
             >
               <LogIn className="h-5 w-5" />
             </button>
