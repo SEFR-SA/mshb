@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff } from "lucide-react";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
+import { ChannelListSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -76,6 +77,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const status = (getUserStatus(profile) || "online") as UserStatus;
   const [server, setServer] = useState<Server | null>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [channelsLoading, setChannelsLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -108,6 +110,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       setServer(s as any);
       const { data: ch } = await supabase.from("channels" as any).select("*").eq("server_id", serverId).order("position");
       setChannels((ch as any) || []);
+      setChannelsLoading(false);
     };
     load();
 
@@ -393,6 +396,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-4">
+          {channelsLoading ? (
+            <ChannelListSkeleton count={4} />
+          ) : (
+            <div className="animate-fade-in space-y-4">
           {Object.entries(grouped).map(([category, chs]) => (
             <div key={category}>
               <div className="flex items-center justify-between px-1 mb-1">
@@ -472,6 +479,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
               })}
             </div>
           ))}
+            </div>
+          )}
         </div>
 
         {/* User Panel */}

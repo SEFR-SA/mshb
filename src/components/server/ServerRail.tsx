@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { ServerRailSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { useTranslation } from "react-i18next";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +36,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [servers, setServers] = useState<Server[]>([]);
+  const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
@@ -51,13 +53,14 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
         .from("server_members" as any)
         .select("server_id")
         .eq("user_id", user.id);
-      if (!memberships || memberships.length === 0) { setServers([]); return; }
+      if (!memberships || memberships.length === 0) { setServers([]); setLoading(false); return; }
       const ids = memberships.map((m: any) => m.server_id);
       const { data } = await supabase
         .from("servers" as any)
         .select("id, name, icon_url, owner_id, invite_code")
         .in("id", ids);
       setServers((data as any) || []);
+      setLoading(false);
     };
     load();
 
@@ -128,82 +131,86 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
         <Separator className="w-8 mx-auto" />
 
         {/* Server icons with context menu */}
-        {servers.map((s) => {
-          const hasUnread = unreadMap.get(s.id) || false;
-          const voiceActivity = voiceActivityMap.get(s.id);
+        {loading ? (
+          <ServerRailSkeleton count={3} />
+        ) : (
+          <div className="contents animate-fade-in">
+            {servers.map((s) => {
+              const hasUnread = unreadMap.get(s.id) || false;
+              const voiceActivity = voiceActivityMap.get(s.id);
 
-          return (
-            <ContextMenu key={s.id}>
-              <Tooltip>
-                <ContextMenuTrigger asChild>
-                  <TooltipTrigger asChild>
-                    <div className="relative">
-                      {/* Unread dot on left edge */}
-                      {hasUnread && (
-                        <div className="absolute -start-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full z-10" />
-                      )}
-                      <NavLink
-                        to={`/server/${s.id}`}
-                        onClick={() => onNavigate?.()}
-                        className={({ isActive }) =>
-                          `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
-                            isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20"
-                          }`
-                        }
-                      >
-                        <Avatar className="h-12 w-12 rounded-[inherit]">
-                          <AvatarImage src={s.icon_url || ""} />
-                          <AvatarFallback className="bg-transparent text-inherit text-sm font-bold rounded-[inherit]">
-                            {s.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      </NavLink>
-                      {/* Voice/Screen share indicator */}
-                      {voiceActivity?.hasVoice && (
-                        <div className="absolute -bottom-0.5 -end-0.5 bg-green-500 rounded-full p-0.5 z-10">
-                          {voiceActivity.hasScreenShare ? (
-                            <Monitor className="h-2.5 w-2.5 text-white" />
-                          ) : (
-                            <Volume2 className="h-2.5 w-2.5 text-white" />
+              return (
+                <ContextMenu key={s.id}>
+                  <Tooltip>
+                    <ContextMenuTrigger asChild>
+                      <TooltipTrigger asChild>
+                        <div className="relative">
+                          {hasUnread && (
+                            <div className="absolute -start-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full z-10" />
+                          )}
+                          <NavLink
+                            to={`/server/${s.id}`}
+                            onClick={() => onNavigate?.()}
+                            className={({ isActive }) =>
+                              `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
+                                isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent text-sidebar-foreground hover:bg-primary/20"
+                              }`
+                            }
+                          >
+                            <Avatar className="h-12 w-12 rounded-[inherit]">
+                              <AvatarImage src={s.icon_url || ""} />
+                              <AvatarFallback className="bg-transparent text-inherit text-sm font-bold rounded-[inherit]">
+                                {s.name.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </NavLink>
+                          {voiceActivity?.hasVoice && (
+                            <div className="absolute -bottom-0.5 -end-0.5 bg-green-500 rounded-full p-0.5 z-10">
+                              {voiceActivity.hasScreenShare ? (
+                                <Monitor className="h-2.5 w-2.5 text-white" />
+                              ) : (
+                                <Volume2 className="h-2.5 w-2.5 text-white" />
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  </TooltipTrigger>
-                </ContextMenuTrigger>
-                <TooltipContent side="right">{s.name}</TooltipContent>
-              </Tooltip>
-              <ContextMenuContent>
-                <ContextMenuItem onClick={() => setSettingsServerId(s.id)}>
-                  <Settings className="h-4 w-4 me-2" />
-                  {t("servers.settings")}
-                </ContextMenuItem>
-                <ContextMenuItem onClick={() => handleCopyInvite(s.invite_code)}>
-                  <Copy className="h-4 w-4 me-2" />
-                  {t("servers.copyInvite")}
-                </ContextMenuItem>
-                {user && s.owner_id !== user.id && (
-                  <>
-                    <ContextMenuSeparator />
-                    <ContextMenuItem onClick={() => handleLeaveServer(s.id)}>
-                      <LogOut className="h-4 w-4 me-2" />
-                      {t("servers.leave")}
+                      </TooltipTrigger>
+                    </ContextMenuTrigger>
+                    <TooltipContent side="right">{s.name}</TooltipContent>
+                  </Tooltip>
+                  <ContextMenuContent>
+                    <ContextMenuItem onClick={() => setSettingsServerId(s.id)}>
+                      <Settings className="h-4 w-4 me-2" />
+                      {t("servers.settings")}
                     </ContextMenuItem>
-                  </>
-                )}
-                {user && s.owner_id === user.id && (
-                  <>
-                    <ContextMenuSeparator />
-                    <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteServerId(s.id)}>
-                      <Trash2 className="h-4 w-4 me-2" />
-                      {t("servers.deleteServer")}
+                    <ContextMenuItem onClick={() => handleCopyInvite(s.invite_code)}>
+                      <Copy className="h-4 w-4 me-2" />
+                      {t("servers.copyInvite")}
                     </ContextMenuItem>
-                  </>
-                )}
-              </ContextMenuContent>
-            </ContextMenu>
-          );
-        })}
+                    {user && s.owner_id !== user.id && (
+                      <>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem onClick={() => handleLeaveServer(s.id)}>
+                          <LogOut className="h-4 w-4 me-2" />
+                          {t("servers.leave")}
+                        </ContextMenuItem>
+                      </>
+                    )}
+                    {user && s.owner_id === user.id && (
+                      <>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteServerId(s.id)}>
+                          <Trash2 className="h-4 w-4 me-2" />
+                          {t("servers.deleteServer")}
+                        </ContextMenuItem>
+                      </>
+                    )}
+                  </ContextMenuContent>
+                </ContextMenu>
+              );
+            })}
+          </div>
+        )}
 
         <Separator className="w-8 mx-auto" />
 
