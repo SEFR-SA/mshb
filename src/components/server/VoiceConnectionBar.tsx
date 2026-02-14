@@ -99,6 +99,14 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       if (videoTrack) {
         const sender = pc.addTrack(videoTrack, screenStreamRef.current);
         screenSendersRef.current.set(peerId, sender);
+        // Configure for source quality
+        try {
+          const params = sender.getParameters();
+          if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+          params.encodings[0].maxBitrate = 8_000_000;
+          (params as any).degradationPreference = "maintain-resolution";
+          sender.setParameters(params);
+        } catch {}
       }
     }
     // If already camera sharing, add the video track to the new peer
@@ -158,21 +166,24 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     if (screenStreamRef.current) return;
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 60 },
-        },
+        video: { frameRate: { ideal: 60 } },
         audio: false,
       });
       screenStreamRef.current = stream;
       const videoTrack = stream.getVideoTracks()[0];
 
-      // Add track to all peer connections
-      peerConnectionsRef.current.forEach((pc, peerId) => {
+      // Add track to all peer connections and configure for source quality
+      for (const [peerId, pc] of peerConnectionsRef.current) {
         const sender = pc.addTrack(videoTrack, stream);
         screenSendersRef.current.set(peerId, sender);
-      });
+        try {
+          const params = sender.getParameters();
+          if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+          params.encodings[0].maxBitrate = 8_000_000;
+          (params as any).degradationPreference = "maintain-resolution";
+          await sender.setParameters(params);
+        } catch {}
+      }
 
       setIsScreenSharing(true);
 
