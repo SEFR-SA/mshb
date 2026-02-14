@@ -109,7 +109,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
               <MessageSquare className="h-5 w-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">{t("nav.inbox")}</TooltipContent>
+          {!onNavigate && <TooltipContent side="right">{t("nav.inbox")}</TooltipContent>}
         </Tooltip>
 
         <Tooltip>
@@ -125,7 +125,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
               <Users className="h-5 w-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">{t("nav.friends")}</TooltipContent>
+          {!onNavigate && <TooltipContent side="right">{t("nav.friends")}</TooltipContent>}
         </Tooltip>
 
         <Separator className="w-8 mx-auto" />
@@ -176,7 +176,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                         </div>
                       </TooltipTrigger>
                     </ContextMenuTrigger>
-                    <TooltipContent side="right">{s.name}</TooltipContent>
+                    {!onNavigate && <TooltipContent side="right">{s.name}</TooltipContent>}
                   </Tooltip>
                   <ContextMenuContent>
                     <ContextMenuItem onClick={() => setSettingsServerId(s.id)}>
@@ -224,7 +224,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
               <Plus className="h-5 w-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">{t("servers.create")}</TooltipContent>
+          {!onNavigate && <TooltipContent side="right">{t("servers.create")}</TooltipContent>}
         </Tooltip>
 
         {/* Join server */}
@@ -237,7 +237,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
               <LogIn className="h-5 w-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">{t("servers.joinServer")}</TooltipContent>
+          {!onNavigate && <TooltipContent side="right">{t("servers.joinServer")}</TooltipContent>}
         </Tooltip>
       </div>
 
