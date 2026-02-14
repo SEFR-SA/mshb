@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff } from "lucide-react";
+import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
 import { ChannelListSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,15 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [manageMembersChannel, setManageMembersChannel] = useState<Channel | null>(null);
   const [manageMembersSelected, setManageMembersSelected] = useState<string[]>([]);
   const [deleteChannelId, setDeleteChannelId] = useState<string | null>(null);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+
+  const toggleCategory = (cat: string) => {
+    setCollapsedCategories(prev => {
+      const next = new Set(prev);
+      next.has(cat) ? next.delete(cat) : next.add(cat);
+      return next;
+    });
+  };
 
   const isAdmin = server?.owner_id === user?.id;
 
@@ -401,9 +411,12 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
           ) : (
             <div className="animate-fade-in space-y-4">
           {Object.entries(grouped).map(([category, chs]) => (
-            <div key={category}>
+            <Collapsible key={category} open={!collapsedCategories.has(category)}>
               <div className="flex items-center justify-between px-1 mb-1">
-                <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wide">{category}</span>
+                <CollapsibleTrigger onClick={() => toggleCategory(category)} className="flex items-center gap-1 cursor-pointer hover:text-foreground transition-colors">
+                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${collapsedCategories.has(category) ? '-rotate-90' : ''}`} />
+                  <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wide">{category}</span>
+                </CollapsibleTrigger>
                 {isAdmin && (
                   <button
                     onClick={() => { setNewCategory(category); setNewType(category.toLowerCase().includes("voice") ? "voice" : "text"); setCreateOpen(true); }}
@@ -413,6 +426,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   </button>
                 )}
               </div>
+              <CollapsibleContent>
               {chs.map((ch) => {
                 const ChannelIcon = ch.is_private ? Lock : (ch.type === "voice" ? Volume2 : Hash);
 
@@ -477,7 +491,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   </div>
                 );
               })}
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
           ))}
             </div>
           )}
