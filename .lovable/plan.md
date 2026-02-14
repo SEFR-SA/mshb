@@ -1,84 +1,40 @@
 
 
-## Replace Purple Galaxy Theme with Discord-Style Theme
+## Fix VoiceConnectionBar Layout and Voice Channel Hover Issue
 
-### Overview
-Replace all purple galaxy styling with a Discord-inspired color scheme. The primary action color for buttons becomes `#084f00` (deep green). Light and dark modes will match Discord's neutral gray palette. All galaxy-specific CSS utilities (`galaxy-gradient`, `galaxy-glow`, `text-galaxy-glow`) will be replaced with simple solid backgrounds.
+### Issue 1: VoiceConnectionBar - Disconnect Button Position
 
-### Color Mapping (from Discord screenshots)
+The current layout pushes the disconnect button to the far right because the inner div has `flex-1`, creating a spacer effect. The disconnect button needs to sit immediately next to the channel name, not separated by flex spacing.
 
-**Dark Mode** (matching the dark Discord screenshot):
-- Background (main content): `#313338` (gray, ~220 7% 20%)
-- Sidebar background: `#2b2d31` (slightly darker gray, ~220 6% 18%)
-- Server rail / deepest layer: `#1e1f22` (darkest gray, ~220 6% 13%)
-- Card/popover: `#2b2d31`
-- Text: `#f2f3f5` (near white)
-- Muted text: `#949ba4` (gray)
-- Border: `#3f4147`
-- Input background: `#1e1f22`
-- Accent/active channel: `#404249`
+**Current layout:** `[green dot] [volume] [channelName] [avatars .......... spacer] [PhoneOff]`
+**Target layout:** `[green dot] [volume] [channelName] [PhoneOff] [avatars]`
 
-**Light Mode** (matching the light Discord screenshot):
-- Background: `#ffffff`
-- Sidebar background: `#f2f3f5`
-- Server rail: `#e3e5e8`
-- Card/popover: `#ffffff`
-- Text: `#060607` (near black)
-- Muted text: `#5c6470`
-- Border: `#e1e2e4`
-- Input background: `#e3e5e8`
-- Accent/hover: `#eaebed`
+**File: `src/components/server/VoiceConnectionBar.tsx`**
+- Restructure the JSX so the `PhoneOff` disconnect button comes right after the channel name
+- Move participant avatars to after the disconnect button (or remove `flex-1` from the inner div)
+- Remove `flex-1 min-w-0` from the inner wrapper so items stay compact
 
-**Primary (both modes):** `#084f00` -- used for buttons, links, active indicators, rings. HSL approximation: `113 100% 15%`. Lighter grades for hover/foreground as needed.
+### Issue 2: Voice Channel Hover Stays After Joining
 
-### Changes
+In `ChannelSidebar.tsx`, when a voice channel is clicked (joined), it gets `activeVoiceChannelId` matching, which applies `bg-sidebar-accent` permanently. The user wants NO persistent highlight on voice channels — only a hover effect that appears on mouse hover and disappears when not hovering.
 
-**`src/index.css`**
-- Replace all `:root` (light) CSS variables with Discord light mode values
-- Replace all `.dark` CSS variables with Discord dark mode values
-- Set `--primary` to green `#084f00` in both modes (HSL: `113 100% 15%`)
-- Set `--primary-foreground` to white
-- Remove `--galaxy-glow`, `--galaxy-deep`, `--galaxy-nebula`, `--galaxy-star` variables from both modes
-- Replace `.glass` utility: change from `bg-card/60 backdrop-blur-xl` to just `bg-card` (solid, no glassmorphism)
-- Replace `.galaxy-gradient` utility with `background: hsl(var(--background))` (solid background)
-- Remove `.galaxy-glow` and `.text-galaxy-glow` utilities (or make them no-ops)
-- Update sidebar variables to match Discord's slightly darker sidebar color
+**File: `src/components/server/ChannelSidebar.tsx`**
+- Remove the active state styling for voice channels (remove the `ch.id === activeVoiceChannelId` conditional that applies `bg-sidebar-accent`)
+- Keep only the hover effect: `hover:bg-sidebar-accent/50` for all voice channels regardless of whether they are joined
+- The voice channel's "active" state is already visually indicated by the `VoiceConnectionBar` at the bottom and the green icon when participants are present
 
-**`tailwind.config.ts`**
-- Remove the `galaxy` color definitions (`glow`, `deep`, `nebula`, `star`)
-- Keep all other color mappings (they reference CSS variables which will be updated)
+### Issue 3: Clean Up Dead Code - VoiceChannelPanel
 
-**`src/components/layout/AppLayout.tsx`**
-- Remove `galaxy-gradient` class from root div, replace with `bg-background`
-- Remove `text-galaxy-glow` from the app name heading
-- Remove the `star` character or keep it plain without glow
+`VoiceChannelPanel.tsx` is not imported or used anywhere in the app. It still contains local mute/disconnect controls. It should be deleted as dead code.
 
-**`src/pages/Auth.tsx`**
-- Remove `galaxy-gradient` from container div, use `bg-background`
-- Remove `galaxy-glow` from Card
-- Remove `text-galaxy-glow` from title
-- Keep the card styled with `glass` (which will now be solid `bg-card`)
-
-**`src/App.tsx`**
-- Remove `galaxy-gradient` from the loading screen div
-
-**`src/contexts/ThemeContext.tsx`**
-- Rename localStorage key from `galaxy-theme` to `app-theme` (cosmetic cleanup)
+**File: `src/components/server/VoiceChannelPanel.tsx`**
+- Delete this file entirely (it is unused)
 
 ### Files Summary
 
 | File | Action | Changes |
 |------|--------|---------|
-| `src/index.css` | Modify | Replace all color variables with Discord palette; green primary; remove galaxy utilities |
-| `tailwind.config.ts` | Modify | Remove galaxy color definitions |
-| `src/components/layout/AppLayout.tsx` | Modify | Remove galaxy classes |
-| `src/pages/Auth.tsx` | Modify | Remove galaxy classes |
-| `src/App.tsx` | Modify | Remove galaxy-gradient from loading screen |
-| `src/contexts/ThemeContext.tsx` | Modify | Rename localStorage key |
-
-### What stays the same
-- All page layouts, component structure, and routing remain unchanged
-- The `glass` class still exists but becomes a solid `bg-card` with border (no blur)
-- All shadcn/ui components automatically pick up new colors through CSS variables
-- Online status color stays green
+| `src/components/server/VoiceConnectionBar.tsx` | Modify | Move disconnect button right after channel name |
+| `src/components/server/ChannelSidebar.tsx` | Modify | Remove persistent active highlight on voice channels; keep hover-only |
+| `src/components/server/VoiceChannelPanel.tsx` | Delete | Remove unused dead code |
 
