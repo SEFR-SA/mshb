@@ -13,6 +13,8 @@ import CallListener from "@/components/chat/CallListener";
 import ServerRail from "@/components/server/ServerRail";
 import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
+import { usePresence } from "@/hooks/usePresence";
 
 const AppLayout = () => {
   const { t, i18n } = useTranslation();
@@ -22,6 +24,8 @@ const AppLayout = () => {
   const { totalUnread } = useUnreadCount();
   const { pendingCount } = usePendingFriendRequests();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
+  const { getUserStatus } = usePresence();
+  const status = (getUserStatus(profile) || "online") as UserStatus;
   const [installPrompt, setInstallPrompt] = React.useState<any>(null);
 
   React.useEffect(() => {
@@ -107,13 +111,18 @@ const AppLayout = () => {
             </div>
             <div className="flex items-center gap-2">
               <NavLink to="/settings" className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors flex-1 min-w-0">
-                <Avatar className="h-8 w-8 shrink-0">
-                  <AvatarImage src={profile?.avatar_url || ""} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
-                </Avatar>
-                <div className="text-sm truncate">
-                  <p className="font-medium truncate">{profile?.display_name || profile?.username || "User"}</p>
-                  <p className="text-xs text-muted-foreground truncate">{profile?.status_text || ""}</p>
+                <div className="relative shrink-0">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={profile?.avatar_url || ""} />
+                    <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
+                  </Avatar>
+                  <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0" />
+                </div>
+                <div className="truncate">
+                  <p className="text-sm font-medium truncate">{profile?.display_name || profile?.username || "User"}</p>
+                  {profile?.username && (
+                    <p className="text-[11px] text-muted-foreground truncate">@{profile.username}</p>
+                  )}
                 </div>
               </NavLink>
               <Button
