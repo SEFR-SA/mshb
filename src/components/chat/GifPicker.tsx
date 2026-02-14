@@ -143,9 +143,6 @@ const GifPicker = ({ onGifSelect }: GifPickerProps) => {
             )}
           </ScrollArea>
 
-          <div className="p-1 border-t border-border text-center">
-            <span className="text-[10px] text-muted-foreground">{t("gif.poweredBy")}</span>
-          </div>
         </div>
       </PopoverContent>
     </Popover>

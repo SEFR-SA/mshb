@@ -197,9 +197,6 @@ const StickerPicker = ({ onStickerSelect }: StickerPickerProps) => {
                 )}
               </ScrollArea>
 
-              <div className="p-1 border-t border-border text-center">
-                <span className="text-[10px] text-muted-foreground">{t("gif.poweredBy")}</span>
-              </div>
             </TabsContent>
 
             <TabsContent value="custom" className="flex-1 flex flex-col min-h-0 mt-0">
