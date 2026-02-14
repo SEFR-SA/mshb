@@ -10,7 +10,7 @@ import ServerChannelChat from "@/components/server/ServerChannelChat";
 import ServerMemberList from "@/components/server/ServerMemberList";
 import ScreenShareViewer from "@/components/server/ScreenShareViewer";
 import CameraViewer from "@/components/server/CameraViewer";
-import VoiceConnectionManager from "@/components/server/VoiceConnectionBar";
+
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
@@ -157,9 +157,6 @@ const ServerView = () => {
           </div>
           <div className="flex-1 min-h-0">{renderMainContent()}</div>
         </div>
-        {voiceChannel && (
-          <VoiceConnectionManager channelId={voiceChannel.id} channelName={voiceChannel.name} serverId={serverId} onDisconnect={disconnectVoice} />
-        )}
         {switchDialog}
       </>
     );
@@ -178,9 +175,6 @@ const ServerView = () => {
           )}
           <div className="flex-1 min-h-0">{renderMainContent()}</div>
         </div>
-        {voiceChannel && (
-          <VoiceConnectionManager channelId={voiceChannel.id} channelName={voiceChannel.name} serverId={serverId} onDisconnect={disconnectVoice} />
-        )}
         {showMembers && <ServerMemberList serverId={serverId} />}
         {!showMembers && (
           <Button variant="ghost" size="icon" className="absolute top-3 end-3" onClick={() => setShowMembers(true)}>

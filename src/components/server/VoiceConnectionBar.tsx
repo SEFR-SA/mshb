@@ -64,17 +64,28 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const remoteCameraExpectedRef = useRef<Set<string>>(new Set());
 
   const lastSpeakingRef = useRef<boolean>(false);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      onDisconnect(); // auto-disconnect after 1 hour idle
+    }, 60 * 60 * 1000);
+  }, [onDisconnect]);
 
   const updateSpeaking = useCallback((userId: string, isSpeaking: boolean) => {
     if (lastSpeakingRef.current === isSpeaking) return;
     lastSpeakingRef.current = isSpeaking;
+    if (isSpeaking && userId === user?.id) {
+      resetIdleTimer();
+    }
     supabase
       .from("voice_channel_participants" as any)
       .update({ is_speaking: isSpeaking } as any)
       .eq("channel_id", channelId)
       .eq("user_id", userId)
       .then();
-  }, [channelId]);
+  }, [channelId, user?.id, resetIdleTimer]);
 
   const createPeerConnection = useCallback((peerId: string) => {
     const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
@@ -372,10 +383,14 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     };
     join();
 
+    // Start idle timer on join
+    resetIdleTimer();
+
     return () => {
       mounted = false;
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     };
-  }, [channelId, user, setupSignaling, createPeerConnection, updateSpeaking]);
+  }, [channelId, user, setupSignaling, createPeerConnection, updateSpeaking, resetIdleTimer]);
 
   // Mute: toggle local audio tracks
   useEffect(() => {
