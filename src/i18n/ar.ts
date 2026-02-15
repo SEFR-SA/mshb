@@ -321,4 +321,20 @@ export default {
     uploadPhoto: "رفع الصورة",
     uploadBanner: "رفع الغلاف",
   },
+  folders: {
+    editFolder: "تعديل المجلد",
+    folderName: "اسم المجلد",
+    folderColor: "لون المجلد",
+    rename: "إعادة تسمية المجلد",
+    ungroup: "فك تجميع السيرفرات",
+  },
+  nameStyle: {
+    title: "نمط الاسم",
+    fontStyle: "نمط الخط",
+    gradientColors: "ألوان التدرج",
+    startColor: "لون البداية",
+    endColor: "لون النهاية",
+    clearGradient: "مسح التدرج",
+    preview: "معاينة",
+  },
 };

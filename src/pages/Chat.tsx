@@ -30,6 +30,7 @@ import StickerPicker from "@/components/chat/StickerPicker";
 import ChatInputActions from "@/components/chat/ChatInputActions";
 import { MessageSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import MessageContextMenu from "@/components/chat/MessageContextMenu";
+import StyledDisplayName from "@/components/StyledDisplayName";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
@@ -363,7 +364,12 @@ const Chat = () => {
           <StatusBadge status={(otherStatus === "offline" ? "invisible" : otherStatus) as UserStatus} size="sm" className="absolute bottom-0 end-0" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-medium truncate">{otherProfile?.display_name || otherProfile?.username || "User"}</p>
+          <StyledDisplayName
+            displayName={otherProfile?.display_name || otherProfile?.username || "User"}
+            gradientStart={(otherProfile as any)?.name_gradient_start}
+            gradientEnd={(otherProfile as any)?.name_gradient_end}
+            className="font-medium truncate"
+          />
           <p className="text-xs text-muted-foreground">
             {otherStatus !== "offline"
               ? t(`status.${otherStatus}`)
