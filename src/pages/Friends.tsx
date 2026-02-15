@@ -16,6 +16,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import ActiveNowPanel from "@/components/chat/ActiveNowPanel";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import UserContextMenu from "@/components/chat/UserContextMenu";
 
 type Profile = Tables<"profiles">;
 
@@ -199,8 +200,11 @@ const Friends = () => {
               {friends.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">{t("friends.noFriends")}</p>
               )}
-              {friends.map((f) => (
-                <div key={f.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+              {friends.map((f) => {
+                const friendUserId = f.requester_id === user?.id ? f.addressee_id : f.requester_id;
+                return (
+                <UserContextMenu key={f.id} targetUserId={friendUserId} targetUsername={f.profile?.username || undefined}>
+                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="relative">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={f.profile?.avatar_url || ""} />
@@ -212,14 +216,16 @@ const Friends = () => {
                     <p className="font-medium truncate">{f.profile?.display_name || f.profile?.username || "User"}</p>
                     {f.profile?.username && <p className="text-xs text-muted-foreground">@{f.profile.username}</p>}
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => startDM(f.requester_id === user?.id ? f.addressee_id : f.requester_id)} title="Message">
+                  <Button variant="ghost" size="icon" onClick={() => startDM(friendUserId)} title="Message">
                     <MessageSquare className="h-4 w-4" />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={() => removeFriend(f.id)} title={t("friends.remove")}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
-              ))}
+                </UserContextMenu>
+              );})}
+
             </div>
           )}
         </TabsContent>

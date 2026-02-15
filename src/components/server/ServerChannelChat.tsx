@@ -19,6 +19,8 @@ import EmojiPicker from "@/components/chat/EmojiPicker";
 import GifPicker from "@/components/chat/GifPicker";
 import StickerPicker from "@/components/chat/StickerPicker";
 import ChatInputActions from "@/components/chat/ChatInputActions";
+import MessageContextMenu from "@/components/chat/MessageContextMenu";
+import UserContextMenu from "@/components/chat/UserContextMenu";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
@@ -272,14 +274,43 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
           const timeDiff = prev ? new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
           const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
           return (
-            <div key={msg.id} className={`flex gap-3 hover:bg-muted/30 rounded-lg px-2 py-1 -mx-2 transition-colors group ${isGrouped ? "mt-0.5" : idx === 0 ? "" : "mt-3"}`}>
-              <Avatar className="h-9 w-9 mt-0.5 shrink-0">
+            <MessageContextMenu
+              key={msg.id}
+              content={msg.content}
+              messageId={msg.id}
+              isMine={isMine}
+              isDeleted={false}
+              onReply={(text) => setNewMsg((prev) => `> ${text}\n${prev}`)}
+              onDeleteForMe={async (id) => {
+                if (!user) return;
+                await supabase.from("message_hidden").insert({ user_id: user.id, message_id: id });
+              }}
+              onDeleteForEveryone={isMine ? async (id) => {
+                await supabase.from("messages").update({ deleted_for_everyone: true, content: "" }).eq("id", id);
+              } : undefined}
+              onMarkUnread={(id) => {
+                const targetMsg = messages.find(m => m.id === id);
+                if (targetMsg && user) {
+                  const before = new Date(new Date(targetMsg.created_at).getTime() - 1000).toISOString();
+                  supabase.from("channel_read_status" as any).upsert(
+                    { channel_id: channelId, user_id: user.id, last_read_at: before } as any,
+                    { onConflict: "channel_id,user_id" } as any
+                  ).then();
+                }
+              }}
+            >
+            <div className={`flex gap-3 hover:bg-muted/30 rounded-lg px-2 py-1 -mx-2 transition-colors group ${isGrouped ? "mt-0.5" : idx === 0 ? "" : "mt-3"}`}>
+              <UserContextMenu targetUserId={msg.author_id} targetUsername={p?.username || undefined}>
+              <Avatar className="h-9 w-9 mt-0.5 shrink-0 cursor-pointer">
                 <AvatarImage src={p?.avatar_url || ""} />
                 <AvatarFallback className="bg-primary/20 text-primary text-xs">{name.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
+              </UserContextMenu>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
-                  <span className={`text-sm font-semibold ${isMine ? "text-primary" : "text-foreground"}`}>{name}</span>
+                  <UserContextMenu targetUserId={msg.author_id} targetUsername={p?.username || undefined}>
+                  <span className={`text-sm font-semibold cursor-pointer hover:underline ${isMine ? "text-primary" : "text-foreground"}`}>{name}</span>
+                  </UserContextMenu>
                   <span className="text-[10px] text-muted-foreground">
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
@@ -296,6 +327,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
                 {msg.content && <p className={`whitespace-pre-wrap break-words ${getEmojiClass(msg.content) || 'text-sm'}`}>{renderMessageContent(msg.content, profiles, user?.id)}</p>}
               </div>
             </div>
+            </MessageContextMenu>
           );
         })}
         <div ref={messagesEndRef} />

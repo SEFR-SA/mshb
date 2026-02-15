@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import UserContextMenu from "@/components/chat/UserContextMenu";
 
 interface Member {
   user_id: string;
@@ -142,6 +143,7 @@ const ServerMemberList = ({ serverId }: Props) => {
                 const username = p?.username || "user";
                 const status = p?.status || "offline";
                 return (
+                  <UserContextMenu targetUserId={m.user_id} targetUsername={username}>
                   <Popover key={m.user_id}>
                     <PopoverTrigger asChild>
                       <button className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-sidebar-accent/50 transition-colors w-full text-start">
@@ -225,6 +227,7 @@ const ServerMemberList = ({ serverId }: Props) => {
                       </div>
                     </PopoverContent>
                   </Popover>
+                  </UserContextMenu>
                 );
               })}
             </div>
