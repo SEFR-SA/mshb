@@ -21,6 +21,7 @@ import StickerPicker from "@/components/chat/StickerPicker";
 import ChatInputActions from "@/components/chat/ChatInputActions";
 import MessageContextMenu from "@/components/chat/MessageContextMenu";
 import UserContextMenu from "@/components/chat/UserContextMenu";
+import StyledDisplayName from "@/components/StyledDisplayName";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
@@ -309,7 +310,12 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                   <UserContextMenu targetUserId={msg.author_id} targetUsername={p?.username || undefined}>
-                  <span className={`text-sm font-semibold cursor-pointer hover:underline ${isMine ? "text-primary" : "text-foreground"}`}>{name}</span>
+                  <StyledDisplayName
+                    displayName={name}
+                    gradientStart={p?.name_gradient_start}
+                    gradientEnd={p?.name_gradient_end}
+                    className={`text-sm font-semibold cursor-pointer hover:underline ${isMine ? "text-primary" : "text-foreground"}`}
+                  />
                   </UserContextMenu>
                   <span className="text-[10px] text-muted-foreground">
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

@@ -12,7 +12,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, LogOut, ImagePlus, Download, Palette } from "lucide-react";
+import { Camera, LogOut, ImagePlus, Download, Palette, Type } from "lucide-react";
+import { FONT_STYLES, convertToFont, revertToPlain, type FontStyle } from "@/lib/unicodeFonts";
+import StyledDisplayName from "@/components/StyledDisplayName";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { SettingsSkeleton } from "@/components/skeletons/SkeletonLoaders";
 
@@ -38,6 +40,9 @@ const Settings = () => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [customColor1, setCustomColor1] = useState("#1a1a2e");
   const [customColor2, setCustomColor2] = useState("#0f3460");
+  const [gradientStart, setGradientStart] = useState("");
+  const [gradientEnd, setGradientEnd] = useState("");
+  const [selectedFont, setSelectedFont] = useState<FontStyle>("Normal");
 
   const p = profile as any;
 
@@ -63,6 +68,8 @@ const Settings = () => {
       setStatusText(profile.status_text || "");
       setAboutMe(p?.about_me || "");
       setStatus((profile as any).status as UserStatus || "online");
+      setGradientStart(p?.name_gradient_start || "");
+      setGradientEnd(p?.name_gradient_end || "");
       if (p?.color_theme) {
         setColorTheme(p.color_theme);
         if (p.color_theme.startsWith("custom:")) {
@@ -97,6 +104,8 @@ const Settings = () => {
         language: i18n.language.split('-')[0],
         theme,
         color_theme: colorTheme,
+        name_gradient_start: gradientStart || null,
+        name_gradient_end: gradientEnd || null,
       } as any)
       .eq("user_id", user.id);
 
@@ -195,7 +204,12 @@ const Settings = () => {
           </label>
         </div>
         <div className="mt-8">
-          <p className="font-medium">{profile?.display_name || "User"}</p>
+          <StyledDisplayName
+            displayName={profile?.display_name || "User"}
+            gradientStart={p?.name_gradient_start}
+            gradientEnd={p?.name_gradient_end}
+            className="font-medium"
+          />
           {profile?.username && <p className="text-sm text-muted-foreground">@{profile.username}</p>}
         </div>
       </div>
@@ -252,6 +266,95 @@ const Settings = () => {
               maxLength={500}
             />
             <p className="text-xs text-muted-foreground text-end">{aboutMe.length}/500</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Name Style */}
+      <Card className="glass">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Type className="h-4 w-4" />
+            {t("nameStyle.title")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Font Style Buttons */}
+          <div className="space-y-2">
+            <Label>{t("nameStyle.fontStyle")}</Label>
+            <div className="flex flex-wrap gap-2">
+              {FONT_STYLES.map((font) => (
+                <button
+                  key={font.id}
+                  onClick={() => {
+                    setSelectedFont(font.id);
+                    const plain = revertToPlain(displayName);
+                    setDisplayName(convertToFont(plain, font.id));
+                  }}
+                  className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${
+                    selectedFont === font.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  {font.preview}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Gradient Colors */}
+          <div className="space-y-2">
+            <Label>{t("nameStyle.gradientColors")}</Label>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{t("nameStyle.startColor")}</span>
+                <label className="h-8 w-8 rounded-full border border-border cursor-pointer overflow-hidden relative">
+                  <div className="h-full w-full" style={{ backgroundColor: gradientStart || "#ffffff" }} />
+                  <input
+                    type="color"
+                    value={gradientStart || "#ffffff"}
+                    onChange={(e) => setGradientStart(e.target.value)}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{t("nameStyle.endColor")}</span>
+                <label className="h-8 w-8 rounded-full border border-border cursor-pointer overflow-hidden relative">
+                  <div className="h-full w-full" style={{ backgroundColor: gradientEnd || "#ffffff" }} />
+                  <input
+                    type="color"
+                    value={gradientEnd || "#ffffff"}
+                    onChange={(e) => setGradientEnd(e.target.value)}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                </label>
+              </div>
+              {(gradientStart || gradientEnd) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => { setGradientStart(""); setGradientEnd(""); }}
+                >
+                  {t("nameStyle.clearGradient")}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Live Preview */}
+          <div className="space-y-2">
+            <Label>{t("nameStyle.preview")}</Label>
+            <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+              <StyledDisplayName
+                displayName={displayName || "Your Name"}
+                gradientStart={gradientStart || null}
+                gradientEnd={gradientEnd || null}
+                className="text-lg font-bold"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

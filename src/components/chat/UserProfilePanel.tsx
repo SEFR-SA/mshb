@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import type { Tables } from "@/integrations/supabase/types";
 import { format } from "date-fns";
+import StyledDisplayName from "@/components/StyledDisplayName";
 
 type Profile = Tables<"profiles">;
 
@@ -46,7 +47,12 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
       {/* Profile card */}
       <div className="mx-4 mt-3 p-3 rounded-lg bg-card/80 border border-border/50 space-y-3">
         <div>
-          <h3 className="text-lg font-bold">{profile.display_name || profile.username || "User"}</h3>
+          <StyledDisplayName
+            displayName={profile.display_name || profile.username || "User"}
+            gradientStart={p?.name_gradient_start}
+            gradientEnd={p?.name_gradient_end}
+            className="text-lg font-bold"
+          />
           {profile.username && (
             <p className="text-sm text-muted-foreground">@{profile.username}</p>
           )}

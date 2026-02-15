@@ -446,6 +446,8 @@ export type Database = {
           id: string
           language: string | null
           last_seen: string | null
+          name_gradient_end: string | null
+          name_gradient_start: string | null
           status: string
           status_text: string | null
           status_until: string | null
@@ -464,6 +466,8 @@ export type Database = {
           id?: string
           language?: string | null
           last_seen?: string | null
+          name_gradient_end?: string | null
+          name_gradient_start?: string | null
           status?: string
           status_text?: string | null
           status_until?: string | null
@@ -482,6 +486,8 @@ export type Database = {
           id?: string
           language?: string | null
           last_seen?: string | null
+          name_gradient_end?: string | null
+          name_gradient_start?: string | null
           status?: string
           status_text?: string | null
           status_until?: string | null
@@ -489,6 +495,65 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      server_folder_items: {
+        Row: {
+          created_at: string
+          folder_id: string
+          id: string
+          position: number
+          server_id: string
+        }
+        Insert: {
+          created_at?: string
+          folder_id: string
+          id?: string
+          position?: number
+          server_id: string
+        }
+        Update: {
+          created_at?: string
+          folder_id?: string
+          id?: string
+          position?: number
+          server_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_folder_items_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "server_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      server_folders: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          position: number
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          user_id?: string
         }
         Relationships: []
       }

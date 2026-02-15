@@ -321,4 +321,20 @@ export default {
     uploadPhoto: "Upload Photo",
     uploadBanner: "Upload Banner",
   },
+  folders: {
+    editFolder: "Edit Folder",
+    folderName: "Folder Name",
+    folderColor: "Folder Color",
+    rename: "Rename Folder",
+    ungroup: "Ungroup Servers",
+  },
+  nameStyle: {
+    title: "Name Style",
+    fontStyle: "Font Style",
+    gradientColors: "Gradient Colors",
+    startColor: "Start Color",
+    endColor: "End Color",
+    clearGradient: "Clear Gradient",
+    preview: "Preview",
+  },
 };

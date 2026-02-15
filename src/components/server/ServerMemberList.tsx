@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import UserContextMenu from "@/components/chat/UserContextMenu";
+import StyledDisplayName from "@/components/StyledDisplayName";
 
 interface Member {
   user_id: string;
@@ -26,6 +27,8 @@ interface Member {
     about_me: string | null;
     status: string;
     created_at: string;
+    name_gradient_start?: string | null;
+    name_gradient_end?: string | null;
   };
 }
 
@@ -56,7 +59,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       const userIds = (data as any[]).map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, created_at")
+        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, created_at, name_gradient_start, name_gradient_end")
         .in("user_id", userIds);
 
       const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
@@ -154,9 +157,12 @@ const ServerMemberList = ({ serverId }: Props) => {
                           </Avatar>
                           <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="sm" className="absolute bottom-0 end-0" />
                         </div>
-                        <span className={`text-sm truncate ${status === "offline" || status === "invisible" ? "text-muted-foreground" : "text-foreground"}`}>
-                          {name}
-                        </span>
+                        <StyledDisplayName
+                          displayName={name}
+                          gradientStart={p?.name_gradient_start}
+                          gradientEnd={p?.name_gradient_end}
+                          className={`text-sm truncate ${status === "offline" || status === "invisible" ? "text-muted-foreground" : "text-foreground"}`}
+                        />
                       </button>
                     </PopoverTrigger>
                     <PopoverContent side="left" align="start" className="w-[300px] p-0 overflow-hidden rounded-lg">
