@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import ActiveNowPanel from "@/components/chat/ActiveNowPanel";
 import ChatSidebar from "@/components/chat/ChatSidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Profile = Tables<"profiles">;
 
@@ -32,6 +33,7 @@ const Friends = () => {
   const { user } = useAuth();
   const { getUserStatus } = usePresence();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [friends, setFriends] = useState<FriendshipWithProfile[]>([]);
   const [pending, setPending] = useState<FriendshipWithProfile[]>([]);
@@ -168,7 +170,7 @@ const Friends = () => {
 
   return (
     <div className="flex h-full">
-      <ChatSidebar />
+      {!isMobile && <ChatSidebar />}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <div className="p-4">
           <h2 className="text-xl font-bold mb-3">{t("friends.title")}</h2>

@@ -13,6 +13,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
 import { SidebarItemSkeleton } from "@/components/skeletons/SkeletonLoaders";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Profile = Tables<"profiles">;
 type Thread = Tables<"dm_threads">;
@@ -35,6 +36,7 @@ const Inbox = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { isOnline, getUserStatus } = usePresence();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [items, setItems] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,9 +46,12 @@ const Inbox = () => {
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [redirecting, setRedirecting] = useState(true);
 
-  // Auto-redirect to last DM thread on mount
+  // Auto-redirect to last DM thread on mount (desktop only)
   useEffect(() => {
-    if (!user) return;
+    if (!user || isMobile) {
+      setRedirecting(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const { data } = await supabase
@@ -63,7 +68,7 @@ const Inbox = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [user, navigate]);
+  }, [user, navigate, isMobile]);
 
   const loadInbox = async () => {
     if (!user) return;
