@@ -1,100 +1,120 @@
 
+## Feature 1: Server Folders (Drag-to-Group)
 
-## Add Comprehensive Right-Click Context Menus
+### How it works
+Users can drag one server icon on top of another in the Server Rail to create a folder. The folder appears as a stacked icon that expands on click to reveal the servers inside. Users can name the folder and pick a color for it.
 
-This plan adds right-click context menus to 6 key areas across the app, following the same pattern already used for servers in the Server Rail.
+### Database Changes
+Create a new `server_folders` table:
+- `id` (uuid, PK)
+- `user_id` (text, NOT NULL) -- folders are per-user
+- `name` (text, default 'Folder')
+- `color` (text, default '#5865F2') -- hex color
+- `position` (integer, default 0) -- ordering in the rail
+- `created_at` (timestamptz)
 
-### Areas to Add Context Menus
+Create a new `server_folder_items` table:
+- `id` (uuid, PK)
+- `folder_id` (uuid, FK to server_folders)
+- `server_id` (text, NOT NULL)
+- `position` (integer, default 0) -- ordering within folder
+- `created_at` (timestamptz)
 
-#### 1. Messages (DM, Group Chat, Server Channel)
-Right-clicking a message bubble will show:
-- **Copy Text** -- copies message content to clipboard
-- **Reply** -- quotes the message (prepends "> original text" to input)
-- **Edit** -- (own messages only) enters edit mode
-- **Delete for Me** -- hides message locally
-- **Delete for Everyone** -- (own messages only) deletes for all
-- **Mark as Unread** -- resets read status to before this message
+RLS policies: Users can only CRUD their own folders and folder items.
 
-Files: `src/pages/Chat.tsx`, `src/pages/GroupChat.tsx`, `src/components/server/ServerChannelChat.tsx`
+### UI Changes
 
-#### 2. Usernames in Server Chat
-Right-clicking a username in server channel messages will show:
-- **Message** -- opens/creates a DM thread with this user
-- **Add Friend** -- sends a friend request (hidden if already friends)
-- **Remove Friend** -- removes friendship (shown if already friends)
-- **Call** -- initiates a voice call via DM
-- **Invite to Server** -- sub-menu listing user's servers to invite to (future consideration, placeholder)
-- **Copy Username** -- copies @username to clipboard
+**ServerRail.tsx** -- Major update:
+- Add local state for folders (fetched from `server_folders` + `server_folder_items`)
+- Implement HTML5 drag-and-drop on server icons:
+  - `draggable` attribute on each server icon
+  - `onDragStart` stores the dragged server ID
+  - `onDragOver` / `onDrop` on other server icons detects a drop target
+  - When dropped on another server: create a new folder containing both servers
+  - When dropped on an existing folder: add server to that folder
+- Render folders as a collapsed pill (showing stacked mini-avatars of first 3 servers) with a colored border matching the folder color
+- Clicking a folder expands it inline (vertically) to show the contained server icons
+- Right-click context menu on folders: Rename, Change Color, Remove Folder (ungroups servers back to rail)
 
-Files: `src/components/server/ServerChannelChat.tsx`
+**New component: `ServerFolderDialog.tsx`**
+- Dialog for editing folder name and color
+- Color picker with preset swatches (Discord-style: 10 preset colors + custom hex input)
+- Text input for folder name
 
-#### 3. Usernames in Group Chat
-Same menu as server chat usernames for the author name display.
+**New component: `ServerFolder.tsx`**
+- Renders a single folder in the rail
+- Collapsed state: stacked avatars pill with colored left border
+- Expanded state: vertical list of server icons with a colored background tint
+- Drop target for adding more servers
+- Drag source for reordering
 
-Files: `src/pages/GroupChat.tsx`
-
-#### 4. Friends List Items
-Right-clicking a friend row will show:
-- **Message** -- opens DM
-- **Call** -- initiates voice call
-- **Copy Username** -- copies @username
-- **Remove Friend** -- removes from friends list
-
-Files: `src/pages/Friends.tsx`
-
-#### 5. Server Member List Items
-Right-clicking a member in the server member panel will show:
-- **Message** -- opens/creates DM
-- **Add Friend** / **Remove Friend** -- based on friendship status
-- **Call** -- initiates voice call
-- **Copy Username** -- copies @username
-
-Files: `src/components/server/ServerMemberList.tsx`
-
-#### 6. Chat Sidebar / Inbox Thread Items
-Right-clicking a conversation in the sidebar or Inbox will show:
-- **Pin** / **Unpin** -- toggles pin status
-- **Mark as Read** -- marks all messages as read
-- **Mute Notifications** -- (placeholder for future)
-- **Delete Conversation** -- removes DM thread
-
-Files: `src/components/chat/ChatSidebar.tsx`, `src/pages/Inbox.tsx`
+### Interaction Flow
+1. User drags Server A onto Server B
+2. A new folder is created in the database containing both servers
+3. Both servers are removed from the loose server list and shown inside the folder
+4. A dialog appears to name the folder and pick a color
+5. User can right-click folder to rename/recolor/ungroup
 
 ---
 
-### Implementation Approach
+## Feature 2: Custom Display Name Styling (Fonts + Gradients)
 
-**Reusable Components**: Create two shared context menu components to avoid code duplication:
+### How it works
+Users can customize their display name with a decorative Unicode font and/or a gradient color. The reference image shows "Risk" rendered in a stylized font with a gradient. This is achieved by:
+1. **Font styling**: Converting display name characters to Unicode mathematical/fancy character sets (e.g., Bold Script, Fraktur, Double-Struck). The actual `display_name` column stores the Unicode-transformed text directly -- no special rendering needed.
+2. **Gradient colors**: Storing two gradient color values in the profile. Display names are rendered with a CSS `background: linear-gradient(...)` + `background-clip: text` effect.
 
-1. **`src/components/chat/UserContextMenu.tsx`** -- Wraps any username/avatar element. Accepts `targetUserId`, `targetUsername`, and callbacks. Handles friend status lookup internally. Used across server chat, group chat, friends page, and member list.
+### Database Changes
+Add two new columns to `profiles`:
+- `name_gradient_start` (text, nullable) -- hex color for gradient start (e.g., "#ff0000")
+- `name_gradient_end` (text, nullable) -- hex color for gradient end (e.g., "#0000ff")
 
-2. **`src/components/chat/MessageContextMenu.tsx`** -- Wraps a message bubble. Accepts the message data, `isMine` flag, and action callbacks (copy, reply, edit, delete, mark unread). Used across DM, group, and server channel chat.
+When both are null, the display name renders in the default text color.
 
-**No database changes required** -- all actions use existing tables and RPC functions.
+### UI Changes
+
+**Settings.tsx** -- Add a "Name Style" section:
+- A row of font style buttons (Normal, Bold, Italic, Script, Fraktur, Double-Struck, etc.)
+- Clicking a font style converts the current display name text to that Unicode character set in real-time (preview updates instantly)
+- Two color pickers for gradient start and end colors
+- A "Clear Gradient" button to reset to default
+- Live preview of the styled name
+
+**New utility: `src/lib/unicodeFonts.ts`**
+- Contains character mapping tables for each font style (A-Z, a-z, 0-9)
+- Export a `convertToFont(text: string, style: FontStyle): string` function
+- Supported styles: Normal, Bold, Italic, BoldItalic, Script, BoldScript, Fraktur, BoldFraktur, DoubleStruck, Monospace, SansSerif, SansBold
+
+**New component: `src/components/StyledDisplayName.tsx`**
+- Accepts `displayName`, `gradientStart`, `gradientEnd` props
+- If gradient colors are set, renders with CSS gradient text effect
+- Used everywhere display names appear: chat messages, sidebars, member lists, profile panels, user context menus
+
+**Files to update for StyledDisplayName integration:**
+- `src/pages/Chat.tsx` -- DM message author names
+- `src/pages/GroupChat.tsx` -- group message author names  
+- `src/components/server/ServerChannelChat.tsx` -- server message author names
+- `src/components/server/ServerMemberList.tsx` -- member list names
+- `src/components/chat/ChatSidebar.tsx` -- conversation list names
+- `src/components/chat/UserProfilePanel.tsx` -- profile panel name
+- `src/components/chat/ActiveNowPanel.tsx` -- active users names
+- `src/pages/Settings.tsx` -- profile preview
 
 ### Technical Details
 
-| Component | What it wraps | Context menu items |
-|---|---|---|
-| `UserContextMenu` | Username spans, avatar buttons, friend rows, member rows | Message, Add/Remove Friend, Call, Copy Username |
-| `MessageContextMenu` | Message bubble divs | Copy Text, Reply, Edit, Delete for Me, Delete for Everyone, Mark as Unread |
+The Unicode font conversion works by mapping ASCII characters to their Unicode mathematical equivalents. For example, "Risk" in Bold Script becomes "??????????????????????" (U+1D4E1, U+1D4F2, etc.). Since these are standard Unicode characters, they are stored as plain text in the database and render correctly everywhere without any special font loading.
 
-**Files to create:**
-- `src/components/chat/UserContextMenu.tsx`
-- `src/components/chat/MessageContextMenu.tsx`
+The gradient effect uses standard CSS:
+```css
+background: linear-gradient(90deg, var(--start), var(--end));
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+```
 
-**Files to modify:**
-- `src/pages/Chat.tsx` -- wrap message bubbles with MessageContextMenu
-- `src/pages/GroupChat.tsx` -- wrap message bubbles + author names
-- `src/components/server/ServerChannelChat.tsx` -- wrap message rows + author names
-- `src/pages/Friends.tsx` -- wrap friend rows
-- `src/components/server/ServerMemberList.tsx` -- wrap member buttons
-- `src/components/chat/ChatSidebar.tsx` -- wrap thread items with Pin/Mark Read/Delete
-- `src/pages/Inbox.tsx` -- wrap inbox items with Pin/Mark Read/Delete
-
-**Friend status check**: `UserContextMenu` will query the `friendships` table on mount to determine whether to show "Add Friend" or "Remove Friend". This is a lightweight single-row query.
-
-**Mark as Unread**: Will update `thread_read_status` or `channel_read_status` to set `last_read_at` to just before the right-clicked message's timestamp, causing the unread badge to reappear.
-
-**Reply**: Will prepend `> quoted text\n` to the message input (simple quote-style reply, matching the existing input pattern without requiring a new database column).
-
+| Area | Files |
+|---|---|
+| Database | Migration: `server_folders`, `server_folder_items` tables + `profiles` columns |
+| Server Folders | `ServerRail.tsx`, new `ServerFolder.tsx`, new `ServerFolderDialog.tsx` |
+| Name Styling | New `unicodeFonts.ts`, new `StyledDisplayName.tsx`, `Settings.tsx` |
+| Integration | 8+ existing files updated to use `StyledDisplayName` |
+| i18n | `en.ts`, `ar.ts` updated with new translation keys |
