@@ -14,6 +14,7 @@ import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
 import { SidebarItemSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { useIsMobile } from "@/hooks/use-mobile";
+import ThreadContextMenu from "@/components/chat/ThreadContextMenu";
 
 type Profile = Tables<"profiles">;
 type Thread = Tables<"dm_threads">;
@@ -45,6 +46,7 @@ const Inbox = () => {
   const [searching, setSearching] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [redirecting, setRedirecting] = useState(true);
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
 
   // Auto-redirect to last DM thread on mount (desktop only)
   useEffect(() => {
@@ -249,6 +251,43 @@ const Inbox = () => {
     if (newThread) navigate(`/chat/${newThread.id}`);
   };
 
+  const togglePinItem = async (itemId: string, type: "dm" | "group") => {
+    if (!user) return;
+    const isPinned = pinnedIds.has(itemId);
+    if (isPinned) {
+      if (type === "dm") {
+        await supabase.from("pinned_chats").delete().eq("user_id", user.id).eq("thread_id", itemId);
+      } else {
+        await supabase.from("pinned_chats").delete().eq("user_id", user.id).eq("group_thread_id", itemId);
+      }
+      setPinnedIds(prev => { const n = new Set(prev); n.delete(itemId); return n; });
+    } else {
+      if (type === "dm") {
+        await supabase.from("pinned_chats").insert({ user_id: user.id, thread_id: itemId } as any);
+      } else {
+        await supabase.from("pinned_chats").insert({ user_id: user.id, group_thread_id: itemId } as any);
+      }
+      setPinnedIds(prev => new Set(prev).add(itemId));
+    }
+  };
+
+  const markAsReadInbox = async (itemId: string, type: "dm" | "group") => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    if (type === "dm") {
+      await supabase.from("thread_read_status").upsert(
+        { user_id: user.id, thread_id: itemId, last_read_at: now },
+        { onConflict: "user_id,thread_id" }
+      );
+    } else {
+      await supabase.from("thread_read_status").upsert(
+        { user_id: user.id, group_thread_id: itemId, last_read_at: now } as any,
+        { onConflict: "user_id,thread_id" }
+      );
+    }
+    loadInbox();
+  };
+
   if (redirecting) return null;
 
   return (
@@ -317,8 +356,13 @@ const Inbox = () => {
               </div>
             )}
             {items.map((item) => (
-              <button
+              <ThreadContextMenu
                 key={item.id}
+                isPinned={pinnedIds.has(item.id)}
+                onTogglePin={() => togglePinItem(item.id, item.type)}
+                onMarkAsRead={() => markAsReadInbox(item.id, item.type)}
+              >
+              <button
                 onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
                 className="flex items-center gap-3 w-full p-3 px-4 hover:bg-muted/50 transition-colors text-start border-b border-border/30"
               >
@@ -356,6 +400,7 @@ const Inbox = () => {
                   )}
                 </div>
               </button>
+              </ThreadContextMenu>
             ))}
           </div>
         )}

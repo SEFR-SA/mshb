@@ -25,6 +25,8 @@ import GifPicker from "@/components/chat/GifPicker";
 import StickerPicker from "@/components/chat/StickerPicker";
 import ChatInputActions from "@/components/chat/ChatInputActions";
 import { MessageSkeleton } from "@/components/skeletons/SkeletonLoaders";
+import MessageContextMenu from "@/components/chat/MessageContextMenu";
+import UserContextMenu from "@/components/chat/UserContextMenu";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -345,15 +347,38 @@ const GroupChat = () => {
           const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
 
           return (
-            <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
+            <MessageContextMenu
+              key={msg.id}
+              content={msg.content}
+              messageId={msg.id}
+              isMine={isMine}
+              isDeleted={!!isDeleted}
+              onReply={(text) => setNewMsg((prev) => `> ${text}\n${prev}`)}
+              onEdit={(id, content) => { setEditingId(id); setEditContent(content); }}
+              onDeleteForMe={deleteForMe}
+              onDeleteForEveryone={isMine ? deleteForEveryone : undefined}
+              onMarkUnread={(id) => {
+                const msg = visibleMessages.find(m => m.id === id);
+                if (msg && user && groupId) {
+                  const before = new Date(new Date(msg.created_at).getTime() - 1000).toISOString();
+                  supabase.from("thread_read_status").upsert(
+                    { user_id: user.id, group_thread_id: groupId, last_read_at: before } as any,
+                    { onConflict: "user_id,thread_id" }
+                  ).then();
+                }
+              }}
+            >
+            <div className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
               <div className="flex gap-2 max-w-[75%]">
                 {!isMine && (
-                  <Avatar className="h-7 w-7 mt-1 shrink-0">
+                  <UserContextMenu targetUserId={msg.author_id} targetUsername={authorProfile?.username || undefined}>
+                  <Avatar className="h-7 w-7 mt-1 shrink-0 cursor-pointer">
                     <AvatarImage src={authorProfile?.avatar_url || ""} />
                     <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
                       {(authorProfile?.display_name || "?").charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
+                  </UserContextMenu>
                 )}
                 <div className={`group relative rounded-2xl px-4 py-2 ${
                   isDeleted ? "bg-muted/50 italic text-muted-foreground"
@@ -361,9 +386,11 @@ const GroupChat = () => {
                     : "bg-card border border-border/50"
                 }`}>
                   {!isMine && !isDeleted && (
-                    <p className="text-[11px] font-semibold text-primary mb-0.5">
+                    <UserContextMenu targetUserId={msg.author_id} targetUsername={authorProfile?.username || undefined}>
+                    <p className="text-[11px] font-semibold text-primary mb-0.5 cursor-pointer hover:underline">
                       {authorProfile?.display_name || authorProfile?.username || "User"}
                     </p>
+                    </UserContextMenu>
                   )}
                   {editingId === msg.id ? (
                     <div className="flex items-center gap-2">
@@ -432,6 +459,7 @@ const GroupChat = () => {
                 </div>
               </div>
             </div>
+            </MessageContextMenu>
           );
         })}
         {typingNames && (

@@ -29,7 +29,7 @@ import GifPicker from "@/components/chat/GifPicker";
 import StickerPicker from "@/components/chat/StickerPicker";
 import ChatInputActions from "@/components/chat/ChatInputActions";
 import { MessageSkeleton } from "@/components/skeletons/SkeletonLoaders";
-
+import MessageContextMenu from "@/components/chat/MessageContextMenu";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
@@ -428,7 +428,28 @@ const Chat = () => {
           const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
 
           return (
-            <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
+            <MessageContextMenu
+              key={msg.id}
+              content={msg.content}
+              messageId={msg.id}
+              isMine={isMine}
+              isDeleted={!!isDeleted}
+              onReply={(text) => setNewMsg((prev) => `> ${text}\n${prev}`)}
+              onEdit={(id, content) => { setEditingId(id); setEditContent(content); }}
+              onDeleteForMe={deleteForMe}
+              onDeleteForEveryone={isMine ? deleteForEveryone : undefined}
+              onMarkUnread={(id) => {
+                const msg = visibleMessages.find(m => m.id === id);
+                if (msg && user && threadId) {
+                  const before = new Date(new Date(msg.created_at).getTime() - 1000).toISOString();
+                  supabase.from("thread_read_status").upsert(
+                    { user_id: user.id, thread_id: threadId, last_read_at: before },
+                    { onConflict: "user_id,thread_id" }
+                  ).then();
+                }
+              }}
+            >
+            <div className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
               <div className={`group relative max-w-[75%] rounded-2xl px-4 py-2 ${
                 isDeleted
                   ? "bg-muted/50 italic text-muted-foreground"
@@ -507,6 +528,7 @@ const Chat = () => {
                 )}
               </div>
             </div>
+            </MessageContextMenu>
           );
         })}
         {typingUser && (

@@ -15,6 +15,7 @@ import { NavLink } from "@/components/NavLink";
 import type { Tables } from "@/integrations/supabase/types";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
+import ThreadContextMenu from "@/components/chat/ThreadContextMenu";
 
 type Profile = Tables<"profiles">;
 
@@ -247,6 +248,43 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
     if (newThread) navigate(`/chat/${newThread.id}`);
   };
 
+  const togglePinItem = async (itemId: string, type: "dm" | "group") => {
+    if (!user) return;
+    const isPinned = pinnedIds.has(itemId);
+    if (isPinned) {
+      if (type === "dm") {
+        await supabase.from("pinned_chats").delete().eq("user_id", user.id).eq("thread_id", itemId);
+      } else {
+        await supabase.from("pinned_chats").delete().eq("user_id", user.id).eq("group_thread_id", itemId);
+      }
+      setPinnedIds(prev => { const n = new Set(prev); n.delete(itemId); return n; });
+    } else {
+      if (type === "dm") {
+        await supabase.from("pinned_chats").insert({ user_id: user.id, thread_id: itemId } as any);
+      } else {
+        await supabase.from("pinned_chats").insert({ user_id: user.id, group_thread_id: itemId } as any);
+      }
+      setPinnedIds(prev => new Set(prev).add(itemId));
+    }
+  };
+
+  const markAsRead = async (itemId: string, type: "dm" | "group") => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    if (type === "dm") {
+      await supabase.from("thread_read_status").upsert(
+        { user_id: user.id, thread_id: itemId, last_read_at: now },
+        { onConflict: "user_id,thread_id" }
+      );
+    } else {
+      await supabase.from("thread_read_status").upsert(
+        { user_id: user.id, group_thread_id: itemId, last_read_at: now } as any,
+        { onConflict: "user_id,thread_id" }
+      );
+    }
+    loadInbox();
+  };
+
   return (
     <div className="flex flex-col h-full w-64 border-e border-border/50 glass">
       <div className="p-3 space-y-2">
@@ -306,7 +344,13 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                 {items.filter((item) => pinnedIds.has(item.id)).map((item) => {
                   const isActive = item.id === activeThreadId;
                   return (
-                    <button key={item.id} onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
+                    <ThreadContextMenu
+                      key={item.id}
+                      isPinned={true}
+                      onTogglePin={() => togglePinItem(item.id, item.type)}
+                      onMarkAsRead={() => markAsRead(item.id, item.type)}
+                    >
+                    <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
                       className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
                       <div className="relative shrink-0">
                         <Avatar className="h-9 w-9"><AvatarImage src={item.avatarUrl} /><AvatarFallback className="bg-primary/20 text-primary text-sm">{item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
@@ -320,6 +364,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                         <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
                       </div>
                     </button>
+                    </ThreadContextMenu>
                   );
                 })}
                 <div className="border-b border-border/30 my-1" />
@@ -328,7 +373,13 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
             {items.filter((item) => !pinnedIds.has(item.id)).map((item) => {
               const isActive = item.id === activeThreadId;
               return (
-                <button key={item.id} onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
+                <ThreadContextMenu
+                  key={item.id}
+                  isPinned={false}
+                  onTogglePin={() => togglePinItem(item.id, item.type)}
+                  onMarkAsRead={() => markAsRead(item.id, item.type)}
+                >
+                <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
                   className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
                   <div className="relative shrink-0">
                     <Avatar className="h-9 w-9"><AvatarImage src={item.avatarUrl} /><AvatarFallback className="bg-primary/20 text-primary text-sm">{item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
@@ -342,6 +393,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                     <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
                   </div>
                 </button>
+                </ThreadContextMenu>
               );
             })}
           </div>
