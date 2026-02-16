@@ -340,4 +340,14 @@ export default {
     clearGradient: "مسح التدرج",
     preview: "معاينة",
   },
+  voiceContext: {
+    viewProfile: "عرض الملف الشخصي",
+    userVolume: "مستوى صوت المستخدم",
+    muteUser: "كتم",
+    unmuteUser: "إلغاء الكتم",
+    userMuted: "تم كتم المستخدم",
+    userUnmuted: "تم إلغاء كتم المستخدم",
+    disconnect: "قطع الاتصال",
+    disconnected: "تم قطع اتصال المستخدم من الصوت",
+  },
 };
