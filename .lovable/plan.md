@@ -1,120 +1,87 @@
 
-## Feature 1: Server Folders (Drag-to-Group)
 
-### How it works
-Users can drag one server icon on top of another in the Server Rail to create a folder. The folder appears as a stacked icon that expands on click to reveal the servers inside. Users can name the folder and pick a color for it.
+## Optimize Screen Sharing: 1080p/60fps, System Audio, Full-Screen Toggle
 
-### Database Changes
-Create a new `server_folders` table:
-- `id` (uuid, PK)
-- `user_id` (text, NOT NULL) -- folders are per-user
-- `name` (text, default 'Folder')
-- `color` (text, default '#5865F2') -- hex color
-- `position` (integer, default 0) -- ordering in the rail
-- `created_at` (timestamptz)
+### Overview
 
-Create a new `server_folder_items` table:
-- `id` (uuid, PK)
-- `folder_id` (uuid, FK to server_folders)
-- `server_id` (text, NOT NULL)
-- `position` (integer, default 0) -- ordering within folder
-- `created_at` (timestamptz)
-
-RLS policies: Users can only CRUD their own folders and folder items.
-
-### UI Changes
-
-**ServerRail.tsx** -- Major update:
-- Add local state for folders (fetched from `server_folders` + `server_folder_items`)
-- Implement HTML5 drag-and-drop on server icons:
-  - `draggable` attribute on each server icon
-  - `onDragStart` stores the dragged server ID
-  - `onDragOver` / `onDrop` on other server icons detects a drop target
-  - When dropped on another server: create a new folder containing both servers
-  - When dropped on an existing folder: add server to that folder
-- Render folders as a collapsed pill (showing stacked mini-avatars of first 3 servers) with a colored border matching the folder color
-- Clicking a folder expands it inline (vertically) to show the contained server icons
-- Right-click context menu on folders: Rename, Change Color, Remove Folder (ungroups servers back to rail)
-
-**New component: `ServerFolderDialog.tsx`**
-- Dialog for editing folder name and color
-- Color picker with preset swatches (Discord-style: 10 preset colors + custom hex input)
-- Text input for folder name
-
-**New component: `ServerFolder.tsx`**
-- Renders a single folder in the rail
-- Collapsed state: stacked avatars pill with colored left border
-- Expanded state: vertical list of server icons with a colored background tint
-- Drop target for adding more servers
-- Drag source for reordering
-
-### Interaction Flow
-1. User drags Server A onto Server B
-2. A new folder is created in the database containing both servers
-3. Both servers are removed from the loose server list and shown inside the folder
-4. A dialog appears to name the folder and pick a color
-5. User can right-click folder to rename/recolor/ungroup
+Upgrade the screen sharing pipeline to support high-quality gaming streams with 1080p/60fps video, system audio capture, an 8 Mbps bitrate floor, and a full-screen viewing toggle. Add graceful fallback when the user skips audio in the browser picker.
 
 ---
 
-## Feature 2: Custom Display Name Styling (Fonts + Gradients)
+### Changes
 
-### How it works
-Users can customize their display name with a decorative Unicode font and/or a gradient color. The reference image shows "Risk" rendered in a stylized font with a gradient. This is achieved by:
-1. **Font styling**: Converting display name characters to Unicode mathematical/fancy character sets (e.g., Bold Script, Fraktur, Double-Struck). The actual `display_name` column stores the Unicode-transformed text directly -- no special rendering needed.
-2. **Gradient colors**: Storing two gradient color values in the profile. Display names are rendered with a CSS `background: linear-gradient(...)` + `background-clip: text` effect.
+#### 1. `src/hooks/useWebRTC.ts` -- Screen Share Upgrade
 
-### Database Changes
-Add two new columns to `profiles`:
-- `name_gradient_start` (text, nullable) -- hex color for gradient start (e.g., "#ff0000")
-- `name_gradient_end` (text, nullable) -- hex color for gradient end (e.g., "#0000ff")
+**Video constraints** (line ~214):
+- Change `getDisplayMedia` from `{ video: { frameRate: { ideal: 60 } }, audio: false }` to:
+  ```
+  video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } }
+  audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, systemAudio: 'include' }
+  ```
 
-When both are null, the display name renders in the default text color.
+**Content hint + sender params** (after track is added):
+- Set `videoTrack.contentHint = 'motion'` to tell the encoder to prioritize smooth motion over sharpness
+- Keep `degradationPreference: 'maintain-resolution'` (already present)
+- Add `maxBitrate: 8_000_000` (already present) AND `minBitrate: 2_000_000` floor to prevent quality drops
 
-### UI Changes
+**SDP bitrate enforcement** (new helper function):
+- Create a `patchSdpBitrate(sdp, maxKbps)` function that modifies the SDP answer/offer to inject `x-google-max-bitrate=8000` and `x-google-min-bitrate=2000` into the video codec line
+- Apply this patch in `onnegotiationneeded` before setting local description
 
-**Settings.tsx** -- Add a "Name Style" section:
-- A row of font style buttons (Normal, Bold, Italic, Script, Fraktur, Double-Struck, etc.)
-- Clicking a font style converts the current display name text to that Unicode character set in real-time (preview updates instantly)
-- Two color pickers for gradient start and end colors
-- A "Clear Gradient" button to reset to default
-- Live preview of the styled name
+**System audio handling**:
+- After `getDisplayMedia` resolves, check `stream.getAudioTracks()`:
+  - If audio tracks exist: add each audio track to the peer connection as a separate sender (stored in a new `screenAudioSenderRef`)
+  - If no audio tracks: show a toast "Audio not shared" via sonner, and proceed with video-only
+- On `stopScreenShare`, also remove and stop the audio sender/tracks
 
-**New utility: `src/lib/unicodeFonts.ts`**
-- Contains character mapping tables for each font style (A-Z, a-z, 0-9)
-- Export a `convertToFont(text: string, style: FontStyle): string` function
-- Supported styles: Normal, Bold, Italic, BoldItalic, Script, BoldScript, Fraktur, BoldFraktur, DoubleStruck, Monospace, SansSerif, SansBold
+**New refs**: `screenAudioSenderRef` to track screen share audio senders for cleanup.
 
-**New component: `src/components/StyledDisplayName.tsx`**
-- Accepts `displayName`, `gradientStart`, `gradientEnd` props
-- If gradient colors are set, renders with CSS gradient text effect
-- Used everywhere display names appear: chat messages, sidebars, member lists, profile panels, user context menus
+**Reliability**: Wrap the entire `startScreenShare` in a try/catch. If `getDisplayMedia` throws (user cancelled), silently return. If the stream has no video tracks (edge case), return early.
 
-**Files to update for StyledDisplayName integration:**
-- `src/pages/Chat.tsx` -- DM message author names
-- `src/pages/GroupChat.tsx` -- group message author names  
-- `src/components/server/ServerChannelChat.tsx` -- server message author names
-- `src/components/server/ServerMemberList.tsx` -- member list names
-- `src/components/chat/ChatSidebar.tsx` -- conversation list names
-- `src/components/chat/UserProfilePanel.tsx` -- profile panel name
-- `src/components/chat/ActiveNowPanel.tsx` -- active users names
-- `src/pages/Settings.tsx` -- profile preview
+#### 2. `src/components/server/ScreenShareViewer.tsx` -- Full-Screen Toggle
+
+- Add a full-screen button (using `Maximize` / `Minimize` icons from lucide-react) next to the existing PiP button in the header bar
+- The button calls `containerRef.current.requestFullscreen()` on the video container div (not the whole page)
+- Track full-screen state via a `fullscreenchange` event listener on the container
+- When in full-screen: show an "Exit Full Screen" button overlay, and the user can also press Esc (browser default behavior)
+- Add a new ref `containerRef` for the video container div
+- Play audio tracks from the stream by creating a hidden `<audio>` element (since the video element only plays video by default for MediaStreams with both tracks)
+
+#### 3. `src/components/chat/VoiceCallUI.tsx` -- Full-Screen for DM Screen Share
+
+- Apply the same full-screen toggle to the `VideoElement` component used in DM calls
+- Add a `Maximize`/`Minimize` button next to the existing PiP button
+- Use the same `requestFullscreen()` pattern on the video wrapper div
+- Handle audio tracks in the remote screen stream the same way as ScreenShareViewer
+
+#### 4. `src/i18n/en.ts` and `src/i18n/ar.ts` -- New Translation Keys
+
+Add under the `calls` section:
+- `fullScreen`: "Full Screen" / "ملء الشاشة"
+- `exitFullScreen`: "Exit Full Screen" / "الخروج من ملء الشاشة"
+- `audioNotShared`: "Audio not shared" / "لم تتم مشاركة الصوت"
+
+---
 
 ### Technical Details
 
-The Unicode font conversion works by mapping ASCII characters to their Unicode mathematical equivalents. For example, "Risk" in Bold Script becomes "??????????????????????" (U+1D4E1, U+1D4F2, etc.). Since these are standard Unicode characters, they are stored as plain text in the database and render correctly everywhere without any special font loading.
-
-The gradient effect uses standard CSS:
-```css
-background: linear-gradient(90deg, var(--start), var(--end));
--webkit-background-clip: text;
--webkit-text-fill-color: transparent;
-```
-
-| Area | Files |
+| Area | Detail |
 |---|---|
-| Database | Migration: `server_folders`, `server_folder_items` tables + `profiles` columns |
-| Server Folders | `ServerRail.tsx`, new `ServerFolder.tsx`, new `ServerFolderDialog.tsx` |
-| Name Styling | New `unicodeFonts.ts`, new `StyledDisplayName.tsx`, `Settings.tsx` |
-| Integration | 8+ existing files updated to use `StyledDisplayName` |
-| i18n | `en.ts`, `ar.ts` updated with new translation keys |
+| `getDisplayMedia` constraints | `video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } }`, `audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, systemAudio: 'include' }` |
+| Content hint | `videoTrack.contentHint = 'motion'` after stream acquisition |
+| Bitrate enforcement | SDP patching: inject `x-google-max-bitrate=8000;x-google-min-bitrate=2000` into video codec `a=fmtp` lines |
+| Sender params | `maxBitrate: 8_000_000`, `degradationPreference: 'maintain-resolution'` (unchanged) |
+| Screen audio | Separate `RTCRtpSender` for audio track, cleaned up on stop. Toast if no audio track present. |
+| Full-screen | `element.requestFullscreen()` on the video container. `fullscreenchange` listener for state. Esc exits via browser default. |
+| Audio playback | Hidden `<audio autoPlay>` element with `srcObject` set to the screen stream to play system audio on the receiver side |
+
+### Files Modified
+
+| File | Changes |
+|---|---|
+| `src/hooks/useWebRTC.ts` | Upgrade `startScreenShare` constraints, add `contentHint`, SDP bitrate patching, screen audio sender management, toast on no audio |
+| `src/components/server/ScreenShareViewer.tsx` | Add full-screen toggle button, `containerRef`, fullscreen state listener, hidden audio element for system audio playback |
+| `src/components/chat/VoiceCallUI.tsx` | Add full-screen toggle to `VideoElement`, hidden audio element for system audio |
+| `src/i18n/en.ts` | Add `fullScreen`, `exitFullScreen`, `audioNotShared` keys |
+| `src/i18n/ar.ts` | Add Arabic translations for the same keys |
+
