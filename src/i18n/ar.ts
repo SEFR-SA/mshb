@@ -91,6 +91,9 @@ export default {
     stopCamera: "إيقاف الكاميرا",
     pip: "صورة في صورة",
     userCamera: "كاميرا {{name}}",
+    fullScreen: "ملء الشاشة",
+    exitFullScreen: "الخروج من ملء الشاشة",
+    audioNotShared: "لم تتم مشاركة الصوت",
   },
   actions: {
     edit: "تعديل",
