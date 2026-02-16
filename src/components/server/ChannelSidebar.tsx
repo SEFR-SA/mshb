@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus } from "lucide-react";
+import VoiceUserContextMenu from "./VoiceUserContextMenu";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
 import { ChannelListSkeleton } from "@/components/skeletons/SkeletonLoaders";
@@ -88,6 +89,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [serverMembers, setServerMembers] = useState<ServerMember[]>([]);
   const [voiceParticipants, setVoiceParticipants] = useState<Map<string, VoiceParticipant[]>>(new Map());
+  const [currentUserRole, setCurrentUserRole] = useState<string>("member");
   // speakingUsers state removed — now driven by p.is_speaking from DB
 
   // Edit/Delete/Manage members state
@@ -132,6 +134,17 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       const { data: ch } = await supabase.from("channels" as any).select("*").eq("server_id", serverId).order("position");
       setChannels((ch as any) || []);
       setChannelsLoading(false);
+
+      // Fetch current user's role
+      if (user) {
+        const { data: memberData } = await supabase
+          .from("server_members" as any)
+          .select("role")
+          .eq("server_id", serverId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (memberData) setCurrentUserRole((memberData as any).role);
+      }
     };
     load();
 
@@ -616,22 +629,32 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                         {renderAdminDropdown(ch)}
                       </div>
                       {participants.map((p) => (
-                        <div key={p.user_id} className="flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground">
-                          <Avatar className="h-5 w-5">
-                            <AvatarImage src={p.avatar_url || ""} />
-                            <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
-                              {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="truncate">{p.display_name || p.username || "User"}</span>
-                          {p.is_deafened ? (
-                            <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
-                          ) : p.is_muted ? (
-                            <MicOff className="h-3 w-3 text-destructive shrink-0" />
-                          ) : p.is_speaking ? (
-                            <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
-                          ) : null}
-                        </div>
+                        <VoiceUserContextMenu
+                          key={p.user_id}
+                          targetUserId={p.user_id}
+                          targetUsername={p.username || undefined}
+                          serverId={serverId}
+                          channelId={ch.id}
+                          serverOwnerId={server?.owner_id || ""}
+                          currentUserRole={currentUserRole}
+                        >
+                          <div className="flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground cursor-default">
+                            <Avatar className="h-5 w-5">
+                              <AvatarImage src={p.avatar_url || ""} />
+                              <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
+                                {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{p.display_name || p.username || "User"}</span>
+                            {p.is_deafened ? (
+                              <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
+                            ) : p.is_muted ? (
+                              <MicOff className="h-3 w-3 text-destructive shrink-0" />
+                            ) : p.is_speaking ? (
+                              <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
+                            ) : null}
+                          </div>
+                        </VoiceUserContextMenu>
                       ))}
                     </div>
                   );

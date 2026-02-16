@@ -340,4 +340,14 @@ export default {
     clearGradient: "Clear Gradient",
     preview: "Preview",
   },
+  voiceContext: {
+    viewProfile: "View Profile",
+    userVolume: "User Volume",
+    muteUser: "Mute",
+    unmuteUser: "Unmute",
+    userMuted: "User muted",
+    userUnmuted: "User unmuted",
+    disconnect: "Disconnect",
+    disconnected: "User disconnected from voice",
+  },
 };
