@@ -1,8 +1,8 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PhoneOff, Mic, MicOff, Volume2, HeadphoneOff, Monitor, MonitorOff, Video, VideoOff, PictureInPicture2 } from "lucide-react";
+import { PhoneOff, Mic, MicOff, Volume2, HeadphoneOff, Monitor, MonitorOff, Video, VideoOff, PictureInPicture2, Maximize, Minimize } from "lucide-react";
 import type { CallState } from "@/hooks/useWebRTC";
 
 interface VoiceCallUIProps {
@@ -34,13 +34,27 @@ const formatDuration = (seconds: number) => {
 
 const VideoElement = ({ stream, showPiP, label, className }: { stream: MediaStream; showPiP?: boolean; label?: string; className?: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const { t } = useTranslation();
 
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.srcObject = stream;
     }
+    if (audioRef.current) {
+      audioRef.current.srcObject = stream;
+    }
   }, [stream]);
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    wrapper.addEventListener("fullscreenchange", handler);
+    return () => wrapper.removeEventListener("fullscreenchange", handler);
+  }, []);
 
   const handlePiP = async () => {
     if (document.pictureInPictureElement) {
@@ -50,8 +64,16 @@ const VideoElement = ({ stream, showPiP, label, className }: { stream: MediaStre
     }
   };
 
+  const handleFullscreen = async () => {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else if (wrapperRef.current) {
+      await wrapperRef.current.requestFullscreen();
+    }
+  };
+
   return (
-    <div className={`relative ${className || ""}`}>
+    <div ref={wrapperRef} className={`relative ${className || ""}`}>
       {label && <p className="text-xs text-muted-foreground text-center mb-1">{label}</p>}
       <video
         ref={videoRef}
@@ -59,16 +81,28 @@ const VideoElement = ({ stream, showPiP, label, className }: { stream: MediaStre
         playsInline
         className="w-full max-h-[400px] rounded-lg bg-black object-contain"
       />
+      <audio ref={audioRef} autoPlay className="hidden" />
       {showPiP && (
-        <Button
-          variant="secondary"
-          size="icon"
-          className="absolute top-2 end-2 h-7 w-7 opacity-70 hover:opacity-100"
-          onClick={handlePiP}
-          title={t("calls.pip")}
-        >
-          <PictureInPicture2 className="h-3.5 w-3.5" />
-        </Button>
+        <div className="absolute top-2 end-2 flex gap-1">
+          <Button
+            variant="secondary"
+            size="icon"
+            className="h-7 w-7 opacity-70 hover:opacity-100"
+            onClick={handleFullscreen}
+            title={isFullscreen ? t("calls.exitFullScreen") : t("calls.fullScreen")}
+          >
+            {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
+            className="h-7 w-7 opacity-70 hover:opacity-100"
+            onClick={handlePiP}
+            title={t("calls.pip")}
+          >
+            <PictureInPicture2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       )}
     </div>
   );

@@ -91,6 +91,9 @@ export default {
     stopCamera: "Stop Camera",
     pip: "Picture in Picture",
     userCamera: "{{name}}'s camera",
+    fullScreen: "Full Screen",
+    exitFullScreen: "Exit Full Screen",
+    audioNotShared: "Audio not shared",
   },
   actions: {
     edit: "Edit",

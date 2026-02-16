@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
@@ -7,6 +8,17 @@ const ICE_SERVERS: RTCConfiguration = {
     { urls: "stun:stun1.l.google.com:19302" },
   ],
 };
+
+/** Patch SDP to enforce min/max bitrate on video codecs */
+function patchSdpBitrate(sdp: string): string {
+  return sdp.replace(
+    /a=fmtp:(\d+) ([^\r\n]+)/g,
+    (match, pt, params) => {
+      if (params.includes("x-google-max-bitrate")) return match;
+      return `a=fmtp:${pt} ${params};x-google-max-bitrate=8000;x-google-min-bitrate=2000`;
+    }
+  );
+}
 
 export type CallState = "idle" | "ringing" | "connected" | "ended";
 
@@ -34,6 +46,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenSenderRef = useRef<RTCRtpSender | null>(null);
+  const screenAudioSendersRef = useRef<RTCRtpSender[]>([]);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraSenderRef = useRef<RTCRtpSender | null>(null);
   const remoteCameraExpectedRef = useRef(false);
@@ -48,6 +61,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current = null;
     screenSenderRef.current = null;
+    screenAudioSendersRef.current = [];
     cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
     cameraStreamRef.current = null;
     cameraSenderRef.current = null;
@@ -122,11 +136,13 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     pc.onnegotiationneeded = async () => {
       try {
         const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
+        // Patch SDP for bitrate enforcement
+        const patchedSdp = patchSdpBitrate(offer.sdp || "");
+        await pc.setLocalDescription({ ...offer, sdp: patchedSdp });
         channelRef.current?.send({
           type: "broadcast",
           event: "call-offer",
-          payload: { sdp: offer },
+          payload: { sdp: { ...offer, sdp: patchedSdp } },
         });
       } catch {}
     };
@@ -212,21 +228,42 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     if (!pc || isScreenSharing) return;
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 60 } },
-        audio: false,
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, systemAudio: "include" } as any,
       });
+
+      const videoTracks = stream.getVideoTracks();
+      if (videoTracks.length === 0) return;
+
       screenStreamRef.current = stream;
-      const videoTrack = stream.getVideoTracks()[0];
+      const videoTrack = videoTracks[0];
+      videoTrack.contentHint = "motion";
+
       const sender = pc.addTrack(videoTrack, stream);
       screenSenderRef.current = sender;
-      // Prevent resolution downscaling
+      // Enforce high bitrate and resolution preservation
       try {
         const params = sender.getParameters();
         if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
         params.encodings[0].maxBitrate = 8_000_000;
+        (params.encodings[0] as any).minBitrate = 2_000_000;
         (params as any).degradationPreference = "maintain-resolution";
         await sender.setParameters(params);
       } catch {}
+
+      // Handle system audio tracks
+      const audioTracks = stream.getAudioTracks();
+      if (audioTracks.length > 0) {
+        const audioSenders: RTCRtpSender[] = [];
+        for (const audioTrack of audioTracks) {
+          const audioSender = pc.addTrack(audioTrack, stream);
+          audioSenders.push(audioSender);
+        }
+        screenAudioSendersRef.current = audioSenders;
+      } else {
+        toast.info("Audio not shared");
+      }
+
       setIsScreenSharing(true);
 
       videoTrack.onended = () => {
@@ -242,9 +279,14 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     if (screenSenderRef.current && pc) {
       try { pc.removeTrack(screenSenderRef.current); } catch {}
     }
+    // Remove screen audio senders
+    for (const sender of screenAudioSendersRef.current) {
+      try { pc?.removeTrack(sender); } catch {}
+    }
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current = null;
     screenSenderRef.current = null;
+    screenAudioSendersRef.current = [];
     setIsScreenSharing(false);
   }, []);
 
