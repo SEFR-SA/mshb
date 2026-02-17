@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { getEmojiClass } from "@/lib/emojiUtils";
 import { useTranslation } from "react-i18next";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePresence } from "@/hooks/usePresence";
@@ -31,6 +31,8 @@ import ChatInputActions from "@/components/chat/ChatInputActions";
 import { MessageSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import MessageContextMenu from "@/components/chat/MessageContextMenu";
 import StyledDisplayName from "@/components/StyledDisplayName";
+import ReplyPreview from "@/components/chat/ReplyPreview";
+import ReplyInputBar from "@/components/chat/ReplyInputBar";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
@@ -40,6 +42,7 @@ const MAX_FILE_SIZE = 200 * 1024 * 1024;
 const Chat = () => {
   const { t } = useTranslation();
   const { threadId } = useParams<{ threadId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { isOnline, getUserStatus } = usePresence();
   const navigate = useNavigate();
@@ -63,6 +66,8 @@ const Chat = () => {
   const [callSessionId, setCallSessionId] = useState<string | null>(null);
   const [messagesLoading, setMessagesLoading] = useState(true);
   const [isCallerState, setIsCallerState] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string; content: string } | null>(null);
+  const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
 
   const handleCallEnded = useCallback(() => {
     setCallSessionId(null);
@@ -134,6 +139,14 @@ const Chat = () => {
       startCall(data.id);
     }
   };
+
+  // Auto-initiate call from ?call=true (from voice context menu)
+  useEffect(() => {
+    if (searchParams.get("call") === "true" && otherId && !callSessionId) {
+      setSearchParams({}, { replace: true });
+      initiateCall();
+    }
+  }, [otherId, searchParams]);
 
   const handleEndCall = async () => {
     if (callSessionId) {
@@ -283,11 +296,14 @@ const Chat = () => {
         fileData = { file_url: url, file_name: file.name, file_type: file.type, file_size: file.size };
         setUploadProgress(null);
       }
+      const replyId = replyingTo?.id || null;
+      setReplyingTo(null);
       await supabase.from("messages").insert({
         thread_id: threadId,
         author_id: user.id,
         content,
         ...(fileData || {}),
+        ...(replyId ? { reply_to_id: replyId } : {}),
       } as any);
       await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
     } catch {
@@ -438,9 +454,10 @@ const Chat = () => {
               key={msg.id}
               content={msg.content}
               messageId={msg.id}
+              authorName={isMine ? (user?.email?.split("@")[0] || "You") : (otherProfile?.display_name || otherProfile?.username || "User")}
               isMine={isMine}
               isDeleted={!!isDeleted}
-              onReply={(text) => setNewMsg((prev) => `> ${text}\n${prev}`)}
+              onReply={(id, authorName, content) => setReplyingTo({ id, authorName, content })}
               onEdit={(id, content) => { setEditingId(id); setEditContent(content); }}
               onDeleteForMe={deleteForMe}
               onDeleteForEveryone={isMine ? deleteForEveryone : undefined}
@@ -455,8 +472,27 @@ const Chat = () => {
                 }
               }}
             >
-            <div className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
-              <div className={`group relative max-w-[75%] rounded-2xl px-4 py-2 ${
+            <div id={`msg-${msg.id}`} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
+              <div className="max-w-[75%]">
+                {msgAny.reply_to_id && (() => {
+                  const original = visibleMessages.find(m => m.id === msgAny.reply_to_id);
+                  const origName = original ? (original.author_id === user?.id ? "You" : (otherProfile?.display_name || otherProfile?.username || "User")) : "…";
+                  return (
+                    <ReplyPreview
+                      authorName={origName}
+                      content={original?.content || "…"}
+                      onClick={() => {
+                        const el = document.getElementById(`msg-${msgAny.reply_to_id}`);
+                        if (el) {
+                          el.scrollIntoView({ behavior: "smooth", block: "center" });
+                          setHighlightedMsgId(msgAny.reply_to_id);
+                          setTimeout(() => setHighlightedMsgId(null), 2000);
+                        }
+                      }}
+                    />
+                  );
+                })()}
+              <div className={`group relative rounded-2xl px-4 py-2 ${
                 isDeleted
                   ? "bg-muted/50 italic text-muted-foreground"
                   : isMine
@@ -533,6 +569,7 @@ const Chat = () => {
                   </div>
                 )}
               </div>
+              </div>
             </div>
             </MessageContextMenu>
           );
@@ -566,6 +603,13 @@ const Chat = () => {
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedFile(null)}>
             <X className="h-3.5 w-3.5" />
           </Button>
+        </div>
+      )}
+
+      {/* Reply bar */}
+      {replyingTo && (
+        <div className="px-3 pt-2">
+          <ReplyInputBar authorName={replyingTo.authorName} onCancel={() => setReplyingTo(null)} />
         </div>
       )}
 

@@ -27,6 +27,8 @@ import ChatInputActions from "@/components/chat/ChatInputActions";
 import { MessageSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import MessageContextMenu from "@/components/chat/MessageContextMenu";
 import UserContextMenu from "@/components/chat/UserContextMenu";
+import ReplyPreview from "@/components/chat/ReplyPreview";
+import ReplyInputBar from "@/components/chat/ReplyInputBar";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -62,6 +64,8 @@ const GroupChat = () => {
   const [isPinned, setIsPinned] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(true);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string; content: string } | null>(null);
+  const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -230,11 +234,14 @@ const GroupChat = () => {
         fileData = { file_url: url, file_name: file.name, file_type: file.type, file_size: file.size };
         setUploadProgress(null);
       }
+      const replyId = replyingTo?.id || null;
+      setReplyingTo(null);
       await supabase.from("messages").insert({
         group_thread_id: groupId,
         author_id: user.id,
         content,
         ...(fileData || {}),
+        ...(replyId ? { reply_to_id: replyId } : {}),
       } as any);
       await supabase.from("group_threads").update({ last_message_at: new Date().toISOString() } as any).eq("id", groupId);
     } catch {
@@ -351,9 +358,10 @@ const GroupChat = () => {
               key={msg.id}
               content={msg.content}
               messageId={msg.id}
+              authorName={authorProfile?.display_name || authorProfile?.username || "User"}
               isMine={isMine}
               isDeleted={!!isDeleted}
-              onReply={(text) => setNewMsg((prev) => `> ${text}\n${prev}`)}
+              onReply={(id, authorName, content) => setReplyingTo({ id, authorName, content })}
               onEdit={(id, content) => { setEditingId(id); setEditContent(content); }}
               onDeleteForMe={deleteForMe}
               onDeleteForEveryone={isMine ? deleteForEveryone : undefined}
@@ -368,8 +376,28 @@ const GroupChat = () => {
                 }
               }}
             >
-            <div className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
-              <div className="flex gap-2 max-w-[75%]">
+            <div id={`msg-${msg.id}`} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
+              <div className="flex gap-2 max-w-[75%] flex-col">
+                {msgAny.reply_to_id && (() => {
+                  const original = visibleMessages.find(m => m.id === msgAny.reply_to_id);
+                  const origProfile = original ? profiles.get(original.author_id) : null;
+                  const origName = origProfile?.display_name || origProfile?.username || "…";
+                  return (
+                    <ReplyPreview
+                      authorName={origName}
+                      content={original?.content || "…"}
+                      onClick={() => {
+                        const el = document.getElementById(`msg-${msgAny.reply_to_id}`);
+                        if (el) {
+                          el.scrollIntoView({ behavior: "smooth", block: "center" });
+                          setHighlightedMsgId(msgAny.reply_to_id);
+                          setTimeout(() => setHighlightedMsgId(null), 2000);
+                        }
+                      }}
+                    />
+                  );
+                })()}
+              <div className="flex gap-2">
                 {!isMine && (
                   <UserContextMenu targetUserId={msg.author_id} targetUsername={authorProfile?.username || undefined}>
                   <Avatar className="h-7 w-7 mt-1 shrink-0 cursor-pointer">
@@ -458,6 +486,7 @@ const GroupChat = () => {
                   )}
                 </div>
               </div>
+              </div>
             </div>
             </MessageContextMenu>
           );
@@ -491,6 +520,13 @@ const GroupChat = () => {
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedFile(null)}>
             <X className="h-3.5 w-3.5" />
           </Button>
+        </div>
+      )}
+
+      {/* Reply bar */}
+      {replyingTo && (
+        <div className="px-3 pt-2">
+          <ReplyInputBar authorName={replyingTo.authorName} onCancel={() => setReplyingTo(null)} />
         </div>
       )}
 
