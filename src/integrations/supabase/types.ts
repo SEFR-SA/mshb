@@ -484,7 +484,9 @@ export type Database = {
           banner_url: string | null
           color_theme: string | null
           created_at: string
+          date_of_birth: string | null
           display_name: string | null
+          gender: string | null
           id: string
           language: string | null
           last_seen: string | null
@@ -504,7 +506,9 @@ export type Database = {
           banner_url?: string | null
           color_theme?: string | null
           created_at?: string
+          date_of_birth?: string | null
           display_name?: string | null
+          gender?: string | null
           id?: string
           language?: string | null
           last_seen?: string | null
@@ -524,7 +528,9 @@ export type Database = {
           banner_url?: string | null
           color_theme?: string | null
           created_at?: string
+          date_of_birth?: string | null
           display_name?: string | null
+          gender?: string | null
           id?: string
           language?: string | null
           last_seen?: string | null

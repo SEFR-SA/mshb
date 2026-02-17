@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import type { Tables } from "@/integrations/supabase/types";
-import { format } from "date-fns";
+import { format, differenceInYears } from "date-fns";
 import StyledDisplayName from "@/components/StyledDisplayName";
 
 type Profile = Tables<"profiles">;
@@ -63,6 +63,23 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
           <StatusBadge status={status} size="sm" />
           <span className="text-sm capitalize">{t(`status.${statusLabel !== "offline" ? statusLabel : "invisible"}`)}</span>
         </div>
+
+        {/* Age & Gender */}
+        {(p.date_of_birth || p.gender) && (
+          <>
+            <Separator />
+            <div className="space-y-1">
+              {p.date_of_birth && (
+                <p className="text-sm">
+                  {differenceInYears(new Date(), new Date(p.date_of_birth))} {t("profile.yearsOld", "years old")}
+                </p>
+              )}
+              {p.gender && (
+                <p className="text-sm text-muted-foreground">{p.gender}</p>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Custom Status */}
         {profile.status_text && (
