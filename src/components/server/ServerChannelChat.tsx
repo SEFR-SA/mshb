@@ -22,6 +22,8 @@ import ChatInputActions from "@/components/chat/ChatInputActions";
 import MessageContextMenu from "@/components/chat/MessageContextMenu";
 import UserContextMenu from "@/components/chat/UserContextMenu";
 import StyledDisplayName from "@/components/StyledDisplayName";
+import ReplyPreview from "@/components/chat/ReplyPreview";
+import ReplyInputBar from "@/components/chat/ReplyInputBar";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
@@ -73,6 +75,8 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
   const [mentionStart, setMentionStart] = useState<number | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string; content: string } | null>(null);
+  const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
 
   const isLocked = isPrivate && hasAccess === false;
 
@@ -197,11 +201,14 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
         fileData = { file_url: url, file_name: file.name, file_type: file.type, file_size: file.size };
         setUploadProgress(null);
       }
+      const replyId = replyingTo?.id || null;
+      setReplyingTo(null);
       await supabase.from("messages").insert({
         channel_id: channelId,
         author_id: user.id,
         content,
         ...(fileData || {}),
+        ...(replyId ? { reply_to_id: replyId } : {}),
       } as any);
     } catch {
       setUploadProgress(null);
@@ -279,9 +286,10 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
               key={msg.id}
               content={msg.content}
               messageId={msg.id}
+              authorName={name}
               isMine={isMine}
               isDeleted={false}
-              onReply={(text) => setNewMsg((prev) => `> ${text}\n${prev}`)}
+              onReply={(id, authorName, content) => setReplyingTo({ id, authorName, content })}
               onDeleteForMe={async (id) => {
                 if (!user) return;
                 await supabase.from("message_hidden").insert({ user_id: user.id, message_id: id });
@@ -300,7 +308,28 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
                 }
               }}
             >
-            <div className={`flex gap-3 hover:bg-muted/30 rounded-lg px-2 py-1 -mx-2 transition-colors group ${isGrouped ? "mt-0.5" : idx === 0 ? "" : "mt-3"}`}>
+            <div id={`msg-${msg.id}`} className={`flex gap-3 hover:bg-muted/30 rounded-lg px-2 py-1 -mx-2 transition-colors group ${isGrouped ? "mt-0.5" : idx === 0 ? "" : "mt-3"} ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
+              {(msg as any).reply_to_id && (() => {
+                const original = messages.find(m => m.id === (msg as any).reply_to_id);
+                const origProfile = original ? profiles.get(original.author_id) : null;
+                const origName = origProfile?.display_name || origProfile?.username || "…";
+                return (
+                  <div className="col-span-full ms-12 -mb-1">
+                    <ReplyPreview
+                      authorName={origName}
+                      content={original?.content || "…"}
+                      onClick={() => {
+                        const el = document.getElementById(`msg-${(msg as any).reply_to_id}`);
+                        if (el) {
+                          el.scrollIntoView({ behavior: "smooth", block: "center" });
+                          setHighlightedMsgId((msg as any).reply_to_id);
+                          setTimeout(() => setHighlightedMsgId(null), 2000);
+                        }
+                      }}
+                    />
+                  </div>
+                );
+              })()}
               <UserContextMenu targetUserId={msg.author_id} targetUsername={p?.username || undefined}>
               <Avatar className="h-9 w-9 mt-0.5 shrink-0 cursor-pointer">
                 <AvatarImage src={p?.avatar_url || ""} />
@@ -341,6 +370,12 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
         )}
       </div>
 
+      {/* Reply bar */}
+      {replyingTo && (
+        <div className="px-3 pt-2">
+          <ReplyInputBar authorName={replyingTo.authorName} onCancel={() => setReplyingTo(null)} />
+        </div>
+      )}
       <div className="p-3 border-t border-border/50">
         {uploadProgress !== null && <Progress value={uploadProgress} className="mb-2 h-1" />}
         {selectedFile && (

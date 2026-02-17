@@ -350,4 +350,8 @@ export default {
     disconnect: "قطع الاتصال",
     disconnected: "تم قطع اتصال المستخدم من الصوت",
   },
+  reply: {
+    replyingTo: "الرد على {{name}}",
+    repliedTo: "رد على {{name}}",
+  },
 };

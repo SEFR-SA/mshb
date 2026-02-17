@@ -22,6 +22,8 @@ interface VoiceChannelContextType {
   setLocalCameraStream: (s: MediaStream | null) => void;
   remoteCameraStream: MediaStream | null;
   setRemoteCameraStream: (s: MediaStream | null) => void;
+  userVolumes: Record<string, number>;
+  setUserVolume: (userId: string, volume: number) => void;
 }
 
 const VoiceChannelContext = createContext<VoiceChannelContextType>({
@@ -40,6 +42,8 @@ const VoiceChannelContext = createContext<VoiceChannelContextType>({
   setLocalCameraStream: () => {},
   remoteCameraStream: null,
   setRemoteCameraStream: () => {},
+  userVolumes: {},
+  setUserVolume: () => {},
 });
 
 export const useVoiceChannel = () => useContext(VoiceChannelContext);
@@ -52,6 +56,11 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [localCameraStream, setLocalCameraStream] = useState<MediaStream | null>(null);
   const [remoteCameraStream, setRemoteCameraStream] = useState<MediaStream | null>(null);
+  const [userVolumes, setUserVolumes] = useState<Record<string, number>>({});
+
+  const setUserVolume = useCallback((userId: string, volume: number) => {
+    setUserVolumes((prev) => ({ ...prev, [userId]: volume }));
+  }, []);
 
   const disconnectVoice = useCallback(() => {
     setVoiceChannel(null);
@@ -61,10 +70,11 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
     setIsCameraOn(false);
     setLocalCameraStream(null);
     setRemoteCameraStream(null);
+    setUserVolumes({});
   }, []);
 
   return (
-    <VoiceChannelContext.Provider value={{ voiceChannel, setVoiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, screenSharerName, setScreenSharerName, isCameraOn, setIsCameraOn, localCameraStream, setLocalCameraStream, remoteCameraStream, setRemoteCameraStream }}>
+    <VoiceChannelContext.Provider value={{ voiceChannel, setVoiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, screenSharerName, setScreenSharerName, isCameraOn, setIsCameraOn, localCameraStream, setLocalCameraStream, remoteCameraStream, setRemoteCameraStream, userVolumes, setUserVolume }}>
       {children}
     </VoiceChannelContext.Provider>
   );

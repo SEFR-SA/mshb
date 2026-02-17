@@ -350,4 +350,8 @@ export default {
     disconnect: "Disconnect",
     disconnected: "User disconnected from voice",
   },
+  reply: {
+    replyingTo: "Replying to {{name}}",
+    repliedTo: "Replied to {{name}}",
+  },
 };

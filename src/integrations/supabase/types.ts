@@ -340,6 +340,7 @@ export type Database = {
           file_url: string | null
           group_thread_id: string | null
           id: string
+          reply_to_id: string | null
           thread_id: string | null
         }
         Insert: {
@@ -355,6 +356,7 @@ export type Database = {
           file_url?: string | null
           group_thread_id?: string | null
           id?: string
+          reply_to_id?: string | null
           thread_id?: string | null
         }
         Update: {
@@ -370,6 +372,7 @@ export type Database = {
           file_url?: string | null
           group_thread_id?: string | null
           id?: string
+          reply_to_id?: string | null
           thread_id?: string | null
         }
         Relationships: [
@@ -385,6 +388,13 @@ export type Database = {
             columns: ["group_thread_id"]
             isOneToOne: false
             referencedRelation: "group_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
           {

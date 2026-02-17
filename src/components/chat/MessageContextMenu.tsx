@@ -14,9 +14,10 @@ interface MessageContextMenuProps {
   children: React.ReactNode;
   content: string;
   messageId: string;
+  authorName?: string;
   isMine: boolean;
   isDeleted: boolean;
-  onReply?: (content: string) => void;
+  onReply?: (messageId: string, authorName: string, content: string) => void;
   onEdit?: (messageId: string, content: string) => void;
   onDeleteForMe?: (messageId: string) => void;
   onDeleteForEveryone?: (messageId: string) => void;
@@ -27,6 +28,7 @@ const MessageContextMenu = ({
   children,
   content,
   messageId,
+  authorName,
   isMine,
   isDeleted,
   onReply,
@@ -53,7 +55,7 @@ const MessageContextMenu = ({
           </ContextMenuItem>
         )}
         {!isDeleted && onReply && (
-          <ContextMenuItem onClick={() => onReply(content)}>
+          <ContextMenuItem onClick={() => onReply(messageId, authorName || "User", content)}>
             <Reply className="h-4 w-4 me-2" />
             {t("actions.reply")}
           </ContextMenuItem>
