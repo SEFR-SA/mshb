@@ -20,7 +20,9 @@ const InviteJoin = () => {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      navigate(`/auth?redirect=/invite/${code}`);
+      // Store invite code for post-login redirect
+      if (code) localStorage.setItem("pendingInvite", code);
+      navigate("/auth", { replace: true });
       return;
     }
     validateInvite();

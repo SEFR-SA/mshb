@@ -70,7 +70,14 @@ const Auth = () => {
     return () => clearTimeout(debounceRef.current);
   }, [username, mode]);
 
-  if (!loading && user) return <Navigate to="/" replace />;
+  if (!loading && user) {
+    const pendingInvite = localStorage.getItem("pendingInvite");
+    if (pendingInvite) {
+      localStorage.removeItem("pendingInvite");
+      return <Navigate to={`/invite/${pendingInvite}`} replace />;
+    }
+    return <Navigate to="/" replace />;
+  }
 
   const daysInMonth = dobMonth && dobYear
     ? new Date(Number(dobYear), MONTHS.indexOf(dobMonth) + 1, 0).getDate()
