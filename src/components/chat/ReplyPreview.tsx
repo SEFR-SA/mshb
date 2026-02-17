@@ -11,18 +11,30 @@ const ReplyPreview = ({ authorName, content, avatarUrl, onClick }: ReplyPreviewP
   const truncated = content.length > 80 ? content.slice(0, 80) + "…" : content;
 
   return (
-    <div className="flex items-center gap-0 ms-[4px] mb-[-2px]">
-      {/* Curved connector line */}
-      <div
-        className="shrink-0 self-end mb-[14px]"
-        style={{
-          width: 32,
-          height: 16,
-          borderLeft: "2px solid hsl(var(--muted-foreground) / 0.3)",
-          borderTop: "2px solid hsl(var(--muted-foreground) / 0.3)",
-          borderTopLeftRadius: 8,
-        }}
-      />
+    <div className="flex items-center gap-1 ms-[4px] mb-[-2px]">
+      {/* Reply arrow */}
+      <svg
+        className="shrink-0 text-muted-foreground/40 rtl:scale-x-[-1]"
+        width="18"
+        height="14"
+        viewBox="0 0 18 14"
+        fill="none"
+      >
+        <path
+          d="M7 1L1 7L7 13"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M1 7H12C14.2091 7 16 8.7909 16 11V13"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
       {/* Reply content row */}
       <div
         className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground/70 transition-colors min-w-0 py-0.5"
