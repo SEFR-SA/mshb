@@ -46,6 +46,7 @@ export default {
     settings: "Settings",
     profile: "Profile",
     friends: "Friends",
+    home: "Home",
   },
   inbox: {
     title: "Messages",
@@ -192,7 +193,10 @@ export default {
     activeNow: "Active Now",
     noActiveNow: "No one is active right now",
     addFriend: "Add Friend",
+    addFriendDescription: "You can add friends with their username.",
     removed: "Friend removed",
+    online: "Online",
+    blocked: "Blocked",
   },
   files: {
     tooLarge: "File is too large. Maximum size is 200 MB.",

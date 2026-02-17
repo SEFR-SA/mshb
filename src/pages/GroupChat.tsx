@@ -13,7 +13,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import GroupSettingsDialog from "@/components/GroupSettingsDialog";
-import ChatSidebar from "@/components/chat/ChatSidebar";
 import GroupMembersPanel from "@/components/chat/GroupMembersPanel";
 import FileAttachmentButton from "@/components/chat/FileAttachmentButton";
 import MessageFilePreview from "@/components/chat/MessageFilePreview";
@@ -572,15 +571,10 @@ const GroupChat = () => {
     </div>
   );
 
-  if (isMobile) {
-    return chatPanel;
-  }
-
   return (
     <div className="flex h-full overflow-hidden">
-      <ChatSidebar activeThreadId={groupId} />
       {chatPanel}
-      {showMembers && (
+      {!isMobile && showMembers && (
         <GroupMembersPanel
           profiles={profiles}
           memberRoles={memberRoles}

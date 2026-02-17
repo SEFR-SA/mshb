@@ -45,9 +45,7 @@ const AppLayout = () => {
   };
 
   const navItems = [
-    { to: "/", icon: MessageSquare, label: t("nav.inbox"), badge: totalUnread },
-    { to: "/friends", icon: Users, label: t("nav.friends"), badge: pendingCount },
-    
+    { to: "/", icon: MessageSquare, label: t("nav.home", "Home"), badge: totalUnread },
   ];
 
   const initials = (profile?.display_name || profile?.username || user?.email || "?")

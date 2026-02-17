@@ -15,7 +15,6 @@ import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import { formatDistanceToNow } from "date-fns";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
-import ChatSidebar from "@/components/chat/ChatSidebar";
 import UserProfilePanel from "@/components/chat/UserProfilePanel";
 import FileAttachmentButton from "@/components/chat/FileAttachmentButton";
 import MessageFilePreview from "@/components/chat/MessageFilePreview";
@@ -647,17 +646,10 @@ const Chat = () => {
     </div>
   );
 
-  // Mobile: just the chat panel
-  if (isMobile) {
-    return chatPanel;
-  }
-
-  // Desktop: 3-panel layout
   return (
     <div className="flex h-full overflow-hidden">
-      <ChatSidebar activeThreadId={threadId} />
       {chatPanel}
-      {showProfile && <UserProfilePanel profile={otherProfile} statusLabel={otherStatus} />}
+      {!isMobile && showProfile && <UserProfilePanel profile={otherProfile} statusLabel={otherStatus} />}
     </div>
   );
 };

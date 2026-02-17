@@ -234,27 +234,14 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
             <button
               onClick={() => { navigate("/"); onNavigate?.(); }}
               className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
-                location.pathname === "/" || location.pathname.startsWith("/chat/") || location.pathname.startsWith("/group/")
+                location.pathname === "/" || location.pathname === "/friends" || location.pathname.startsWith("/chat/") || location.pathname.startsWith("/group/")
                   ? "bg-primary text-primary-foreground rounded-xl"
                   : "bg-sidebar-accent/30 text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
               }`}
             >
-              <MessageSquare className="h-5 w-5" />
-            </button>
-          </TooltipTrigger>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => { navigate("/friends"); onNavigate?.(); }}
-              className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
-                location.pathname === "/friends"
-                  ? "bg-primary text-primary-foreground rounded-xl"
-                  : "bg-sidebar-accent/30 text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
-              }`}
-            >
-              <Users className="h-5 w-5" />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.73 4.87l-3.01-.75c-.1-.03-.2.01-.26.08L14.84 6.3c-2.12-.7-4.56-.7-6.68 0L6.54 4.2a.24.24 0 0 0-.26-.08l-3.01.75a.24.24 0 0 0-.17.19 16.76 16.76 0 0 0 1.51 11.85c.08.14.25.16.36.06l2.6-2.33c.67.52 1.44.94 2.27 1.23l-.42 3.28c-.02.12.07.23.19.25l3.04.47a.24.24 0 0 0 .27-.18l.9-3.12a10 10 0 0 0 2.36 0l.9 3.12a.24.24 0 0 0 .27.18l3.04-.47a.24.24 0 0 0 .19-.25l-.42-3.28c.83-.29 1.6-.71 2.27-1.23l2.6 2.33c.11.1.28.08.36-.06A16.76 16.76 0 0 0 19.9 5.06a.24.24 0 0 0-.17-.19zM9 13.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+              </svg>
             </button>
           </TooltipTrigger>
         </Tooltip>
