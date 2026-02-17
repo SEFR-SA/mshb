@@ -1,29 +1,43 @@
 
 
-## Plan
+## Registration Page Update and Profile Enhancements
 
-### 1. Update PWA Icons
-Copy the new favicon image to `public/icon-192.png` and `public/icon-512.png` so the PWA icons match the new favicon.
+### Overview
+Redesign the signup form to include additional fields (Display Name, Date of Birth, Gender) and add a password visibility toggle. Then display calculated age and gender on the user profile panel.
 
-### 2. Dynamic Font-Weight for Text Channels
-Update the text channel rendering in `ChannelSidebar.tsx` (around line 676-683). The existing `unreadSet` hook already tracks unread state. Change the styling to:
-- **Unread**: `font-bold text-white` (font-weight 700, bright white)
-- **Read/normal**: `font-medium text-[#949BA4]` (font-weight 500, muted Discord-style gray)
-- **Hover on muted**: `hover:text-[#DBDEE1]` (slightly brighter on hover, matching Discord)
-- **Active channel**: keep existing active styling with bold weight
+### 1. Database Migration
+Add two new columns to the `profiles` table:
+- `date_of_birth` (date, nullable) -- stores the user's birthday
+- `gender` (text, nullable) -- stores "Male" or "Female"
 
-### 3. Dynamic Font-Weight for Voice Channels
-Update the voice channel button (around line 622-628). The existing `voiceParticipants` map already tracks participants per channel. Change styling to:
-- **Has participants**: `font-bold text-white` (font-weight 700, bright)
-- **Empty**: `font-medium text-[#949BA4]` (font-weight 500, muted)
-- **Hover on muted**: `hover:text-[#DBDEE1]`
+Update the `handle_new_user()` trigger function to populate these fields from signup metadata.
+
+### 2. Update Auth Context (`src/contexts/AuthContext.tsx`)
+Expand the `signUp` function signature to accept optional `displayName`, `dateOfBirth`, and `gender` parameters, passing them as user metadata so the trigger can pick them up.
+
+### 3. Redesign Signup Form (`src/pages/Auth.tsx`)
+Reorder and add fields in this exact sequence:
+1. **Email** -- mandatory, text input
+2. **Display Name** -- optional, text input
+3. **Username** -- mandatory, with existing duplicate-check logic (debounced query showing taken/available status)
+4. **Password** -- mandatory, with eye icon toggle to show/hide, plus PasswordStrengthBar
+5. **Confirm Password** -- mandatory, with eye icon toggle
+6. **Date of Birth** -- three dropdowns: Month (Jan-Dec), Day (1-31), Year (reasonable range)
+7. **Gender** -- dropdown with "Male" and "Female" options
+
+New state variables: `displayName`, `dobMonth`, `dobDay`, `dobYear`, `gender`, `showPassword`, `showConfirmPassword`.
+
+### 4. Update User Profile Panel (`src/components/chat/UserProfilePanel.tsx`)
+- Calculate age from `date_of_birth` using date-fns `differenceInYears`
+- Display age (e.g., "23 years old") and gender in the profile card, between the status section and "About Me" section
 
 ### Technical Details
 
 **Files modified:**
-- `public/icon-192.png` -- copied from new favicon
-- `public/icon-512.png` -- copied from new favicon
-- `src/components/server/ChannelSidebar.tsx` -- update className logic on lines ~622-628 (voice) and ~676-683 (text)
+- Database migration: add `date_of_birth` and `gender` columns, update trigger
+- `src/contexts/AuthContext.tsx` -- expand signUp params and metadata
+- `src/pages/Auth.tsx` -- reorder form, add new fields, add password eye toggles
+- `src/components/chat/UserProfilePanel.tsx` -- show age and gender
 
-No database changes needed -- the existing `useChannelUnread` hook and `voiceParticipants` state already provide the required data via realtime subscriptions.
+**No new dependencies needed** -- uses existing lucide-react icons (Eye, EyeOff) and date-fns.
 
