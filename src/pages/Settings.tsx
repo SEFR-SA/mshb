@@ -23,6 +23,12 @@ const DURATIONS = ["15m", "1h", "8h", "24h", "3d", "forever"] as const;
 const DURATION_MINUTES: Record<string, number | null> = {
   "15m": 15, "1h": 60, "8h": 480, "24h": 1440, "3d": 4320, forever: null
 };
+const MONTHS = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: 100 }, (_, i) => currentYear - i);
 
 const Settings = () => {
   const { t, i18n } = useTranslation();
@@ -43,6 +49,10 @@ const Settings = () => {
   const [gradientStart, setGradientStart] = useState("");
   const [gradientEnd, setGradientEnd] = useState("");
   const [selectedFont, setSelectedFont] = useState<FontStyle>("Normal");
+  const [dobMonth, setDobMonth] = useState("");
+  const [dobDay, setDobDay] = useState("");
+  const [dobYear, setDobYear] = useState("");
+  const [gender, setGender] = useState("");
 
   const p = profile as any;
 
@@ -70,6 +80,13 @@ const Settings = () => {
       setStatus((profile as any).status as UserStatus || "online");
       setGradientStart(p?.name_gradient_start || "");
       setGradientEnd(p?.name_gradient_end || "");
+      if (p?.date_of_birth) {
+        const d = new Date(p.date_of_birth);
+        setDobMonth(MONTHS[d.getMonth()]);
+        setDobDay(String(d.getDate()));
+        setDobYear(String(d.getFullYear()));
+      }
+      setGender(p?.gender || "");
       if (p?.color_theme) {
         setColorTheme(p.color_theme);
         if (p.color_theme.startsWith("custom:")) {
@@ -92,6 +109,12 @@ const Settings = () => {
       }
     }
 
+    let dateOfBirth: string | null = null;
+    if (dobMonth && dobDay && dobYear) {
+      const monthIdx = MONTHS.indexOf(dobMonth) + 1;
+      dateOfBirth = `${dobYear}-${String(monthIdx).padStart(2, "0")}-${String(Number(dobDay)).padStart(2, "0")}`;
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update({
@@ -106,6 +129,8 @@ const Settings = () => {
         color_theme: colorTheme,
         name_gradient_start: gradientStart || null,
         name_gradient_end: gradientEnd || null,
+        date_of_birth: dateOfBirth,
+        gender: gender || null,
       } as any)
       .eq("user_id", user.id);
 
@@ -266,6 +291,49 @@ const Settings = () => {
               maxLength={500}
             />
             <p className="text-xs text-muted-foreground text-end">{aboutMe.length}/500</p>
+          </div>
+
+          {/* Date of Birth */}
+          <div className="space-y-2">
+            <Label>Date of Birth</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Select value={dobMonth} onValueChange={setDobMonth}>
+                <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+                <SelectContent className="bg-popover">
+                  {MONTHS.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={dobDay} onValueChange={setDobDay}>
+                <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
+                <SelectContent className="bg-popover">
+                  {Array.from({ length: dobMonth && dobYear ? new Date(Number(dobYear), MONTHS.indexOf(dobMonth) + 1, 0).getDate() : 31 }, (_, i) => i + 1).map((d) => (
+                    <SelectItem key={d} value={String(d)}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={dobYear} onValueChange={setDobYear}>
+                <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+                <SelectContent className="bg-popover">
+                  {YEARS.map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Gender */}
+          <div className="space-y-2">
+            <Label>Gender</Label>
+            <Select value={gender} onValueChange={setGender}>
+              <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+              <SelectContent className="bg-popover">
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
