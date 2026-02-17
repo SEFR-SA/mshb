@@ -1,114 +1,112 @@
 
-
-## Refactor to Discord "Home" Layout Architecture
+## Mobile UI Refactor: Discord-style Hierarchical Navigation
 
 ### Overview
 
-Transform the current navigation from separate "Messages" and "Friends" buttons with independent pages into a unified Discord-style "Home" layout where clicking the Home button in the Server Rail reveals a sub-sidebar containing a "Friends" link and the DM list, while the main content area switches between the Friends Dashboard and individual chat views.
+Transform the mobile layout (screens under 768px) from the current hamburger-menu approach into a hierarchical navigation flow matching the Discord mobile app screenshots provided.
 
 ---
 
-### Current Architecture (What Changes)
+### Current Mobile Behavior (What Changes)
+
+- **AppLayout.tsx**: Shows a top header with a hamburger menu (opens ServerRail in a Sheet) + bottom nav with Home and Profile tabs. The hamburger approach is not aligned with the Discord mobile layout.
+- **HomeView.tsx**: On mobile, just renders `<Outlet />` with no sidebar -- no ServerRail, no Friends button, no DM list visible.
+- **ServerView.tsx**: On mobile, shows the channel chat with Sheet drawers for ChannelSidebar and MemberList.
+- **Chat.tsx**: Has a back button to "/" but no visible ServerRail alongside.
+
+### New Mobile Architecture
 
 ```text
-Current:
-[ServerRail] -> [Main Content Area via Outlet]
-  - ServerRail has: Home (Messages) button + Friends button + Servers
-  - "/" route renders Inbox.tsx (full-page DM list, auto-redirects to last DM on desktop)
-  - "/friends" route renders Friends.tsx (includes its own ChatSidebar + ActiveNowPanel)
-  - "/chat/:id" route renders Chat.tsx (includes its own ChatSidebar)
-  - Each page independently includes ChatSidebar
+Home View (/ route):
+  [ServerRail (72px)] | [Main Area: Search + Friends button + DM list]
+  Bottom nav: Home | You
 
-New (Discord-style):
-[ServerRail] -> [HomeSidebar] -> [Content Area]
-  - ServerRail has: Home button (single) + Servers (no separate Friends button)
-  - Home button activates a persistent HomeSidebar containing:
-    - "Friends" nav item at top
-    - DM thread list below
-  - When "Friends" is selected: Content shows FriendsDashboard with tabs (Online, All, Pending, Blocked, Add Friend)
-  - When a DM is selected: Content shows Chat view
-  - ActiveNowPanel appears on the right ONLY when FriendsDashboard is active
+Friends View (/friends route):
+  [Full-page FriendsDashboard with back nav]
+  Tabs: Online | All | Pending | Blocked
+  Alphabetical headers in All tab
+  FAB for Add Friend
+  Bottom nav: Home | You
+
+DM Chat View (/chat/:id):
+  [Full-page chat with back button header]
+  Back button returns to Home (/)
+
+Server Page (/server/:id):
+  [ServerRail (72px)] | [ChannelSidebar (rest of width)]
+  Bottom nav: Home | You
+
+Channel Chat (/server/:id/channel/:id):
+  [Full-page channel chat with back button]
+  Back returns to Server Page (/server/:id)
 ```
 
 ---
 
 ### Changes
 
-#### 1. Routes (`App.tsx`)
+#### 1. `AppLayout.tsx` -- Remove hamburger, show ServerRail inline on mobile
 
-- Remove the separate `/friends` route
-- Keep `/` as the Home route, but render a new `HomeView` component instead of `Inbox`
-- Keep `/chat/:threadId` and `/group/:groupId` rendering through `HomeView` so the sidebar persists
-- New route structure under `/`:
-  - `/` (index) -- shows FriendsDashboard by default
-  - `/friends` -- also shows FriendsDashboard (kept as alias)
-  - `/chat/:threadId` -- shows Chat with persistent sidebar
-  - `/group/:groupId` -- shows GroupChat with persistent sidebar
+- Remove the mobile top header with hamburger menu and Sheet drawer entirely
+- Remove the `{!isMobile && <ServerRail />}` guard -- ServerRail now renders on mobile too, BUT only on Home and Server routes (controlled by child components)
+- Actually, keep ServerRail rendering unconditionally; child views will decide if they show it
+- Simplify mobile bottom nav to just "Home" and "You" (profile) tabs matching the Discord screenshots
+- The bottom nav should use the friends icon (like Discord's paw icon) for Home with unread badge, and the user's avatar for "You"
 
-#### 2. Server Rail (`ServerRail.tsx`)
+#### 2. `HomeView.tsx` -- Show ServerRail + DM list side by side on mobile
 
-- Remove the separate "Friends" button (the Users icon button at line 247-260)
-- Update the Home button to be active for `/`, `/friends`, `/chat/*`, `/group/*` routes
-- Style the Home button with a Discord-shaped icon (a stylized controller/home shape using an SVG, transitioning from rounded-2xl to rounded-xl on active/hover like servers do)
+Currently on mobile it just renders `<Outlet />`. Change to:
+- Render `ServerRail` (72px) on the left + main content area on the right
+- Main content area shows: Search bar + "Friends" button (full width, prominent) + scrollable DM thread list
+- This matches the "Home.png" screenshot: ServerRail visible on the left, Friends button + DM list on the right
+- When a DM is tapped, navigate to `/chat/:id` which renders full-page (no sidebar)
+- Reuse the DM list logic already in `HomeSidebar.tsx` but adapt for mobile layout
 
-#### 3. New Component: `HomeSidebar.tsx`
+#### 3. `FriendsDashboard.tsx` -- Full-page on mobile, hide ServerRail
 
-A persistent sidebar (w-60) shown when the Home section is active. Contains:
-- **Header**: "Direct Messages" title with a "+" button to create new DM/group
-- **Friends nav item**: A clickable row at the top with a Users icon and "Friends" text. Shows pending count badge. Links to `/friends` (or `/`).
-- **Search bar**: For searching users to start DMs
-- **DM thread list**: The existing ChatSidebar thread list (pinned section, DM items with avatars, status badges, last message preview, unread counts, hover states)
-- **Bottom user panel**: Avatar, name, mute/deafen buttons, settings gear (moved from ChatSidebar)
-- This replaces the current `ChatSidebar` for the Home context
+- On mobile, render as a full-page view (no ServerRail visible)
+- Add a header with back button or rely on bottom nav to go Home
+- Add tabs: Online, All, Pending, Blocked
+- **All tab enhancement**: Sort friends alphabetically and insert letter headers (A, B, C...)
+- Add a floating action button (circular, bottom-right) for "Add Friend" that triggers the add friend inline section or opens a modal
+- Bottom nav still visible
 
-#### 4. New Component: `FriendsDashboard.tsx`
+#### 4. `Chat.tsx` -- Full-page with back button header
 
-The main content when Friends is active. Contains:
-- **Top header bar**: "Friends" title + tab buttons: Online, All, Pending, Blocked + "Add Friend" button (green, prominent)
-- **Online tab**: Shows only online friends (filtered by presence status)
-- **All tab**: Shows all accepted friends with status badges
-- **Pending tab**: Shows incoming/outgoing requests with accept/reject buttons
-- **Blocked tab**: Shows blocked users (new -- uses existing block functionality if available, or placeholder)
-- **Add Friend button**: When clicked, switches to an inline search/input area (not a modal) at the top of the content, with a text input "You can add friends with their username" and a "Send Friend Request" button
-- All friend data/logic extracted from current `Friends.tsx`
+- Already has a back button on mobile going to `/`. This is correct.
+- The header should match the DMs screenshot: back arrow (with unread badge on the arrow area), avatar, username, call/video buttons
+- Ensure no ServerRail is shown (it's hidden because HomeView doesn't render on this route when navigating)
 
-#### 5. New Component: `HomeView.tsx`
+Wait -- actually, the route structure is: HomeView wraps Chat. So we need HomeView to NOT render the ServerRail when showing a chat on mobile.
 
-A layout wrapper rendered at the Home route level. Structure:
-```text
-[HomeSidebar (w-60)] | [Content (flex-1)] | [ActiveNowPanel (w-[280px], conditional)]
-```
-- `HomeSidebar` is always visible (desktop) or in a drawer (mobile)
-- Content area renders either `FriendsDashboard` or `Outlet` (for Chat/GroupChat)
-- `ActiveNowPanel` only shows when FriendsDashboard is the active content (not during DM chats)
-- On mobile: HomeSidebar is hidden, content takes full width, bottom nav shows Home/Friends/Profile
+**Revised approach for HomeView mobile:**
+- Check if the current path is exactly `/` or `/friends` -- show ServerRail + DM list
+- If path is `/chat/:id` or `/group/:id` -- render just the Outlet (full-page chat)
+- This way, when viewing a DM chat, it's full-screen with back button
 
-#### 6. Update `AppLayout.tsx`
+#### 5. `ServerView.tsx` -- Two-phase mobile layout
 
-- Remove the Friends nav item from mobile bottom nav (replace with single Home)
-- The Home route now renders `HomeView` which handles its own sidebar layout
-- Mobile bottom nav: Home (links to `/`), Profile (links to `/settings`)
+**Phase 1 - Server Page** (when no channelId or when showing channel list):
+- Show ServerRail (72px) on left + ChannelSidebar filling the rest
+- Matches "Server_Page.png": ServerRail visible with channel list
+- Bottom nav visible
 
-#### 7. Update `Chat.tsx`
+**Phase 2 - Channel Chat** (when channelId is selected):
+- Full-page channel chat view (no ServerRail, no ChannelSidebar)
+- Header with back button + "#channel-name" + online count
+- Back button navigates to `/server/:serverId` (removes channelId, shows Phase 1)
+- Matches "Server_Chatting.png"
 
-- Remove the `ChatSidebar` import and rendering -- the sidebar is now provided by `HomeView`
-- Chat becomes a pure content component (messages + input only)
-- Remove the `UserProfilePanel` toggling from Chat header or keep it as a slide-over
+#### 6. `ServerRail.tsx` -- No changes needed for mobile rendering
 
-#### 8. Update `GroupChat.tsx`
+The ServerRail component itself stays the same. The parent components decide when to show it.
 
-- Same as Chat -- remove `ChatSidebar`, become a pure content component
+#### 7. Bottom Navigation Bar
 
-#### 9. Remove/Deprecate
-
-- `Inbox.tsx` -- replaced by `HomeView` + `FriendsDashboard`. Can be deleted.
-- `Friends.tsx` -- replaced by `FriendsDashboard`. Can be deleted.
-- `ChatSidebar.tsx` -- replaced by `HomeSidebar`. Can be deleted after migrating all logic.
-
-#### 10. i18n Updates (`en.ts`, `ar.ts`)
-
-- Add keys: `nav.home`, `friends.online`, `friends.blocked`, `friends.addFriend`, `friends.addFriendDescription`
-- Keep existing keys that are still used
+Consistent across Home and Server views on mobile:
+- **Home** tab: Uses a friends/paw icon with unread badge. Links to `/`.
+- **You** tab: Shows user avatar with status badge. Links to `/settings`.
+- Styled to match Discord: dark background, minimal, two-tab layout
 
 ---
 
@@ -116,28 +114,23 @@ A layout wrapper rendered at the Home route level. Structure:
 
 | Area | Detail |
 |---|---|
-| Route structure | Nested routes: `/ -> HomeView` with children `index -> FriendsDashboard`, `friends -> FriendsDashboard`, `chat/:id -> Chat`, `group/:id -> GroupChat` |
-| Sidebar persistence | `HomeSidebar` renders once in `HomeView`, `Outlet` swaps only the content area |
-| ActiveNowPanel visibility | Conditionally rendered in `HomeView` based on `location.pathname === "/" or "/friends"` |
-| Home button style | SVG Discord logo shape (simplified), transitions `rounded-2xl -> rounded-xl` on hover/active, green highlight when active |
-| Mobile | HomeSidebar hidden; bottom nav has Home + Profile; tapping Home goes to FriendsDashboard; tapping a DM navigates to full-screen Chat |
-| Friends tabs | Online tab filters friends by `getUserStatus(profile) !== "offline"`; Blocked tab is a new addition (queries a `blocked_users` table if exists, or shows placeholder) |
-| Add Friend | Inline section at top of content area (not a modal), matching Discord's "ADD FRIEND" green bar with username input |
+| HomeView mobile | Conditionally render ServerRail + DM list OR just Outlet based on current path |
+| FriendsDashboard All tab | Sort friends alphabetically, group by first letter, render letter headers |
+| FriendsDashboard Add Friend | Circular FAB button (bottom-right) opening add friend section |
+| ServerView mobile | Two-phase: no channelId = ServerRail + ChannelSidebar; with channelId = full-page chat |
+| Chat/GroupChat header | Back arrow with unread badge indicator, avatar, username, action buttons |
+| Bottom nav | Rendered in AppLayout, 2 tabs: Home (friends icon) + You (avatar) |
+| Back navigation | Chat back goes to "/", Channel chat back goes to "/server/:serverId" |
 
 ### Files Summary
 
 | Action | File |
 |---|---|
-| Create | `src/components/layout/HomeSidebar.tsx` |
-| Create | `src/pages/FriendsDashboard.tsx` |
-| Create | `src/pages/HomeView.tsx` |
-| Modify | `src/App.tsx` -- restructure routes |
-| Modify | `src/components/layout/AppLayout.tsx` -- simplify mobile nav |
-| Modify | `src/components/server/ServerRail.tsx` -- remove Friends button, update Home button |
-| Modify | `src/pages/Chat.tsx` -- remove ChatSidebar |
-| Modify | `src/pages/GroupChat.tsx` -- remove ChatSidebar |
-| Modify | `src/i18n/en.ts` -- add new keys |
-| Modify | `src/i18n/ar.ts` -- add new keys |
-| Delete | `src/pages/Inbox.tsx` (logic moved to HomeSidebar) |
-| Delete | `src/pages/Friends.tsx` (logic moved to FriendsDashboard) |
-
+| Modify | `src/components/layout/AppLayout.tsx` -- remove mobile hamburger header, simplify bottom nav to 2 tabs |
+| Modify | `src/pages/HomeView.tsx` -- on mobile: show ServerRail + search + Friends btn + DM list for root paths; full-page Outlet for chat paths |
+| Modify | `src/pages/FriendsDashboard.tsx` -- mobile-specific layout: full-page, alphabetical headers in All tab, FAB for add friend |
+| Modify | `src/pages/ServerView.tsx` -- mobile two-phase: ServerRail + ChannelSidebar vs full-page channel chat |
+| Modify | `src/pages/Chat.tsx` -- enhance mobile header to match Discord DM screenshot style |
+| Modify | `src/pages/GroupChat.tsx` -- same mobile header enhancements |
+| Modify | `src/i18n/en.ts` -- add any new translation keys |
+| Modify | `src/i18n/ar.ts` -- add any new translation keys |
