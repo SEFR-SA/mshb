@@ -9,9 +9,9 @@ import { AudioSettingsProvider } from "@/contexts/AudioSettingsContext";
 import { VoiceChannelProvider } from "@/contexts/VoiceChannelContext";
 import AppLayout from "@/components/layout/AppLayout";
 import Auth from "@/pages/Auth";
-import Inbox from "@/pages/Inbox";
+import HomeView from "@/pages/HomeView";
+import FriendsDashboard from "@/pages/FriendsDashboard";
 import Chat from "@/pages/Chat";
-import Friends from "@/pages/Friends";
 import GroupChat from "@/pages/GroupChat";
 import Settings from "@/pages/Settings";
 import ServerView from "@/pages/ServerView";
@@ -40,10 +40,12 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-                <Route index element={<Inbox />} />
-                <Route path="chat/:threadId" element={<Chat />} />
-                <Route path="friends" element={<Friends />} />
-                <Route path="group/:groupId" element={<GroupChat />} />
+                <Route element={<HomeView />}>
+                  <Route index element={<FriendsDashboard />} />
+                  <Route path="friends" element={<FriendsDashboard />} />
+                  <Route path="chat/:threadId" element={<Chat />} />
+                  <Route path="group/:groupId" element={<GroupChat />} />
+                </Route>
                 <Route path="server/:serverId" element={<ServerView />} />
                 <Route path="server/:serverId/channel/:channelId" element={<ServerView />} />
                 <Route path="settings" element={<Settings />} />

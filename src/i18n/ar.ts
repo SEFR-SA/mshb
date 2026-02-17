@@ -46,6 +46,7 @@ export default {
     settings: "الإعدادات",
     profile: "الملف الشخصي",
     friends: "الأصدقاء",
+    home: "الرئيسية",
   },
   inbox: {
     title: "الرسائل",
@@ -192,7 +193,10 @@ export default {
     activeNow: "نشط الآن",
     noActiveNow: "لا يوجد أحد نشط الآن",
     addFriend: "إضافة صديق",
+    addFriendDescription: "يمكنك إضافة أصدقاء باستخدام اسم المستخدم الخاص بهم.",
     removed: "تمت إزالة الصديق",
+    online: "متصل",
+    blocked: "محظور",
   },
   files: {
     tooLarge: "الملف كبير جداً. الحد الأقصى هو ٢٠٠ ميغابايت.",
