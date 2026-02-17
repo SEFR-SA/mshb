@@ -10,11 +10,12 @@ import ServerChannelChat from "@/components/server/ServerChannelChat";
 import ServerMemberList from "@/components/server/ServerMemberList";
 import ScreenShareViewer from "@/components/server/ScreenShareViewer";
 import CameraViewer from "@/components/server/CameraViewer";
+import ServerRail from "@/components/server/ServerRail";
 
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
-import { Menu, Users } from "lucide-react";
+import { Menu, Users, ArrowLeft } from "lucide-react";
 
 const ServerView = () => {
   const { serverId, channelId } = useParams<{ serverId: string; channelId?: string }>();
@@ -33,7 +34,6 @@ const ServerView = () => {
   useEffect(() => {
     if (!activeChannel || !user) { setHasAccess(true); return; }
     if (!activeChannel.is_private) { setHasAccess(true); return; }
-    // Check if user is in channel_members
     supabase.from("channel_members" as any)
       .select("id")
       .eq("channel_id", activeChannel.id)
@@ -52,6 +52,11 @@ const ServerView = () => {
         .then(({ data }) => { if (data) setActiveChannel(data as any); });
       return;
     }
+    // On mobile without channelId, don't auto-navigate — show channel list
+    if (isMobile) {
+      setActiveChannel(null);
+      return;
+    }
     supabase.from("channels" as any).select("id, name, type, is_private").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
       .then(({ data }) => {
         if (data && (data as any[]).length > 0) {
@@ -59,11 +64,15 @@ const ServerView = () => {
           navigate(`/server/${serverId}/channel/${ch.id}`, { replace: true });
         }
       });
-  }, [serverId, channelId, navigate]);
+  }, [serverId, channelId, navigate, isMobile]);
 
   const handleChannelSelect = (channel: { id: string; name: string; type: string; is_private?: boolean }) => {
     if (channel.type !== "voice") {
       setActiveChannel(channel);
+      // On mobile, navigate to the channel route for full-page chat
+      if (isMobile) {
+        navigate(`/server/${serverId}/channel/${channel.id}`);
+      }
     }
   };
 
@@ -78,7 +87,7 @@ const ServerView = () => {
 
   const joinVoiceChannel = (channel: { id: string; name: string }) => {
     setVoiceCtx({ id: channel.id, name: channel.name, serverId: serverId! });
-    if (!activeChannel && serverId) {
+    if (!activeChannel && serverId && !isMobile) {
       supabase.from("channels" as any).select("id, name, type, is_private").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
         .then(({ data }) => {
           if (data && (data as any[]).length > 0) {
@@ -91,9 +100,7 @@ const ServerView = () => {
   };
 
   const confirmSwitch = async () => {
-    // Disconnect current voice first
     disconnectVoice();
-    // Small delay to let cleanup happen
     await new Promise(r => setTimeout(r, 100));
     if (pendingVoiceChannel) {
       joinVoiceChannel(pendingVoiceChannel);
@@ -132,36 +139,49 @@ const ServerView = () => {
     </AlertDialog>
   );
 
+  // Mobile layout
   if (isMobile) {
+    // Phase 2: Channel chat (full-page)
+    if (channelId && activeChannel) {
+      return (
+        <>
+          <div className="flex flex-col h-full">
+            <header className="flex items-center gap-2 p-2 border-b border-border/50 glass">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/server/${serverId}`)}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-medium flex-1 truncate">#{activeChannel.name}</span>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8"><Users className="h-4 w-4" /></Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="p-0 w-[280px]">
+                  <ServerMemberList serverId={serverId} />
+                </SheetContent>
+              </Sheet>
+            </header>
+            <div className="flex-1 min-h-0">{renderMainContent()}</div>
+          </div>
+          {switchDialog}
+        </>
+      );
+    }
+
+    // Phase 1: Server page (ServerRail + ChannelSidebar)
     return (
       <>
-        <div className="flex flex-col h-full">
-          <div className="flex items-center gap-1 p-2 border-b border-border/50">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8"><Menu className="h-4 w-4" /></Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="p-0 w-[280px]">
-                <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
-              </SheetContent>
-            </Sheet>
-            <span className="text-sm font-medium flex-1 truncate">#{activeChannel?.name || "..."}</span>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8"><Users className="h-4 w-4" /></Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="p-0 w-[280px]">
-                <ServerMemberList serverId={serverId} />
-              </SheetContent>
-            </Sheet>
+        <div className="flex h-full">
+          <ServerRail />
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
           </div>
-          <div className="flex-1 min-h-0">{renderMainContent()}</div>
         </div>
         {switchDialog}
       </>
     );
   }
 
+  // Desktop layout
   return (
     <>
       <div className="flex h-full">

@@ -32,7 +32,11 @@ interface InboxItem {
   memberCount?: number;
 }
 
-const HomeSidebar = () => {
+interface HomeSidebarProps {
+  isMobileExpanded?: boolean;
+}
+
+const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { getUserStatus } = usePresence();
@@ -290,18 +294,50 @@ const HomeSidebar = () => {
     ? location.pathname.split("/group/")[1]
     : undefined;
 
+  const renderThreadItem = (item: InboxItem) => {
+    const isActive = item.id === activeThreadId;
+    return (
+      <ThreadContextMenu
+        key={item.id}
+        isPinned={pinnedIds.has(item.id)}
+        onTogglePin={() => togglePinItem(item.id, item.type)}
+        onMarkAsRead={() => markAsRead(item.id, item.type)}
+      >
+        <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
+          className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
+          <div className="relative shrink-0">
+            <Avatar className={isMobileExpanded ? "h-10 w-10" : "h-8 w-8"}>
+              <AvatarImage src={item.avatarUrl} />
+              <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                {item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <p className={`font-medium truncate ${isMobileExpanded ? "text-base" : "text-sm"}`}>{item.name}</p>
+              {item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
+            </div>
+            <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
+          </div>
+        </button>
+      </ThreadContextMenu>
+    );
+  };
+
   return (
-    <div className="flex flex-col h-full w-60 border-e border-border/50 bg-sidebar-background/50 backdrop-blur-sm shrink-0">
+    <div className={`flex flex-col h-full ${isMobileExpanded ? "flex-1" : "w-60"} border-e border-border/50 bg-sidebar-background/50 backdrop-blur-sm shrink-0`}>
       {/* Friends nav item */}
       <div className="p-2">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/friends")}
           className={`flex items-center gap-3 w-full p-2 rounded-md transition-colors ${
             isFriendsActive ? "bg-muted" : "hover:bg-muted/50"
           }`}
         >
           <Users className="h-5 w-5" />
-          <span className="text-sm font-medium">{t("nav.friends")}</span>
+          <span className={`font-medium ${isMobileExpanded ? "text-base" : "text-sm"}`}>{t("nav.friends")}</span>
           {pendingCount > 0 && (
             <span className="ms-auto inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1">
               {pendingCount}
@@ -342,7 +378,7 @@ const HomeSidebar = () => {
               onClick={() => startDM(p.user_id)}
               className="flex items-center gap-2 w-full p-1.5 rounded-md hover:bg-muted/50 transition-colors text-start"
             >
-              <Avatar className="h-8 w-8">
+              <Avatar className={isMobileExpanded ? "h-10 w-10" : "h-8 w-8"}>
                 <AvatarImage src={p.avatar_url || ""} />
                 <AvatarFallback className="bg-primary/20 text-primary text-xs">
                   {(p.display_name || p.username || "?").charAt(0).toUpperCase()}
@@ -369,103 +405,55 @@ const HomeSidebar = () => {
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2 pb-1 flex items-center gap-1">
                   <Pin className="h-3 w-3" /> {t("chat.pinned")}
                 </p>
-                {items.filter((item) => pinnedIds.has(item.id)).map((item) => {
-                  const isActive = item.id === activeThreadId;
-                  return (
-                    <ThreadContextMenu
-                      key={item.id}
-                      isPinned={true}
-                      onTogglePin={() => togglePinItem(item.id, item.type)}
-                      onMarkAsRead={() => markAsRead(item.id, item.type)}
-                    >
-                    <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
-                      className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
-                      <div className="relative shrink-0">
-                        <Avatar className="h-8 w-8"><AvatarImage src={item.avatarUrl} /><AvatarFallback className="bg-primary/20 text-primary text-xs">{item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
-                        {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium truncate">{item.name}</p>
-                          {item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
-                      </div>
-                    </button>
-                    </ThreadContextMenu>
-                  );
-                })}
+                {items.filter((item) => pinnedIds.has(item.id)).map(renderThreadItem)}
                 <div className="border-b border-border/30 my-1" />
               </>
             )}
-            {items.filter((item) => !pinnedIds.has(item.id)).map((item) => {
-              const isActive = item.id === activeThreadId;
-              return (
-                <ThreadContextMenu
-                  key={item.id}
-                  isPinned={false}
-                  onTogglePin={() => togglePinItem(item.id, item.type)}
-                  onMarkAsRead={() => markAsRead(item.id, item.type)}
-                >
-                <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
-                  className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
-                  <div className="relative shrink-0">
-                    <Avatar className="h-8 w-8"><AvatarImage src={item.avatarUrl} /><AvatarFallback className="bg-primary/20 text-primary text-xs">{item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
-                    {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium truncate">{item.name}</p>
-                      {item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
-                  </div>
-                </button>
-                </ThreadContextMenu>
-              );
-            })}
+            {items.filter((item) => !pinnedIds.has(item.id)).map(renderThreadItem)}
           </div>
         )}
       </div>
 
       {/* Bottom User Panel */}
-      <div className="border-t border-border/50 mt-auto">
-        <div className="flex items-center gap-1 px-2 py-1.5">
-          <NavLink to="/settings" className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/50 rounded-md px-1 py-0.5">
-            <div className="relative shrink-0">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={myProfile?.avatar_url || ""} />
-                <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                  {(myProfile?.display_name || myProfile?.username || "?").charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              {myProfile && (
-                <StatusBadge
-                  status={(getUserStatus(myProfile) === "offline" ? "invisible" : getUserStatus(myProfile)) as UserStatus}
-                  className="absolute bottom-0 end-0"
-                />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate leading-tight">{myProfile?.display_name || myProfile?.username || "User"}</p>
-              {myProfile?.username && <p className="text-[11px] text-muted-foreground truncate leading-tight">@{myProfile.username}</p>}
-            </div>
-          </NavLink>
-          <div className="flex items-center shrink-0">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleGlobalMute}>
-              {globalMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleGlobalDeafen}>
-              {globalDeafened ? <HeadphoneOff className="h-4 w-4 text-destructive" /> : <Headphones className="h-4 w-4" />}
-            </Button>
-            <NavLink to="/settings">
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Settings className="h-4 w-4" />
-              </Button>
+      {!isMobileExpanded && (
+        <div className="border-t border-border/50 mt-auto">
+          <div className="flex items-center gap-1 px-2 py-1.5">
+            <NavLink to="/settings" className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/50 rounded-md px-1 py-0.5">
+              <div className="relative shrink-0">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={myProfile?.avatar_url || ""} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                    {(myProfile?.display_name || myProfile?.username || "?").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                {myProfile && (
+                  <StatusBadge
+                    status={(getUserStatus(myProfile) === "offline" ? "invisible" : getUserStatus(myProfile)) as UserStatus}
+                    className="absolute bottom-0 end-0"
+                  />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate leading-tight">{myProfile?.display_name || myProfile?.username || "User"}</p>
+                {myProfile?.username && <p className="text-[11px] text-muted-foreground truncate leading-tight">@{myProfile.username}</p>}
+              </div>
             </NavLink>
+            <div className="flex items-center shrink-0">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleGlobalMute}>
+                {globalMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleGlobalDeafen}>
+                {globalDeafened ? <HeadphoneOff className="h-4 w-4 text-destructive" /> : <Headphones className="h-4 w-4" />}
+              </Button>
+              <NavLink to="/settings">
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </NavLink>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <CreateGroupDialog open={createGroupOpen} onOpenChange={setCreateGroupOpen} />
     </div>

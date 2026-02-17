@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import HomeSidebar from "@/components/layout/HomeSidebar";
 import ActiveNowPanel from "@/components/chat/ActiveNowPanel";
+import ServerRail from "@/components/server/ServerRail";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
@@ -13,6 +14,7 @@ const HomeView = () => {
   const { user } = useAuth();
   
   const isFriendsView = location.pathname === "/" || location.pathname === "/friends";
+  const isChatView = location.pathname.startsWith("/chat/") || location.pathname.startsWith("/group/");
 
   // Load friend user IDs for ActiveNowPanel
   const [friendUserIds, setFriendUserIds] = useState<string[]>([]);
@@ -34,14 +36,36 @@ const HomeView = () => {
     })();
   }, [user]);
 
+  // Mobile: full-page chat (no sidebars) or home view with ServerRail + HomeSidebar content
   if (isMobile) {
+    if (isChatView) {
+      // Full-page chat view
+      return (
+        <div className="flex flex-col h-full">
+          <Outlet />
+        </div>
+      );
+    }
+
+    // Home/Friends view: show ServerRail + main content side by side
     return (
-      <div className="flex flex-col h-full">
-        <Outlet />
+      <div className="flex h-full overflow-hidden">
+        <ServerRail />
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {isFriendsView ? (
+            // Show HomeSidebar content as the main area (expanded, no width constraint)
+            <div className="flex-1 overflow-hidden">
+              <HomeSidebar isMobileExpanded />
+            </div>
+          ) : (
+            <Outlet />
+          )}
+        </div>
       </div>
     );
   }
 
+  // Desktop layout
   return (
     <div className="flex h-full overflow-hidden">
       <HomeSidebar />

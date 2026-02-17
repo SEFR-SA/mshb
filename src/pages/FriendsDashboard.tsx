@@ -5,11 +5,12 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePresence } from "@/hooks/usePresence";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
-import { Search, UserPlus, Check, X, MessageSquare, Trash2 } from "lucide-react";
+import { Search, UserPlus, Check, X, MessageSquare, Trash2, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import UserContextMenu from "@/components/chat/UserContextMenu";
@@ -30,6 +31,7 @@ const FriendsDashboard = () => {
   const { user } = useAuth();
   const { getUserStatus } = usePresence();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [friends, setFriends] = useState<FriendshipWithProfile[]>([]);
   const [pending, setPending] = useState<FriendshipWithProfile[]>([]);
@@ -165,6 +167,31 @@ const FriendsDashboard = () => {
     return status !== "offline" && status !== "invisible";
   });
 
+  // Sort friends alphabetically for "All" tab and group by first letter
+  const sortedFriends = useMemo(() => {
+    return [...friends].sort((a, b) => {
+      const nameA = (a.profile?.display_name || a.profile?.username || "").toLowerCase();
+      const nameB = (b.profile?.display_name || b.profile?.username || "").toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }, [friends]);
+
+  const groupedFriends = useMemo(() => {
+    const groups: { letter: string; friends: FriendshipWithProfile[] }[] = [];
+    let currentLetter = "";
+    for (const f of sortedFriends) {
+      const name = f.profile?.display_name || f.profile?.username || "?";
+      const letter = name.charAt(0).toUpperCase();
+      if (letter !== currentLetter) {
+        currentLetter = letter;
+        groups.push({ letter, friends: [f] });
+      } else {
+        groups[groups.length - 1].friends.push(f);
+      }
+    }
+    return groups;
+  }, [sortedFriends]);
+
   const tabs = [
     { key: "online" as const, label: t("friends.online", "Online"), count: onlineFriends.length },
     { key: "all" as const, label: t("friends.all"), count: friends.length },
@@ -188,7 +215,7 @@ const FriendsDashboard = () => {
             <p className="font-medium truncate">{f.profile?.display_name || f.profile?.username || "User"}</p>
             {f.profile?.username && <p className="text-xs text-muted-foreground">@{f.profile.username}</p>}
           </div>
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className={`flex gap-1 ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition-opacity`}>
             <Button variant="ghost" size="icon" onClick={() => startDM(friendUserId)} title="Message">
               <MessageSquare className="h-4 w-4" />
             </Button>
@@ -202,17 +229,17 @@ const FriendsDashboard = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       {/* Header with tabs */}
-      <header className="flex items-center gap-4 p-4 border-b border-border/50 glass">
+      <header className={`flex items-center gap-2 ${isMobile ? "gap-1" : "gap-4"} p-4 border-b border-border/50 glass`}>
         <h2 className="text-base font-semibold">{t("friends.title")}</h2>
         <div className="h-6 w-px bg-border/50" />
-        <div className="flex items-center gap-1">
+        <div className={`flex items-center gap-1 ${isMobile ? "overflow-x-auto flex-1" : ""}`}>
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.key
                   ? "bg-muted text-foreground"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -225,13 +252,15 @@ const FriendsDashboard = () => {
             </button>
           ))}
         </div>
-        <Button
-          size="sm"
-          onClick={() => setActiveTab("add")}
-          className={`ms-auto ${activeTab === "add" ? "bg-primary text-primary-foreground" : "bg-green-600 hover:bg-green-700 text-white"}`}
-        >
-          {t("friends.addFriend")}
-        </Button>
+        {!isMobile && (
+          <Button
+            size="sm"
+            onClick={() => setActiveTab("add")}
+            className={`ms-auto ${activeTab === "add" ? "bg-primary text-primary-foreground" : "bg-green-600 hover:bg-green-700 text-white"}`}
+          >
+            {t("friends.addFriend")}
+          </Button>
+        )}
       </header>
 
       {/* Content */}
@@ -295,7 +324,7 @@ const FriendsDashboard = () => {
           )
         )}
 
-        {/* All tab */}
+        {/* All tab - with alphabetical grouping */}
         {activeTab === "all" && (
           loading ? <FriendListSkeleton count={6} /> : (
             <div className="animate-fade-in space-y-1">
@@ -305,7 +334,14 @@ const FriendsDashboard = () => {
               {friends.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">{t("friends.noFriends")}</p>
               )}
-              {friends.map(renderFriendItem)}
+              {groupedFriends.map((group) => (
+                <div key={group.letter}>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-2 pt-3 pb-1">
+                    {group.letter}
+                  </p>
+                  {group.friends.map(renderFriendItem)}
+                </div>
+              ))}
             </div>
           )
         )}
@@ -358,6 +394,16 @@ const FriendsDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Mobile FAB for Add Friend */}
+      {isMobile && activeTab !== "add" && (
+        <button
+          onClick={() => setActiveTab("add")}
+          className="absolute bottom-4 end-4 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
+        >
+          <UserPlus className="h-6 w-6" />
+        </button>
+      )}
     </div>
   );
 };
