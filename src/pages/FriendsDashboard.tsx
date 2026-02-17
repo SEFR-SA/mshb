@@ -244,12 +244,12 @@ const FriendsDashboard = () => {
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-5 px-4 pb-2 overflow-x-auto scrollbar-none">
+        <div className="flex items-center justify-around px-2 pb-2">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`px-2 py-1.5 rounded-full text-[14px] font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.key
                   ? "bg-muted text-foreground"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -257,7 +257,7 @@ const FriendsDashboard = () => {
             >
               {tab.label}
               {tab.count !== undefined && tab.count > 0 && (
-                <span className="ms-1.5 text-xs text-muted-foreground">{tab.count}</span>
+                <span className="ms-1 text-xs text-muted-foreground">{tab.count}</span>
               )}
             </button>
           ))}
