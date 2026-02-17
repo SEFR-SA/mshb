@@ -114,7 +114,7 @@ const Auth = () => {
       <Card className="w-full max-w-md glass">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">
-            {t("app.name")}
+            {mode === "login" ? t("auth.login") : mode === "signup" ? t("auth.createAccount", "Create an account") : t("auth.resetPassword")}
           </CardTitle>
           <CardDescription>
             {mode === "login" ? t("auth.login") : mode === "signup" ? t("auth.signup") : t("auth.resetPassword")}
