@@ -510,7 +510,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
   return (
     <>
-      <div className="w-[240px] max-md:w-full max-md:max-w-full flex flex-col bg-sidebar-background/30 backdrop-blur-sm border-e border-sidebar-border shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
+      <div className="w-[240px] max-md:w-full max-md:max-w-full h-full flex flex-col bg-sidebar-background/30 backdrop-blur-sm border-e border-sidebar-border shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
           <h2 className="font-bold text-sm truncate">{server?.name || "..."}</h2>
           <div className="flex gap-1">
@@ -702,7 +702,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         </div>
 
         {/* User Panel */}
-        <div className="border-t border-sidebar-border">
+        <div className="border-t border-sidebar-border shrink-0 bg-sidebar-background/50">
           {/* Voice connection status */}
           {voiceChannel && (
             <div className="flex items-center gap-2 px-3 py-2 bg-sidebar-accent/50">
