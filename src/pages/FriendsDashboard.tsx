@@ -14,6 +14,7 @@ import { Search, UserPlus, Check, X, MessageSquare, Trash2, ArrowLeft, Plus } fr
 import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import UserContextMenu from "@/components/chat/UserContextMenu";
+import { revertToPlain } from "@/lib/unicodeFonts";
 
 type Profile = Tables<"profiles">;
 
@@ -167,11 +168,20 @@ const FriendsDashboard = () => {
     return status !== "offline" && status !== "invisible";
   });
 
+  const normalizeName = (name: string): string => {
+    return revertToPlain(name).normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  };
+
+  const getNormalizedLetter = (name: string): string => {
+    const first = normalizeName(name).charAt(0).toUpperCase();
+    return /[A-Z]/.test(first) ? first : "#";
+  };
+
   // Sort friends alphabetically for "All" tab and group by first letter
   const sortedFriends = useMemo(() => {
     return [...friends].sort((a, b) => {
-      const nameA = (a.profile?.display_name || a.profile?.username || "").toLowerCase();
-      const nameB = (b.profile?.display_name || b.profile?.username || "").toLowerCase();
+      const nameA = normalizeName(a.profile?.display_name || a.profile?.username || "").toLowerCase();
+      const nameB = normalizeName(b.profile?.display_name || b.profile?.username || "").toLowerCase();
       return nameA.localeCompare(nameB);
     });
   }, [friends]);
@@ -181,13 +191,18 @@ const FriendsDashboard = () => {
     let currentLetter = "";
     for (const f of sortedFriends) {
       const name = f.profile?.display_name || f.profile?.username || "?";
-      const letter = name.charAt(0).toUpperCase();
+      const letter = getNormalizedLetter(name);
       if (letter !== currentLetter) {
         currentLetter = letter;
         groups.push({ letter, friends: [f] });
       } else {
         groups[groups.length - 1].friends.push(f);
       }
+    }
+    // Move '#' group to end
+    const hashIdx = groups.findIndex(g => g.letter === "#");
+    if (hashIdx > 0) {
+      groups.push(groups.splice(hashIdx, 1)[0]);
     }
     return groups;
   }, [sortedFriends]);
