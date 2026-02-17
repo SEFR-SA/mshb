@@ -41,6 +41,7 @@ const FriendsDashboard = () => {
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [searching, setSearching] = useState(false);
   const [activeTab, setActiveTab] = useState<"online" | "all" | "pending" | "blocked" | "add">("online");
+  const [friendFilter, setFriendFilter] = useState("");
 
   const loadFriendships = async () => {
     if (!user) return;
@@ -344,20 +345,41 @@ const FriendsDashboard = () => {
         {activeTab === "all" && (
           loading ? <FriendListSkeleton count={6} /> : (
             <div className="animate-fade-in space-y-1">
+              <div className="relative mb-3">
+                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="ps-10"
+                  placeholder={t("friends.search")}
+                  value={friendFilter}
+                  onChange={(e) => setFriendFilter(e.target.value)}
+                />
+              </div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 {t("friends.all")} — {friends.length}
               </p>
               {friends.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">{t("friends.noFriends")}</p>
               )}
-              {groupedFriends.map((group) => (
-                <div key={group.letter}>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-2 pt-3 pb-1">
-                    {group.letter}
-                  </p>
-                  {group.friends.map(renderFriendItem)}
-                </div>
-              ))}
+              {groupedFriends.map((group) => {
+                const filtered = friendFilter.trim()
+                  ? group.friends.filter((f) => {
+                      const raw = f.profile?.display_name || f.profile?.username || "";
+                      const normalized = normalizeName(raw).toLowerCase();
+                      const username = (f.profile?.username || "").toLowerCase();
+                      const q = friendFilter.toLowerCase();
+                      return normalized.includes(q) || username.includes(q);
+                    })
+                  : group.friends;
+                if (filtered.length === 0) return null;
+                return (
+                  <div key={group.letter}>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-2 pt-3 pb-1">
+                      {group.letter}
+                    </p>
+                    {filtered.map(renderFriendItem)}
+                  </div>
+                );
+              })}
             </div>
           )
         )}
