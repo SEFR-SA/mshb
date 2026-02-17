@@ -28,19 +28,19 @@ interface Friend {
 }
 
 const EXPIRE_OPTIONS = [
-  { value: "1h", label: "1 hour", interval: "1 hour" },
-  { value: "6h", label: "6 hours", interval: "6 hours" },
-  { value: "12h", label: "12 hours", interval: "12 hours" },
-  { value: "1d", label: "1 day", interval: "1 day" },
-  { value: "7d", label: "7 days", interval: "7 days" },
+  { value: "1h", labelKey: "servers.expireOption1h", interval: "1 hour" },
+  { value: "6h", labelKey: "servers.expireOption6h", interval: "6 hours" },
+  { value: "12h", labelKey: "servers.expireOption12h", interval: "12 hours" },
+  { value: "1d", labelKey: "servers.expireOption1d", interval: "1 day" },
+  { value: "7d", labelKey: "servers.expireOption7d", interval: "7 days" },
 ];
 
 const MAX_USES_OPTIONS = [
-  { value: "0", label: "No limit" },
-  { value: "1", label: "1 use" },
-  { value: "5", label: "5 uses" },
-  { value: "10", label: "10 uses" },
-  { value: "25", label: "25 uses" },
+  { value: "0", labelKey: "servers.noLimit" },
+  { value: "1", labelKey: "servers.maxUses1" },
+  { value: "5", labelKey: "servers.maxUses5" },
+  { value: "10", labelKey: "servers.maxUses10" },
+  { value: "25", labelKey: "servers.maxUses25" },
 ];
 
 const BASE_URL = "https://mshb.lovable.app";
@@ -62,7 +62,7 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
 
   const inviteUrl = inviteCode ? `${BASE_URL}/invite/${inviteCode}` : "";
 
-  const expiresLabel = EXPIRE_OPTIONS.find((o) => o.value === expireAfter)?.label || "7 days";
+  const expiresLabel = t(EXPIRE_OPTIONS.find((o) => o.value === expireAfter)?.labelKey || "servers.expireOption7d");
 
   const generateInvite = useCallback(async () => {
     if (!user) return;
@@ -125,7 +125,6 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
   const sendLink = async (friend: Friend) => {
     if (!user || !inviteCode) return;
 
-    // Find or create DM thread
     const { data: existing } = await supabase
       .from("dm_threads")
       .select("id")
@@ -157,7 +156,6 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
 
   const handleSettingsBack = async () => {
     setShowSettings(false);
-    // Generate new invite with updated settings
     await generateInvite();
   };
 
@@ -180,42 +178,42 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSettingsBack}>
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <DialogTitle className="text-base">Invite Link Settings</DialogTitle>
+                <DialogTitle className="text-base">{t("servers.inviteSettings")}</DialogTitle>
               </div>
-              <DialogDescription>Configure how this invite link works.</DialogDescription>
+              <DialogDescription>{t("servers.inviteSettingsDesc")}</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-5 pt-2">
               <div className="space-y-2">
-                <Label>Expire After</Label>
+                <Label>{t("servers.expireAfter")}</Label>
                 <Select value={expireAfter} onValueChange={setExpireAfter}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {EXPIRE_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      <SelectItem key={o.value} value={o.value}>{t(o.labelKey)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Max Number of Uses</Label>
+                <Label>{t("servers.maxUses")}</Label>
                 <Select value={maxUses} onValueChange={setMaxUses}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {MAX_USES_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      <SelectItem key={o.value} value={o.value}>{t(o.labelKey)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="flex items-center justify-between">
-                <Label>Grant Temporary Membership</Label>
+                <Label>{t("servers.grantTemporary")}</Label>
                 <Switch checked={temporary} onCheckedChange={setTemporary} />
               </div>
             </div>
@@ -223,15 +221,15 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Invite friends to {serverName}</DialogTitle>
-              <DialogDescription>Send a server invite link to your friends or copy it.</DialogDescription>
+              <DialogTitle>{t("servers.inviteFriendsTo", { name: serverName })}</DialogTitle>
+              <DialogDescription>{t("servers.inviteDesc")}</DialogDescription>
             </DialogHeader>
 
             {/* Search */}
             <div className="relative">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search friends..."
+                placeholder={t("servers.searchFriends")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="ps-9"
@@ -243,7 +241,7 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
               <div className="space-y-1">
                 {filteredFriends.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-4 text-center">
-                    {friends.length === 0 ? "No friends yet" : "No results"}
+                    {friends.length === 0 ? t("servers.noFriendsYet") : t("servers.noResults")}
                   </p>
                 ) : (
                   filteredFriends.map((f) => {
@@ -266,9 +264,9 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
                           className="h-7 text-xs"
                         >
                           {isSent ? (
-                            <><Check className="h-3 w-3 me-1" /> Sent</>
+                            <><Check className="h-3 w-3 me-1" /> {t("servers.sent")}</>
                           ) : (
-                            "Send Link"
+                            t("servers.sendLink")
                           )}
                         </Button>
                       </div>
@@ -281,13 +279,14 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
             {/* Invite link box */}
             <div className="space-y-2 pt-2 border-t border-border">
               <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-                Or, send a server invite link to a friend
+                {t("servers.inviteLinkLabel")}
               </Label>
               <div className="flex gap-2">
                 <Input
                   value={inviteUrl}
                   readOnly
                   className="font-mono text-xs"
+                  dir="ltr"
                 />
                 <Button
                   variant="default"
@@ -298,16 +297,16 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
                   disabled={!inviteCode}
                 >
                   <Copy className="h-4 w-4 me-1" />
-                  Copy
+                  {t("servers.copy")}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Your invite link expires in {expiresLabel}.{" "}
+                {t("servers.expiresIn", { duration: expiresLabel })}{" "}
                 <button
                   className="text-primary hover:underline font-medium"
                   onClick={() => setShowSettings(true)}
                 >
-                  Edit invite link.
+                  {t("servers.editInviteLink")}
                 </button>
               </p>
             </div>

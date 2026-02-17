@@ -190,7 +190,7 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
             <div className="space-y-2">
               <Label>{t("servers.inviteCode")}</Label>
               <p className="text-sm text-muted-foreground">
-                Invite links are now generated dynamically. Use the invite button in the channel sidebar to create and share invite links with expiration and usage limits.
+                {t("servers.inviteLinkInfo")}
               </p>
             </div>
           </div>
