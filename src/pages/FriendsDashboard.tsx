@@ -231,15 +231,25 @@ const FriendsDashboard = () => {
   return (
     <div className="flex flex-col h-full relative">
       {/* Header with tabs */}
-      <header className={`flex items-center gap-2 ${isMobile ? "gap-1" : "gap-4"} p-4 border-b border-border/50 glass`}>
-        <h2 className="text-base font-semibold">{t("friends.title")}</h2>
-        <div className="h-6 w-px bg-border/50" />
-        <div className={`flex items-center gap-1 ${isMobile ? "overflow-x-auto flex-1" : ""}`}>
+      <header className="flex flex-col border-b border-border/50 glass sticky top-0 z-10 shrink-0">
+        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+          <h2 className="text-base font-semibold">{t("friends.title")}</h2>
+          {!isMobile && (
+            <Button
+              size="sm"
+              onClick={() => setActiveTab("add")}
+              className={activeTab === "add" ? "bg-primary text-primary-foreground" : "bg-green-600 hover:bg-green-700 text-white"}
+            >
+              {t("friends.addFriend")}
+            </Button>
+          )}
+        </div>
+        <div className="flex items-center gap-5 px-4 pb-2 overflow-x-auto scrollbar-none">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.key
                   ? "bg-muted text-foreground"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -252,15 +262,6 @@ const FriendsDashboard = () => {
             </button>
           ))}
         </div>
-        {!isMobile && (
-          <Button
-            size="sm"
-            onClick={() => setActiveTab("add")}
-            className={`ms-auto ${activeTab === "add" ? "bg-primary text-primary-foreground" : "bg-green-600 hover:bg-green-700 text-white"}`}
-          >
-            {t("friends.addFriend")}
-          </Button>
-        )}
       </header>
 
       {/* Content */}
