@@ -15,6 +15,7 @@ const HomeView = () => {
   
   const isFriendsView = location.pathname === "/" || location.pathname === "/friends";
   const isChatView = location.pathname.startsWith("/chat/") || location.pathname.startsWith("/group/");
+  const isHomeRoot = location.pathname === "/";
 
   // Load friend user IDs for ActiveNowPanel
   const [friendUserIds, setFriendUserIds] = useState<string[]>([]);
@@ -38,8 +39,8 @@ const HomeView = () => {
 
   // Mobile: full-page chat (no sidebars) or home view with ServerRail + HomeSidebar content
   if (isMobile) {
-    if (isChatView) {
-      // Full-page chat view
+    if (isChatView || location.pathname === "/friends") {
+      // Full-page chat or friends view
       return (
         <div className="flex flex-col h-full">
           <Outlet />
@@ -47,19 +48,14 @@ const HomeView = () => {
       );
     }
 
-    // Home/Friends view: show ServerRail + main content side by side
+    // Home root: show ServerRail + HomeSidebar (DM list) side by side
     return (
       <div className="flex h-full overflow-hidden">
         <ServerRail />
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {isFriendsView ? (
-            // Show HomeSidebar content as the main area (expanded, no width constraint)
-            <div className="flex-1 overflow-hidden">
-              <HomeSidebar isMobileExpanded />
-            </div>
-          ) : (
-            <Outlet />
-          )}
+          <div className="flex-1 overflow-hidden">
+            <HomeSidebar isMobileExpanded />
+          </div>
         </div>
       </div>
     );
