@@ -254,7 +254,7 @@ const FriendsDashboard = () => {
             <Button
               size="sm"
               onClick={() => setActiveTab("add")}
-              className={activeTab === "add" ? "bg-primary text-primary-foreground" : "bg-green-600 hover:bg-green-700 text-white"}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {t("friends.addFriend")}
             </Button>
