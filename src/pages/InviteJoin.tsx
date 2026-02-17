@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,11 +10,12 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, XCircle, Users } from "lucide-react";
 
 const InviteJoin = () => {
+  const { t } = useTranslation();
   const { code } = useParams<{ code: string }>();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<"loading" | "valid" | "invalid" | "joining" | "already">("loading");
-  const [serverInfo, setServerInfo] = useState<{ id: string; name: string; icon_url: string | null; member_count: number } | null>(null);
+  const [status, setStatus] = useState<"loading" | "valid" | "invalid" | "joining">("loading");
+  const [serverInfo, setServerInfo] = useState<{ id: string; name: string; icon_url: string | null } | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -43,10 +45,7 @@ const InviteJoin = () => {
       return;
     }
 
-    // Get server info
-    // We can't query servers directly (RLS requires membership), so use a simpler approach
-    // The server name can be fetched after joining. For now show basic info.
-    setServerInfo({ id: serverId, name: "Server", icon_url: null, member_count: 0 });
+    setServerInfo({ id: serverId, name: "Server", icon_url: null });
     setStatus("valid");
   };
 
@@ -57,7 +56,7 @@ const InviteJoin = () => {
     const { data: serverId } = await supabase.rpc("use_invite", { p_code: code });
     if (!serverId) {
       setStatus("invalid");
-      toast({ title: "Invite is no longer valid", variant: "destructive" });
+      toast({ title: t("servers.inviteInvalid"), variant: "destructive" });
       return;
     }
 
@@ -67,7 +66,7 @@ const InviteJoin = () => {
       role: "member",
     } as any);
 
-    toast({ title: "Joined server!" });
+    toast({ title: t("servers.joinedServer") });
     navigate(`/server/${serverId}`);
   };
 
@@ -87,13 +86,11 @@ const InviteJoin = () => {
             <div className="mx-auto mb-2">
               <XCircle className="h-12 w-12 text-destructive" />
             </div>
-            <CardTitle>Invite Invalid</CardTitle>
-            <CardDescription>
-              This invite may have expired or reached its maximum number of uses.
-            </CardDescription>
+            <CardTitle>{t("servers.inviteInvalid")}</CardTitle>
+            <CardDescription>{t("servers.inviteInvalidDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => navigate("/")} className="w-full">Go Home</Button>
+            <Button onClick={() => navigate("/")} className="w-full">{t("servers.goHome")}</Button>
           </CardContent>
         </Card>
       </div>
@@ -112,8 +109,8 @@ const InviteJoin = () => {
               </AvatarFallback>
             </Avatar>
           </div>
-          <CardTitle>You've been invited to join a server</CardTitle>
-          <CardDescription>Click below to accept the invitation.</CardDescription>
+          <CardTitle>{t("servers.invitedToJoin")}</CardTitle>
+          <CardDescription>{t("servers.acceptInviteDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button
@@ -122,9 +119,9 @@ const InviteJoin = () => {
             className="w-full"
           >
             {status === "joining" ? (
-              <><Loader2 className="h-4 w-4 me-2 animate-spin" /> Joining...</>
+              <><Loader2 className="h-4 w-4 me-2 animate-spin" /> {t("servers.joining")}</>
             ) : (
-              "Accept Invite"
+              t("servers.acceptInvite")
             )}
           </Button>
         </CardContent>
