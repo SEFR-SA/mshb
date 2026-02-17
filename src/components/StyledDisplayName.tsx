@@ -18,10 +18,14 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
       <span
         className={className}
         style={{
-          background: `linear-gradient(90deg, ${gradientStart}, ${gradientEnd})`,
+          display: "inline-block",
+          padding: "2px 0",
+          backgroundImage: `linear-gradient(90deg, ${gradientStart}, ${gradientEnd})`,
           WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
           backgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          lineHeight: 1.4,
+          fontFamily: "inherit, 'Inter', system-ui, sans-serif",
         }}
       >
         {displayName}
