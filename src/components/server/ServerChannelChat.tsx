@@ -311,16 +311,18 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
                 }
               }}
             >
-            <div id={`msg-${msg.id}`} className={`flex gap-3 hover:bg-muted/30 rounded-lg px-2 py-1 -mx-2 transition-colors group ${isGrouped ? "mt-0.5" : idx === 0 ? "" : "mt-3"} ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
+            <div id={`msg-${msg.id}`} className={`hover:bg-muted/30 rounded-lg px-2 py-1 -mx-2 transition-colors group ${isGrouped ? "mt-0.5" : idx === 0 ? "" : "mt-3"} ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
               {(msg as any).reply_to_id && (() => {
                 const original = messages.find(m => m.id === (msg as any).reply_to_id);
                 const origProfile = original ? profiles.get(original.author_id) : null;
                 const origName = origProfile?.display_name || origProfile?.username || "…";
+                const origAvatarUrl = origProfile?.avatar_url || "";
                 return (
-                  <div className="col-span-full ms-12 -mb-1">
+                  <div className="ms-5">
                     <ReplyPreview
                       authorName={origName}
                       content={original?.content || "…"}
+                      avatarUrl={origAvatarUrl}
                       onClick={() => {
                         const el = document.getElementById(`msg-${(msg as any).reply_to_id}`);
                         if (el) {
@@ -333,6 +335,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
                   </div>
                 );
               })()}
+              <div className="flex gap-3">
               <UserContextMenu targetUserId={msg.author_id} targetUsername={p?.username || undefined}>
               <Avatar className="h-9 w-9 mt-0.5 shrink-0 cursor-pointer">
                 <AvatarImage src={p?.avatar_url || ""} />
@@ -369,6 +372,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
                   currentUserId={user?.id || ""}
                   onToggle={(mid, emoji) => user && toggleReaction(mid, emoji, user.id)}
                 />
+              </div>
               </div>
             </div>
             </MessageContextMenu>

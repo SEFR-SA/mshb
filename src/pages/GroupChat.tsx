@@ -378,16 +378,18 @@ const GroupChat = () => {
                 }
               }}
             >
-            <div id={`msg-${msg.id}`} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
+            <div id={`msg-${msg.id}`} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} group/msg hover:bg-muted/30 rounded-lg -mx-2 px-2 py-0.5 transition-colors ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
               <div className="flex gap-2 max-w-[75%] flex-col">
                 {msgAny.reply_to_id && (() => {
                   const original = visibleMessages.find(m => m.id === msgAny.reply_to_id);
                   const origProfile = original ? profiles.get(original.author_id) : null;
                   const origName = origProfile?.display_name || origProfile?.username || "…";
+                  const origAvatarUrl = origProfile?.avatar_url || "";
                   return (
                     <ReplyPreview
                       authorName={origName}
                       content={original?.content || "…"}
+                      avatarUrl={origAvatarUrl}
                       onClick={() => {
                         const el = document.getElementById(`msg-${msgAny.reply_to_id}`);
                         if (el) {
