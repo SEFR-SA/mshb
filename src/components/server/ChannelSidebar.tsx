@@ -621,7 +621,11 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                       >
                         <button
                           onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name })}
-                          className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
+                          className={`flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors hover:bg-sidebar-accent/50 ${
+                            hasParticipants
+                              ? "font-bold text-white"
+                              : "font-medium text-[#949BA4] hover:text-[#DBDEE1]"
+                          }`}
                         >
                           <ChannelIcon className={`h-4 w-4 shrink-0 ${hasParticipants && !ch.is_private ? "text-green-500" : ""}`} />
                           <span className="truncate">{ch.name}</span>
@@ -676,10 +680,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                         className={({ isActive }) =>
                           `flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
                             isActive || ch.id === activeChannelId
-                              ? "bg-sidebar-accent text-foreground font-medium"
+                              ? "bg-sidebar-accent text-white font-bold"
                               : unreadSet.has(ch.id)
-                                ? "text-foreground font-semibold hover:bg-sidebar-accent/50"
-                                : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
+                                ? "text-white font-bold hover:bg-sidebar-accent/50"
+                                : "font-medium text-[#949BA4] hover:text-[#DBDEE1] hover:bg-sidebar-accent/50"
                           }`
                         }
                       >
