@@ -32,6 +32,8 @@ import MessageContextMenu from "@/components/chat/MessageContextMenu";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import ReplyPreview from "@/components/chat/ReplyPreview";
 import ReplyInputBar from "@/components/chat/ReplyInputBar";
+import MessageReactions from "@/components/chat/MessageReactions";
+import { useMessageReactions } from "@/hooks/useMessageReactions";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
@@ -348,6 +350,7 @@ const Chat = () => {
   };
 
   const visibleMessages = messages.filter((m) => !hiddenIds.has(m.id));
+  const { reactions, toggleReaction } = useMessageReactions(visibleMessages.map((m) => m.id));
   const otherStatus = getUserStatus(otherProfile);
 
   // Center chat panel content
@@ -568,6 +571,15 @@ const Chat = () => {
                   </div>
                 )}
               </div>
+              {!isDeleted && (
+                <MessageReactions
+                  messageId={msg.id}
+                  reactions={reactions.get(msg.id) || []}
+                  currentUserId={user?.id || ""}
+                  onToggle={(mid, emoji) => user && toggleReaction(mid, emoji, user.id)}
+                  isMine={isMine}
+                />
+              )}
               </div>
             </div>
             </MessageContextMenu>

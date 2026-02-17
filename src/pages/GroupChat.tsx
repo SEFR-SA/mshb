@@ -28,6 +28,8 @@ import MessageContextMenu from "@/components/chat/MessageContextMenu";
 import UserContextMenu from "@/components/chat/UserContextMenu";
 import ReplyPreview from "@/components/chat/ReplyPreview";
 import ReplyInputBar from "@/components/chat/ReplyInputBar";
+import MessageReactions from "@/components/chat/MessageReactions";
+import { useMessageReactions } from "@/hooks/useMessageReactions";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -282,6 +284,7 @@ const GroupChat = () => {
   };
 
   const visibleMessages = messages.filter((m) => !hiddenIds.has(m.id));
+  const { reactions, toggleReaction } = useMessageReactions(visibleMessages.map((m) => m.id));
 
   const typingNames = Array.from(typingUsers)
     .map((uid) => profiles.get(uid)?.display_name || profiles.get(uid)?.username || "Someone")
@@ -484,7 +487,16 @@ const GroupChat = () => {
                     </div>
                   )}
                 </div>
-              </div>
+                </div>
+                {!isDeleted && (
+                  <MessageReactions
+                    messageId={msg.id}
+                    reactions={reactions.get(msg.id) || []}
+                    currentUserId={user?.id || ""}
+                    onToggle={(mid, emoji) => user && toggleReaction(mid, emoji, user.id)}
+                    isMine={isMine}
+                  />
+                )}
               </div>
             </div>
             </MessageContextMenu>
