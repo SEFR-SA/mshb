@@ -1,106 +1,143 @@
 
 
-## Multi-Feature Update: Voice Controls, Profile Popover, Calls, and Reply System
+## Refactor to Discord "Home" Layout Architecture
 
-This plan covers 5 distinct fixes/features requested:
+### Overview
 
-### 1. User Volume Slider -- Actually Controls Audio
+Transform the current navigation from separate "Messages" and "Friends" buttons with independent pages into a unified Discord-style "Home" layout where clicking the Home button in the Server Rail reveals a sub-sidebar containing a "Friends" link and the DM list, while the main content area switches between the Friends Dashboard and individual chat views.
 
-**Problem**: The volume slider in `VoiceUserContextMenu` only updates local state; it never touches the actual WebRTC audio.
+---
 
-**Solution**: Store per-user volume settings in the `VoiceChannelContext` so that the voice connection bar (where audio elements are created) can apply `HTMLAudioElement.volume` to each remote participant's audio.
+### Current Architecture (What Changes)
 
-- Add a `userVolumes` map (`Record<string, number>`) to `VoiceChannelContext`
-- Add `setUserVolume(userId, volume)` function
-- In `VoiceUserContextMenu`, call `setUserVolume` when the slider changes instead of local state
-- In `ServerView.tsx` (or wherever remote audio elements are created for voice channels), apply `audioElement.volume = userVolumes[userId] ?? 1` whenever the map changes
-- Mute button sets volume to 0; unmute restores to 100
+```text
+Current:
+[ServerRail] -> [Main Content Area via Outlet]
+  - ServerRail has: Home (Messages) button + Friends button + Servers
+  - "/" route renders Inbox.tsx (full-page DM list, auto-redirects to last DM on desktop)
+  - "/friends" route renders Friends.tsx (includes its own ChatSidebar + ActiveNowPanel)
+  - "/chat/:id" route renders Chat.tsx (includes its own ChatSidebar)
+  - Each page independently includes ChatSidebar
 
-### 2. Admin Disconnect -- Fix RLS Policy
-
-**Problem**: The current RLS DELETE policy on `voice_channel_participants` only allows `auth.uid() = user_id`. Admins cannot delete other users' rows.
-
-**Solution**: Update the RLS policy to also allow server admins:
-
-```sql
-DROP POLICY "Users can leave voice channels" ON voice_channel_participants;
-CREATE POLICY "Users can leave or admins disconnect" ON voice_channel_participants
-  FOR DELETE USING (
-    auth.uid() = user_id
-    OR is_server_admin(auth.uid(), (SELECT channels.server_id FROM channels WHERE channels.id = voice_channel_participants.channel_id))
-  );
+New (Discord-style):
+[ServerRail] -> [HomeSidebar] -> [Content Area]
+  - ServerRail has: Home button (single) + Servers (no separate Friends button)
+  - Home button activates a persistent HomeSidebar containing:
+    - "Friends" nav item at top
+    - DM thread list below
+  - When "Friends" is selected: Content shows FriendsDashboard with tabs (Online, All, Pending, Blocked, Add Friend)
+  - When a DM is selected: Content shows Chat view
+  - ActiveNowPanel appears on the right ONLY when FriendsDashboard is active
 ```
 
-### 3. View Profile -- Show Popover Instead of Navigating
+---
 
-**Problem**: "View Profile" just navigates to `/server/:id`, which is useless.
+### Changes
 
-**Solution**: Replace navigation with opening a profile popover dialog. Create a small `UserProfilePopover` dialog component that:
-- Fetches the target user's profile (avatar, banner, about_me, etc.)
-- Fetches their server membership (role, joined_at)
-- Renders the same popover content already used in `ServerMemberList.tsx` but inside a Dialog
-- Wire `VoiceUserContextMenu` to open this dialog via state
+#### 1. Routes (`App.tsx`)
 
-### 4. Call Button -- Actually Initiate a Call
+- Remove the separate `/friends` route
+- Keep `/` as the Home route, but render a new `HomeView` component instead of `Inbox`
+- Keep `/chat/:threadId` and `/group/:groupId` rendering through `HomeView` so the sidebar persists
+- New route structure under `/`:
+  - `/` (index) -- shows FriendsDashboard by default
+  - `/friends` -- also shows FriendsDashboard (kept as alias)
+  - `/chat/:threadId` -- shows Chat with persistent sidebar
+  - `/group/:groupId` -- shows GroupChat with persistent sidebar
 
-**Problem**: `handleCall` in `VoiceUserContextMenu` just navigates to the DM thread but doesn't start a call.
+#### 2. Server Rail (`ServerRail.tsx`)
 
-**Solution**: After navigating to the DM thread, dispatch a custom event that `Chat.tsx` listens for to auto-initiate a call. Or simpler: navigate to `/chat/:threadId?call=true`, and in `Chat.tsx` check for `?call=true` to auto-trigger `initiateCall()`.
+- Remove the separate "Friends" button (the Users icon button at line 247-260)
+- Update the Home button to be active for `/`, `/friends`, `/chat/*`, `/group/*` routes
+- Style the Home button with a Discord-shaped icon (a stylized controller/home shape using an SVG, transitioning from rounded-2xl to rounded-xl on active/hover like servers do)
 
-### 5. Reply System Refactor (Major Feature)
+#### 3. New Component: `HomeSidebar.tsx`
 
-**Database**: Add `reply_to_id` column (nullable UUID) to the `messages` table.
+A persistent sidebar (w-60) shown when the Home section is active. Contains:
+- **Header**: "Direct Messages" title with a "+" button to create new DM/group
+- **Friends nav item**: A clickable row at the top with a Users icon and "Friends" text. Shows pending count badge. Links to `/friends` (or `/`).
+- **Search bar**: For searching users to start DMs
+- **DM thread list**: The existing ChatSidebar thread list (pinned section, DM items with avatars, status badges, last message preview, unread counts, hover states)
+- **Bottom user panel**: Avatar, name, mute/deafen buttons, settings gear (moved from ChatSidebar)
+- This replaces the current `ChatSidebar` for the Home context
 
-**Reply UI Above Messages**:
-- When rendering a message that has `reply_to_id`, show a compact preview above it with:
-  - A small vertical line connector (left border)
-  - Original sender's name (truncated)
-  - Original message text (truncated to ~80 chars)
-  - Slightly transparent/muted styling
-- Clicking the preview scrolls to the original message (using `scrollIntoView` with the message ID as ref)
+#### 4. New Component: `FriendsDashboard.tsx`
 
-**Input State (Replying Mode)**:
-- Add `replyingTo` state: `{ id: string, authorName: string, content: string } | null`
-- When clicking "Reply" in context menu, set this state instead of prepending `> text`
-- Show a "Replying to [Name]" bar above the input with an X to cancel
-- When sending, include `reply_to_id` in the insert payload, then clear `replyingTo`
+The main content when Friends is active. Contains:
+- **Top header bar**: "Friends" title + tab buttons: Online, All, Pending, Blocked + "Add Friend" button (green, prominent)
+- **Online tab**: Shows only online friends (filtered by presence status)
+- **All tab**: Shows all accepted friends with status badges
+- **Pending tab**: Shows incoming/outgoing requests with accept/reject buttons
+- **Blocked tab**: Shows blocked users (new -- uses existing block functionality if available, or placeholder)
+- **Add Friend button**: When clicked, switches to an inline search/input area (not a modal) at the top of the content, with a text input "You can add friends with their username" and a "Send Friend Request" button
+- All friend data/logic extracted from current `Friends.tsx`
 
-**Files affected**:
-- Migration: add `reply_to_id` column
-- `MessageContextMenu.tsx`: change `onReply` to pass message ID + author + content
-- `Chat.tsx`: add `replyingTo` state, reply bar UI, pass `reply_to_id` on send, fetch replied-to messages, render reply previews, scroll-to logic
-- `GroupChat.tsx`: same reply system
-- `ServerChannelChat.tsx`: same reply system
+#### 5. New Component: `HomeView.tsx`
+
+A layout wrapper rendered at the Home route level. Structure:
+```text
+[HomeSidebar (w-60)] | [Content (flex-1)] | [ActiveNowPanel (w-[280px], conditional)]
+```
+- `HomeSidebar` is always visible (desktop) or in a drawer (mobile)
+- Content area renders either `FriendsDashboard` or `Outlet` (for Chat/GroupChat)
+- `ActiveNowPanel` only shows when FriendsDashboard is the active content (not during DM chats)
+- On mobile: HomeSidebar is hidden, content takes full width, bottom nav shows Home/Friends/Profile
+
+#### 6. Update `AppLayout.tsx`
+
+- Remove the Friends nav item from mobile bottom nav (replace with single Home)
+- The Home route now renders `HomeView` which handles its own sidebar layout
+- Mobile bottom nav: Home (links to `/`), Profile (links to `/settings`)
+
+#### 7. Update `Chat.tsx`
+
+- Remove the `ChatSidebar` import and rendering -- the sidebar is now provided by `HomeView`
+- Chat becomes a pure content component (messages + input only)
+- Remove the `UserProfilePanel` toggling from Chat header or keep it as a slide-over
+
+#### 8. Update `GroupChat.tsx`
+
+- Same as Chat -- remove `ChatSidebar`, become a pure content component
+
+#### 9. Remove/Deprecate
+
+- `Inbox.tsx` -- replaced by `HomeView` + `FriendsDashboard`. Can be deleted.
+- `Friends.tsx` -- replaced by `FriendsDashboard`. Can be deleted.
+- `ChatSidebar.tsx` -- replaced by `HomeSidebar`. Can be deleted after migrating all logic.
+
+#### 10. i18n Updates (`en.ts`, `ar.ts`)
+
+- Add keys: `nav.home`, `friends.online`, `friends.blocked`, `friends.addFriend`, `friends.addFriendDescription`
+- Keep existing keys that are still used
 
 ---
 
 ### Technical Details
 
-| Change | Files |
+| Area | Detail |
 |---|---|
-| Migration: RLS fix + reply_to_id | New SQL migration |
-| Volume control | `VoiceChannelContext.tsx`, `VoiceUserContextMenu.tsx`, `ServerView.tsx` or voice audio handler |
-| View Profile dialog | `VoiceUserContextMenu.tsx` (add Dialog), reuse popover content from `ServerMemberList` |
-| Call button | `VoiceUserContextMenu.tsx` (navigate with ?call=true), `Chat.tsx` (auto-call on param) |
-| Reply system | `MessageContextMenu.tsx`, `Chat.tsx`, `GroupChat.tsx`, `ServerChannelChat.tsx` |
-| i18n | `en.ts`, `ar.ts` -- new keys for reply bar |
+| Route structure | Nested routes: `/ -> HomeView` with children `index -> FriendsDashboard`, `friends -> FriendsDashboard`, `chat/:id -> Chat`, `group/:id -> GroupChat` |
+| Sidebar persistence | `HomeSidebar` renders once in `HomeView`, `Outlet` swaps only the content area |
+| ActiveNowPanel visibility | Conditionally rendered in `HomeView` based on `location.pathname === "/" or "/friends"` |
+| Home button style | SVG Discord logo shape (simplified), transitions `rounded-2xl -> rounded-xl` on hover/active, green highlight when active |
+| Mobile | HomeSidebar hidden; bottom nav has Home + Profile; tapping Home goes to FriendsDashboard; tapping a DM navigates to full-screen Chat |
+| Friends tabs | Online tab filters friends by `getUserStatus(profile) !== "offline"`; Blocked tab is a new addition (queries a `blocked_users` table if exists, or shows placeholder) |
+| Add Friend | Inline section at top of content area (not a modal), matching Discord's "ADD FRIEND" green bar with username input |
 
-### Reply Preview Component
+### Files Summary
 
-A new inline component (or section within each chat page) will render:
-
-```
-  [thin colored border] AuthorName: "truncated original message..."
-  [actual message bubble below]
-```
-
-Clicking the preview calls `document.getElementById(replyToId)?.scrollIntoView({ behavior: 'smooth', block: 'center' })` and briefly highlights the target message.
-
-### Reply Input Bar
-
-Appears above the composer:
-```
- Replying to AuthorName                    [X]
-```
-Styled with a left accent border and muted background.
+| Action | File |
+|---|---|
+| Create | `src/components/layout/HomeSidebar.tsx` |
+| Create | `src/pages/FriendsDashboard.tsx` |
+| Create | `src/pages/HomeView.tsx` |
+| Modify | `src/App.tsx` -- restructure routes |
+| Modify | `src/components/layout/AppLayout.tsx` -- simplify mobile nav |
+| Modify | `src/components/server/ServerRail.tsx` -- remove Friends button, update Home button |
+| Modify | `src/pages/Chat.tsx` -- remove ChatSidebar |
+| Modify | `src/pages/GroupChat.tsx` -- remove ChatSidebar |
+| Modify | `src/i18n/en.ts` -- add new keys |
+| Modify | `src/i18n/ar.ts` -- add new keys |
+| Delete | `src/pages/Inbox.tsx` (logic moved to HomeSidebar) |
+| Delete | `src/pages/Friends.tsx` (logic moved to FriendsDashboard) |
 
