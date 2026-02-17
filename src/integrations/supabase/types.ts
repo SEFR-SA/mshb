@@ -297,6 +297,50 @@ export type Database = {
         }
         Relationships: []
       }
+      invites: {
+        Row: {
+          code: string
+          created_at: string
+          creator_id: string
+          expires_at: string | null
+          id: string
+          max_uses: number | null
+          server_id: string
+          temporary: boolean
+          use_count: number
+        }
+        Insert: {
+          code?: string
+          created_at?: string
+          creator_id: string
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          server_id: string
+          temporary?: boolean
+          use_count?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          creator_id?: string
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          server_id?: string
+          temporary?: boolean
+          use_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_hidden: {
         Row: {
           created_at: string
@@ -755,6 +799,10 @@ export type Database = {
       generate_invite_code: { Args: never; Returns: string }
       get_email_by_username: { Args: { p_username: string }; Returns: string }
       get_server_id_by_invite: { Args: { p_code: string }; Returns: string }
+      get_server_id_by_invite_link: {
+        Args: { p_code: string }
+        Returns: string
+      }
       is_channel_member: {
         Args: { _channel_id: string; _user_id: string }
         Returns: boolean
@@ -776,6 +824,7 @@ export type Database = {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean
       }
+      use_invite: { Args: { p_code: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

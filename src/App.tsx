@@ -15,6 +15,7 @@ import Chat from "@/pages/Chat";
 import GroupChat from "@/pages/GroupChat";
 import Settings from "@/pages/Settings";
 import ServerView from "@/pages/ServerView";
+import InviteJoin from "@/pages/InviteJoin";
 import NotFound from "@/pages/NotFound";
 import "@/i18n";
 
@@ -47,9 +48,10 @@ const App = () => (
                   <Route path="group/:groupId" element={<GroupChat />} />
                 </Route>
                 <Route path="server/:serverId" element={<ServerView />} />
-                <Route path="server/:serverId/channel/:channelId" element={<ServerView />} />
+              <Route path="server/:serverId/channel/:channelId" element={<ServerView />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
+              <Route path="/invite/:code" element={<ProtectedRoute><InviteJoin /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
