@@ -170,9 +170,9 @@ const ServerView = () => {
     // Phase 1: Server page (ServerRail + ChannelSidebar)
     return (
       <>
-        <div className="flex h-full">
+        <div className="flex h-full w-full max-w-full overflow-x-hidden">
           <ServerRail />
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
             <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
           </div>
         </div>
