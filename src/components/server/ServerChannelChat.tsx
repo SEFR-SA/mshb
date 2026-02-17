@@ -24,6 +24,8 @@ import UserContextMenu from "@/components/chat/UserContextMenu";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import ReplyPreview from "@/components/chat/ReplyPreview";
 import ReplyInputBar from "@/components/chat/ReplyInputBar";
+import MessageReactions from "@/components/chat/MessageReactions";
+import { useMessageReactions } from "@/hooks/useMessageReactions";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
@@ -79,6 +81,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
 
   const isLocked = isPrivate && hasAccess === false;
+  const { reactions, toggleReaction } = useMessageReactions(messages.map((m: any) => m.id));
 
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
@@ -360,6 +363,12 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
                   </div>
                 ) : null}
                 {msg.content && <p className={`whitespace-pre-wrap break-words ${getEmojiClass(msg.content) || 'text-sm'}`}>{renderMessageContent(msg.content, profiles, user?.id)}</p>}
+                <MessageReactions
+                  messageId={msg.id}
+                  reactions={reactions.get(msg.id) || []}
+                  currentUserId={user?.id || ""}
+                  onToggle={(mid, emoji) => user && toggleReaction(mid, emoji, user.id)}
+                />
               </div>
             </div>
             </MessageContextMenu>
