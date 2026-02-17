@@ -21,6 +21,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import ServerSettingsDialog from "./ServerSettingsDialog";
+import InviteModal from "./InviteModal";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { usePresence } from "@/hooks/usePresence";
@@ -82,6 +83,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [channelsLoading, setChannelsLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState("text");
   const [newCategory, setNewCategory] = useState("Text Channels");
@@ -514,7 +516,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
           <h2 className="font-bold text-sm truncate">{server?.name || "..."}</h2>
           <div className="flex gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={copyInvite} title={t("servers.copyInvite")}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setInviteModalOpen(true)} title={t("servers.copyInvite")}>
               <Copy className="h-3.5 w-3.5" />
             </Button>
             {isAdmin && (
@@ -945,6 +947,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       </AlertDialog>
 
       <ServerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} serverId={serverId} />
+      <InviteModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} serverId={serverId} serverName={server?.name || ""} />
     </>
   );
 };

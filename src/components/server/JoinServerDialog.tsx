@@ -24,8 +24,22 @@ const JoinServerDialog = ({ open, onOpenChange }: Props) => {
     if (!code.trim() || !user) return;
     setLoading(true);
     try {
-      const { data: serverId } = await supabase
-        .rpc("get_server_id_by_invite", { p_code: code.trim() });
+      // Extract code from URL if pasted as full link
+      let inviteCode = code.trim();
+      const urlMatch = inviteCode.match(/\/invite\/([A-Za-z0-9]+)$/);
+      if (urlMatch) inviteCode = urlMatch[1];
+
+      // Try new invite system first, then fall back to legacy
+      let serverId: string | null = null;
+      const { data: newId } = await supabase.rpc("get_server_id_by_invite_link", { p_code: inviteCode });
+      if (newId) {
+        // Use the invite (increment counter)
+        await supabase.rpc("use_invite", { p_code: inviteCode });
+        serverId = newId;
+      } else {
+        const { data: legacyId } = await supabase.rpc("get_server_id_by_invite", { p_code: inviteCode });
+        serverId = legacyId;
+      }
       if (!serverId) {
         toast({ title: t("servers.invalidCode"), variant: "destructive" });
         setLoading(false);

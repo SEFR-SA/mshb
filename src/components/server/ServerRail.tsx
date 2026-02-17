@@ -121,9 +121,18 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
     return () => { channel.unsubscribe(); };
   }, [user, loadData]);
 
-  const handleCopyInvite = (inviteCode: string) => {
-    navigator.clipboard.writeText(inviteCode);
-    toast({ title: t("servers.copiedInvite") });
+  const handleCopyInvite = async (sId: string) => {
+    if (!user) return;
+    // Generate a new invite link and copy it
+    const { data, error } = await supabase
+      .from("invites" as any)
+      .insert({ server_id: sId, creator_id: user.id } as any)
+      .select("code")
+      .single();
+    if (!error && data) {
+      navigator.clipboard.writeText(`https://mshb.lovable.app/invite/${(data as any).code}`);
+      toast({ title: t("servers.copiedInvite") });
+    }
   };
 
   const handleLeaveServer = async (serverId: string) => {
@@ -336,7 +345,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                       <Settings className="h-4 w-4 me-2" />
                       {t("servers.settings")}
                     </ContextMenuItem>
-                    <ContextMenuItem onClick={() => handleCopyInvite(s.invite_code)}>
+                    <ContextMenuItem onClick={() => handleCopyInvite(s.id)}>
                       <Copy className="h-4 w-4 me-2" />
                       {t("servers.copyInvite")}
                     </ContextMenuItem>

@@ -186,15 +186,12 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
               </div>
             </div>
 
-            {/* Invite code */}
+            {/* Invite link info */}
             <div className="space-y-2">
               <Label>{t("servers.inviteCode")}</Label>
-              <div className="flex gap-2">
-                <Input value={inviteCode} readOnly className="font-mono" />
-                <Button variant="outline" onClick={() => { navigator.clipboard.writeText(inviteCode); toast({ title: t("servers.copiedInvite") }); }}>
-                  {t("servers.copyInvite")}
-                </Button>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Invite links are now generated dynamically. Use the invite button in the channel sidebar to create and share invite links with expiration and usage limits.
+              </p>
             </div>
           </div>
 
