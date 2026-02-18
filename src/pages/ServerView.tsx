@@ -52,19 +52,9 @@ const ServerView = () => {
         .then(({ data }) => { if (data) setActiveChannel(data as any); });
       return;
     }
-    // On mobile without channelId, don't auto-navigate — show channel list
-    if (isMobile) {
-      setActiveChannel(null);
-      return;
-    }
-    supabase.from("channels" as any).select("id, name, type, is_private").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
-      .then(({ data }) => {
-        if (data && (data as any[]).length > 0) {
-          const ch = (data as any[])[0];
-          navigate(`/server/${serverId}/channel/${ch.id}`, { replace: true });
-        }
-      });
-  }, [serverId, channelId, navigate, isMobile]);
+    // No channelId — show channel list without auto-selecting any channel
+    setActiveChannel(null);
+  }, [serverId, channelId]);
 
   const handleChannelSelect = (channel: { id: string; name: string; type: string; is_private?: boolean }) => {
     if (channel.type !== "voice") {
