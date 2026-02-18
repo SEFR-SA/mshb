@@ -31,13 +31,14 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mx-[10px] mb-[10px] mt-24 flex h-auto flex-col rounded-[20px] border bg-popover/85 backdrop-blur-xl shadow-2xl",
+        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[24px] rounded-b-none border-x-0 border-b-0 border-t bg-popover/85 backdrop-blur-xl shadow-2xl",
         className,
       )}
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       {...props}
     >
       {/* Drag Handle */}
-      <div className="flex justify-center pt-3 pb-1">
+      <div className="flex justify-center mt-2 mb-1">
         <div className="h-1.5 w-10 rounded-full bg-muted-foreground/30" />
       </div>
       {children}
