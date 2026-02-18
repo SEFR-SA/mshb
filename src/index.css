@@ -157,6 +157,23 @@
   .text-galaxy-glow {
     /* no-op */
   }
+
+  .theme-input {
+    background: var(--component-bg, hsl(var(--background) / 0.2));
+    border-color: var(--component-border, hsl(var(--border)));
+  }
+
+  .theme-text {
+    text-shadow: var(--text-safety-shadow, none);
+  }
+}
+
+/* Gradient contrast safety net */
+.gradient-active {
+  --text-safety-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.gradient-active.gradient-light {
+  --text-safety-shadow: 0 1px 2px rgba(255,255,255,0.3);
 }
 
 @keyframes shimmer {
