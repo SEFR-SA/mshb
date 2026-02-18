@@ -1,96 +1,108 @@
 
 
-## Dynamic Invite Link System
+## Theme Engine Overhaul -- Luminance-Aware Adaptive Theming
 
 ### Overview
-Replace the static invite code on servers with a full invite link system supporting expiration, usage limits, friend DM sending, and a Discord-style invite modal with settings sub-view.
+Refactor the theme engine so that selecting a gradient theme automatically adapts text colors, component surfaces, and modal backgrounds based on the gradient's luminance. The Dark/Light toggle remains the master override for surface colors, while gradients act as the background layer.
 
 ---
 
-### 1. Database Migration
+### 1. Luminance Utility Function
 
-**New `invites` table:**
+**File: `src/contexts/ThemeContext.tsx`**
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid (PK) | Default `gen_random_uuid()` |
-| server_id | uuid (NOT NULL) | References the server |
-| creator_id | uuid (NOT NULL) | The user who created it |
-| code | text (UNIQUE, NOT NULL) | 8-char random string via `generate_invite_code()` |
-| expires_at | timestamptz | Nullable; default `now() + interval '7 days'` |
-| max_uses | integer | Nullable (null = unlimited) |
-| use_count | integer | Default 0 |
-| temporary | boolean | Default false (grant temporary membership) |
-| created_at | timestamptz | Default `now()` |
+Add a `getAverageLuminance(colors: string[]): number` helper that:
+- Converts each hex color to relative luminance using the standard formula: `0.2126*R + 0.7152*G + 0.0722*B`
+- Returns the average across all gradient colors (0 = black, 1 = white)
+- Threshold: luminance > 0.4 = "light gradient", else "dark gradient"
 
-**RLS Policies:**
-- SELECT: server members can view invites for their servers
-- INSERT: server members can create invites for their servers
-- UPDATE: creator can update their own invites
-- DELETE: creator or server admin can delete invites
-
-**New DB function `get_server_id_by_invite_link(p_code text)`:**
-- Replaces the old `get_server_id_by_invite` logic
-- Checks `expires_at` and `use_count < max_uses` (or `max_uses IS NULL`)
-- Returns `server_id` if valid, NULL if expired/exhausted
-- A second function `use_invite(p_code text)` increments `use_count` atomically
-
-**Add `/invite/:code` route** in `App.tsx` that redirects to a join flow or shows "Invalid Invite" if the code is expired/full.
-
-Enable realtime on the `invites` table.
+Expose a new boolean `isGradientLight` from the context so all components can consume it.
 
 ---
 
-### 2. New Invite Modal Component (`InviteModal.tsx`)
+### 2. Dynamic CSS Variable Injection
 
-**Trigger:** The existing Copy icon button next to the server name in `ChannelSidebar.tsx` (line 517) will open this modal instead of copying the old static code.
+**File: `src/contexts/ThemeContext.tsx`** (inside the `colorTheme` effect)
 
-**Main View:**
-- Title: "Invite friends to [Server Name]"
-- Search bar to filter friends list
-- Scrollable list of the user's accepted friends, each with avatar, name, and a "Send Link" button
-  - "Send Link" creates (or reuses) a DM thread and sends a message containing the invite URL
-  - Button changes to "Sent" after sending
-- Bottom section: generated link box showing `mshb.lovable.app/invite/[code]` with a "Copy" button
-- Footer text: "Your invite link expires in 7 days. Edit invite link." where "Edit invite link" is clickable
+When a non-default gradient is selected, inject adaptive CSS variables onto `document.documentElement`:
 
-**Settings Sub-View (slides in):**
-- Back button to return to main view
-- "Expire After" dropdown: 1 hour, 6 hours, 12 hours, 1 day, 7 days
-- "Max Number of Uses" dropdown: No limit, 1, 5, 10, 25
-- "Grant Temporary Membership" toggle switch
-- When any setting changes and user goes back (or auto-save), generate a new invite code with the selected constraints, update the displayed link
+| Variable | Dark Gradient Value | Light Gradient Value |
+|----------|-------------------|---------------------|
+| `--foreground` | `0 0% 100%` (white) | `240 6% 3%` (near-black) |
+| `--card-foreground` | same as above | same as above |
+| `--popover-foreground` | same as above | same as above |
+| `--muted-foreground` | `215 10% 75%` | `215 10% 35%` |
+| `--component-bg` | `rgba(0,0,0,0.3)` | `rgba(255,255,255,0.3)` |
+| `--component-border` | `rgba(255,255,255,0.1)` | `rgba(0,0,0,0.1)` |
+| `--popover` | derived from darkest gradient color | derived from lightest gradient color |
+| `--card` | derived from darkest gradient color | derived from lightest gradient color |
 
----
-
-### 3. Update Join Flow (`JoinServerDialog.tsx` and new `/invite/:code` route)
-
-- Add a new page/component `InviteJoin.tsx` for the `/invite/:code` route
-- On load, call `get_server_id_by_invite_link(code)` to validate
-- If valid: show server name and a "Join" button; on join, call `use_invite(code)` to increment use_count, insert into `server_members`, navigate to server
-- If invalid: show "Invite Invalid" error (expired or max uses reached)
-- Update `JoinServerDialog.tsx` to also accept full URLs (extract code from `mshb.lovable.app/invite/[code]` format)
+When `colorTheme` resets to `"default"`, remove these overrides so the base dark/light CSS kicks back in.
 
 ---
 
-### 4. Update Existing References
+### 3. Component Surface Updates
 
-- `ChannelSidebar.tsx`: Change the Copy button to open the new InviteModal instead of copying the static code
-- `ServerSettingsDialog.tsx`: Update invite code section to show the new invite link format and link to the modal
-- `ServerRail.tsx`: Update context menu "Copy Invite" to generate/use a dynamic invite link
+**Files: `src/components/ui/input.tsx`, `src/components/ui/textarea.tsx`, `src/components/ui/select.tsx`, `src/components/ui/popover.tsx`**
+
+Replace hardcoded `bg-background/20`, `bg-background`, `border-input` references with the new CSS variables:
+- Input/Textarea background: `var(--component-bg)` with fallback to current value
+- Border: `var(--component-border)` with fallback
+- This is done via a small CSS class `.theme-input` in `index.css` that these components use
 
 ---
 
-### 5. Files Summary
+### 4. Modal & Popup Consistency
+
+**File: `src/components/ui/dialog.tsx`**
+
+Update `DialogContent` to:
+- Use `backdrop-filter: blur(12px)` on the content itself
+- Use `var(--component-bg)` as background with a solid fallback from `--popover`
+- This ensures modals look glassy and inherit the gradient context
+
+**File: `src/components/ui/popover.tsx`**
+- Same treatment: add `backdrop-blur-xl` and semi-transparent background
+
+---
+
+### 5. Contrast Safety Net
+
+**File: `src/index.css`**
+
+Add a utility class applied when a gradient theme is active:
+
+```css
+.gradient-active {
+  --text-safety-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.gradient-active.gradient-light {
+  --text-safety-shadow: 0 1px 2px rgba(255,255,255,0.3);
+}
+```
+
+The ThemeContext will toggle the `gradient-active` and `gradient-light` classes on `<html>`.
+
+Key text elements (message content, channel names, headers) gain `text-shadow: var(--text-safety-shadow, none)` via a `.theme-text` utility class.
+
+---
+
+### 6. Dark/Light Toggle as Master Override
+
+The existing dark/light toggle continues to set the base CSS variables (`:root` vs `.dark`). The gradient injection layer sits on top -- it only overrides foreground/surface variables when a gradient is active. When the user switches dark/light mode, the base variables reset first, then the gradient overrides reapply. This is handled by making the gradient effect depend on both `colorTheme` and `theme`.
+
+---
+
+### Files Summary
 
 | File | Action |
 |------|--------|
-| Database migration | Create `invites` table, RLS, functions |
-| `src/App.tsx` | Add `/invite/:code` route |
-| `src/components/server/InviteModal.tsx` | **New** -- main invite modal with friends list + settings |
-| `src/pages/InviteJoin.tsx` | **New** -- handles `/invite/:code` join page |
-| `src/components/server/ChannelSidebar.tsx` | Replace copy button with modal trigger |
-| `src/components/server/ServerSettingsDialog.tsx` | Update invite code display |
-| `src/components/server/ServerRail.tsx` | Update context menu invite action |
-| `src/components/server/JoinServerDialog.tsx` | Support URL-based invite codes |
+| `src/contexts/ThemeContext.tsx` | Add luminance calculation, `isGradientLight`, CSS variable injection, toggle `gradient-active`/`gradient-light` classes |
+| `src/index.css` | Add `.theme-input`, `.theme-text`, `.gradient-active` utility classes, update `.glass` |
+| `src/components/ui/dialog.tsx` | Add backdrop-blur and semi-transparent background to DialogContent |
+| `src/components/ui/popover.tsx` | Add backdrop-blur and semi-transparent background to PopoverContent |
+| `src/components/ui/input.tsx` | Use `.theme-input` class / `var(--component-bg)` |
+| `src/components/ui/textarea.tsx` | Use `.theme-input` class / `var(--component-bg)` |
+| `src/components/ui/select.tsx` | Use adaptive background variables |
+| `src/components/layout/AppLayout.tsx` | Minor -- no changes needed, already uses `getGradientStyle` |
 
