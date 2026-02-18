@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
 
 type Theme = "dark" | "light";
 
@@ -40,6 +40,8 @@ interface ThemeContextType {
   colorTheme: string;
   setColorTheme: (id: string) => void;
   getGradientStyle: () => React.CSSProperties;
+  isGradientLight: boolean;
+  isGradientActive: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -62,6 +64,22 @@ function hexToHsl(hex: string): string {
     }
   }
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
+
+/** Calculate relative luminance of a hex color (0=black, 1=white) */
+function hexToLuminance(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+}
+
+/** Average luminance across gradient colors */
+function getAverageLuminance(colors: string[]): number {
+  if (colors.length === 0) return 0;
+  const total = colors.reduce((sum, c) => sum + hexToLuminance(c), 0);
+  return total / colors.length;
 }
 
 const DEFAULT_ACCENT = "#084f00";
@@ -89,6 +107,57 @@ function buildGradient(colors: string[]): string {
   return `linear-gradient(135deg, ${colors.join(", ")})`;
 }
 
+/** CSS variable overrides to inject/remove when gradient is active */
+const GRADIENT_OVERRIDE_VARS = [
+  "--foreground", "--card-foreground", "--popover-foreground",
+  "--muted-foreground", "--component-bg", "--component-border",
+  "--popover", "--card", "--sidebar-foreground",
+  "--sidebar-accent-foreground", "--secondary-foreground",
+  "--accent-foreground",
+];
+
+function applyGradientOverrides(colors: string[], isLight: boolean) {
+  const root = document.documentElement;
+
+  // Foreground colors
+  const fg = isLight ? "240 6% 3%" : "0 0% 100%";
+  const mutedFg = isLight ? "215 10% 35%" : "215 10% 75%";
+
+  root.style.setProperty("--foreground", fg);
+  root.style.setProperty("--card-foreground", fg);
+  root.style.setProperty("--popover-foreground", fg);
+  root.style.setProperty("--sidebar-foreground", fg);
+  root.style.setProperty("--sidebar-accent-foreground", fg);
+  root.style.setProperty("--secondary-foreground", fg);
+  root.style.setProperty("--accent-foreground", fg);
+  root.style.setProperty("--muted-foreground", mutedFg);
+
+  // Component surfaces
+  root.style.setProperty("--component-bg", isLight ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)");
+  root.style.setProperty("--component-border", isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.1)");
+
+  // Derive popover/card from darkest or lightest gradient color
+  const sorted = [...colors].sort((a, b) => hexToLuminance(a) - hexToLuminance(b));
+  const surfaceColor = isLight ? sorted[sorted.length - 1] : sorted[0];
+  const surfaceHsl = hexToHsl(surfaceColor);
+  root.style.setProperty("--popover", surfaceHsl);
+  root.style.setProperty("--card", surfaceHsl);
+
+  // Toggle classes
+  root.classList.add("gradient-active");
+  if (isLight) {
+    root.classList.add("gradient-light");
+  } else {
+    root.classList.remove("gradient-light");
+  }
+}
+
+function removeGradientOverrides() {
+  const root = document.documentElement;
+  GRADIENT_OVERRIDE_VARS.forEach((v) => root.style.removeProperty(v));
+  root.classList.remove("gradient-active", "gradient-light");
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem("app-theme");
@@ -103,6 +172,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem("app-color-theme") || "default";
   });
 
+  const colors = useMemo(() => getColorsForTheme(colorTheme), [colorTheme]);
+  const isGradientActive = colors.length > 0;
+  const isGradientLight = useMemo(() => {
+    if (!isGradientActive) return false;
+    return getAverageLuminance(colors) > 0.4;
+  }, [colors, isGradientActive]);
+
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove("dark", "light");
@@ -115,12 +191,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("app-accent-color", accentColor);
   }, [accentColor]);
 
+  // Gradient + theme effect: inject/remove CSS variable overrides
   useEffect(() => {
-    const colors = getColorsForTheme(colorTheme);
     const gradient = buildGradient(colors);
     document.documentElement.style.setProperty("--theme-gradient", gradient);
     localStorage.setItem("app-color-theme", colorTheme);
-  }, [colorTheme]);
+
+    if (isGradientActive) {
+      applyGradientOverrides(colors, isGradientLight);
+    } else {
+      removeGradientOverrides();
+    }
+
+    return () => {
+      // Cleanup on unmount
+    };
+  }, [colorTheme, theme, colors, isGradientActive, isGradientLight]);
 
   const setTheme = (t: Theme) => setThemeState(t);
   const toggleTheme = () => setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
@@ -128,13 +214,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setColorTheme = (id: string) => setColorThemeState(id);
 
   const getGradientStyle = (): React.CSSProperties => {
-    const colors = getColorsForTheme(colorTheme);
     if (colors.length === 0) return {};
     return { background: buildGradient(colors) };
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, accentColor, setAccentColor, colorTheme, setColorTheme, getGradientStyle }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, accentColor, setAccentColor, colorTheme, setColorTheme, getGradientStyle, isGradientLight, isGradientActive }}>
       {children}
     </ThemeContext.Provider>
   );
