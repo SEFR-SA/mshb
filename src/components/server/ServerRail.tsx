@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { useServerUnread } from "@/hooks/useServerUnread";
 import { useServerVoiceActivity } from "@/hooks/useServerVoiceActivity";
+import { useUnreadDMs } from "@/hooks/useUnreadDMs";
 
 interface Server {
   id: string;
@@ -60,6 +61,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const serverIds = servers.map((s) => s.id);
   const unreadMap = useServerUnread(serverIds);
   const voiceActivityMap = useServerVoiceActivity(serverIds);
+  const { unreadDMs } = useUnreadDMs();
 
   // IDs of servers that are inside folders
   const folderedServerIds = new Set(folders.flatMap((f) => f.serverIds));
@@ -254,6 +256,36 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
             </button>
           </TooltipTrigger>
         </Tooltip>
+
+        {/* Quick DM Notifications */}
+        {unreadDMs.length > 0 && (
+          <>
+            <Separator className="w-8 mx-auto" />
+            <div className="flex flex-col items-center gap-2 w-full">
+              {unreadDMs.map((dm) => (
+                <Tooltip key={dm.threadId}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => { navigate(`/chat/${dm.threadId}`); onNavigate?.(); }}
+                      className="relative flex items-center justify-center w-12 h-12 rounded-2xl hover:rounded-xl transition-all bg-sidebar-accent/30 hover:bg-primary/20 group"
+                    >
+                      <Avatar className="h-12 w-12 rounded-[inherit]">
+                        <AvatarImage src={dm.avatarUrl || ""} />
+                        <AvatarFallback className="bg-destructive/20 text-destructive-foreground text-sm font-bold rounded-[inherit]">
+                          {dm.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {/* Unread badge */}
+                      <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 leading-none ring-2 ring-sidebar-background select-none">
+                        {dm.unreadCount > 99 ? "99+" : dm.unreadCount}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                </Tooltip>
+              ))}
+            </div>
+          </>
+        )}
 
         <Separator className="w-8 mx-auto" />
 
