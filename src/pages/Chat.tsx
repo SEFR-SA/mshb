@@ -34,6 +34,7 @@ import ReplyPreview from "@/components/chat/ReplyPreview";
 import ReplyInputBar from "@/components/chat/ReplyInputBar";
 import MessageReactions from "@/components/chat/MessageReactions";
 import { useMessageReactions } from "@/hooks/useMessageReactions";
+import { startLoop, stopAllLoops, playSound } from "@/lib/soundManager";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
@@ -70,10 +71,28 @@ const Chat = () => {
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string; content: string } | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
 
-  const handleCallEnded = useCallback(() => {
+  const callStartRef = useRef<number | null>(null);
+
+  const handleCallEnded = useCallback(async () => {
+    stopAllLoops();
+    playSound("call_end");
+    const startTime = callStartRef.current;
+    if (startTime && threadId && user) {
+      const duration = Math.floor((Date.now() - startTime) / 1000);
+      const m = Math.floor(duration / 60);
+      const s = duration % 60;
+      const durationText = m > 0 ? `${m}m${s > 0 ? ` ${s}s` : ""}` : `${s}s`;
+      await supabase.from("messages").insert({
+        thread_id: threadId,
+        author_id: user.id,
+        content: `📞 Call ended · ${durationText}`,
+      } as any);
+      await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
+    }
+    callStartRef.current = null;
     setCallSessionId(null);
     setIsCallerState(false);
-  }, []);
+  }, [threadId, user]);
 
   const { globalMuted, globalDeafened } = useAudioSettings();
 
@@ -84,6 +103,14 @@ const Chat = () => {
     initialMuted: globalMuted,
     initialDeafened: globalDeafened,
   });
+
+  // Track call start time for duration display
+  useEffect(() => {
+    if (callState === "connected" && !callStartRef.current) {
+      callStartRef.current = Date.now();
+      stopAllLoops();
+    }
+  }, [callState]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -136,7 +163,8 @@ const Chat = () => {
     if (data) {
       setCallSessionId(data.id);
       setIsCallerState(true);
-      // Pass session ID directly to bypass React state timing
+      // Start outgoing ring
+      startLoop("outgoing_ring");
       startCall(data.id);
     }
   };
@@ -150,25 +178,50 @@ const Chat = () => {
   }, [otherId, searchParams]);
 
   const handleEndCall = async () => {
+    stopAllLoops();
     if (callSessionId) {
       await supabase.from("call_sessions").update({ status: "ended", ended_at: new Date().toISOString() } as any).eq("id", callSessionId);
     }
     endCall();
   };
 
-  // Listen for callee declining/ending the call via DB status
+  // Wrapped toggles with sound feedback
+  const handleToggleMute = useCallback(() => {
+    playSound(isMuted ? "unmute" : "mute");
+    toggleMute();
+  }, [isMuted, toggleMute]);
+
+  const handleToggleDeafen = useCallback(() => {
+    playSound(isDeafened ? "undeafen" : "deafen");
+    toggleDeafen();
+  }, [isDeafened, toggleDeafen]);
+
+  // Listen for callee declining/ending/missing the call via DB status
   useEffect(() => {
     if (!callSessionId) return;
     const channel = supabase
-      .channel(`call-status-${callSessionId}`)
+      .channel(`call-status-chat-${callSessionId}`)
       .on("postgres_changes", {
         event: "UPDATE",
         schema: "public",
         table: "call_sessions",
         filter: `id=eq.${callSessionId}`,
-      }, (payload) => {
+      }, async (payload) => {
         const status = (payload.new as any).status;
-        if (status === "ended" || status === "declined") {
+        if (status === "ended" || status === "declined" || status === "missed") {
+          stopAllLoops();
+          if (status === "missed" || status === "declined") {
+            playSound("call_end");
+            // Insert missed/declined system message
+            if (threadId && user) {
+              const otherN = otherProfile?.display_name || otherProfile?.username || "User";
+              const msg = status === "missed"
+                ? `📵 ${otherN} missed your call`
+                : `📵 ${otherN} declined your call`;
+              await supabase.from("messages").insert({ thread_id: threadId, author_id: user.id, content: msg } as any);
+              await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
+            }
+          }
           endCall();
           setCallSessionId(null);
           setIsCallerState(false);
@@ -176,7 +229,7 @@ const Chat = () => {
       })
       .subscribe();
     return () => { channel.unsubscribe(); };
-  }, [callSessionId, endCall]);
+  }, [callSessionId, endCall, threadId, user, otherProfile]);
 
   // Load hidden message IDs
   useEffect(() => {
@@ -418,8 +471,8 @@ const Chat = () => {
         otherName={otherProfile?.display_name || otherProfile?.username || "User"}
         otherAvatar={otherProfile?.avatar_url || undefined}
         onEndCall={handleEndCall}
-        onToggleMute={toggleMute}
-        onToggleDeafen={toggleDeafen}
+        onToggleMute={handleToggleMute}
+        onToggleDeafen={handleToggleDeafen}
         isScreenSharing={isScreenSharing}
         remoteScreenStream={remoteScreenStream}
         onStartScreenShare={startScreenShare}
@@ -450,6 +503,18 @@ const Chat = () => {
           const sameAuthor = prev && prev.author_id === msg.author_id;
           const timeDiff = prev ? new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
           const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
+
+          // System call messages — rendered as centered pill
+          const isCallSystemMsg = msg.content.startsWith("📞") || msg.content.startsWith("📵");
+          if (isCallSystemMsg && !isDeleted) {
+            return (
+              <div key={msg.id} className="flex justify-center my-3">
+                <div className="flex items-center gap-2 bg-muted/60 rounded-full px-4 py-1.5 text-xs text-muted-foreground border border-border/30">
+                  <span>{msg.content}</span>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <MessageContextMenu
