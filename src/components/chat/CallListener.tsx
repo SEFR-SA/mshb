@@ -1,10 +1,15 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
+import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { useWebRTC } from "@/hooks/useWebRTC";
+import { useNavigate } from "react-router-dom";
+import { startLoop, stopLoop, stopAllLoops, playSound } from "@/lib/soundManager";
 import IncomingCallDialog from "./IncomingCallDialog";
 import VoiceCallUI from "./VoiceCallUI";
+
+const CALL_TIMEOUT_SECONDS = 180; // 3 minutes
 
 interface IncomingCall {
   sessionId: string;
@@ -14,22 +19,94 @@ interface IncomingCall {
   threadId: string;
 }
 
+/** Insert a system message into a DM thread */
+async function insertCallSystemMessage(
+  threadId: string,
+  authorId: string,
+  content: string
+) {
+  try {
+    await supabase.from("messages").insert({
+      thread_id: threadId,
+      author_id: authorId,
+      content,
+    } as any);
+    await supabase
+      .from("dm_threads")
+      .update({ last_message_at: new Date().toISOString() })
+      .eq("id", threadId);
+  } catch {
+    // ignore
+  }
+}
+
+function formatDurationText(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+
 const CallListener = () => {
   const { user } = useAuth();
   const { globalMuted, globalDeafened } = useAudioSettings();
+  const { voiceChannel, disconnectVoice } = useVoiceChannel();
+  const navigate = useNavigate();
+
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [activeSession, setActiveSession] = useState<string | null>(null);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [isCaller, setIsCaller] = useState(false);
   const [otherName, setOtherName] = useState("");
+  const [otherAvatar, setOtherAvatar] = useState<string | undefined>(undefined);
 
-  const handleCallEnded = useCallback(() => {
+  // Track call start time for duration on end
+  const callStartRef = useRef<number | null>(null);
+  // Timeout ref for 3-minute auto-cancel
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Keep threadId accessible in cleanup
+  const activeThreadRef = useRef<string | null>(null);
+  const callerIdRef = useRef<string | null>(null);
+
+  activeThreadRef.current = activeThreadId;
+
+  const clearTimeout_ = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
+
+  const handleCallEnded = useCallback(async () => {
+    stopAllLoops();
+    playSound("call_end");
+    clearTimeout_();
+
+    const threadId = activeThreadRef.current;
+    const startTime = callStartRef.current;
+
+    if (threadId && user) {
+      if (startTime) {
+        const duration = Math.floor((Date.now() - startTime) / 1000);
+        const durationText = formatDurationText(duration);
+        await insertCallSystemMessage(
+          threadId,
+          user.id,
+          `📞 Call ended · ${durationText}`
+        );
+      }
+    }
+
+    callStartRef.current = null;
     setActiveSession(null);
+    setActiveThreadId(null);
     setIncomingCall(null);
     setIsCaller(false);
     setOtherName("");
-  }, []);
+    setOtherAvatar(undefined);
+  }, [user]);
 
-  const { callState, isMuted, isDeafened, callDuration, startCall, answerCall, endCall, toggleMute, toggleDeafen } = useWebRTC({
+  const { callState, isMuted, isDeafened, callDuration, isScreenSharing, remoteScreenStream, isCameraOn, localCameraStream, remoteCameraStream, startCall, answerCall, endCall, toggleMute, toggleDeafen, startScreenShare, stopScreenShare, startCamera, stopCamera } = useWebRTC({
     sessionId: activeSession,
     isCaller,
     onEnded: handleCallEnded,
@@ -37,12 +114,20 @@ const CallListener = () => {
     initialDeafened: globalDeafened,
   });
 
+  // Track when call connects to record start time
+  useEffect(() => {
+    if (callState === "connected" && !callStartRef.current) {
+      callStartRef.current = Date.now();
+      stopAllLoops(); // Stop ringtone when connected
+    }
+  }, [callState]);
+
   // Listen for incoming calls
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
-      .channel("call-listener")
+      .channel("call-listener-global")
       .on(
         "postgres_changes",
         {
@@ -63,6 +148,8 @@ const CallListener = () => {
             .eq("user_id", session.caller_id)
             .maybeSingle();
 
+          callerIdRef.current = session.caller_id;
+
           setIncomingCall({
             sessionId: session.id,
             callerId: session.caller_id,
@@ -70,6 +157,28 @@ const CallListener = () => {
             callerAvatar: profile?.avatar_url || undefined,
             threadId: session.thread_id,
           });
+
+          // Play incoming ring
+          startLoop("incoming_ring");
+
+          // Auto-decline after 3 minutes
+          timeoutRef.current = setTimeout(async () => {
+            stopAllLoops();
+            const callerName = profile?.display_name || profile?.username || "User";
+            // Insert missed call message
+            if (session.thread_id && user) {
+              await insertCallSystemMessage(
+                session.thread_id,
+                user.id,
+                `📵 You missed a call from ${callerName}`
+              );
+            }
+            await supabase
+              .from("call_sessions")
+              .update({ status: "missed", ended_at: new Date().toISOString() } as any)
+              .eq("id", session.id);
+            setIncomingCall(null);
+          }, CALL_TIMEOUT_SECONDS * 1000);
         }
       )
       .subscribe();
@@ -79,45 +188,46 @@ const CallListener = () => {
     };
   }, [user, activeSession]);
 
-  const handleAccept = useCallback(async () => {
-    if (!incomingCall) return;
-    setActiveSession(incomingCall.sessionId);
-    setIsCaller(false);
-    setOtherName(incomingCall.callerName);
-
-    await supabase
-      .from("call_sessions")
-      .update({ status: "connected", started_at: new Date().toISOString() } as any)
-      .eq("id", incomingCall.sessionId);
-
-    setIncomingCall(null);
-    // Pass session ID directly to bypass stale closure
-    answerCall(incomingCall.sessionId);
-  }, [incomingCall, answerCall]);
-
-  const handleDecline = useCallback(async () => {
-    if (!incomingCall) return;
-    await supabase
-      .from("call_sessions")
-      .update({ status: "declined", ended_at: new Date().toISOString() } as any)
-      .eq("id", incomingCall.sessionId);
-    setIncomingCall(null);
-  }, [incomingCall]);
-
-  const handleEndCall = useCallback(async () => {
-    if (!activeSession) return;
-    await supabase
-      .from("call_sessions")
-      .update({ status: "ended", ended_at: new Date().toISOString() } as any)
-      .eq("id", activeSession);
-    endCall();
-  }, [activeSession, endCall]);
-
-  // Listen for the other side ending/declining the call via DB status
+  // Watch for caller's call being declined/timed-out (for missed call message insertion by caller)
   useEffect(() => {
-    if (!activeSession) return;
+    if (!activeSession || !isCaller) return;
     const channel = supabase
-      .channel(`call-status-${activeSession}`)
+      .channel(`call-status-caller-${activeSession}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "call_sessions",
+        filter: `id=eq.${activeSession}`,
+      }, async (payload) => {
+        const status = (payload.new as any).status;
+        if (status === "ended" || status === "declined") {
+          stopAllLoops();
+          endCall();
+        } else if (status === "missed") {
+          stopAllLoops();
+          playSound("call_end");
+          // Insert missed call message for caller side
+          const threadId = activeThreadRef.current;
+          if (threadId && user) {
+            const otherN = otherName;
+            await insertCallSystemMessage(
+              threadId,
+              user.id,
+              `📵 ${otherN} missed your call`
+            );
+          }
+          endCall();
+        }
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [activeSession, isCaller, endCall, user, otherName]);
+
+  // Watch for callee-side status changes (ended/declined from caller)
+  useEffect(() => {
+    if (!activeSession || isCaller) return;
+    const channel = supabase
+      .channel(`call-status-callee-${activeSession}`)
       .on("postgres_changes", {
         event: "UPDATE",
         schema: "public",
@@ -131,7 +241,100 @@ const CallListener = () => {
       })
       .subscribe();
     return () => { channel.unsubscribe(); };
+  }, [activeSession, isCaller, endCall]);
+
+  const handleAccept = useCallback(async () => {
+    if (!incomingCall) return;
+    clearTimeout_();
+    stopLoop("incoming_ring");
+
+    // Auto-disconnect from server voice channel if in one
+    if (voiceChannel) {
+      try {
+        await supabase
+          .from("voice_channel_participants")
+          .delete()
+          .eq("channel_id", voiceChannel.id)
+          .eq("user_id", user!.id);
+      } catch {}
+      disconnectVoice();
+    }
+
+    setActiveSession(incomingCall.sessionId);
+    setActiveThreadId(incomingCall.threadId);
+    setIsCaller(false);
+    setOtherName(incomingCall.callerName);
+    setOtherAvatar(incomingCall.callerAvatar);
+
+    await supabase
+      .from("call_sessions")
+      .update({ status: "connected", started_at: new Date().toISOString() } as any)
+      .eq("id", incomingCall.sessionId);
+
+    const threadId = incomingCall.threadId;
+    setIncomingCall(null);
+    answerCall(incomingCall.sessionId);
+
+    // Navigate to DM chat
+    if (threadId) {
+      navigate(`/chat/${threadId}`);
+    }
+  }, [incomingCall, answerCall, voiceChannel, disconnectVoice, user, navigate]);
+
+  const handleDecline = useCallback(async () => {
+    if (!incomingCall) return;
+    clearTimeout_();
+    stopAllLoops();
+
+    const { threadId, callerId, callerName } = incomingCall;
+
+    await supabase
+      .from("call_sessions")
+      .update({ status: "declined", ended_at: new Date().toISOString() } as any)
+      .eq("id", incomingCall.sessionId);
+
+    // Insert declined system message
+    if (threadId && user) {
+      await insertCallSystemMessage(
+        threadId,
+        user.id,
+        `📵 You declined a call from ${callerName}`
+      );
+    }
+
+    setIncomingCall(null);
+  }, [incomingCall, user]);
+
+  const handleEndCall = useCallback(async () => {
+    if (!activeSession) return;
+    clearTimeout_();
+    stopAllLoops();
+
+    await supabase
+      .from("call_sessions")
+      .update({ status: "ended", ended_at: new Date().toISOString() } as any)
+      .eq("id", activeSession);
+    endCall();
   }, [activeSession, endCall]);
+
+  // Wrap toggleMute/Deafen with sounds
+  const handleToggleMute = useCallback(() => {
+    playSound(isMuted ? "unmute" : "mute");
+    toggleMute();
+  }, [isMuted, toggleMute]);
+
+  const handleToggleDeafen = useCallback(() => {
+    playSound(isDeafened ? "undeafen" : "deafen");
+    toggleDeafen();
+  }, [isDeafened, toggleDeafen]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopAllLoops();
+      clearTimeout_();
+    };
+  }, []);
 
   return (
     <>
@@ -151,9 +354,19 @@ const CallListener = () => {
             isDeafened={isDeafened}
             callDuration={callDuration}
             otherName={otherName}
+            otherAvatar={otherAvatar}
             onEndCall={handleEndCall}
-            onToggleMute={toggleMute}
-            onToggleDeafen={toggleDeafen}
+            onToggleMute={handleToggleMute}
+            onToggleDeafen={handleToggleDeafen}
+            isScreenSharing={isScreenSharing}
+            remoteScreenStream={remoteScreenStream}
+            onStartScreenShare={startScreenShare}
+            onStopScreenShare={stopScreenShare}
+            isCameraOn={isCameraOn}
+            localCameraStream={localCameraStream}
+            remoteCameraStream={remoteCameraStream}
+            onStartCamera={startCamera}
+            onStopCamera={stopCamera}
           />
         </div>
       )}
