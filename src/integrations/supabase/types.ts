@@ -418,6 +418,7 @@ export type Database = {
           id: string
           reply_to_id: string | null
           thread_id: string | null
+          type: string | null
         }
         Insert: {
           author_id: string
@@ -434,6 +435,7 @@ export type Database = {
           id?: string
           reply_to_id?: string | null
           thread_id?: string | null
+          type?: string | null
         }
         Update: {
           author_id?: string
@@ -450,6 +452,7 @@ export type Database = {
           id?: string
           reply_to_id?: string | null
           thread_id?: string | null
+          type?: string | null
         }
         Relationships: [
           {

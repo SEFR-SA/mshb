@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Upload, Pin, PinOff, UserRound, UserRoundX, Phone } from "lucide-react";
+import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Upload, Pin, PinOff, UserRound, UserRoundX, Phone, PhoneOff, PhoneMissed } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
@@ -85,7 +85,8 @@ const Chat = () => {
       await supabase.from("messages").insert({
         thread_id: threadId,
         author_id: user.id,
-        content: `📞 Call ended · ${durationText}`,
+        content: `Call ended · ${durationText}`,
+        type: 'call_notification',
       } as any);
       await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
     }
@@ -505,12 +506,26 @@ const Chat = () => {
           const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
 
           // System call messages — rendered as centered pill
-          const isCallSystemMsg = msg.content.startsWith("📞") || msg.content.startsWith("📵");
-          if (isCallSystemMsg && !isDeleted) {
+          const msgTyped = msg as any;
+          const isCallNotification = msgTyped.type === 'call_notification'
+            || (msgTyped.type === 'message' && (msg.content.startsWith("📞") || msg.content.startsWith("📵")));
+          if (isCallNotification && !isDeleted) {
+            const isMissed = msg.content.toLowerCase().includes("missed") || msg.content.startsWith("📵");
+            const isEnded = msg.content.toLowerCase().includes("ended") || msg.content.startsWith("📞");
+            const pillIcon = isMissed
+              ? <PhoneMissed className="h-3 w-3 text-destructive shrink-0" />
+              : isEnded
+              ? <Phone className="h-3 w-3 text-primary shrink-0" />
+              : <PhoneOff className="h-3 w-3 text-muted-foreground shrink-0" />;
+
+            // Strip leading emoji for cleaner display if present
+            const displayContent = msg.content.replace(/^[📞📵]\s*/, "").trim();
+
             return (
-              <div key={msg.id} className="flex justify-center my-3">
-                <div className="flex items-center gap-2 bg-muted/60 rounded-full px-4 py-1.5 text-xs text-muted-foreground border border-border/30">
-                  <span>{msg.content}</span>
+              <div key={msg.id} className="flex justify-center w-full my-4">
+                <div className="flex items-center gap-2 bg-muted/40 rounded-full px-3 py-1 text-xs text-muted-foreground border border-border/20">
+                  {pillIcon}
+                  <span>{displayContent}</span>
                 </div>
               </div>
             );
