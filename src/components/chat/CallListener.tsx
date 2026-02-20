@@ -19,7 +19,7 @@ interface IncomingCall {
   threadId: string;
 }
 
-/** Insert a system message into a DM thread */
+/** Insert a call_notification system message into a DM thread */
 async function insertCallSystemMessage(
   threadId: string,
   authorId: string,
@@ -30,6 +30,7 @@ async function insertCallSystemMessage(
       thread_id: threadId,
       author_id: authorId,
       content,
+      type: 'call_notification',
     } as any);
     await supabase
       .from("dm_threads")
@@ -92,7 +93,7 @@ const CallListener = () => {
         await insertCallSystemMessage(
           threadId,
           user.id,
-          `📞 Call ended · ${durationText}`
+          `Call ended · ${durationText}`
         );
       }
     }
@@ -170,7 +171,7 @@ const CallListener = () => {
               await insertCallSystemMessage(
                 session.thread_id,
                 user.id,
-                `📵 You missed a call from ${callerName}`
+                `Missed call from ${callerName}`
               );
             }
             await supabase
@@ -213,7 +214,7 @@ const CallListener = () => {
             await insertCallSystemMessage(
               threadId,
               user.id,
-              `📵 ${otherN} missed your call`
+              `${otherN} missed your call`
             );
           }
           endCall();
@@ -298,7 +299,7 @@ const CallListener = () => {
       await insertCallSystemMessage(
         threadId,
         user.id,
-        `📵 You declined a call from ${callerName}`
+        `Declined call from ${callerName}`
       );
     }
 
