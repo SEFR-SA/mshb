@@ -1,108 +1,98 @@
 
+## Bug Analysis & Fix Plan
 
-## Theme Engine Overhaul -- Luminance-Aware Adaptive Theming
-
-### Overview
-Refactor the theme engine so that selecting a gradient theme automatically adapts text colors, component surfaces, and modal backgrounds based on the gradient's luminance. The Dark/Light toggle remains the master override for surface colors, while gradients act as the background layer.
+Three distinct bugs need to be fixed. Here's what's wrong with each and exactly how to fix it.
 
 ---
 
-### 1. Luminance Utility Function
+### Bug 1: Mute/Unmute/Deafen/Undeafen Sounds Not Playing
 
-**File: `src/contexts/ThemeContext.tsx`**
+**Root Cause — AudioContext Suspended State**
 
-Add a `getAverageLuminance(colors: string[]): number` helper that:
-- Converts each hex color to relative luminance using the standard formula: `0.2126*R + 0.7152*G + 0.0722*B`
-- Returns the average across all gradient colors (0 = black, 1 = white)
-- Threshold: luminance > 0.4 = "light gradient", else "dark gradient"
+Browsers enforce an "autoplay policy": a `new AudioContext()` created before any user gesture starts in a `suspended` state. The `playSyntheticTone()` function in `src/lib/soundManager.ts` calls `getAudioContext()` which creates the context, but if it was never resumed by user interaction, `ctx.currentTime` is stuck at `0` and the oscillators are scheduled but produce no audible output.
 
-Expose a new boolean `isGradientLight` from the context so all components can consume it.
+The fix is to call `audioCtx.resume()` before scheduling tones inside `playSyntheticTone`. This ensures the context is running before any nodes are started.
 
----
+**File:** `src/lib/soundManager.ts`
 
-### 2. Dynamic CSS Variable Injection
-
-**File: `src/contexts/ThemeContext.tsx`** (inside the `colorTheme` effect)
-
-When a non-default gradient is selected, inject adaptive CSS variables onto `document.documentElement`:
-
-| Variable | Dark Gradient Value | Light Gradient Value |
-|----------|-------------------|---------------------|
-| `--foreground` | `0 0% 100%` (white) | `240 6% 3%` (near-black) |
-| `--card-foreground` | same as above | same as above |
-| `--popover-foreground` | same as above | same as above |
-| `--muted-foreground` | `215 10% 75%` | `215 10% 35%` |
-| `--component-bg` | `rgba(0,0,0,0.3)` | `rgba(255,255,255,0.3)` |
-| `--component-border` | `rgba(255,255,255,0.1)` | `rgba(0,0,0,0.1)` |
-| `--popover` | derived from darkest gradient color | derived from lightest gradient color |
-| `--card` | derived from darkest gradient color | derived from lightest gradient color |
-
-When `colorTheme` resets to `"default"`, remove these overrides so the base dark/light CSS kicks back in.
-
----
-
-### 3. Component Surface Updates
-
-**Files: `src/components/ui/input.tsx`, `src/components/ui/textarea.tsx`, `src/components/ui/select.tsx`, `src/components/ui/popover.tsx`**
-
-Replace hardcoded `bg-background/20`, `bg-background`, `border-input` references with the new CSS variables:
-- Input/Textarea background: `var(--component-bg)` with fallback to current value
-- Border: `var(--component-border)` with fallback
-- This is done via a small CSS class `.theme-input` in `index.css` that these components use
-
----
-
-### 4. Modal & Popup Consistency
-
-**File: `src/components/ui/dialog.tsx`**
-
-Update `DialogContent` to:
-- Use `backdrop-filter: blur(12px)` on the content itself
-- Use `var(--component-bg)` as background with a solid fallback from `--popover`
-- This ensures modals look glassy and inherit the gradient context
-
-**File: `src/components/ui/popover.tsx`**
-- Same treatment: add `backdrop-blur-xl` and semi-transparent background
-
----
-
-### 5. Contrast Safety Net
-
-**File: `src/index.css`**
-
-Add a utility class applied when a gradient theme is active:
-
-```css
-.gradient-active {
-  --text-safety-shadow: 0 1px 2px rgba(0,0,0,0.3);
-}
-.gradient-active.gradient-light {
-  --text-safety-shadow: 0 1px 2px rgba(255,255,255,0.3);
+```typescript
+// Inside playSyntheticTone — add resume() before scheduling
+async function playSyntheticTone(...) {
+  try {
+    const ctx = getAudioContext();
+    if (ctx.state === "suspended") {
+      await ctx.resume();  // ← ADD THIS
+    }
+    const now = ctx.currentTime;
+    // ... rest of scheduling unchanged
+  }
 }
 ```
 
-The ThemeContext will toggle the `gradient-active` and `gradient-light` classes on `<html>`.
-
-Key text elements (message content, channel names, headers) gain `text-shadow: var(--text-safety-shadow, none)` via a `.theme-text` utility class.
+Because this is now async we also need `playSound` to `await` it (or fire-and-forget with `.catch`). We'll use fire-and-forget to keep the call-site simple.
 
 ---
 
-### 6. Dark/Light Toggle as Master Override
+### Bug 2: Call History Pills Not Appearing After a Call
 
-The existing dark/light toggle continues to set the base CSS variables (`:root` vs `.dark`). The gradient injection layer sits on top -- it only overrides foreground/surface variables when a gradient is active. When the user switches dark/light mode, the base variables reset first, then the gradient overrides reapply. This is handled by making the gradient effect depend on both `colorTheme` and `theme`.
+**Root Cause — Two Problems Working Together**
+
+**Problem A — Missing `type` column in insert from `Chat.tsx`:**
+When the caller's call is missed or declined (lines 214–223 in `Chat.tsx`), the insert is done **without** `type: 'call_notification'`. It only sets `content` with the emoji prefix. The pill renderer checks `type === 'call_notification'` first, and these messages fall through the emoji-prefix fallback, but the content still starts with `📵` as a raw emoji.
+
+However there's a deeper issue — the `Chat.tsx` "callee-declined" handler (the `useEffect` on line 200–233) inserts messages using the old emoji-prefix format without `type: 'call_notification'`. This needs to be unified.
+
+**Problem B — Real-time subscription doesn't update the local `messages` state:**
+The pill-insert goes directly to the database. The Supabase realtime listener in `Chat.tsx` listens for new messages on the thread and would pick them up — but only if it's subscribed and re-reads. The `callSessionId` is cleared before the insert resolves, which can cause the subscription to be torn down. We need to ensure the insert happens before state is reset.
+
+**Fix:**
+1. In `Chat.tsx` (lines 200–233), change the insert to use `type: 'call_notification'` and clean content (no emoji prefix).
+2. Ensure `setCallSessionId(null)` and `setIsCallerState(false)` are called **after** the DB insert, not before.
+3. In `CallListener.tsx`, the callee-side `handleDecline` already correctly inserts with `type: 'call_notification'` — no change needed there.
+4. The `handleCallEnded` in `Chat.tsx` (lines 76–96) also inserts without `type` — fix this too.
 
 ---
 
-### Files Summary
+### Bug 3: 3-Minute Auto-Timeout Not Working (Callee Side)
 
-| File | Action |
-|------|--------|
-| `src/contexts/ThemeContext.tsx` | Add luminance calculation, `isGradientLight`, CSS variable injection, toggle `gradient-active`/`gradient-light` classes |
-| `src/index.css` | Add `.theme-input`, `.theme-text`, `.gradient-active` utility classes, update `.glass` |
-| `src/components/ui/dialog.tsx` | Add backdrop-blur and semi-transparent background to DialogContent |
-| `src/components/ui/popover.tsx` | Add backdrop-blur and semi-transparent background to PopoverContent |
-| `src/components/ui/input.tsx` | Use `.theme-input` class / `var(--component-bg)` |
-| `src/components/ui/textarea.tsx` | Use `.theme-input` class / `var(--component-bg)` |
-| `src/components/ui/select.tsx` | Use adaptive background variables |
-| `src/components/layout/AppLayout.tsx` | Minor -- no changes needed, already uses `getGradientStyle` |
+**Root Cause — Timeout fires but callee message insert is silent, and no UI reset happens for caller**
 
+Looking at `CallListener.tsx` lines 166–182: the timeout fires for the **callee** (the user receiving the call), inserts a "Missed call" message, and updates `call_sessions.status = 'missed'`. This then triggers the `postgres_changes` subscription in `Chat.tsx` (caller side, lines 200–233), which should call `endCall()` and insert its own message.
+
+The problem: the **caller** `useEffect` in `Chat.tsx` watching for status changes inserts a message `📵 ${otherN} missed your call` **without** `type: 'call_notification'`. So it won't render as a pill. The same fix from Bug 2 covers this.
+
+However there's an additional issue: in `CallListener.tsx`, the auto-timeout `setTimeout` sets the timeout when the `incomingCall` state is set, but the `activeSession` variable captured in the outer `useEffect` closure is stale (it's from the time the effect ran). If another call was started, the `if (activeSession) return` guard on line 143 prevents showing the dialog — but the timeout reference is not always cleared when `incomingCall` is dismissed manually (e.g. declined). 
+
+**Fix:**
+- Ensure `clearTimeout_()` is called in `handleDecline` in `CallListener.tsx` — it already does this ✓
+- The main issue is the timeout fires but uses a stale `profile` closure. We'll make the timeout capture the thread and profile data from `session` directly (already done correctly), but we must also ensure the `timeoutRef` is properly cleared on component unmount (already done ✓).
+
+The real remaining issue: when the 3-minute timeout fires on the **callee** in `CallListener.tsx`, it calls `setIncomingCall(null)` — but it does NOT reset `incomingCall` UI in a way that would tell the **caller** immediately. The `call_sessions.status = 'missed'` update is what signals the caller. This relies on the realtime subscription in `Chat.tsx`. Let's verify this subscription is set up while the `callSessionId` is set — it is (the effect at line 201 depends on `callSessionId`).
+
+**Summary of timeout fix:** The timeout logic itself is correct, but the **caller-side system message** is inserted without `type: 'call_notification'` — same fix as Bug 2 resolves the pill display.
+
+---
+
+## Files to Change
+
+### `src/lib/soundManager.ts`
+- Make `playSyntheticTone` async and add `await ctx.resume()` before scheduling oscillators
+- Update `playSound` to call `playSyntheticTone(...).catch(() => {})` for fire-and-forget async
+
+### `src/pages/Chat.tsx`
+Three inserts need `type: 'call_notification'` and cleaned content:
+
+1. **`handleCallEnded`** (line ~85–91): already sets `type: 'call_notification'` ✓
+2. **The callee-status `useEffect`** (lines 214–223): currently inserts with emoji prefix and **no `type`** — fix to use `type: 'call_notification'` and clean text like `"${otherN} declined your call"` or `"${otherN} missed your call"`
+3. Ensure `setCallSessionId(null)` is called **after** awaiting the insert (currently the order is: `endCall()` → `setCallSessionId(null)`, but the insert is inside an async block before `endCall()`, so ordering should be fine — just add the `type` fix)
+
+### Technical Summary
+
+```text
+Bug 1 — Sound fix:
+  soundManager.ts: playSyntheticTone → async, add await ctx.resume()
+
+Bug 2 & 3 — Pill fix (same root cause):
+  Chat.tsx lines ~219-223: add type: 'call_notification', remove emoji prefix
+  Chat.tsx: ensure all message inserts on call events use type: 'call_notification'
+```
