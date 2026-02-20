@@ -39,15 +39,20 @@ function getAudioContext(): AudioContext {
 
 /**
  * Play a synthetic tone using Web Audio API.
+ * Returns a promise so callers can fire-and-forget with .catch().
  */
-function playSyntheticTone(
+async function playSyntheticTone(
   frequencies: number[],
   duration: number,
   gainValue = 0.18,
   type: OscillatorType = "sine"
-): void {
+): Promise<void> {
   try {
     const ctx = getAudioContext();
+    // Resume context if suspended (browser autoplay policy)
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
     const now = ctx.currentTime;
     const stepDuration = duration / frequencies.length;
 
@@ -114,29 +119,29 @@ export function stopAllLoops(): void {
 }
 
 /**
- * Play a one-shot sound effect.
+ * Play a one-shot sound effect. Fire-and-forget — errors are swallowed.
  */
 export function playSound(key: SoundKey): void {
   switch (key) {
     case "call_end":
       // Descending 3-note tone
-      playSyntheticTone([880, 660, 440], 0.45, 0.2, "sine");
+      playSyntheticTone([880, 660, 440], 0.45, 0.2, "sine").catch(() => {});
       break;
     case "mute":
       // Single low short beep
-      playSyntheticTone([440], 0.12, 0.15, "sine");
+      playSyntheticTone([440], 0.12, 0.15, "sine").catch(() => {});
       break;
     case "unmute":
       // Single higher short beep
-      playSyntheticTone([660], 0.12, 0.15, "sine");
+      playSyntheticTone([660], 0.12, 0.15, "sine").catch(() => {});
       break;
     case "deafen":
       // Two descending beeps
-      playSyntheticTone([660, 440], 0.22, 0.15, "sine");
+      playSyntheticTone([660, 440], 0.22, 0.15, "sine").catch(() => {});
       break;
     case "undeafen":
       // Two ascending beeps
-      playSyntheticTone([440, 660], 0.22, 0.15, "sine");
+      playSyntheticTone([440, 660], 0.22, 0.15, "sine").catch(() => {});
       break;
     case "outgoing_ring":
     case "incoming_ring":
