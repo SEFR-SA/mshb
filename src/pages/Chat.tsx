@@ -213,16 +213,23 @@ const Chat = () => {
           stopAllLoops();
           if (status === "missed" || status === "declined") {
             playSound("call_end");
-            // Insert missed/declined system message
+            // Insert missed/declined system message with correct type so pill renders
             if (threadId && user) {
               const otherN = otherProfile?.display_name || otherProfile?.username || "User";
-              const msg = status === "missed"
-                ? `📵 ${otherN} missed your call`
-                : `📵 ${otherN} declined your call`;
-              await supabase.from("messages").insert({ thread_id: threadId, author_id: user.id, content: msg } as any);
+              const content = status === "missed"
+                ? `${otherN} missed your call`
+                : `${otherN} declined your call`;
+              // Insert BEFORE clearing state so realtime sub is still active
+              await supabase.from("messages").insert({
+                thread_id: threadId,
+                author_id: user.id,
+                content,
+                type: 'call_notification',
+              } as any);
               await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
             }
           }
+          // Clear state AFTER insert so realtime subscription doesn't tear down early
           endCall();
           setCallSessionId(null);
           setIsCallerState(false);
