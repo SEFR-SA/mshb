@@ -53,6 +53,8 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const durationInterval = useRef<ReturnType<typeof setInterval>>();
   const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]);
+  // Flag to suppress onnegotiationneeded during initial setup
+  const suppressNegotiationRef = useRef(false);
 
   const cleanup = useCallback(() => {
     if (durationInterval.current) clearInterval(durationInterval.current);
@@ -70,12 +72,15 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     setIsCameraOn(false);
     setLocalCameraStream(null);
     setRemoteCameraStream(null);
+    remoteAudiosRef.current.forEach((a) => { a.pause(); a.srcObject = null; });
+    remoteAudiosRef.current = [];
     pcRef.current?.close();
     pcRef.current = null;
     if (channelRef.current) {
       channelRef.current.unsubscribe();
       channelRef.current = null;
     }
+    iceCandidateQueue.current = [];
     setCallState("ended");
     setCallDuration(0);
     setIsMuted(false);
@@ -83,15 +88,33 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
   }, [onEnded]);
 
   const startDurationTimer = useCallback(() => {
+    if (durationInterval.current) clearInterval(durationInterval.current);
     const start = Date.now();
     durationInterval.current = setInterval(() => {
       setCallDuration(Math.floor((Date.now() - start) / 1000));
     }, 1000);
   }, []);
 
+  const processQueuedCandidates = useCallback(async () => {
+    const pc = pcRef.current;
+    if (!pc || !pc.remoteDescription) return;
+    const queued = [...iceCandidateQueue.current];
+    iceCandidateQueue.current = [];
+    for (const candidate of queued) {
+      try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
+    }
+  }, []);
+
+  /**
+   * Create an RTCPeerConnection with audio, wire up event handlers.
+   * Does NOT create offer/answer — caller does that separately.
+   */
   const setupPeerConnection = useCallback(async () => {
     const pc = new RTCPeerConnection(ICE_SERVERS);
     pcRef.current = pc;
+
+    // Suppress initial negotiation triggered by addTrack
+    suppressNegotiationRef.current = true;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -103,6 +126,9 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     } catch (error) {
       console.error('[WebRTC] getUserMedia failed:', error);
     }
+
+    // Allow future negotiation (for screen share / camera additions)
+    suppressNegotiationRef.current = false;
 
     pc.ontrack = (event) => {
       if (event.track.kind === "video") {
@@ -117,7 +143,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       } else {
         const audio = new Audio();
         audio.srcObject = event.streams[0];
-        audio.muted = initialDeafened;
+        audio.muted = isDeafened;
         audio.play().catch(() => {});
         remoteAudiosRef.current.push(audio);
       }
@@ -133,10 +159,11 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       }
     };
 
+    // Only fire for renegotiation (screen share, camera), not initial setup
     pc.onnegotiationneeded = async () => {
+      if (suppressNegotiationRef.current) return;
       try {
         const offer = await pc.createOffer();
-        // Patch SDP for bitrate enforcement
         const patchedSdp = patchSdpBitrate(offer.sdp || "");
         await pc.setLocalDescription({ ...offer, sdp: patchedSdp });
         channelRef.current?.send({
@@ -148,26 +175,87 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     };
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "connected") {
+      const state = pc.connectionState;
+      console.log('[WebRTC] connectionState:', state);
+      if (state === "connected") {
         setCallState("connected");
         startDurationTimer();
       }
-      if (["disconnected", "failed", "closed"].includes(pc.connectionState)) {
+      if (["disconnected", "failed", "closed"].includes(state)) {
         cleanup();
       }
     };
 
     return pc;
-  }, [cleanup, startDurationTimer]);
+  }, [cleanup, startDurationTimer, initialMuted, isDeafened]);
 
-  const processQueuedCandidates = useCallback(async () => {
-    const pc = pcRef.current;
-    if (!pc || !pc.remoteDescription) return;
-    for (const candidate of iceCandidateQueue.current) {
-      try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
+  /**
+   * Subscribe to the signaling broadcast channel.
+   * Returns a Promise that resolves once the subscription is active.
+   */
+  const ensureChannel = useCallback((sid: string): Promise<ReturnType<typeof supabase.channel>> => {
+    // If already subscribed to the correct channel, reuse it
+    if (channelRef.current) {
+      return Promise.resolve(channelRef.current);
     }
-    iceCandidateQueue.current = [];
-  }, []);
+
+    return new Promise((resolve) => {
+      const channel = supabase.channel(`call-${sid}`);
+      channelRef.current = channel;
+
+      channel
+        .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
+          const pc = pcRef.current;
+          if (!pc) return;
+          // Only callee processes offers during initial setup
+          // For renegotiation (screen share), both sides handle it
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            await processQueuedCandidates();
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            channel.send({
+              type: "broadcast",
+              event: "call-answer",
+              payload: { sdp: answer },
+            });
+          } catch (e) {
+            console.error('[WebRTC] Error handling offer:', e);
+          }
+        })
+        .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
+          const pc = pcRef.current;
+          if (!pc) return;
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            await processQueuedCandidates();
+          } catch (e) {
+            console.error('[WebRTC] Error handling answer:', e);
+          }
+        })
+        .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
+          const pc = pcRef.current;
+          if (!pc) return;
+          if (pc.remoteDescription) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch {}
+          } else {
+            iceCandidateQueue.current.push(payload.candidate);
+          }
+        })
+        .on("broadcast", { event: "call-end" }, () => {
+          cleanup();
+        })
+        .on("broadcast", { event: "camera-toggle" }, ({ payload }) => {
+          remoteCameraExpectedRef.current = !!payload.on;
+          if (!payload.on) setRemoteCameraStream(null);
+        })
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            resolve(channel);
+          }
+        });
+    });
+  }, [cleanup, processQueuedCandidates]);
 
   // Camera
   const startCamera = useCallback(async () => {
@@ -191,7 +279,6 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       setIsCameraOn(true);
       setLocalCameraStream(stream);
 
-      // Signal remote that camera is on
       channelRef.current?.send({
         type: "broadcast",
         event: "camera-toggle",
@@ -241,7 +328,6 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
 
       const sender = pc.addTrack(videoTrack, stream);
       screenSenderRef.current = sender;
-      // Enforce high bitrate and resolution preservation
       try {
         const params = sender.getParameters();
         if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
@@ -251,7 +337,6 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
         await sender.setParameters(params);
       } catch {}
 
-      // Handle system audio tracks
       const audioTracks = stream.getAudioTracks();
       if (audioTracks.length > 0) {
         const audioSenders: RTCRtpSender[] = [];
@@ -279,7 +364,6 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     if (screenSenderRef.current && pc) {
       try { pc.removeTrack(screenSenderRef.current); } catch {}
     }
-    // Remove screen audio senders
     for (const sender of screenAudioSendersRef.current) {
       try { pc?.removeTrack(sender); } catch {}
     }
@@ -290,149 +374,54 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     setIsScreenSharing(false);
   }, []);
 
-  // Join broadcast channel for signaling
-  useEffect(() => {
-    if (!sessionId) return;
-
-    const channel = supabase.channel(`call-${sessionId}`);
-    channelRef.current = channel;
-
-    channel
-      .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
-        if (isCaller) return;
-        const pc = pcRef.current;
-        if (!pc) return;
-        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-        await processQueuedCandidates();
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        channel.send({
-          type: "broadcast",
-          event: "call-answer",
-          payload: { sdp: answer },
-        });
-      })
-      .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
-        if (!isCaller) return;
-        const pc = pcRef.current;
-        if (!pc) return;
-        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-        await processQueuedCandidates();
-      })
-      .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
-        const pc = pcRef.current;
-        if (!pc) return;
-        if (pc.remoteDescription) {
-          try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch {}
-        } else {
-          iceCandidateQueue.current.push(payload.candidate);
-        }
-      })
-      .on("broadcast", { event: "call-end" }, () => {
-        cleanup();
-      })
-      .on("broadcast", { event: "camera-toggle" }, ({ payload }) => {
-        remoteCameraExpectedRef.current = !!payload.on;
-        if (!payload.on) setRemoteCameraStream(null);
-      })
-      .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-      channelRef.current = null;
-    };
-  }, [sessionId, isCaller, cleanup, processQueuedCandidates]);
-
+  /**
+   * Caller: subscribe to channel, setup PC, create & send offer.
+   */
   const startCall = useCallback(async (overrideSessionId?: string) => {
     const sid = overrideSessionId || sessionId;
     if (!sid) return;
     setCallState("ringing");
 
-    if (!channelRef.current) {
-      const channel = supabase.channel(`call-${sid}`);
-      channelRef.current = channel;
-      channel
-        .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
-          const pc = pcRef.current;
-          if (!pc) return;
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-          await processQueuedCandidates();
-        })
-        .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
-          const pc = pcRef.current;
-          if (!pc) return;
-          if (pc.remoteDescription) {
-            try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch {}
-          } else {
-            iceCandidateQueue.current.push(payload.candidate);
-          }
-        })
-        .on("broadcast", { event: "call-end" }, () => {
-          cleanup();
-        })
-        .on("broadcast", { event: "camera-toggle" }, ({ payload }) => {
-          remoteCameraExpectedRef.current = !!payload.on;
-          if (!payload.on) setRemoteCameraStream(null);
-        })
-        .subscribe();
-    }
+    // 1. Ensure channel is subscribed before doing anything
+    const channel = await ensureChannel(sid);
 
+    // 2. Setup peer connection (audio track added here)
     const pc = await setupPeerConnection();
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
 
-    setTimeout(() => {
-      channelRef.current?.send({
-        type: "broadcast",
-        event: "call-offer",
-        payload: { sdp: offer },
-      });
-    }, 1000);
-  }, [sessionId, setupPeerConnection, cleanup, processQueuedCandidates]);
+    // 3. Create offer and send it
+    try {
+      const offer = await pc.createOffer();
+      const patchedSdp = patchSdpBitrate(offer.sdp || "");
+      await pc.setLocalDescription({ ...offer, sdp: patchedSdp });
 
+      // Small delay to ensure callee has subscribed too
+      setTimeout(() => {
+        channel.send({
+          type: "broadcast",
+          event: "call-offer",
+          payload: { sdp: { ...offer, sdp: patchedSdp } },
+        });
+      }, 500);
+    } catch (e) {
+      console.error('[WebRTC] Error creating offer:', e);
+    }
+  }, [sessionId, setupPeerConnection, ensureChannel]);
+
+  /**
+   * Callee: subscribe to channel, setup PC, wait for offer via channel handler.
+   */
   const answerCall = useCallback(async (overrideSessionId?: string) => {
     const sid = overrideSessionId || sessionId;
     if (!sid) return;
     setCallState("ringing");
 
-    if (!channelRef.current) {
-      const channel = supabase.channel(`call-${sid}`);
-      channelRef.current = channel;
-      channel
-        .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
-          const pc = pcRef.current;
-          if (!pc) return;
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-          await processQueuedCandidates();
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          channel.send({
-            type: "broadcast",
-            event: "call-answer",
-            payload: { sdp: answer },
-          });
-        })
-        .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
-          const pc = pcRef.current;
-          if (!pc) return;
-          if (pc.remoteDescription) {
-            try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch {}
-          } else {
-            iceCandidateQueue.current.push(payload.candidate);
-          }
-        })
-        .on("broadcast", { event: "call-end" }, () => {
-          cleanup();
-        })
-        .on("broadcast", { event: "camera-toggle" }, ({ payload }) => {
-          remoteCameraExpectedRef.current = !!payload.on;
-          if (!payload.on) setRemoteCameraStream(null);
-        })
-        .subscribe();
-    }
+    // 1. Ensure channel is subscribed
+    await ensureChannel(sid);
 
+    // 2. Setup peer connection — the channel's "call-offer" handler
+    //    will process the offer and create an answer automatically
     await setupPeerConnection();
-  }, [sessionId, setupPeerConnection, cleanup, processQueuedCandidates]);
+  }, [sessionId, setupPeerConnection, ensureChannel]);
 
   const endCall = useCallback(() => {
     channelRef.current?.send({
@@ -473,6 +462,10 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
       pcRef.current?.close();
       if (durationInterval.current) clearInterval(durationInterval.current);
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+        channelRef.current = null;
+      }
     };
   }, []);
 
