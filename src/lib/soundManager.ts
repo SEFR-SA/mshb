@@ -1,7 +1,6 @@
 /**
  * Sound Manager — plays audio cues for call events and UI interactions.
- * All sounds are loaded lazily and cached. Looping sounds (ring tones)
- * are tracked so they can be stopped at any time.
+ * Pre-warms AudioContext on first user gesture for instant playback.
  */
 
 type SoundKey =
@@ -13,22 +12,19 @@ type SoundKey =
   | "deafen"
   | "undeafen";
 
-// Map each sound to a public URL (using Discord-like tone patterns via Web Audio API for ring tones,
-// and short synthetic tones for UI clicks — all generated inline so no extra assets are needed).
-// For ringtones we use the existing /notification.mp3 as a base and generate synthetic UI sounds.
-
 const SOUND_URLS: Record<SoundKey, string | null> = {
-  outgoing_ring: "/notification.mp3",  // Will loop — represents outgoing dial tone
-  incoming_ring: "/notification.mp3",  // Will loop — represents incoming ring
-  call_end: null,        // Synthetic: descending tone
-  mute: null,            // Synthetic: short low beep
-  unmute: null,          // Synthetic: short high beep
-  deafen: null,          // Synthetic: double low beep
-  undeafen: null,        // Synthetic: double high beep
+  outgoing_ring: "/notification.mp3",
+  incoming_ring: "/notification.mp3",
+  call_end: null,
+  mute: null,
+  unmute: null,
+  deafen: null,
+  undeafen: null,
 };
 
-// AudioContext for synthetic sounds
+// Singleton AudioContext — created and resumed eagerly on first user gesture
 let audioCtx: AudioContext | null = null;
+let warmedUp = false;
 
 function getAudioContext(): AudioContext {
   if (!audioCtx || audioCtx.state === "closed") {
@@ -38,20 +34,53 @@ function getAudioContext(): AudioContext {
 }
 
 /**
- * Play a synthetic tone using Web Audio API.
- * Returns a promise so callers can fire-and-forget with .catch().
+ * Pre-warm the AudioContext so subsequent playSound() calls are instant.
+ * Called once on the first user click/keydown anywhere in the app.
  */
-async function playSyntheticTone(
+function warmUp() {
+  if (warmedUp) return;
+  warmedUp = true;
+  const ctx = getAudioContext();
+  // Resume immediately — we're inside a user gesture handler
+  ctx.resume().catch(() => {});
+  // Play a silent buffer to fully unlock the context on all browsers
+  try {
+    const buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    source.start(0);
+  } catch {}
+}
+
+// Attach warm-up listeners once — they self-remove after first trigger
+if (typeof window !== "undefined") {
+  const onGesture = () => {
+    warmUp();
+    window.removeEventListener("click", onGesture, true);
+    window.removeEventListener("keydown", onGesture, true);
+    window.removeEventListener("pointerdown", onGesture, true);
+  };
+  window.addEventListener("click", onGesture, true);
+  window.addEventListener("keydown", onGesture, true);
+  window.addEventListener("pointerdown", onGesture, true);
+}
+
+/**
+ * Play a synthetic tone using Web Audio API — synchronous scheduling,
+ * no awaits needed because context is pre-warmed.
+ */
+function playSyntheticTone(
   frequencies: number[],
   duration: number,
-  gainValue = 0.18,
+  gainValue = 0.25,
   type: OscillatorType = "sine"
-): Promise<void> {
+): void {
   try {
     const ctx = getAudioContext();
-    // Resume context if suspended (browser autoplay policy)
+    // Ensure resumed (should already be from warmUp, but just in case)
     if (ctx.state === "suspended") {
-      await ctx.resume();
+      ctx.resume().catch(() => {});
     }
     const now = ctx.currentTime;
     const stepDuration = duration / frequencies.length;
@@ -67,8 +96,8 @@ async function playSyntheticTone(
       oscillator.frequency.setValueAtTime(freq, now + i * stepDuration);
 
       gainNode.gain.setValueAtTime(0, now + i * stepDuration);
-      gainNode.gain.linearRampToValueAtTime(gainValue, now + i * stepDuration + 0.01);
-      gainNode.gain.linearRampToValueAtTime(0, now + (i + 1) * stepDuration - 0.01);
+      gainNode.gain.linearRampToValueAtTime(gainValue, now + i * stepDuration + 0.005);
+      gainNode.gain.linearRampToValueAtTime(0, now + (i + 1) * stepDuration - 0.005);
 
       oscillator.start(now + i * stepDuration);
       oscillator.stop(now + (i + 1) * stepDuration);
@@ -81,11 +110,8 @@ async function playSyntheticTone(
 // Looping audio elements (for ringtones)
 const loopingAudios: Partial<Record<SoundKey, HTMLAudioElement>> = {};
 
-/**
- * Start looping a sound (e.g., a ringtone). Call stopLoop() to stop it.
- */
 export function startLoop(key: "outgoing_ring" | "incoming_ring"): void {
-  stopLoop(key); // Stop any existing loop first
+  stopLoop(key);
   const url = SOUND_URLS[key];
   if (!url) return;
   try {
@@ -94,14 +120,9 @@ export function startLoop(key: "outgoing_ring" | "incoming_ring"): void {
     audio.volume = 0.6;
     audio.play().catch(() => {});
     loopingAudios[key] = audio;
-  } catch {
-    // Audio not available
-  }
+  } catch {}
 }
 
-/**
- * Stop a looping sound.
- */
 export function stopLoop(key: "outgoing_ring" | "incoming_ring"): void {
   const audio = loopingAudios[key];
   if (audio) {
@@ -111,41 +132,36 @@ export function stopLoop(key: "outgoing_ring" | "incoming_ring"): void {
   }
 }
 
-/**
- * Stop all looping sounds.
- */
 export function stopAllLoops(): void {
   (["outgoing_ring", "incoming_ring"] as const).forEach(stopLoop);
 }
 
 /**
- * Play a one-shot sound effect. Fire-and-forget — errors are swallowed.
+ * Play a one-shot sound effect — fully synchronous, instant playback.
+ * Works anywhere in the app (calls, voice channels, or standalone).
  */
 export function playSound(key: SoundKey): void {
+  // Ensure context is alive on every call (covers edge cases)
+  warmUp();
+
   switch (key) {
     case "call_end":
-      // Descending 3-note tone
-      playSyntheticTone([880, 660, 440], 0.45, 0.2, "sine").catch(() => {});
+      playSyntheticTone([880, 660, 440], 0.45, 0.25, "sine");
       break;
     case "mute":
-      // Single low short beep
-      playSyntheticTone([440], 0.12, 0.15, "sine").catch(() => {});
+      playSyntheticTone([440], 0.15, 0.22, "sine");
       break;
     case "unmute":
-      // Single higher short beep
-      playSyntheticTone([660], 0.12, 0.15, "sine").catch(() => {});
+      playSyntheticTone([660], 0.15, 0.22, "sine");
       break;
     case "deafen":
-      // Two descending beeps
-      playSyntheticTone([660, 440], 0.22, 0.15, "sine").catch(() => {});
+      playSyntheticTone([660, 440], 0.25, 0.22, "sine");
       break;
     case "undeafen":
-      // Two ascending beeps
-      playSyntheticTone([440, 660], 0.22, 0.15, "sine").catch(() => {});
+      playSyntheticTone([440, 660], 0.25, 0.22, "sine");
       break;
     case "outgoing_ring":
     case "incoming_ring":
-      // These are handled via startLoop/stopLoop
       break;
   }
 }
