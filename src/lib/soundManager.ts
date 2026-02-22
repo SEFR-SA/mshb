@@ -107,28 +107,29 @@ function playSyntheticTone(
   }
 }
 
-// Looping audio elements (for ringtones)
-const loopingAudios: Partial<Record<SoundKey, HTMLAudioElement>> = {};
+// Synthesized looping ringtones (replaces HTMLAudioElement to prevent overlap glitch)
+const loopIntervals: Partial<Record<string, number>> = {};
 
 export function startLoop(key: "outgoing_ring" | "incoming_ring"): void {
   stopLoop(key);
-  const url = SOUND_URLS[key];
-  if (!url) return;
-  try {
-    const audio = new Audio(url);
-    audio.loop = true;
-    audio.volume = 0.6;
-    audio.play().catch(() => {});
-    loopingAudios[key] = audio;
-  } catch {}
+  const isOutgoing = key === "outgoing_ring";
+  // Outgoing: calmer two-tone, incoming: more urgent
+  const freqs = isOutgoing ? [523, 659] : [587, 784];
+  const interval = isOutgoing ? 3000 : 2000;
+  const duration = isOutgoing ? 0.4 : 0.35;
+
+  // Play immediately, then repeat on interval
+  playSyntheticTone(freqs, duration, 0.18, "sine");
+  loopIntervals[key] = window.setInterval(() => {
+    playSyntheticTone(freqs, duration, 0.18, "sine");
+  }, interval);
 }
 
 export function stopLoop(key: "outgoing_ring" | "incoming_ring"): void {
-  const audio = loopingAudios[key];
-  if (audio) {
-    audio.pause();
-    audio.currentTime = 0;
-    delete loopingAudios[key];
+  const id = loopIntervals[key];
+  if (id != null) {
+    clearInterval(id);
+    delete loopIntervals[key];
   }
 }
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { MessageSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { getEmojiClass } from "@/lib/emojiUtils";
+import { renderLinkedText } from "@/lib/renderLinkedText";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,7 +56,8 @@ const renderMessageContent = (content: string, profiles: Map<string, any>, curre
         );
       }
     }
-    return part;
+    // Apply link detection to non-mention text parts
+    return <React.Fragment key={i}>{renderLinkedText(part)}</React.Fragment>;
   });
 };
 
