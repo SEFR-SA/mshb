@@ -76,24 +76,10 @@ const Chat = () => {
   const handleCallEnded = useCallback(async () => {
     stopAllLoops();
     playSound("call_end");
-    const startTime = callStartRef.current;
-    if (startTime && threadId && user) {
-      const duration = Math.floor((Date.now() - startTime) / 1000);
-      const m = Math.floor(duration / 60);
-      const s = duration % 60;
-      const durationText = m > 0 ? `${m}m${s > 0 ? ` ${s}s` : ""}` : `${s}s`;
-      await supabase.from("messages").insert({
-        thread_id: threadId,
-        author_id: user.id,
-        content: `Call ended · ${durationText}`,
-        type: 'call_notification',
-      } as any);
-      await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
-    }
     callStartRef.current = null;
     setCallSessionId(null);
     setIsCallerState(false);
-  }, [threadId, user]);
+  }, []);
 
   const { globalMuted, globalDeafened } = useAudioSettings();
 
@@ -207,29 +193,11 @@ const Chat = () => {
         schema: "public",
         table: "call_sessions",
         filter: `id=eq.${callSessionId}`,
-      }, async (payload) => {
+      }, (payload) => {
         const status = (payload.new as any).status;
         if (status === "ended" || status === "declined" || status === "missed") {
           stopAllLoops();
-          if (status === "missed" || status === "declined") {
-            playSound("call_end");
-            // Insert missed/declined system message with correct type so pill renders
-            if (threadId && user) {
-              const otherN = otherProfile?.display_name || otherProfile?.username || "User";
-              const content = status === "missed"
-                ? `${otherN} missed your call`
-                : `${otherN} declined your call`;
-              // Insert BEFORE clearing state so realtime sub is still active
-              await supabase.from("messages").insert({
-                thread_id: threadId,
-                author_id: user.id,
-                content,
-                type: 'call_notification',
-              } as any);
-              await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
-            }
-          }
-          // Clear state AFTER insert so realtime subscription doesn't tear down early
+          if (status !== "ended") playSound("call_end");
           endCall();
           setCallSessionId(null);
           setIsCallerState(false);

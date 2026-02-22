@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Monitor, PictureInPicture2, Maximize, Minimize } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ScreenShareViewerProps {
   stream: MediaStream;
@@ -49,7 +50,10 @@ const ScreenShareViewer = ({ stream, sharerName }: ScreenShareViewerProps) => {
   };
 
   return (
-    <div ref={containerRef} className="flex flex-col bg-background border-b border-border">
+    <div ref={containerRef} className={cn(
+      "flex flex-col bg-background",
+      isFullscreen ? "w-screen h-screen" : "border-b border-border"
+    )}>
       <div className="flex items-center gap-2 px-4 py-2 bg-card/80 border-b border-border/50">
         <Monitor className="h-4 w-4 text-green-500" />
         <span className="text-sm font-medium flex-1">{t("calls.userSharing", { name: sharerName })}</span>
@@ -72,12 +76,18 @@ const ScreenShareViewer = ({ stream, sharerName }: ScreenShareViewerProps) => {
           <PictureInPicture2 className="h-3.5 w-3.5" />
         </Button>
       </div>
-      <div className="flex items-center justify-center bg-black/90 min-h-[300px] max-h-[500px]">
+      <div className={cn(
+        "flex items-center justify-center bg-black/90",
+        isFullscreen ? "flex-1" : "min-h-[300px] max-h-[500px]"
+      )}>
         <video
           ref={videoRef}
           autoPlay
           playsInline
-          className="w-full h-full object-contain max-h-[500px]"
+          className={cn(
+            "w-full h-full object-contain",
+            !isFullscreen && "max-h-[500px]"
+          )}
         />
         <audio ref={audioRef} autoPlay className="hidden" />
       </div>
