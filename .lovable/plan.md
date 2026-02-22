@@ -1,90 +1,102 @@
 
 
-## Bug Fixes
+## Fix Plan: Ringing Sound Glitch + Clickable Links
 
-### Bug 1: "Call ended" pill duplicated 4 times
+### 1. Replace Ringing Sound with Synthesized Discord-Style Ringtone
 
-**Root Cause:** Two separate components both insert call notification messages independently:
+**Problem:** The current ringing uses `notification.mp3` with `HTMLAudioElement.loop = true`. When `startLoop` is called multiple times (triggered by realtime events), multiple overlapping `Audio` elements play simultaneously at different phases, creating the "speeding up / glitching" effect.
 
-- `Chat.tsx` has its own `handleCallEnded` (line 76-96) that inserts "Call ended" into the database, AND its own realtime watcher (lines 200-240) that inserts missed/declined messages.
-- `CallListener.tsx` has its own `handleCallEnded` (line 81-108) that also inserts "Call ended", AND its own realtime watcher (lines 192-225) for missed/declined.
+**Fix:** Replace the `HTMLAudioElement`-based looping system with a Web Audio API synthesized ringtone that mimics Discord's ringing pattern -- a repeating two-tone "ring-ring... pause... ring-ring..." pattern using oscillators and a `setInterval` for repetition.
 
-Both components create their own `useWebRTC` instance with `onEnded` callbacks. When either user hangs up, **both** components fire for **each** user, producing 4 duplicate messages total.
+Changes in `src/lib/soundManager.ts`:
+- Remove the `HTMLAudioElement`-based `startLoop`/`stopLoop` entirely
+- Create `startSynthLoop(key)` that uses a `setInterval` to play a two-tone burst every ~3 seconds (outgoing) or ~2 seconds (incoming), using `playSyntheticTone` under the hood
+- Use different frequencies for outgoing (higher, calmer) vs incoming (more urgent)
+- Track the interval ID and an `AbortController` (or simple flag) to cleanly stop
+- `stopLoop` clears the interval
+- This eliminates the multi-Audio overlap bug entirely
 
-**Fix:** Remove ALL call notification insertion logic from `Chat.tsx` and let `CallListener.tsx` be the single owner of system message insertion. Specifically:
+**Outgoing ring pattern** (calmer, like Discord): Two gentle tones (523Hz, 659Hz) played for 0.4s, repeating every 3s.
 
-1. **`Chat.tsx` `handleCallEnded`** (lines 76-96): Remove the database insert. Keep only `stopAllLoops()`, `playSound("call_end")`, and state cleanup (`setCallSessionId(null)`, `setIsCallerState(false)`).
+**Incoming ring pattern** (more urgent): Two tones (587Hz, 784Hz) played for 0.35s, repeating every 2s.
 
-2. **`Chat.tsx` caller-status `useEffect`** (lines 200-240): Remove the `insertCallSystemMessage` calls for missed/declined. Keep only `stopAllLoops()`, `playSound("call_end")`, `endCall()`, and state cleanup.
+### 2. Make Links Clickable in All Chat Views
 
-3. `CallListener.tsx` already correctly handles all notification insertions -- no changes needed there.
+**Problem:** In `Chat.tsx`, `GroupChat.tsx`, and `ServerChannelChat.tsx`, message content is rendered as plain text. URLs are not detected or wrapped in anchor tags.
 
-This ensures exactly one notification per call event: one from User A's `CallListener` or one from User B's `CallListener`, not both.
+**Fix:** Create a shared utility function `renderLinkedText(text: string)` in a new file `src/lib/renderLinkedText.tsx` that:
+- Splits text using a URL regex pattern (matching `http://`, `https://`, and bare `www.` URLs)
+- Wraps matched URLs in `<a>` tags with `target="_blank"`, `rel="noopener noreferrer"`, and styled with `underline text-blue-400 hover:text-blue-300`
+- Returns a React fragment with mixed text nodes and anchor elements
 
----
+Then update the three chat views to use it:
 
-### Bug 2: Fullscreen for screen share doesn't actually go fullscreen
-
-**Root Cause:** The `ScreenShareViewer` component uses `requestFullscreen()` on the container div, which should trigger true browser fullscreen. However, the video element inside has `max-h-[500px]` and the container has `min-h-[300px] max-h-[500px]`, which constrain the video even when the container is in fullscreen mode. The browser makes the element fill the viewport, but the CSS max-height prevents the content from expanding.
-
-**Fix:** Add fullscreen-aware styles to `ScreenShareViewer.tsx`:
-
-1. When `isFullscreen` is true, remove the `max-h` constraints from both the outer container and the video element, and add `w-screen h-screen` to ensure the content fills the entire screen.
-2. The video wrapper should use `flex-1` in fullscreen to take all remaining space after the toolbar.
-3. The video element should have no max-height constraint in fullscreen.
+| File | Current | After |
+|------|---------|-------|
+| `src/pages/Chat.tsx` (line 595) | `{msg.content}` | `{renderLinkedText(msg.content)}` |
+| `src/pages/GroupChat.tsx` (line 457) | `{msg.content}` | `{renderLinkedText(msg.content)}` |
+| `src/components/server/ServerChannelChat.tsx` (line 368) | `{renderMessageContent(msg.content, ...)}` | Update `renderMessageContent` to also handle URLs within each text part |
 
 ---
 
 ### Technical Details
 
-**Files to modify:**
+**New file:** `src/lib/renderLinkedText.tsx`
 
-| File | Change |
-|------|--------|
-| `src/pages/Chat.tsx` | Remove DB insert from `handleCallEnded`; remove notification inserts from caller-status watcher `useEffect` |
-| `src/components/server/ScreenShareViewer.tsx` | Add conditional fullscreen classes to remove height constraints and fill the screen |
+```tsx
+import React from "react";
 
-**`Chat.tsx` -- simplified `handleCallEnded`:**
-```typescript
-const handleCallEnded = useCallback(async () => {
-  stopAllLoops();
-  playSound("call_end");
-  callStartRef.current = null;
-  setCallSessionId(null);
-  setIsCallerState(false);
-}, []);
-```
+const URL_REGEX = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi;
 
-**`Chat.tsx` -- simplified caller-status watcher:**
-```typescript
-// Only handle UI state, no DB inserts
-if (status === "ended" || status === "declined" || status === "missed") {
-  stopAllLoops();
-  if (status !== "ended") playSound("call_end");
-  endCall();
-  setCallSessionId(null);
-  setIsCallerState(false);
+export function renderLinkedText(text: string): React.ReactNode {
+  const parts = text.split(URL_REGEX);
+  return parts.map((part, i) => {
+    if (URL_REGEX.test(part)) {
+      const href = part.startsWith("http") ? part : `https://${part}`;
+      return (
+        <a key={i} href={href} target="_blank" rel="noopener noreferrer"
+           className="underline text-blue-400 hover:text-blue-300"
+           onClick={(e) => e.stopPropagation()}>
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
 }
 ```
 
-**`ScreenShareViewer.tsx` -- fullscreen-aware classes:**
-```tsx
-<div ref={containerRef} className={cn(
-  "flex flex-col bg-background",
-  isFullscreen ? "w-screen h-screen" : "border-b border-border"
-)}>
-  {/* ... toolbar ... */}
-  <div className={cn(
-    "flex items-center justify-center bg-black/90",
-    isFullscreen ? "flex-1" : "min-h-[300px] max-h-[500px]"
-  )}>
-    <video
-      className={cn(
-        "w-full h-full object-contain",
-        !isFullscreen && "max-h-[500px]"
-      )}
-    />
-  </div>
-</div>
+**`soundManager.ts` ringing rewrite** -- key structure:
+
+```typescript
+const loopIntervals: Partial<Record<string, number>> = {};
+
+export function startLoop(key: "outgoing_ring" | "incoming_ring"): void {
+  stopLoop(key);
+  const isOutgoing = key === "outgoing_ring";
+  const freqs = isOutgoing ? [523, 659] : [587, 784];
+  const interval = isOutgoing ? 3000 : 2000;
+
+  // Play immediately, then repeat
+  playSyntheticTone(freqs, 0.4, 0.18, "sine");
+  loopIntervals[key] = window.setInterval(() => {
+    playSyntheticTone(freqs, 0.4, 0.18, "sine");
+  }, interval);
+}
+
+export function stopLoop(key: "outgoing_ring" | "incoming_ring"): void {
+  const id = loopIntervals[key];
+  if (id != null) {
+    clearInterval(id);
+    delete loopIntervals[key];
+  }
+}
 ```
+
+**Files to modify:**
+- `src/lib/soundManager.ts` -- replace HTMLAudioElement loops with synthesized ringtone intervals
+- `src/lib/renderLinkedText.tsx` -- new shared utility
+- `src/pages/Chat.tsx` -- use `renderLinkedText` for message content
+- `src/pages/GroupChat.tsx` -- use `renderLinkedText` for message content
+- `src/components/server/ServerChannelChat.tsx` -- integrate URL rendering into `renderMessageContent`
 
