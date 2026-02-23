@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus } from "lucide-react";
+import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, MonitorPlay } from "lucide-react";
+import GoLiveModal, { type GoLiveSettings } from "./GoLiveModal";
 import VoiceUserContextMenu from "./VoiceUserContextMenu";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
@@ -54,6 +55,7 @@ interface VoiceParticipant {
   is_speaking: boolean;
   is_muted: boolean;
   is_deafened: boolean;
+  is_screen_sharing: boolean;
 }
 
 interface ServerMember {
@@ -107,6 +109,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [useCustomCategory, setUseCustomCategory] = useState(false);
   const [customCategory, setCustomCategory] = useState("");
+  const [goLiveOpen, setGoLiveOpen] = useState(false);
 
   // Drag-and-drop state
   const [dragItem, setDragItem] = useState<string | null>(null);
@@ -178,7 +181,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
     const { data } = await supabase
       .from("voice_channel_participants")
-      .select("channel_id, user_id, is_speaking, is_muted, is_deafened")
+      .select("channel_id, user_id, is_speaking, is_muted, is_deafened, is_screen_sharing")
       .in("channel_id", voiceChannelIds);
     if (!data || data.length === 0) { setVoiceParticipants(new Map()); return; }
 
@@ -201,6 +204,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         is_speaking: !!(d as any).is_speaking,
         is_muted: !!(d as any).is_muted,
         is_deafened: !!(d as any).is_deafened,
+        is_screen_sharing: !!(d as any).is_screen_sharing,
       });
       grouped.set(d.channel_id, list);
     });
@@ -652,6 +656,9 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                               </AvatarFallback>
                             </Avatar>
                             <span className="truncate">{p.display_name || p.username || "User"}</span>
+                            {p.is_screen_sharing && (
+                              <span className="text-[9px] font-bold bg-destructive text-destructive-foreground px-1 rounded uppercase leading-tight">LIVE</span>
+                            )}
                             {p.is_deafened ? (
                               <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
                             ) : p.is_muted ? (
@@ -731,8 +738,12 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                 size="icon"
                 className={`h-7 w-7 shrink-0 ${isScreenSharing ? "text-green-500" : ""}`}
                 onClick={() => {
-                  const event = new CustomEvent("toggle-screen-share");
-                  window.dispatchEvent(event);
+                  if (isScreenSharing) {
+                    const event = new CustomEvent("toggle-screen-share");
+                    window.dispatchEvent(event);
+                  } else {
+                    setGoLiveOpen(true);
+                  }
                 }}
                 title={isScreenSharing ? t("calls.stopSharing") : t("calls.shareScreen")}
               >
@@ -948,6 +959,14 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
       <ServerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} serverId={serverId} />
       <InviteModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} serverId={serverId} serverName={server?.name || ""} />
+      <GoLiveModal
+        open={goLiveOpen}
+        onOpenChange={setGoLiveOpen}
+        onGoLive={(settings: GoLiveSettings) => {
+          const event = new CustomEvent("toggle-screen-share", { detail: settings });
+          window.dispatchEvent(event);
+        }}
+      />
     </>
   );
 };

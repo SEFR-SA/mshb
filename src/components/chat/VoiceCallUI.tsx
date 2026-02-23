@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PhoneOff, Mic, MicOff, Volume2, HeadphoneOff, Monitor, MonitorOff, Video, VideoOff, PictureInPicture2, Maximize, Minimize } from "lucide-react";
 import type { CallState } from "@/hooks/useWebRTC";
+import GoLiveModal, { type GoLiveSettings } from "@/components/server/GoLiveModal";
 
 interface VoiceCallUIProps {
   callState: CallState;
@@ -17,7 +18,7 @@ interface VoiceCallUIProps {
   onToggleDeafen: () => void;
   isScreenSharing?: boolean;
   remoteScreenStream?: MediaStream | null;
-  onStartScreenShare?: () => void;
+  onStartScreenShare?: (options?: GoLiveSettings) => void;
   onStopScreenShare?: () => void;
   isCameraOn?: boolean;
   localCameraStream?: MediaStream | null;
@@ -132,6 +133,7 @@ const SelfView = ({ stream }: { stream: MediaStream }) => {
 
 const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, otherAvatar, onEndCall, onToggleMute, onToggleDeafen, isScreenSharing, remoteScreenStream, onStartScreenShare, onStopScreenShare, isCameraOn, localCameraStream, remoteCameraStream, onStartCamera, onStopCamera }: VoiceCallUIProps) => {
   const { t } = useTranslation();
+  const [goLiveOpen, setGoLiveOpen] = useState(false);
 
   if (callState === "idle" || callState === "ended") return null;
 
@@ -224,7 +226,7 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
                 variant={isScreenSharing ? "secondary" : "ghost"}
                 size="icon"
                 className="h-10 w-10 rounded-full"
-                onClick={isScreenSharing ? onStopScreenShare : onStartScreenShare}
+                onClick={isScreenSharing ? onStopScreenShare : () => setGoLiveOpen(true)}
                 title={isScreenSharing ? t("calls.stopSharing") : t("calls.shareScreen")}
               >
                 {isScreenSharing ? <MonitorOff className="h-5 w-5 text-green-500" /> : <Monitor className="h-5 w-5" />}
@@ -238,6 +240,15 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
           {/* Self-view overlay */}
           {localCameraStream && <SelfView stream={localCameraStream} />}
         </>
+      )}
+
+      {/* GoLive Modal for 1-to-1 calls */}
+      {onStartScreenShare && (
+        <GoLiveModal
+          open={goLiveOpen}
+          onOpenChange={setGoLiveOpen}
+          onGoLive={(settings) => onStartScreenShare(settings)}
+        />
       )}
     </div>
   );
