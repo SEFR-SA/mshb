@@ -168,25 +168,39 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     return pc;
   }, [user, updateSpeaking, setRemoteScreenStream, setRemoteCameraStream]);
 
-  // Screen share toggle handler
-  const startScreenShare = useCallback(async () => {
+  // Screen share toggle handler — accepts pre-captured stream + settings from GoLiveModal
+  const startScreenShare = useCallback(async (options?: { resolution: '720p' | '1080p' | 'source'; fps: 30 | 60; stream: MediaStream }) => {
     if (screenStreamRef.current) return;
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 60 } },
-        audio: false,
-      });
+      let stream: MediaStream;
+      let bitrate = 8_000_000;
+      let targetFps = 60;
+
+      if (options?.stream) {
+        stream = options.stream;
+        targetFps = options.fps;
+        if (options.resolution === '720p') bitrate = 4_000_000;
+        else bitrate = 8_000_000;
+      } else {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: { ideal: 60 } },
+          audio: false,
+        });
+      }
+
       screenStreamRef.current = stream;
       const videoTrack = stream.getVideoTracks()[0];
+      videoTrack.contentHint = "motion";
 
-      // Add track to all peer connections and configure for source quality
+      // Add track to all peer connections and configure for quality
       for (const [peerId, pc] of peerConnectionsRef.current) {
         const sender = pc.addTrack(videoTrack, stream);
         screenSendersRef.current.set(peerId, sender);
         try {
           const params = sender.getParameters();
           if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-          params.encodings[0].maxBitrate = 8_000_000;
+          params.encodings[0].maxBitrate = bitrate;
+          (params.encodings[0] as any).maxFramerate = targetFps;
           (params as any).degradationPreference = "maintain-resolution";
           await sender.setParameters(params);
         } catch {}
@@ -303,10 +317,15 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   }, [user, setIsCameraOn, setLocalCameraStream]);
 
   // Listen for toggle-screen-share custom event from ChannelSidebar
+  // Now supports GoLive settings via event detail
   useEffect(() => {
-    const handler = () => {
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent;
       if (screenStreamRef.current) {
         stopScreenShare();
+      } else if (customEvent.detail?.stream) {
+        // GoLive modal provided settings
+        startScreenShare(customEvent.detail);
       } else {
         startScreenShare();
       }

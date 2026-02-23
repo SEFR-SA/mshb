@@ -309,15 +309,27 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     });
   }, []);
 
-  // Screen sharing
-  const startScreenShare = useCallback(async () => {
+  // Screen sharing — accepts pre-captured stream + settings from GoLiveModal
+  const startScreenShare = useCallback(async (options?: { resolution: '720p' | '1080p' | 'source'; fps: 30 | 60; stream: MediaStream }) => {
     const pc = pcRef.current;
     if (!pc || isScreenSharing) return;
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, systemAudio: "include" } as any,
-      });
+      let stream: MediaStream;
+      let targetFps = 60;
+      let bitrate = 8_000_000;
+
+      if (options?.stream) {
+        stream = options.stream;
+        targetFps = options.fps;
+        if (options.resolution === '720p') bitrate = 4_000_000;
+        else bitrate = 8_000_000;
+      } else {
+        // Fallback: direct getDisplayMedia (for backwards compat)
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, systemAudio: "include" } as any,
+        });
+      }
 
       const videoTracks = stream.getVideoTracks();
       if (videoTracks.length === 0) return;
@@ -331,8 +343,8 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       try {
         const params = sender.getParameters();
         if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-        params.encodings[0].maxBitrate = 8_000_000;
-        (params.encodings[0] as any).minBitrate = 2_000_000;
+        params.encodings[0].maxBitrate = bitrate;
+        (params.encodings[0] as any).maxFramerate = targetFps;
         (params as any).degradationPreference = "maintain-resolution";
         await sender.setParameters(params);
       } catch {}
