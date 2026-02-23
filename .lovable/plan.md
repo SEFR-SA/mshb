@@ -1,102 +1,121 @@
 
 
-## Fix Plan: Ringing Sound Glitch + Clickable Links
+## "Go Live" Screen Share Configuration Modal
 
-### 1. Replace Ringing Sound with Synthesized Discord-Style Ringtone
+### Overview
 
-**Problem:** The current ringing uses `notification.mp3` with `HTMLAudioElement.loop = true`. When `startLoop` is called multiple times (triggered by realtime events), multiple overlapping `Audio` elements play simultaneously at different phases, creating the "speeding up / glitching" effect.
+Replace the current instant-start screen sharing with a Discord-style configuration modal that lets users choose resolution, frame rate, and preview their source before going live. Add a "LIVE" badge on voice channel participants who are screen sharing.
 
-**Fix:** Replace the `HTMLAudioElement`-based looping system with a Web Audio API synthesized ringtone that mimics Discord's ringing pattern -- a repeating two-tone "ring-ring... pause... ring-ring..." pattern using oscillators and a `setInterval` for repetition.
+### New Files
 
-Changes in `src/lib/soundManager.ts`:
-- Remove the `HTMLAudioElement`-based `startLoop`/`stopLoop` entirely
-- Create `startSynthLoop(key)` that uses a `setInterval` to play a two-tone burst every ~3 seconds (outgoing) or ~2 seconds (incoming), using `playSyntheticTone` under the hood
-- Use different frequencies for outgoing (higher, calmer) vs incoming (more urgent)
-- Track the interval ID and an `AbortController` (or simple flag) to cleanly stop
-- `stopLoop` clears the interval
-- This eliminates the multi-Audio overlap bug entirely
+**`src/components/server/GoLiveModal.tsx`**
+A dialog component styled like the Discord reference image:
+- Title: "Share your screen"
+- Two tabs: "Applications" and "Screens" (note: browser `getDisplayMedia()` does not allow pre-enumerating windows/screens, so the tabs will trigger the browser's native source picker and then show a single preview thumbnail of the selected source)
+- Resolution toggle group: 720 | **1080** (default) | Source
+- Frame Rate toggle group: **30** (default) | 60
+- Footer: Cancel button + purple "Go Live" button
+- When the user clicks a tab or the preview area, `getDisplayMedia()` is called with minimal constraints to let the user pick a source; a live preview thumbnail is shown
+- "Go Live" applies the selected resolution/fps constraints and passes the stream back to the caller
 
-**Outgoing ring pattern** (calmer, like Discord): Two gentle tones (523Hz, 659Hz) played for 0.4s, repeating every 3s.
+**Design approach for source selection**: Since browser APIs don't allow enumerating windows before calling `getDisplayMedia()`, the modal will:
+1. Show a "Click to select source" placeholder initially
+2. When clicked, trigger `getDisplayMedia()` with basic constraints
+3. Display the captured stream as a live preview thumbnail
+4. User can then adjust resolution/FPS settings
+5. Clicking "Go Live" applies the final constraints and starts sharing
 
-**Incoming ring pattern** (more urgent): Two tones (587Hz, 784Hz) played for 0.35s, repeating every 2s.
+### Modified Files
 
-### 2. Make Links Clickable in All Chat Views
+**`src/hooks/useWebRTC.ts`**
+- Change `startScreenShare` to accept an options parameter: `{ resolution: '720p' | '1080p' | 'source', fps: 30 | 60, stream: MediaStream }`
+- Instead of calling `getDisplayMedia()` internally, accept the pre-captured stream from the modal
+- Map resolution to width/height constraints and apply them via `sender.setParameters()` with appropriate `maxBitrate`:
+  - 720p: maxBitrate 4 Mbps
+  - 1080p: maxBitrate 8 Mbps
+  - Source: maxBitrate 8 Mbps
+- Set `contentHint = "motion"` and `degradationPreference = "maintain-resolution"` for gaming optimization
 
-**Problem:** In `Chat.tsx`, `GroupChat.tsx`, and `ServerChannelChat.tsx`, message content is rendered as plain text. URLs are not detected or wrapped in anchor tags.
+**`src/components/server/VoiceConnectionBar.tsx`**
+- Change `startScreenShare` to accept the same options parameter with the pre-captured stream
+- Apply resolution-appropriate bitrate via `sender.setParameters()`
+- Update the DB flag (`is_screen_sharing`) as before
 
-**Fix:** Create a shared utility function `renderLinkedText(text: string)` in a new file `src/lib/renderLinkedText.tsx` that:
-- Splits text using a URL regex pattern (matching `http://`, `https://`, and bare `www.` URLs)
-- Wraps matched URLs in `<a>` tags with `target="_blank"`, `rel="noopener noreferrer"`, and styled with `underline text-blue-400 hover:text-blue-300`
-- Returns a React fragment with mixed text nodes and anchor elements
+**`src/components/server/ChannelSidebar.tsx`**
+- Add a `GoLiveModal` trigger: clicking the screen share button opens the modal instead of directly starting screen share
+- Manage modal open/close state
+- Pass the modal's result (stream + settings) to the screen share start function
+- Add a "LIVE" badge next to voice participant avatars: query `is_screen_sharing` from `voice_channel_participants` and render a small red/purple "LIVE" badge when true
 
-Then update the three chat views to use it:
-
-| File | Current | After |
-|------|---------|-------|
-| `src/pages/Chat.tsx` (line 595) | `{msg.content}` | `{renderLinkedText(msg.content)}` |
-| `src/pages/GroupChat.tsx` (line 457) | `{msg.content}` | `{renderLinkedText(msg.content)}` |
-| `src/components/server/ServerChannelChat.tsx` (line 368) | `{renderMessageContent(msg.content, ...)}` | Update `renderMessageContent` to also handle URLs within each text part |
-
----
+**`src/pages/Chat.tsx`** and **`src/components/chat/VoiceCallUI.tsx`**
+- Wire up the GoLiveModal for 1-to-1 call screen sharing as well
+- The screen share button in the call UI opens the modal instead of directly calling `startScreenShare`
 
 ### Technical Details
 
-**New file:** `src/lib/renderLinkedText.tsx`
+#### GoLiveModal Component Structure
 
 ```tsx
-import React from "react";
+// State
+const [open, setOpen] = useState(false)
+const [previewStream, setPreviewStream] = useState<MediaStream | null>(null)
+const [resolution, setResolution] = useState<'720p' | '1080p' | 'source'>('1080p')
+const [fps, setFps] = useState<30 | 60>(30)
 
-const URL_REGEX = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi;
+// On source selection (click preview area)
+const selectSource = async () => {
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: { cursor: 'always' },
+    audio: { echoCancellation: true }
+  })
+  setPreviewStream(stream)
+}
 
-export function renderLinkedText(text: string): React.ReactNode {
-  const parts = text.split(URL_REGEX);
-  return parts.map((part, i) => {
-    if (URL_REGEX.test(part)) {
-      const href = part.startsWith("http") ? part : `https://${part}`;
-      return (
-        <a key={i} href={href} target="_blank" rel="noopener noreferrer"
-           className="underline text-blue-400 hover:text-blue-300"
-           onClick={(e) => e.stopPropagation()}>
-          {part}
-        </a>
-      );
-    }
-    return part;
-  });
+// On "Go Live"
+const handleGoLive = () => {
+  onGoLive({ resolution, fps, stream: previewStream })
+  setOpen(false)
 }
 ```
 
-**`soundManager.ts` ringing rewrite** -- key structure:
+#### Resolution to Constraints Mapping
+
+```text
+720p  -> width: 1280, height: 720,  maxBitrate: 4_000_000
+1080p -> width: 1920, height: 1080, maxBitrate: 8_000_000
+Source -> no width/height override, maxBitrate: 8_000_000
+```
+
+#### LIVE Badge in Voice Channel
+
+The `VoiceParticipant` interface gets an `is_screen_sharing` field. The fetch query already hits `voice_channel_participants` -- just add `is_screen_sharing` to the select. Render:
+
+```tsx
+{p.is_screen_sharing && (
+  <span className="text-[9px] font-bold bg-red-500 text-white px-1 rounded uppercase">
+    LIVE
+  </span>
+)}
+```
+
+#### Sender Parameters for Gaming
 
 ```typescript
-const loopIntervals: Partial<Record<string, number>> = {};
-
-export function startLoop(key: "outgoing_ring" | "incoming_ring"): void {
-  stopLoop(key);
-  const isOutgoing = key === "outgoing_ring";
-  const freqs = isOutgoing ? [523, 659] : [587, 784];
-  const interval = isOutgoing ? 3000 : 2000;
-
-  // Play immediately, then repeat
-  playSyntheticTone(freqs, 0.4, 0.18, "sine");
-  loopIntervals[key] = window.setInterval(() => {
-    playSyntheticTone(freqs, 0.4, 0.18, "sine");
-  }, interval);
-}
-
-export function stopLoop(key: "outgoing_ring" | "incoming_ring"): void {
-  const id = loopIntervals[key];
-  if (id != null) {
-    clearInterval(id);
-    delete loopIntervals[key];
-  }
-}
+params.encodings[0].maxBitrate = bitrate;
+(params.encodings[0] as any).maxFramerate = fps;
+(params as any).degradationPreference = "maintain-resolution";
+videoTrack.contentHint = "motion";
 ```
 
-**Files to modify:**
-- `src/lib/soundManager.ts` -- replace HTMLAudioElement loops with synthesized ringtone intervals
-- `src/lib/renderLinkedText.tsx` -- new shared utility
-- `src/pages/Chat.tsx` -- use `renderLinkedText` for message content
-- `src/pages/GroupChat.tsx` -- use `renderLinkedText` for message content
-- `src/components/server/ServerChannelChat.tsx` -- integrate URL rendering into `renderMessageContent`
+### Files Summary
+
+| File | Action |
+|------|--------|
+| `src/components/server/GoLiveModal.tsx` | Create -- modal with source preview, resolution/fps toggles |
+| `src/hooks/useWebRTC.ts` | Modify -- `startScreenShare` accepts stream + settings |
+| `src/components/server/VoiceConnectionBar.tsx` | Modify -- `startScreenShare` accepts stream + settings |
+| `src/components/server/ChannelSidebar.tsx` | Modify -- open GoLiveModal, add LIVE badge, fetch `is_screen_sharing` |
+| `src/pages/Chat.tsx` | Modify -- wire GoLiveModal for 1-to-1 calls |
+| `src/components/chat/VoiceCallUI.tsx` | Modify -- wire GoLiveModal for call UI |
+| `src/contexts/VoiceChannelContext.tsx` | No changes needed |
 
