@@ -1,0 +1,1 @@
+ALTER TABLE public.group_threads ADD COLUMN IF NOT EXISTS description text DEFAULT '';

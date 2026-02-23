@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mshb</title>
+    <meta name="description" content="Real-time messaging app/ audio and voice calls and screen sharing.">
+    <meta name="author" content="Galaxy Chat" />
+    <meta name="theme-color" content="#7c3aed" />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    
+  
+  
+  
+  <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9fe4a367-3c88-454b-9f3b-90ca4d631181/id-preview-c6c7812f--0f862f29-c2ff-4258-8e99-661fe89e59a3.lovable.app-1771348564446.png">
+  <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9fe4a367-3c88-454b-9f3b-90ca4d631181/id-preview-c6c7812f--0f862f29-c2ff-4258-8e99-661fe89e59a3.lovable.app-1771348564446.png">
+  <meta property="og:title" content="Mshb">
+  <meta name="twitter:title" content="Mshb">
+  <meta property="og:description" content="Real-time messaging app/ audio and voice calls and screen sharing.">
+  <meta name="twitter:description" content="Real-time messaging app/ audio and voice calls and screen sharing.">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
+  </body>
+</html>
