@@ -2,7 +2,7 @@
   "name": "mshb",
   "productName": "mshb",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Real Time Communication App",
   "author": "MSHB",
   "type": "module",

@@ -191,8 +191,9 @@ function createWindow() {
     width: 1200,
     height: 800,
     show: false,
-    icon: path.join(__dirname, 'assets/icon.ico'), 
-    autoHideMenuBar: true, 
+    title: `Mshb ${app.getVersion()}`,
+    icon: path.join(__dirname, 'assets/icon.ico'),
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
