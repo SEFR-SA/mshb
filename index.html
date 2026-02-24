@@ -7,6 +7,14 @@
     <meta name="description" content="Real-time messaging app/ audio and voice calls and screen sharing.">
     <meta name="author" content="Galaxy Chat" />
     <meta name="theme-color" content="#7c3aed" />
+    <script>
+      (function() {
+        var path = window.location.pathname;
+        if (path.startsWith('/invite/')) {
+          window.location.replace('/#' + path);
+        }
+      })();
+    </script>
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="manifest" href="/manifest.json" />
     
