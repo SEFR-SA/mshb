@@ -306,7 +306,7 @@ app.whenReady().then(() => {
 
   if (app.isPackaged) {
     const server = 'https://update.electronjs.org';
-    const repo = 'your-github-username/your-repo-name';
+    const repo = 'SEFR-SA/mshb';
     const feed = `${server}/${repo}/${process.platform}-${process.arch}/${app.getVersion()}`;
     try {
       autoUpdater.setFeedURL({ url: feed });

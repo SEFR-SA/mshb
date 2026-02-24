@@ -132,7 +132,7 @@ const UpdateBanner = () => {
           onClick={() => window.electronAPI.restartApp()}
           className="bg-white text-indigo-600 px-3 py-1 rounded-md text-xs font-bold hover:bg-slate-100 transition-all"
         >
-          Restart Now
+          Restart to Update
         </button>
       )}
     </div>
