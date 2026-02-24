@@ -9,15 +9,20 @@ const ICE_SERVERS: RTCConfiguration = {
   ],
 };
 
-/** Patch SDP to enforce min/max bitrate on video codecs */
-function patchSdpBitrate(sdp: string): string {
-  return sdp.replace(
-    /a=fmtp:(\d+) ([^\r\n]+)/g,
-    (match, pt, params) => {
-      if (params.includes("x-google-max-bitrate")) return match;
-      return `a=fmtp:${pt} ${params};x-google-max-bitrate=8000;x-google-min-bitrate=2000`;
-    }
-  );
+/** Optimize SDP for gaming: inject bitrate limits and x-google encoder params */
+function optimizeSDPForGaming(sdp: string, maxKbps = 10000, startKbps = 4000, minKbps = 2000): string {
+  let s = sdp;
+  s = s.replace(/b=AS:[^\r\n]*\r\n/g, '');
+  s = s.replace(/b=TIAS:[^\r\n]*\r\n/g, '');
+  s = s.replace(/(m=video .+\r\n)/, `$1b=AS:${maxKbps}\r\n`);
+  s = s.replace(/a=fmtp:(\d+) ([^\r\n]+)/g, (_m, pt, params) => {
+    const clean = params
+      .replace(/;?\s*x-google-start-bitrate=\d+/g, '')
+      .replace(/;?\s*x-google-min-bitrate=\d+/g, '')
+      .replace(/;?\s*x-google-max-bitrate=\d+/g, '');
+    return `a=fmtp:${pt} ${clean};x-google-start-bitrate=${startKbps};x-google-min-bitrate=${minKbps};x-google-max-bitrate=${maxKbps}`;
+  });
+  return s;
 }
 
 export type CallState = "idle" | "ringing" | "connected" | "ended";
@@ -52,12 +57,14 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
   const remoteCameraExpectedRef = useRef(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const durationInterval = useRef<ReturnType<typeof setInterval>>();
+  const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]);
   // Flag to suppress onnegotiationneeded during initial setup
   const suppressNegotiationRef = useRef(false);
 
   const cleanup = useCallback(() => {
     if (durationInterval.current) clearInterval(durationInterval.current);
+    if (statsIntervalRef.current) { clearInterval(statsIntervalRef.current); statsIntervalRef.current = null; }
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -164,7 +171,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       if (suppressNegotiationRef.current) return;
       try {
         const offer = await pc.createOffer();
-        const patchedSdp = patchSdpBitrate(offer.sdp || "");
+        const patchedSdp = optimizeSDPForGaming(offer.sdp || "");
         await pc.setLocalDescription({ ...offer, sdp: patchedSdp });
         channelRef.current?.send({
           type: "broadcast",
@@ -213,11 +220,12 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
             await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
             await processQueuedCandidates();
             const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
+            const patchedAnswer = optimizeSDPForGaming(answer.sdp || "");
+            await pc.setLocalDescription({ ...answer, sdp: patchedAnswer });
             channel.send({
               type: "broadcast",
               event: "call-answer",
-              payload: { sdp: answer },
+              payload: { sdp: { ...answer, sdp: patchedAnswer } },
             });
           } catch (e) {
             console.error('[WebRTC] Error handling offer:', e);
@@ -370,17 +378,29 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       screenStreamRef.current = stream;
       const videoTrack = videoTracks[0];
       videoTrack.contentHint = "motion";
-
-      const sender = pc.addTrack(videoTrack, stream);
-      screenSenderRef.current = sender;
       try {
-        const params = sender.getParameters();
-        if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-        const bitrate = res === "720p" ? 6_000_000 : 8_000_000;
-        params.encodings[0].maxBitrate = bitrate;
-        (params.encodings[0] as any).minBitrate = res === "720p" ? 1_500_000 : 2_000_000;
-        (params as any).degradationPreference = "maintain-resolution";
-        await sender.setParameters(params);
+        await videoTrack.applyConstraints({ width: { min: 1280, ideal: 1920 }, height: { min: 720, ideal: 1080 }, frameRate: { min: 30, ideal: 60 } });
+      } catch {}
+
+      const bitrate = res === "720p" ? 6_000_000 : 8_000_000;
+      const videoTransceiver = pc.addTransceiver(videoTrack, {
+        direction: 'sendonly',
+        streams: [stream],
+        sendEncodings: [{ maxBitrate: bitrate, maxFramerate: fps, priority: 'high' }],
+      });
+      screenSenderRef.current = videoTransceiver.sender;
+      try {
+        const caps = (RTCRtpReceiver as any).getCapabilities?.('video');
+        if (caps?.codecs) {
+          const h264Hi  = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && c.sdpFmtpLine?.includes('profile-level-id=64'));
+          const h264Rst = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && !c.sdpFmtpLine?.includes('profile-level-id=64'));
+          const other   = caps.codecs.filter((c: any) => c.mimeType !== 'video/H264');
+          videoTransceiver.setCodecPreferences([...h264Hi, ...h264Rst, ...other]);
+        }
+      } catch {}
+      try {
+        const p = videoTransceiver.sender.getParameters();
+        if (p.encodings?.length) { p.degradationPreference = 'maintain-framerate'; await videoTransceiver.sender.setParameters(p); }
       } catch {}
 
       const audioTracks = stream.getAudioTracks();
@@ -397,6 +417,20 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
 
       setIsScreenSharing(true);
 
+      if (statsIntervalRef.current) clearInterval(statsIntervalRef.current);
+      statsIntervalRef.current = setInterval(async () => {
+        const s = screenSenderRef.current;
+        if (!s || !s.track) return;
+        try {
+          const stats = await pcRef.current?.getStats(s.track);
+          stats?.forEach((report: any) => {
+            if (report.type === 'outbound-rtp' && report.kind === 'video') {
+              console.log('[ScreenShare] fps:', report.framesPerSecond, 'w:', report.frameWidth, 'h:', report.frameHeight, 'limitReason:', report.qualityLimitationReason);
+            }
+          });
+        } catch {}
+      }, 5000);
+
       videoTrack.onended = () => {
         stopScreenShare();
       };
@@ -406,6 +440,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
   }, [isScreenSharing]);
 
   const stopScreenShare = useCallback(() => {
+    if (statsIntervalRef.current) { clearInterval(statsIntervalRef.current); statsIntervalRef.current = null; }
     const pc = pcRef.current;
     if (screenSenderRef.current && pc) {
       try { pc.removeTrack(screenSenderRef.current); } catch {}
@@ -418,6 +453,23 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     screenSenderRef.current = null;
     screenAudioSendersRef.current = [];
     setIsScreenSharing(false);
+  }, []);
+
+  const adjustScreenShareQuality = useCallback(async (preset: '720p30' | '1080p30' | '1080p60' | '1440p60') => {
+    const cfg = {
+      '720p30':  { maxBitrate: 3_000_000, maxFramerate: 30 },
+      '1080p30': { maxBitrate: 5_000_000, maxFramerate: 30 },
+      '1080p60': { maxBitrate: 8_000_000, maxFramerate: 60 },
+      '1440p60': { maxBitrate: 14_000_000, maxFramerate: 60 },
+    }[preset];
+    const s = screenSenderRef.current;
+    if (!s) return;
+    const p = s.getParameters();
+    if (!p.encodings?.length) return;
+    p.encodings[0].maxBitrate = cfg.maxBitrate;
+    (p.encodings[0] as any).maxFramerate = cfg.maxFramerate;
+    p.degradationPreference = 'maintain-framerate';
+    await s.setParameters(p);
   }, []);
 
   /**
@@ -437,7 +489,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     // 3. Create offer and send it
     try {
       const offer = await pc.createOffer();
-      const patchedSdp = patchSdpBitrate(offer.sdp || "");
+      const patchedSdp = optimizeSDPForGaming(offer.sdp || "");
       await pc.setLocalDescription({ ...offer, sdp: patchedSdp });
 
       // Small delay to ensure callee has subscribed too
@@ -519,6 +571,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
       pcRef.current?.close();
       if (durationInterval.current) clearInterval(durationInterval.current);
+      if (statsIntervalRef.current) { clearInterval(statsIntervalRef.current); statsIntervalRef.current = null; }
       if (channelRef.current) {
         channelRef.current.unsubscribe();
         channelRef.current = null;
@@ -543,6 +596,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     toggleDeafen,
     startScreenShare,
     stopScreenShare,
+    adjustScreenShareQuality,
     startCamera,
     stopCamera,
   };

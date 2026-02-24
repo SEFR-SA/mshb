@@ -39,6 +39,7 @@ export default {
     emailOrUsername: "Email or Username",
     userNotFound: "No account found with that username",
     usernameTaken: "Username is already taken",
+    usernameTooShort: "Username must be at least 3 characters",
     usernameAvailable: "Username is available",
   },
   nav: {

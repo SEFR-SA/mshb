@@ -39,6 +39,22 @@ function createVolumeMonitor(
   };
 }
 
+/** Optimize SDP for gaming: inject bitrate limits and x-google encoder params */
+function optimizeSDPForGaming(sdp: string, maxKbps = 10000, startKbps = 4000, minKbps = 2000): string {
+  let s = sdp;
+  s = s.replace(/b=AS:[^\r\n]*\r\n/g, '');
+  s = s.replace(/b=TIAS:[^\r\n]*\r\n/g, '');
+  s = s.replace(/(m=video .+\r\n)/, `$1b=AS:${maxKbps}\r\n`);
+  s = s.replace(/a=fmtp:(\d+) ([^\r\n]+)/g, (_m, pt, params) => {
+    const clean = params
+      .replace(/;?\s*x-google-start-bitrate=\d+/g, '')
+      .replace(/;?\s*x-google-min-bitrate=\d+/g, '')
+      .replace(/;?\s*x-google-max-bitrate=\d+/g, '');
+    return `a=fmtp:${pt} ${clean};x-google-start-bitrate=${startKbps};x-google-min-bitrate=${minKbps};x-google-max-bitrate=${maxKbps}`;
+  });
+  return s;
+}
+
 interface VoiceConnectionManagerProps {
   channelId: string;
   channelName: string;
@@ -59,6 +75,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const volumeMonitorsRef = useRef<Array<{ cleanup: () => void }>>([]);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
+  const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
   const remoteCameraExpectedRef = useRef<Set<string>>(new Set());
@@ -97,15 +114,25 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     if (screenStreamRef.current) {
       const videoTrack = screenStreamRef.current.getVideoTracks()[0];
       if (videoTrack) {
-        const sender = pc.addTrack(videoTrack, screenStreamRef.current);
-        screenSendersRef.current.set(peerId, sender);
-        // Configure for source quality
+        videoTrack.contentHint = 'motion';
+        const transceiver = pc.addTransceiver(videoTrack, {
+          direction: 'sendonly',
+          streams: [screenStreamRef.current],
+          sendEncodings: [{ maxBitrate: 8_000_000, maxFramerate: 60, priority: 'high' }],
+        });
+        screenSendersRef.current.set(peerId, transceiver.sender);
         try {
-          const params = sender.getParameters();
-          if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-          params.encodings[0].maxBitrate = 8_000_000;
-          (params as any).degradationPreference = "maintain-resolution";
-          sender.setParameters(params);
+          const caps = (RTCRtpReceiver as any).getCapabilities?.('video');
+          if (caps?.codecs) {
+            const h264Hi  = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && c.sdpFmtpLine?.includes('profile-level-id=64'));
+            const h264Rst = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && !c.sdpFmtpLine?.includes('profile-level-id=64'));
+            const other   = caps.codecs.filter((c: any) => c.mimeType !== 'video/H264');
+            transceiver.setCodecPreferences([...h264Hi, ...h264Rst, ...other]);
+          }
+        } catch {}
+        try {
+          const p = transceiver.sender.getParameters();
+          if (p.encodings?.length) { p.degradationPreference = 'maintain-framerate'; transceiver.sender.setParameters(p); }
         } catch {}
       }
     }
@@ -158,10 +185,11 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     pc.onnegotiationneeded = async () => {
       try {
         const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
+        const patchedSdp = optimizeSDPForGaming(offer.sdp || "");
+        await pc.setLocalDescription({ ...offer, sdp: patchedSdp });
         channelRef.current?.send({
           type: "broadcast", event: "voice-offer",
-          payload: { sdp: offer, senderId: user!.id, targetId: peerId },
+          payload: { sdp: { ...offer, sdp: patchedSdp }, senderId: user!.id, targetId: peerId },
         });
       } catch {}
     };
@@ -213,22 +241,53 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       }
       screenStreamRef.current = stream;
       const videoTrack = stream.getVideoTracks()[0];
+      videoTrack.contentHint = 'motion';
+      try {
+        await videoTrack.applyConstraints({ width: { min: 1280, ideal: 1920 }, height: { min: 720, ideal: 1080 }, frameRate: { min: 30, ideal: 60 } });
+      } catch {}
 
-      // Add track to all peer connections and configure for source quality
+      // Add track to all peer connections with gaming-quality settings
       const bitrate = res === "720p" ? 6_000_000 : 8_000_000;
       for (const [peerId, pc] of peerConnectionsRef.current) {
-        const sender = pc.addTrack(videoTrack, stream);
-        screenSendersRef.current.set(peerId, sender);
+        const transceiver = pc.addTransceiver(videoTrack, {
+          direction: 'sendonly',
+          streams: [stream],
+          sendEncodings: [{ maxBitrate: bitrate, maxFramerate: fps, priority: 'high' }],
+        });
+        screenSendersRef.current.set(peerId, transceiver.sender);
         try {
-          const params = sender.getParameters();
-          if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-          params.encodings[0].maxBitrate = bitrate;
-          (params as any).degradationPreference = "maintain-resolution";
-          await sender.setParameters(params);
+          const caps = (RTCRtpReceiver as any).getCapabilities?.('video');
+          if (caps?.codecs) {
+            const h264Hi  = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && c.sdpFmtpLine?.includes('profile-level-id=64'));
+            const h264Rst = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && !c.sdpFmtpLine?.includes('profile-level-id=64'));
+            const other   = caps.codecs.filter((c: any) => c.mimeType !== 'video/H264');
+            transceiver.setCodecPreferences([...h264Hi, ...h264Rst, ...other]);
+          }
+        } catch {}
+        try {
+          const p = transceiver.sender.getParameters();
+          if (p.encodings?.length) { p.degradationPreference = 'maintain-framerate'; await transceiver.sender.setParameters(p); }
         } catch {}
       }
 
       setIsScreenSharing(true);
+
+      if (statsIntervalRef.current) clearInterval(statsIntervalRef.current);
+      statsIntervalRef.current = setInterval(async () => {
+        const [firstEntry] = screenSendersRef.current.entries();
+        if (!firstEntry) return;
+        const [peerId, sender] = firstEntry;
+        const pc = peerConnectionsRef.current.get(peerId);
+        if (!pc || !sender.track) return;
+        try {
+          const stats = await pc.getStats(sender.track);
+          stats.forEach((report: any) => {
+            if (report.type === 'outbound-rtp' && report.kind === 'video') {
+              console.log('[ScreenShare] fps:', report.framesPerSecond, 'w:', report.frameWidth, 'h:', report.frameHeight, 'limitReason:', report.qualityLimitationReason);
+            }
+          });
+        } catch {}
+      }, 5000);
 
       // Update is_screen_sharing in DB
       if (user) {
@@ -255,6 +314,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   }, [user, setIsScreenSharing]);
 
   const stopScreenShare = useCallback(() => {
+    if (statsIntervalRef.current) { clearInterval(statsIntervalRef.current); statsIntervalRef.current = null; }
     // Remove senders from peer connections
     peerConnectionsRef.current.forEach((pc, peerId) => {
       const sender = screenSendersRef.current.get(peerId);
@@ -378,8 +438,9 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       }
       await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
       const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      ch.send({ type: "broadcast", event: "voice-answer", payload: { sdp: answer, senderId: user.id, targetId: payload.senderId } });
+      const patchedAnswer = optimizeSDPForGaming(answer.sdp || "");
+      await pc.setLocalDescription({ ...answer, sdp: patchedAnswer });
+      ch.send({ type: "broadcast", event: "voice-answer", payload: { sdp: { ...answer, sdp: patchedAnswer }, senderId: user.id, targetId: payload.senderId } });
     })
     .on("broadcast", { event: "voice-answer" }, async ({ payload }) => {
       if (!user || payload.targetId !== user.id) return;
@@ -491,6 +552,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   // Cleanup on unmount (disconnect)
   useEffect(() => {
     return () => {
+      if (statsIntervalRef.current) { clearInterval(statsIntervalRef.current); statsIntervalRef.current = null; }
       // Stop screen share
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       screenStreamRef.current = null;

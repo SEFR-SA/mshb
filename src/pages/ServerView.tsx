@@ -150,6 +150,9 @@ const ServerView = () => {
                 </SheetContent>
               </Sheet>
             </header>
+            {remoteScreenStream && isWatchingStream && (
+              <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} />
+            )}
             <div className="flex-1 min-h-0">{renderMainContent()}</div>
           </div>
           {switchDialog}
@@ -162,8 +165,13 @@ const ServerView = () => {
       <>
         <div className="flex h-full w-full max-w-full overflow-x-hidden">
           <ServerRail />
-          <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-            <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
+          <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col">
+            {remoteScreenStream && isWatchingStream && (
+              <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} />
+            )}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
+            </div>
           </div>
         </div>
         {switchDialog}

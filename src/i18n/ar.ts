@@ -39,6 +39,7 @@ export default {
     emailOrUsername: "البريد الإلكتروني أو اسم المستخدم",
     userNotFound: "لا يوجد حساب بهذا الاسم",
     usernameTaken: "اسم المستخدم مستخدم بالفعل",
+    usernameTooShort: "يجب أن يتكون اسم المستخدم من 3 أحرف على الأقل",
     usernameAvailable: "اسم المستخدم متاح",
   },
   nav: {

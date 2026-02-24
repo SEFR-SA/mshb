@@ -684,7 +684,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                             {p.is_screen_sharing && p.user_id !== user?.id && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); }}
-                                className="absolute end-1 opacity-0 group-hover:opacity-100 transition-opacity bg-green-600 hover:bg-green-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded cursor-pointer"
+                                className="absolute end-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-green-600 hover:bg-green-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded cursor-pointer"
                               >
                                 {t("streaming.watch")}
                               </button>

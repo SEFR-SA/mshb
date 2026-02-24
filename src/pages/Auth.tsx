@@ -50,7 +50,7 @@ const Auth = () => {
   const [pendingEmail, setPendingEmail] = useState("");
 
   // Username uniqueness
-  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "taken" | "available">("idle");
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "taken" | "available" | "too_short">("idle");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -58,14 +58,14 @@ const Auth = () => {
       setUsernameStatus("idle");
       return;
     }
+    if (username.trim().length < 3) {
+      setUsernameStatus("too_short");
+      return;
+    }
     setUsernameStatus("checking");
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id")
-        .ilike("username", username.trim())
-        .maybeSingle();
+      const { data } = await supabase.rpc("get_email_by_username", { p_username: username.trim() });
       setUsernameStatus(data ? "taken" : "available");
     }, 300);
     return () => clearTimeout(debounceRef.current);
@@ -99,6 +99,10 @@ const Auth = () => {
       }
       if (!username.trim()) {
         toast({ title: t("auth.usernameRequired"), variant: "destructive" });
+        return;
+      }
+      if (username.trim().length < 3) {
+        toast({ title: t("auth.usernameTooShort"), variant: "destructive" });
         return;
       }
       if (usernameStatus === "taken") {
@@ -213,14 +217,19 @@ const Auth = () => {
                 {/* 3. Username */}
                 <div className="space-y-2">
                   <Label>{t("auth.username")}</Label>
-                  <Input value={username} onChange={(e) => setUsername(e.target.value)} required />
+                  <Input value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} required />
+                  {usernameStatus === "too_short" && (
+                    <p className="text-xs text-yellow-500 flex items-center gap-1">
+                      <XCircle className="h-3.5 w-3.5" /> {t("auth.usernameTooShort")}
+                    </p>
+                  )}
                   {usernameStatus === "taken" && (
                     <p className="text-xs text-destructive flex items-center gap-1">
                       <XCircle className="h-3.5 w-3.5" /> {t("auth.usernameTaken")}
                     </p>
                   )}
                   {usernameStatus === "available" && (
-                    <p className="text-xs text-primary flex items-center gap-1">
+                    <p className="text-xs text-green-500 flex items-center gap-1">
                       <CheckCircle2 className="h-3.5 w-3.5" /> {t("auth.usernameAvailable")}
                     </p>
                   )}
@@ -354,7 +363,7 @@ const Auth = () => {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={submitting || (mode === "signup" && usernameStatus === "taken")}>
+            <Button type="submit" className="w-full" disabled={submitting || (mode === "signup" && (usernameStatus === "taken" || usernameStatus === "too_short" || usernameStatus === "checking"))}>
               {mode === "login" ? t("auth.login") : mode === "signup" ? t("auth.signup") : t("auth.sendResetLink")}
             </Button>
           </form>
