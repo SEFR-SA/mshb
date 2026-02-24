@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 
 out/
+
+# Environment variables (contains secrets — never commit)
+.env
+.env.*
+!.env.example
