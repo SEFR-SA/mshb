@@ -416,6 +416,7 @@ export type Database = {
           file_url: string | null
           group_thread_id: string | null
           id: string
+          metadata: Json | null
           reply_to_id: string | null
           thread_id: string | null
           type: string | null
@@ -433,6 +434,7 @@ export type Database = {
           file_url?: string | null
           group_thread_id?: string | null
           id?: string
+          metadata?: Json | null
           reply_to_id?: string | null
           thread_id?: string | null
           type?: string | null
@@ -450,6 +452,7 @@ export type Database = {
           file_url?: string | null
           group_thread_id?: string | null
           id?: string
+          metadata?: Json | null
           reply_to_id?: string | null
           thread_id?: string | null
           type?: string | null

@@ -35,6 +35,7 @@ import ReplyPreview from "@/components/chat/ReplyPreview";
 import ReplyInputBar from "@/components/chat/ReplyInputBar";
 import MessageReactions from "@/components/chat/MessageReactions";
 import { useMessageReactions } from "@/hooks/useMessageReactions";
+import ServerInviteCard from "@/components/chat/ServerInviteCard";
 import { startLoop, stopAllLoops, playSound } from "@/lib/soundManager";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -503,6 +504,15 @@ const Chat = () => {
                   {pillIcon}
                   <span>{displayContent}</span>
                 </div>
+              </div>
+            );
+          }
+
+          // Server invite card
+          if (msgTyped.type === 'server_invite' && !isDeleted && msgTyped.metadata) {
+            return (
+              <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
+                <ServerInviteCard metadata={msgTyped.metadata} isMine={isMine} />
               </div>
             );
           }
