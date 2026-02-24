@@ -122,7 +122,7 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
     setFriends((profiles || []) as Friend[]);
   };
 
-  const sendLink = async (friend: Friend) => {
+  const sendInvite = async (friend: Friend) => {
     if (!user || !inviteCode) return;
 
     const { data: existing } = await supabase
@@ -145,11 +145,25 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
 
     if (!threadId) return;
 
+    // Fetch server icon
+    const { data: serverData } = await supabase
+      .from("servers")
+      .select("icon_url")
+      .eq("id", serverId)
+      .maybeSingle();
+
     await supabase.from("messages").insert({
       thread_id: threadId,
       author_id: user.id,
-      content: `Join my server **${serverName}**! ${inviteUrl}`,
-    });
+      content: "",
+      type: "server_invite",
+      metadata: {
+        server_id: serverId,
+        invite_code: inviteCode,
+        server_name: serverName,
+        server_icon_url: serverData?.icon_url || "",
+      },
+    } as any);
 
     setSentTo((prev) => new Set(prev).add(friend.user_id));
   };
@@ -260,13 +274,13 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
                           size="sm"
                           variant={isSent ? "secondary" : "default"}
                           disabled={isSent}
-                          onClick={() => sendLink(f)}
+                          onClick={() => sendInvite(f)}
                           className="h-7 text-xs"
                         >
                           {isSent ? (
                             <><Check className="h-3 w-3 me-1" /> {t("servers.sent")}</>
                           ) : (
-                            t("servers.sendLink")
+                            t("servers.sendInvite")
                           )}
                         </Button>
                       </div>
