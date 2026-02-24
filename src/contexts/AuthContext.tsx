@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: 'https://mshb.vercel.app/auth-callback',
         data: {
           display_name: displayName || username,
           username,

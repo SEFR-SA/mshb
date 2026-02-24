@@ -19,6 +19,7 @@ import InviteJoin from "@/pages/InviteJoin";
 import NotFound from "@/pages/NotFound";
 import "@/i18n";
 import React, { useEffect, useState } from 'react';
+import { supabase } from "@/integrations/supabase/client";
 
 // --- TYPES FOR ELECTRON BRIDGE ---
 declare global {
@@ -26,12 +27,87 @@ declare global {
     electronAPI: {
       onUpdateAvailable: (cb: () => void) => void;
       onUpdateDownloaded: (cb: () => void) => void;
+      onDeepLink: (cb: (url: string) => void) => void;
       restartApp: () => void;
     };
   }
 }
 
-// --- DISCORD-STYLE UPDATE BANNER COMPONENT ---
+// --- AUTH CALLBACK BRIDGE (runs outside HashRouter, detects by pathname) ---
+const AuthCallback = () => {
+  useEffect(() => {
+    // Only act when Vercel served this page for the /auth-callback path
+    if (!window.location.pathname.includes('auth-callback')) return;
+
+    // Supabase puts tokens in the URL hash (implicit flow) or search params (PKCE)
+    const searchParams = new URLSearchParams(window.location.search);
+    const hashParams   = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
+    const accessToken  = searchParams.get('access_token')  || hashParams.get('access_token');
+    const refreshToken = searchParams.get('refresh_token') || hashParams.get('refresh_token');
+
+    if (accessToken && refreshToken) {
+      const deepLink = `mshb://auth#access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}`;
+      window.location.href = deepLink;
+      // Fallback: if the browser stays on the web version, send to home after 3 s
+      setTimeout(() => { window.location.hash = '/'; }, 3000);
+    } else {
+      window.location.hash = '/';
+    }
+  }, []);
+
+  // Only show the "opening app" UI when actually on the callback path
+  if (!window.location.pathname.includes('auth-callback')) return null;
+
+  return (
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-background p-4 text-center z-50">
+      <h1 className="text-2xl font-bold mb-2">Email Verified!</h1>
+      <p className="text-muted-foreground mb-4">Opening the MSHB Desktop app...</p>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-6" />
+      <p className="text-sm text-muted-foreground">Make sure the desktop app is installed.</p>
+      <a
+        href={`mshb://auth${window.location.search}${window.location.hash}`}
+        className="mt-4 text-primary underline text-sm font-medium"
+      >
+        Click here to open the app manually
+      </a>
+    </div>
+  );
+};
+
+// --- DEEP LINK HANDLER COMPONENT ---
+const DeepLinkHandler = () => {
+  useEffect(() => {
+    if (window.electronAPI && window.electronAPI.onDeepLink) {
+      window.electronAPI.onDeepLink(async (url: string) => {
+        console.log("Desktop app received deep link:", url);
+        
+        const hash = url.split('#')[1];
+        if (hash) {
+          const params = new URLSearchParams(hash);
+          const access_token = params.get('access_token');
+          const refresh_token = params.get('refresh_token');
+
+          if (access_token && refresh_token) {
+            const { error } = await supabase.auth.setSession({
+              access_token,
+              refresh_token,
+            });
+
+            if (!error) {
+              console.log("Successfully logged in via deep link!");
+              window.location.hash = "/";
+            }
+          }
+        }
+      });
+    }
+  }, []);
+
+  return null;
+};
+
+// --- UPDATE BANNER COMPONENT ---
 const UpdateBanner = () => {
   const [updateStatus, setUpdateStatus] = useState<'none' | 'available' | 'downloaded'>('none');
 
@@ -79,14 +155,16 @@ const App = () => (
         <VoiceChannelProvider>
           <AuthProvider>
             <TooltipProvider>
-              {/* THE UPDATE BANNER SITS AT THE VERY TOP */}
-              <UpdateBanner /> 
-              
+              <DeepLinkHandler />
+              <AuthCallback />
+              <UpdateBanner />
+
               <Toaster />
               <Sonner />
               <HashRouter>
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
+                  
                   <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                     <Route element={<HomeView />}>
                       <Route index element={<FriendsDashboard />} />

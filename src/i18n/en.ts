@@ -433,4 +433,10 @@ export default {
     noSources: "No sources found",
     watch: "Watch",
   },
+  verifyEmail: {
+    title: "Check Your Email",
+    description: "We sent a verification link to {{email}}. Click the link in that email to open MSHB and log in automatically.",
+    wrongEmail: "Wrong email?",
+    goBack: "Go back",
+  },
 };

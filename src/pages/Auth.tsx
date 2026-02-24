@@ -10,9 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import PasswordStrengthBar, { checkPasswordRules, allRulesPass } from "@/components/PasswordStrengthBar";
-import { CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, EyeOff, Mail } from "lucide-react";
 
-type AuthMode = "login" | "signup" | "reset";
+type AuthMode = "login" | "signup" | "reset" | "pending";
 
 const MONTHS = [
   "January","February","March","April","May","June",
@@ -47,6 +47,7 @@ const Auth = () => {
   const [gender, setGender] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
 
   // Username uniqueness
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "taken" | "available">("idle");
@@ -142,7 +143,8 @@ const Auth = () => {
         } else if (data?.user?.identities?.length === 0) {
           toast({ title: t("auth.emailAlreadyRegistered") || "This email is already registered. Please log in instead.", variant: "destructive" });
         } else {
-          toast({ title: t("auth.checkEmail") });
+          setPendingEmail(email);
+          setMode("pending");
         }
       } else {
         const { error } = await resetPassword(email);
@@ -153,6 +155,33 @@ const Auth = () => {
       setSubmitting(false);
     }
   };
+
+  if (mode === "pending") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md glass text-center">
+          <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
+            <div className="rounded-full bg-primary/10 p-4">
+              <Mail className="h-10 w-10 text-primary" />
+            </div>
+            <CardTitle className="text-2xl font-bold">{t("verifyEmail.title")}</CardTitle>
+            <p className="text-muted-foreground text-sm max-w-xs">
+              {t("verifyEmail.description", { email: pendingEmail })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {t("verifyEmail.wrongEmail")}{" "}
+              <button
+                className="text-primary hover:underline"
+                onClick={() => { setMode("signup"); setPendingEmail(""); }}
+              >
+                {t("verifyEmail.goBack")}
+              </button>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
