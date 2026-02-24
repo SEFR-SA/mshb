@@ -191,7 +191,6 @@ function createWindow() {
     width: 1200,
     height: 800,
     show: false,
-    title: `Mshb ${app.getVersion()}`,
     icon: path.join(__dirname, 'assets/icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
@@ -206,7 +205,11 @@ function createWindow() {
   mainWindow.removeMenu();
 
   mainWindow.loadFile(path.join(__dirname, 'dist/index.html'));
-  
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.setTitle(`Mshb ${app.getVersion()}`);
+  });
+
   mainWindow.once('ready-to-show', () => {
     mainWindowReady = true;
     tryShowMain();
