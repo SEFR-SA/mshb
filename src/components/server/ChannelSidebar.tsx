@@ -26,7 +26,9 @@ import GoLiveModal from "@/components/GoLiveModal";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { usePresence } from "@/hooks/usePresence";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { NavLink as RouterNavLink } from "react-router-dom";
 
 interface Channel {
@@ -73,12 +75,21 @@ interface Props {
   activeVoiceChannelId?: string;
 }
 
+const StreamPreviewVideo = ({ stream }: { stream: MediaStream }) => {
+  const ref = React.useRef<HTMLVideoElement>(null);
+  React.useEffect(() => {
+    if (ref.current) ref.current.srcObject = stream;
+  }, [stream]);
+  return <video ref={ref} autoPlay muted playsInline className="w-full h-full object-contain" />;
+};
+
 const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceChannelSelect, activeVoiceChannelId }: Props) => {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
-  const { voiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsWatchingStream } = useVoiceChannel();
+  const { voiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsWatchingStream } = useVoiceChannel();
   const { getUserStatus } = usePresence();
+  const isMobile = useIsMobile();
   const status = (getUserStatus(profile) || "online") as UserStatus;
   const [server, setServer] = useState<Server | null>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -641,16 +652,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                         </button>
                         {renderAdminDropdown(ch)}
                       </div>
-                      {participants.map((p) => (
-                        <VoiceUserContextMenu
-                          key={p.user_id}
-                          targetUserId={p.user_id}
-                          targetUsername={p.username || undefined}
-                          serverId={serverId}
-                          channelId={ch.id}
-                          serverOwnerId={server?.owner_id || ""}
-                          currentUserRole={currentUserRole}
-                        >
+                      {participants.map((p) => {
+                        const isScreenSharer = p.is_screen_sharing && p.user_id !== user?.id;
+
+                        const innerRow = (
                           <div className="relative group flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground cursor-default">
                             <div className="relative shrink-0">
                               <Avatar className="h-5 w-5">
@@ -676,17 +681,71 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                             ) : p.is_speaking ? (
                               <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
                             ) : null}
-                            {p.is_screen_sharing && p.user_id !== user?.id && (
+                            {isScreenSharer && isMobile && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); }}
-                                className="absolute end-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-green-600 hover:bg-green-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded cursor-pointer"
+                                className="absolute end-1 opacity-100 transition-opacity bg-green-600 hover:bg-green-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded cursor-pointer"
                               >
                                 {t("streaming.watch")}
                               </button>
                             )}
                           </div>
-                        </VoiceUserContextMenu>
-                      ))}
+                        );
+
+                        if (!isMobile && isScreenSharer) {
+                          return (
+                            <HoverCard key={p.user_id} openDelay={300} closeDelay={200}>
+                              <HoverCardTrigger asChild>
+                                <div>
+                                  <VoiceUserContextMenu
+                                    targetUserId={p.user_id}
+                                    targetUsername={p.username || undefined}
+                                    serverId={serverId}
+                                    channelId={ch.id}
+                                    serverOwnerId={server?.owner_id || ""}
+                                    currentUserRole={currentUserRole}
+                                  >
+                                    {innerRow}
+                                  </VoiceUserContextMenu>
+                                </div>
+                              </HoverCardTrigger>
+                              <HoverCardContent side="left" sideOffset={10} className="w-[280px] p-0 overflow-hidden rounded-xl border-border/50">
+                                <div className="aspect-video bg-black/90 flex items-center justify-center">
+                                  {remoteScreenStream
+                                    ? <StreamPreviewVideo stream={remoteScreenStream} />
+                                    : <Monitor className="h-8 w-8 text-muted-foreground" />
+                                  }
+                                </div>
+                                <div className="p-3 flex flex-col items-center gap-2.5">
+                                  <p className="text-xs font-semibold text-foreground text-center">
+                                    {p.display_name || p.username || "User"} · {t("streaming.live")}
+                                  </p>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); }}
+                                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold py-1.5 rounded-md transition-colors"
+                                  >
+                                    {t("streaming.watchStream")}
+                                  </button>
+                                </div>
+                              </HoverCardContent>
+                            </HoverCard>
+                          );
+                        }
+
+                        return (
+                          <VoiceUserContextMenu
+                            key={p.user_id}
+                            targetUserId={p.user_id}
+                            targetUsername={p.username || undefined}
+                            serverId={serverId}
+                            channelId={ch.id}
+                            serverOwnerId={server?.owner_id || ""}
+                            currentUserRole={currentUserRole}
+                          >
+                            {innerRow}
+                          </VoiceUserContextMenu>
+                        );
+                      })}
                     </div>
                   );
                 }

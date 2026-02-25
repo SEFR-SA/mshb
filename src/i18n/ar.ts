@@ -448,6 +448,7 @@ export default {
     live: "مباشر",
     noSources: "لا توجد مصادر",
     watch: "مشاهدة",
+    watchStream: "مشاهدة البث",
   },
   verifyEmail: {
     title: "تحقق من بريدك الإلكتروني",
