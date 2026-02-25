@@ -44,6 +44,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
   const [remoteScreenStream, setRemoteScreenStream] = useState<MediaStream | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [localCameraStream, setLocalCameraStream] = useState<MediaStream | null>(null);
+  const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
   const [remoteCameraStream, setRemoteCameraStream] = useState<MediaStream | null>(null);
   const remoteAudiosRef = useRef<HTMLAudioElement[]>([]);
 
@@ -75,6 +76,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     cameraStreamRef.current = null;
     cameraSenderRef.current = null;
     setIsScreenSharing(false);
+    setLocalScreenStream(null);
     setRemoteScreenStream(null);
     setIsCameraOn(false);
     setLocalCameraStream(null);
@@ -188,7 +190,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
         setCallState("connected");
         startDurationTimer();
       }
-      if (["disconnected", "failed", "closed"].includes(state)) {
+      if (["failed", "closed"].includes(state)) {
         cleanup();
       }
     };
@@ -376,6 +378,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       if (videoTracks.length === 0) return;
 
       screenStreamRef.current = stream;
+      setLocalScreenStream(stream);
       const videoTrack = videoTracks[0];
       videoTrack.contentHint = "motion";
       try {
@@ -453,6 +456,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     screenSenderRef.current = null;
     screenAudioSendersRef.current = [];
     setIsScreenSharing(false);
+    setLocalScreenStream(null);
   }, []);
 
   const adjustScreenShareQuality = useCallback(async (preset: '720p30' | '1080p30' | '1080p60' | '1440p60') => {
@@ -585,6 +589,7 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     isDeafened,
     callDuration,
     isScreenSharing,
+    localScreenStream,
     remoteScreenStream,
     isCameraOn,
     localCameraStream,

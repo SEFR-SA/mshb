@@ -54,6 +54,7 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
   const [sentTo, setSentTo] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [generatedExpiresAt, setGeneratedExpiresAt] = useState<string | null>(null);
 
   // Settings
   const [expireAfter, setExpireAfter] = useState("7d");
@@ -87,6 +88,7 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
 
     if (!error && data) {
       setInviteCode((data as any).code);
+      setGeneratedExpiresAt(expiresAt);
     }
     setLoading(false);
   }, [user, serverId, expireAfter, maxUses, temporary]);
@@ -145,10 +147,10 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
 
     if (!threadId) return;
 
-    // Fetch server icon
+    // Fetch server icon + banner
     const { data: serverData } = await supabase
       .from("servers")
-      .select("icon_url")
+      .select("icon_url, banner_url")
       .eq("id", serverId)
       .maybeSingle();
 
@@ -161,7 +163,9 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
         server_id: serverId,
         invite_code: inviteCode,
         server_name: serverName,
-        server_icon_url: serverData?.icon_url || "",
+        server_icon_url: (serverData as any)?.icon_url || "",
+        server_banner_url: (serverData as any)?.banner_url || undefined,
+        expires_at: generatedExpiresAt,
       },
     } as any);
 

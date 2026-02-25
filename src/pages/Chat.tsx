@@ -36,6 +36,7 @@ import ReplyInputBar from "@/components/chat/ReplyInputBar";
 import MessageReactions from "@/components/chat/MessageReactions";
 import { useMessageReactions } from "@/hooks/useMessageReactions";
 import ServerInviteCard from "@/components/chat/ServerInviteCard";
+import { detectInviteInMessage } from "@/lib/inviteUtils";
 import { startLoop, stopAllLoops, playSound } from "@/lib/soundManager";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -85,7 +86,7 @@ const Chat = () => {
 
   const { globalMuted, globalDeafened } = useAudioSettings();
 
-  const { callState, isMuted, isDeafened, callDuration, isScreenSharing, remoteScreenStream, isCameraOn, localCameraStream, remoteCameraStream, startCall, endCall, toggleMute, toggleDeafen, startScreenShare, stopScreenShare, startCamera, stopCamera } = useWebRTC({
+  const { callState, isMuted, isDeafened, callDuration, isScreenSharing, localScreenStream, remoteScreenStream, isCameraOn, localCameraStream, remoteCameraStream, startCall, endCall, toggleMute, toggleDeafen, startScreenShare, stopScreenShare, startCamera, stopCamera } = useWebRTC({
     sessionId: callSessionId,
     isCaller: isCallerState,
     onEnded: handleCallEnded,
@@ -330,6 +331,25 @@ const Chat = () => {
       }
       const replyId = replyingTo?.id || null;
       setReplyingTo(null);
+
+      // Detect invite URL (only for text-only messages)
+      if (!file && content) {
+        const invite = await detectInviteInMessage(content);
+        if (invite.isInvite) {
+          await supabase.from("messages").insert({
+            thread_id: threadId,
+            author_id: user.id,
+            content: "",
+            type: "server_invite",
+            metadata: invite.metadata as any,
+            ...(replyId ? { reply_to_id: replyId } : {}),
+          } as any);
+          await supabase.from("dm_threads").update({ last_message_at: new Date().toISOString() }).eq("id", threadId);
+          setSending(false);
+          return;
+        }
+      }
+
       await supabase.from("messages").insert({
         thread_id: threadId,
         author_id: user.id,
@@ -452,6 +472,7 @@ const Chat = () => {
         onToggleMute={handleToggleMute}
         onToggleDeafen={handleToggleDeafen}
         isScreenSharing={isScreenSharing}
+        localScreenStream={localScreenStream}
         remoteScreenStream={remoteScreenStream}
         onStartScreenShare={(settings) => startScreenShare(settings)}
         onStopScreenShare={stopScreenShare}

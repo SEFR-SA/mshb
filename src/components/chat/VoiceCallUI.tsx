@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PhoneOff, Mic, MicOff, Volume2, HeadphoneOff, Monitor, MonitorOff, Video, VideoOff, PictureInPicture2, Maximize, Minimize } from "lucide-react";
 import type { CallState } from "@/hooks/useWebRTC";
 import GoLiveModal, { type GoLiveSettings } from "@/components/GoLiveModal";
+import ScreenShareViewer from "@/components/server/ScreenShareViewer";
 
 interface VoiceCallUIProps {
   callState: CallState;
@@ -17,6 +18,7 @@ interface VoiceCallUIProps {
   onToggleMute: () => void;
   onToggleDeafen: () => void;
   isScreenSharing?: boolean;
+  localScreenStream?: MediaStream | null;
   remoteScreenStream?: MediaStream | null;
   onStartScreenShare?: (settings: GoLiveSettings) => void;
   onStopScreenShare?: () => void;
@@ -131,7 +133,7 @@ const SelfView = ({ stream }: { stream: MediaStream }) => {
   );
 };
 
-const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, otherAvatar, onEndCall, onToggleMute, onToggleDeafen, isScreenSharing, remoteScreenStream, onStartScreenShare, onStopScreenShare, isCameraOn, localCameraStream, remoteCameraStream, onStartCamera, onStopCamera }: VoiceCallUIProps) => {
+const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, otherAvatar, onEndCall, onToggleMute, onToggleDeafen, isScreenSharing, localScreenStream, remoteScreenStream, onStartScreenShare, onStopScreenShare, isCameraOn, localCameraStream, remoteCameraStream, onStartCamera, onStopCamera }: VoiceCallUIProps) => {
   const { t } = useTranslation();
   const [goLiveOpen, setGoLiveOpen] = useState(false);
 
@@ -162,8 +164,8 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
         <>
           {/* Remote screen share */}
           {remoteScreenStream && (
-            <div className="w-full px-4">
-              <VideoElement stream={remoteScreenStream} showPiP label={t("calls.userSharing", { name: otherName })} />
+            <div className="w-full">
+              <ScreenShareViewer stream={remoteScreenStream} sharerName={otherName} />
             </div>
           )}
 
@@ -174,9 +176,11 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
             </div>
           )}
 
-          {/* Local sharing indicator */}
-          {isScreenSharing && !remoteScreenStream && (
-            <p className="text-xs text-green-500 font-medium">{t("calls.youAreSharing")}</p>
+          {/* Local screen share preview */}
+          {isScreenSharing && localScreenStream && (
+            <div className="w-full">
+              <ScreenShareViewer stream={localScreenStream} sharerName="" label={t("calls.youAreSharing")} />
+            </div>
           )}
 
           <div className="relative">

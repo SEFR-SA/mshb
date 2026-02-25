@@ -1,4 +1,4 @@
-const { app, BrowserWindow, autoUpdater, ipcMain, desktopCapturer, Menu } = require('electron');
+const { app, BrowserWindow, autoUpdater, ipcMain, desktopCapturer, Menu, session } = require('electron');
 const path = require('path');
 
 if (process.defaultApp) {
@@ -55,19 +55,25 @@ function handleSquirrelEvent() {
 if (handleSquirrelEvent()) return;
 
 // GPU acceleration and WebRTC optimization flags — must be set before app.whenReady()
-app.commandLine.appendSwitch('ignore-gpu-blocklist');
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-zero-copy');
-app.commandLine.appendSwitch('enable-accelerated-video-decode');
-app.commandLine.appendSwitch('disable-software-rasterizer');
-app.commandLine.appendSwitch('enable-native-gpu-memory-buffers');
-app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
-app.commandLine.appendSwitch('disable-renderer-backgrounding');
-app.commandLine.appendSwitch('enable-features',
-  'VaapiVideoDecoder,VaapiVideoEncoder,VaapiIgnoreDriverChecks,' +
-  'WebRTCPipeWireCapturer,CanvasOopRasterization,' +
-  'PlatformHEVCEncoderSupport,PlatformHEVCDecoderSupport'
-);
+// Set MSHB_DISABLE_GPU=1 to test if GPU is the white-screen cause (diagnostic only)
+if (process.env.MSHB_DISABLE_GPU === '1') {
+  app.disableHardwareAcceleration();
+} else {
+  app.commandLine.appendSwitch('ignore-gpu-blocklist');
+  app.commandLine.appendSwitch('enable-gpu-rasterization');
+  // enable-zero-copy REMOVED — triggers GPU process crash when screen capture starts
+  app.commandLine.appendSwitch('enable-accelerated-video-decode');
+  // disable-software-rasterizer REMOVED — prevents software fallback when GPU fails → white screen
+  // enable-native-gpu-memory-buffers REMOVED — GPU OOM during capture on some hardware
+  app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
+  app.commandLine.appendSwitch('disable-renderer-backgrounding');
+  app.commandLine.appendSwitch('enable-features',
+    'WebRTCPipeWireCapturer,CanvasOopRasterization,' +
+    'PlatformHEVCEncoderSupport,PlatformHEVCDecoderSupport'
+    // VaapiVideoDecoder/Encoder/IgnoreDriverChecks REMOVED — Linux-only VAAPI flags that
+    // destabilise the GPU process on Windows when video encoding starts
+  );
+}
 
 // Completely remove the default menu for the entire application
 Menu.setApplicationMenu(null);
@@ -210,6 +216,24 @@ function createWindow() {
     mainWindow.setTitle(`Mshb ${app.getVersion()}`);
   });
 
+  // --- Crash & unresponsiveness logging + auto-reload recovery ---
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[Electron] Renderer gone — reason:', details.reason, '| exitCode:', details.exitCode);
+    // Reload after a short delay so the user doesn't stay on a white screen
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.reload();
+    }, 1500);
+  });
+
+  mainWindow.webContents.on('unresponsive', () => {
+    console.error('[Electron] Renderer became unresponsive');
+  });
+
+  // Legacy crash event kept for Electron < 15 compatibility
+  mainWindow.webContents.on('crashed', (_event, killed) => {
+    console.error('[Electron] Renderer crashed — killed:', killed);
+  });
+
   mainWindow.once('ready-to-show', () => {
     mainWindowReady = true;
     tryShowMain();
@@ -307,6 +331,31 @@ app.on('open-url', (event, url) => {
 app.whenReady().then(() => {
   splashWindow = createSplashWindow();
   createWindow();
+
+  // --- Permission handler: allow media & display-capture ---
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    callback(['media', 'display-capture', 'mediaKeySystem'].includes(permission));
+  });
+
+  // --- Display-media handler (Electron 17+) ---
+  // Handles navigator.mediaDevices.getDisplayMedia() calls from the renderer.
+  // Without this, Electron 17+ silently rejects getDisplayMedia which can crash
+  // the renderer with an unhandled promise rejection.
+  session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
+    try {
+      const sources = await desktopCapturer.getSources({
+        types: ['screen', 'window'],
+        thumbnailSize: { width: 1, height: 1 },
+      });
+      if (sources.length === 0) { callback({}); return; }
+      const screenSource = sources.find((s) => s.id.startsWith('screen:')) ?? sources[0];
+      // 'loopback' captures system audio on Windows; ignored on macOS/Linux
+      callback({ video: screenSource, audio: 'loopback' });
+    } catch (err) {
+      console.error('[Electron] setDisplayMediaRequestHandler error:', err);
+      callback({});
+    }
+  });
 
   if (app.isPackaged) {
     const server = 'https://update.electronjs.org';

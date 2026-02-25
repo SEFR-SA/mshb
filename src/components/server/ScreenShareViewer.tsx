@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils";
 interface ScreenShareViewerProps {
   stream: MediaStream;
   sharerName: string;
+  label?: string;
 }
 
-const ScreenShareViewer = ({ stream, sharerName }: ScreenShareViewerProps) => {
+const ScreenShareViewer = ({ stream, sharerName, label }: ScreenShareViewerProps) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -56,7 +57,7 @@ const ScreenShareViewer = ({ stream, sharerName }: ScreenShareViewerProps) => {
     )}>
       <div className="flex items-center gap-2 px-4 py-2 bg-card/80 border-b border-border/50">
         <Monitor className="h-4 w-4 text-green-500" />
-        <span className="text-sm font-medium flex-1">{t("calls.userSharing", { name: sharerName })}</span>
+        <span className="text-sm font-medium flex-1">{label ?? t("calls.userSharing", { name: sharerName })}</span>
         <Button
           variant="ghost"
           size="icon"

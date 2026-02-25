@@ -176,7 +176,7 @@ const App = () => (
                     <Route path="server/:serverId/channel/:channelId" element={<ServerView />} />
                     <Route path="settings" element={<Settings />} />
                   </Route>
-                  <Route path="/invite/:code" element={<ProtectedRoute><InviteJoin /></ProtectedRoute>} />
+                  <Route path="/invite/:code" element={<InviteJoin />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </HashRouter>

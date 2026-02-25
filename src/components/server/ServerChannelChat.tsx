@@ -27,6 +27,8 @@ import ReplyPreview from "@/components/chat/ReplyPreview";
 import ReplyInputBar from "@/components/chat/ReplyInputBar";
 import MessageReactions from "@/components/chat/MessageReactions";
 import { useMessageReactions } from "@/hooks/useMessageReactions";
+import ServerInviteCard from "@/components/chat/ServerInviteCard";
+import { detectInviteInMessage } from "@/lib/inviteUtils";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
@@ -208,6 +210,24 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
       }
       const replyId = replyingTo?.id || null;
       setReplyingTo(null);
+
+      // Detect invite URL (only for text-only messages)
+      if (!file && content) {
+        const invite = await detectInviteInMessage(content);
+        if (invite.isInvite) {
+          await supabase.from("messages").insert({
+            channel_id: channelId,
+            author_id: user.id,
+            content: "",
+            type: "server_invite",
+            metadata: invite.metadata as any,
+            ...(replyId ? { reply_to_id: replyId } : {}),
+          } as any);
+          setSending(false);
+          return;
+        }
+      }
+
       await supabase.from("messages").insert({
         channel_id: channelId,
         author_id: user.id,
@@ -286,6 +306,17 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
           const sameAuthor = prev && prev.author_id === msg.author_id;
           const timeDiff = prev ? new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
           const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
+          const msgAny = msg as any;
+
+          // Server invite card
+          if (msgAny.type === 'server_invite' && msgAny.metadata) {
+            return (
+              <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
+                <ServerInviteCard metadata={msgAny.metadata} isMine={isMine} />
+              </div>
+            );
+          }
+
           return (
             <MessageContextMenu
               key={msg.id}
