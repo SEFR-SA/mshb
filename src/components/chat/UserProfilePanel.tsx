@@ -64,22 +64,6 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
           <span className="text-sm capitalize">{t(`status.${statusLabel !== "offline" ? statusLabel : "invisible"}`)}</span>
         </div>
 
-        {/* Age & Gender */}
-        {(p.date_of_birth || p.gender) && (
-          <>
-            <Separator />
-            <div className="space-y-1">
-              {p.date_of_birth && (
-                <p className="text-sm">
-                  {differenceInYears(new Date(), new Date(p.date_of_birth))} {t("profile.yearsOld", "years old")}
-                </p>
-              )}
-              {p.gender && (
-                <p className="text-sm text-muted-foreground">{p.gender}</p>
-              )}
-            </div>
-          </>
-        )}
 
         {/* Custom Status */}
         {profile.status_text && (
