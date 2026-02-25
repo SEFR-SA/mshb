@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -251,12 +252,22 @@ const ServerMemberList = ({ serverId }: Props) => {
                       >
                         {memberButton}
                       </ServerMemberContextMenu>
-                      <Dialog open={selectedMemberId === m.user_id} onOpenChange={(open) => !open && setSelectedMemberId(null)}>
-                        <DialogContent className="p-0 border-none bg-transparent max-w-[340px] overflow-hidden">
-                          <DialogTitle className="sr-only">{name}</DialogTitle>
-                          {profileCardContent}
-                        </DialogContent>
-                      </Dialog>
+                      <DialogPrimitive.Root
+                        open={selectedMemberId === m.user_id}
+                        onOpenChange={(open: boolean) => !open && setSelectedMemberId(null)}
+                      >
+                        <DialogPrimitive.Portal>
+                          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+                          <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-32px)] max-w-[340px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl shadow-2xl focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+                            <DialogPrimitive.Title className="sr-only">{name}</DialogPrimitive.Title>
+                            {profileCardContent}
+                            <DialogPrimitive.Close className="absolute right-2 top-2 z-10 rounded-full bg-black/40 p-1.5 text-white opacity-80 hover:opacity-100 focus:outline-none transition-opacity">
+                              <X className="h-3.5 w-3.5" />
+                              <span className="sr-only">Close</span>
+                            </DialogPrimitive.Close>
+                          </DialogPrimitive.Content>
+                        </DialogPrimitive.Portal>
+                      </DialogPrimitive.Root>
                     </React.Fragment>
                   );
                 }
