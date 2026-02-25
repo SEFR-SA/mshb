@@ -24,15 +24,26 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
   const audioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const preMuteVolumeRef = useRef(100);
+  const localScreenStreamRef = useRef<MediaStream | null>(null);
+  const isVolumeOpenRef = useRef(false);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isHudVisible, setIsHudVisible] = useState(true);
   const [streamVolume, setStreamVolume] = useState(100);
+  const [isMuted, setIsMuted] = useState(false);
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
   const [resolutionLabel, setResolutionLabel] = useState("");
 
-  const { isCameraOn, setIsCameraOn, isScreenSharing, setIsScreenSharing } = useVoiceChannel();
+  const {
+    isCameraOn, setIsCameraOn,
+    isScreenSharing, setIsScreenSharing,
+    localCameraStream, setLocalCameraStream,
+  } = useVoiceChannel();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
+
+  // Keep ref in sync with state for stale-closure-safe timer check
+  useEffect(() => { isVolumeOpenRef.current = isVolumeOpen; }, [isVolumeOpen]);
 
   // Attach stream to video/audio
   useEffect(() => {
@@ -52,10 +63,12 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
     };
   }, []);
 
-  // Stream volume control
+  // Stream volume — responds to both slider and mute toggle
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = streamVolume / 100;
-  }, [streamVolume]);
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : streamVolume / 100;
+    }
+  }, [streamVolume, isMuted]);
 
   // Resolution detection
   useEffect(() => {
@@ -68,20 +81,73 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
     setResolutionLabel(`${res}${fps}`);
   }, [stream]);
 
-  // Cleanup HUD timer on unmount
+  // Cleanup HUD timer + local screen stream on unmount
   useEffect(() => {
-    return () => { if (hudTimerRef.current) clearTimeout(hudTimerRef.current); };
+    return () => {
+      if (hudTimerRef.current) clearTimeout(hudTimerRef.current);
+      localScreenStreamRef.current?.getTracks().forEach(t => t.stop());
+    };
   }, []);
 
-  const handleMouseMove = () => {
+  const resetHudTimer = () => {
     setIsHudVisible(true);
     if (hudTimerRef.current) clearTimeout(hudTimerRef.current);
-    hudTimerRef.current = setTimeout(() => setIsHudVisible(false), 3000);
+    hudTimerRef.current = setTimeout(() => {
+      if (!isVolumeOpenRef.current) setIsHudVisible(false);
+    }, 3000);
   };
+
+  const handleMouseMove = resetHudTimer;
 
   const handleMouseLeave = () => {
     if (hudTimerRef.current) clearTimeout(hudTimerRef.current);
     setIsHudVisible(false);
+  };
+
+  const handleVolumeMute = () => {
+    if (isMuted) {
+      setIsMuted(false);
+      setStreamVolume(preMuteVolumeRef.current || 100);
+    } else {
+      preMuteVolumeRef.current = streamVolume;
+      setIsMuted(true);
+    }
+  };
+
+  const handleCameraToggle = async () => {
+    if (isCameraOn) {
+      localCameraStream?.getTracks().forEach(t => t.stop());
+      setLocalCameraStream(null);
+      setIsCameraOn(false);
+    } else {
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: true });
+        setLocalCameraStream(s);
+        setIsCameraOn(true);
+      } catch (err) {
+        console.error("Camera error:", err);
+      }
+    }
+  };
+
+  const handleScreenShareToggle = async () => {
+    if (isScreenSharing) {
+      localScreenStreamRef.current?.getTracks().forEach(t => t.stop());
+      localScreenStreamRef.current = null;
+      setIsScreenSharing(false);
+    } else {
+      try {
+        const s = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true });
+        localScreenStreamRef.current = s;
+        s.getVideoTracks()[0].onended = () => {
+          localScreenStreamRef.current = null;
+          setIsScreenSharing(false);
+        };
+        setIsScreenSharing(true);
+      } catch (err) {
+        console.error("Screen share error:", err);
+      }
+    }
   };
 
   const handlePiP = async () => {
@@ -126,7 +192,7 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
       />
       <audio ref={audioRef} autoPlay className="hidden" />
 
-      {/* HUD Overlay */}
+      {/* HUD Overlay — pointer-events-none on outer, gated on inner sections */}
       <div className={cn(
         "absolute inset-0 z-10 flex flex-col justify-between pointer-events-none",
         "transition-opacity duration-300",
@@ -134,7 +200,10 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
       )}>
 
         {/* ── TOP BAR ── */}
-        <div className="pointer-events-auto bg-gradient-to-b from-black/70 to-transparent px-4 pt-3 pb-8">
+        <div className={cn(
+          "bg-gradient-to-b from-black/70 to-transparent px-4 pt-3 pb-8",
+          isHudVisible ? "pointer-events-auto" : "pointer-events-none"
+        )}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-white min-w-0">
               <Monitor className="h-4 w-4 text-green-400 shrink-0" />
@@ -154,7 +223,10 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
         </div>
 
         {/* ── BOTTOM SECTION ── */}
-        <div className="pointer-events-auto bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-8">
+        <div className={cn(
+          "bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-8",
+          isHudVisible ? "pointer-events-auto" : "pointer-events-none"
+        )}>
 
           {/* Center dock */}
           <div className="flex justify-center mb-3">
@@ -186,7 +258,7 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
 
               {/* Camera */}
               <button
-                onClick={() => setIsCameraOn(!isCameraOn)}
+                onClick={handleCameraToggle}
                 className={cn(
                   "p-2 rounded-full transition-colors",
                   !isCameraOn ? "bg-red-600/70 text-white" : "bg-white/10 text-white hover:bg-white/20"
@@ -198,7 +270,7 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
 
               {/* Share Screen */}
               <button
-                onClick={() => setIsScreenSharing(!isScreenSharing)}
+                onClick={handleScreenShareToggle}
                 className={cn(
                   "p-2 rounded-full transition-colors",
                   isScreenSharing ? "bg-green-600 text-white" : "bg-white/10 text-white hover:bg-white/20"
@@ -244,31 +316,44 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
               </button>
             </div>
 
-            {/* Right: Volume */}
+            {/* Right: Volume — single hitbox covering button + slider popup */}
             <div
               className="relative"
               onMouseEnter={() => setIsVolumeOpen(true)}
               onMouseLeave={() => setIsVolumeOpen(false)}
             >
+              {/* Slider popup — no gap between popup bottom and button top */}
               {isVolumeOpen && (
-                <div className="absolute bottom-full right-0 mb-2 bg-black/60 backdrop-blur-md rounded-xl p-3 border border-white/10 w-36">
+                <div className="absolute bottom-full right-0 bg-black/60 backdrop-blur-md rounded-xl p-3 border border-white/10 w-36">
                   <Slider
-                    value={[streamVolume]}
-                    onValueChange={([v]) => setStreamVolume(v)}
+                    value={[isMuted ? 0 : streamVolume]}
+                    onValueChange={([v]) => {
+                      if (isMuted && v > 0) setIsMuted(false);
+                      setStreamVolume(v);
+                    }}
                     max={100}
                     step={1}
                     className="w-full"
                   />
-                  <p className="text-[10px] text-white/50 text-center mt-1">{streamVolume}%</p>
+                  <p className="text-[10px] text-white/50 text-center mt-1">
+                    {isMuted ? 0 : streamVolume}%
+                  </p>
                 </div>
               )}
-              <button className="flex items-center gap-1 p-2 bg-black/40 hover:bg-black/60 text-white rounded-lg transition-colors">
-                {streamVolume === 0
+              {/* Volume icon — click to mute/unmute */}
+              <button
+                onClick={handleVolumeMute}
+                className={cn(
+                  "flex items-center gap-1 p-2 rounded-lg transition-colors",
+                  isMuted ? "bg-red-600/70 text-white" : "bg-black/40 hover:bg-black/60 text-white"
+                )}
+              >
+                {isMuted || streamVolume === 0
                   ? <VolumeX className="h-4 w-4" />
                   : streamVolume < 50
                   ? <Volume1 className="h-4 w-4" />
                   : <Volume2 className="h-4 w-4" />}
-                <span className="text-xs text-white/60">{streamVolume}%</span>
+                <span className="text-xs text-white/60">{isMuted ? 0 : streamVolume}%</span>
               </button>
             </div>
 
