@@ -274,11 +274,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     }
   };
 
-  const leaveServer = async () => {
-    if (!user) return;
-    await supabase.from("server_members" as any).delete().eq("server_id", serverId).eq("user_id", user.id);
-    window.location.href = "/";
-  };
 
   // --- Edit Channel ---
   const openEditDialog = async (ch: Channel) => {
@@ -790,11 +785,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                 <Settings className="h-4 w-4" />
               </Button>
             </RouterNavLink>
-            {!isAdmin && (
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 ms-auto" onClick={leaveServer} title={t("servers.leave")}>
-                <LogOut className="h-4 w-4" />
-              </Button>
-            )}
           </div>
 
           {/* User profile row */}

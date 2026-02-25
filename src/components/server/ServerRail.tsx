@@ -53,6 +53,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const [joinOpen, setJoinOpen] = useState(false);
   const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
   const [deleteServerId, setDeleteServerId] = useState<string | null>(null);
+  const [leaveServerId, setLeaveServerId] = useState<string | null>(null);
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [pendingFolderServers, setPendingFolderServers] = useState<string[] | null>(null);
@@ -384,7 +385,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                     {user && s.owner_id !== user.id && (
                       <>
                         <ContextMenuSeparator />
-                        <ContextMenuItem onClick={() => handleLeaveServer(s.id)}>
+                        <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setLeaveServerId(s.id)}>
                           <LogOut className="h-4 w-4 me-2" />
                           {t("servers.leave")}
                         </ContextMenuItem>
@@ -451,6 +452,18 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteServerId(null)}>{t("common.cancel")}</Button>
             <Button variant="destructive" onClick={handleDeleteServer}>{t("servers.deleteServer")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!leaveServerId} onOpenChange={(open) => { if (!open) setLeaveServerId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("servers.leaveServerTitle")}</DialogTitle>
+            <DialogDescription>{t("servers.leaveServerConfirm")}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" autoFocus onClick={() => setLeaveServerId(null)}>{t("servers.leaveNo")}</Button>
+            <Button variant="destructive" onClick={() => { handleLeaveServer(leaveServerId!); setLeaveServerId(null); }}>{t("servers.leaveYes")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
