@@ -10,7 +10,7 @@ const ICE_SERVERS: RTCConfiguration = {
 };
 
 /** Optimize SDP for gaming: inject bitrate limits and x-google encoder params */
-function optimizeSDPForGaming(sdp: string, maxKbps = 10000, startKbps = 4000, minKbps = 2000): string {
+function optimizeSDPForGaming(sdp: string, maxKbps = 25000, startKbps = 5000, minKbps = 2000): string {
   let s = sdp;
   s = s.replace(/b=AS:[^\r\n]*\r\n/g, '');
   s = s.replace(/b=TIAS:[^\r\n]*\r\n/g, '');
@@ -380,12 +380,11 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       screenStreamRef.current = stream;
       setLocalScreenStream(stream);
       const videoTrack = videoTracks[0];
-      videoTrack.contentHint = "motion";
-      try {
-        await videoTrack.applyConstraints({ width: { min: 1280, ideal: 1920 }, height: { min: 720, ideal: 1080 }, frameRate: { min: 30, ideal: 60 } });
-      } catch {}
+      videoTrack.contentHint = "detail";
 
-      const bitrate = res === "720p" ? 6_000_000 : 8_000_000;
+      const bitrate = res === "720p"  ? 6_000_000    // 6 Mbps — 720p @ 60fps
+                   : res === "1080p" ? 15_000_000   // 15 Mbps — 1080p @ 60fps
+                   :                   25_000_000;  // 25 Mbps — 1440p/source @ 60fps
       const videoTransceiver = pc.addTransceiver(videoTrack, {
         direction: 'sendonly',
         streams: [stream],
@@ -395,10 +394,10 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
       try {
         const caps = (RTCRtpReceiver as any).getCapabilities?.('video');
         if (caps?.codecs) {
-          const h264Hi  = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && c.sdpFmtpLine?.includes('profile-level-id=64'));
-          const h264Rst = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && !c.sdpFmtpLine?.includes('profile-level-id=64'));
-          const other   = caps.codecs.filter((c: any) => c.mimeType !== 'video/H264');
-          videoTransceiver.setCodecPreferences([...h264Hi, ...h264Rst, ...other]);
+          const vp9    = caps.codecs.filter((c: any) => c.mimeType === 'video/VP9');
+          const h264Hi = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && c.sdpFmtpLine?.includes('profile-level-id=64'));
+          const rest   = caps.codecs.filter((c: any) => c.mimeType !== 'video/VP9' && !(c.mimeType === 'video/H264' && c.sdpFmtpLine?.includes('profile-level-id=64')));
+          videoTransceiver.setCodecPreferences([...vp9, ...h264Hi, ...rest]);
         }
       } catch {}
       try {
@@ -461,10 +460,10 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
 
   const adjustScreenShareQuality = useCallback(async (preset: '720p30' | '1080p30' | '1080p60' | '1440p60') => {
     const cfg = {
-      '720p30':  { maxBitrate: 3_000_000, maxFramerate: 30 },
-      '1080p30': { maxBitrate: 5_000_000, maxFramerate: 30 },
-      '1080p60': { maxBitrate: 8_000_000, maxFramerate: 60 },
-      '1440p60': { maxBitrate: 14_000_000, maxFramerate: 60 },
+      '720p30':  { maxBitrate: 5_000_000,  maxFramerate: 30 },
+      '1080p30': { maxBitrate: 8_000_000,  maxFramerate: 30 },
+      '1080p60': { maxBitrate: 15_000_000, maxFramerate: 60 },
+      '1440p60': { maxBitrate: 25_000_000, maxFramerate: 60 },
     }[preset];
     const s = screenSenderRef.current;
     if (!s) return;
