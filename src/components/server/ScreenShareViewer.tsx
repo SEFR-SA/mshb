@@ -27,11 +27,14 @@ const ScreenShareViewer = ({ stream, sharerName, label }: ScreenShareViewerProps
   }, [stream]);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    container.addEventListener("fullscreenchange", handler);
-    return () => container.removeEventListener("fullscreenchange", handler);
+    const handler = () =>
+      setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
+    document.addEventListener("fullscreenchange", handler);
+    document.addEventListener("webkitfullscreenchange", handler);
+    return () => {
+      document.removeEventListener("fullscreenchange", handler);
+      document.removeEventListener("webkitfullscreenchange", handler);
+    };
   }, []);
 
   const handlePiP = async () => {
@@ -43,10 +46,17 @@ const ScreenShareViewer = ({ stream, sharerName, label }: ScreenShareViewerProps
   };
 
   const handleFullscreen = async () => {
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
-    } else if (containerRef.current) {
-      await containerRef.current.requestFullscreen();
+    try {
+      const isInFullscreen = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+      if (isInFullscreen) {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
+      } else if (containerRef.current) {
+        if (containerRef.current.requestFullscreen) await containerRef.current.requestFullscreen();
+        else if ((containerRef.current as any).webkitRequestFullscreen) (containerRef.current as any).webkitRequestFullscreen();
+      }
+    } catch (err) {
+      console.error("Fullscreen error:", err);
     }
   };
 
