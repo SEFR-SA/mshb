@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, X } from "lucide-react";
+import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus } from "lucide-react";
 import VoiceUserContextMenu from "./VoiceUserContextMenu";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
@@ -28,7 +28,7 @@ import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { usePresence } from "@/hooks/usePresence";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { NavLink as RouterNavLink } from "react-router-dom";
 
 interface Channel {
@@ -695,10 +695,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
                         if (!isMobile && isScreenSharer) {
                           const clickableRow = (
-                            <div
-                              className="relative group flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground cursor-pointer"
-                              onClick={(e) => { e.stopPropagation(); setStreamCardOpen(p.user_id); }}
-                            >
+                            <div className="relative group flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground cursor-pointer">
                               <div className="relative shrink-0">
                                 <Avatar className="h-5 w-5">
                                   <AvatarImage src={p.avatar_url || ""} />
@@ -722,7 +719,11 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                             </div>
                           );
                           return (
-                            <React.Fragment key={p.user_id}>
+                            <Popover
+                              key={p.user_id}
+                              open={streamCardOpen === p.user_id}
+                              onOpenChange={(open) => setStreamCardOpen(open ? p.user_id : null)}
+                            >
                               <VoiceUserContextMenu
                                 targetUserId={p.user_id}
                                 targetUsername={p.username || undefined}
@@ -731,41 +732,30 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                 serverOwnerId={server?.owner_id || ""}
                                 currentUserRole={currentUserRole}
                               >
-                                {clickableRow}
+                                <PopoverTrigger asChild>
+                                  {clickableRow}
+                                </PopoverTrigger>
                               </VoiceUserContextMenu>
-                              <DialogPrimitive.Root
-                                open={streamCardOpen === p.user_id}
-                                onOpenChange={(open) => !open && setStreamCardOpen(null)}
-                              >
-                                <DialogPrimitive.Portal>
-                                  <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-                                  <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[320px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl shadow-2xl focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
-                                    <DialogPrimitive.Title className="sr-only">{p.display_name || p.username || "User"} Stream</DialogPrimitive.Title>
-                                    <div className="aspect-video bg-black flex items-center justify-center">
-                                      {remoteScreenStream
-                                        ? <StreamPreviewVideo stream={remoteScreenStream} />
-                                        : <Monitor className="h-8 w-8 text-muted-foreground" />
-                                      }
-                                    </div>
-                                    <div className="p-3 flex flex-col items-center gap-2.5 bg-popover">
-                                      <p className="text-xs font-semibold text-foreground text-center">
-                                        {p.display_name || p.username || "User"} · {t("streaming.live")}
-                                      </p>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); setStreamCardOpen(null); }}
-                                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold py-1.5 rounded-md transition-colors"
-                                      >
-                                        {t("streaming.watchStream")}
-                                      </button>
-                                    </div>
-                                    <DialogPrimitive.Close className="absolute right-2 top-2 z-10 rounded-full bg-black/40 p-1.5 text-white opacity-80 hover:opacity-100 focus:outline-none transition-opacity">
-                                      <X className="h-3.5 w-3.5" />
-                                      <span className="sr-only">Close</span>
-                                    </DialogPrimitive.Close>
-                                  </DialogPrimitive.Content>
-                                </DialogPrimitive.Portal>
-                              </DialogPrimitive.Root>
-                            </React.Fragment>
+                              <PopoverContent side="right" align="start" sideOffset={8} className="w-[280px] p-0 overflow-hidden rounded-lg">
+                                <div className="aspect-video bg-black flex items-center justify-center">
+                                  {remoteScreenStream
+                                    ? <StreamPreviewVideo stream={remoteScreenStream} />
+                                    : <Monitor className="h-8 w-8 text-muted-foreground" />
+                                  }
+                                </div>
+                                <div className="p-3 flex flex-col items-center gap-2.5">
+                                  <p className="text-xs font-semibold text-foreground text-center">
+                                    {p.display_name || p.username || "User"} · {t("streaming.live")}
+                                  </p>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); setStreamCardOpen(null); }}
+                                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold py-1.5 rounded-md transition-colors"
+                                  >
+                                    {t("streaming.watchStream")}
+                                  </button>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           );
                         }
 
