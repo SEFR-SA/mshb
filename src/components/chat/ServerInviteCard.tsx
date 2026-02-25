@@ -129,13 +129,15 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
   return (
     <div className={cn("w-full max-w-[320px] rounded-xl overflow-hidden border border-border/50 bg-card shadow-sm", isInvalid && "opacity-75")}>
       {/* Banner area */}
-      <div className="relative h-[80px] bg-gradient-to-br from-primary/30 to-muted/60 overflow-hidden">
+      <div className="relative h-[80px] bg-gradient-to-br from-primary/30 to-muted/60">
         {metadata.server_banner_url && (
-          <img
-            src={metadata.server_banner_url}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-          />
+          <div className="absolute inset-0 overflow-hidden">
+            <img
+              src={metadata.server_banner_url}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          </div>
         )}
         {/* Server icon overlapping the bottom edge of the banner */}
         <div className="absolute -bottom-5 left-4">
