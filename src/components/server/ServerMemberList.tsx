@@ -295,19 +295,25 @@ const ServerMemberList = ({ serverId }: Props) => {
                           >
                             {memberButton}
                           </ServerMemberContextMenu>
-
                           <Dialog
                             open={selectedMemberId === m.user_id}
                             onOpenChange={(open) => !open && setSelectedMemberId(null)}
                           >
-                            {/* Added: 
-            - 'fixed inset-0 flex items-center justify-center' to ensure centering
-            - 'translate-y-0' and 'duration-200' to stop the bottom-slide animation
-            - Removed potential 'bottom-0' classes that Lovable might have injected
-        */}
-                            <DialogContent className="p-0 border-none bg-transparent max-w-[90vw] w-[340px] overflow-hidden !bottom-auto !top-1/2 !-translate-y-1/2 !left-1/2 !-translate-x-1/2 !rounded-lg shadow-2xl">
+                            <DialogContent className="p-0 border-none bg-transparent max-w-[340px] w-[90%] overflow-hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 !bottom-auto !initial shadow-2xl z-[100] [&>button]:hidden">
+                              {/* Internal X Button for better placement */}
+                              <button
+                                onClick={() => setSelectedMemberId(null)}
+                                className="absolute top-2 right-2 z-50 p-1 rounded-full bg-black/20 hover:bg-black/40 text-white transition-colors"
+                              >
+                                <X size={18} />
+                              </button>
+
                               <DialogTitle className="sr-only">{name}</DialogTitle>
-                              {profileCardContent}
+
+                              {/* This wrapper removes any extra handle styles */}
+                              <div className="relative rounded-lg shadow-xl ring-1 ring-black/5">
+                                {profileCardContent}
+                              </div>
                             </DialogContent>
                           </Dialog>
                         </React.Fragment>
