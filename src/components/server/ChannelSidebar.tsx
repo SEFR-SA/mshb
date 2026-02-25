@@ -695,20 +695,18 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                         if (!isMobile && isScreenSharer) {
                           return (
                             <HoverCard key={p.user_id} openDelay={300} closeDelay={200}>
-                              <HoverCardTrigger asChild>
-                                <div>
-                                  <VoiceUserContextMenu
-                                    targetUserId={p.user_id}
-                                    targetUsername={p.username || undefined}
-                                    serverId={serverId}
-                                    channelId={ch.id}
-                                    serverOwnerId={server?.owner_id || ""}
-                                    currentUserRole={currentUserRole}
-                                  >
-                                    {innerRow}
-                                  </VoiceUserContextMenu>
-                                </div>
-                              </HoverCardTrigger>
+                              <VoiceUserContextMenu
+                                targetUserId={p.user_id}
+                                targetUsername={p.username || undefined}
+                                serverId={serverId}
+                                channelId={ch.id}
+                                serverOwnerId={server?.owner_id || ""}
+                                currentUserRole={currentUserRole}
+                              >
+                                <HoverCardTrigger asChild>
+                                  {innerRow}
+                                </HoverCardTrigger>
+                              </VoiceUserContextMenu>
                               <HoverCardContent side="left" sideOffset={10} className="w-[280px] p-0 overflow-hidden rounded-xl border-border/50">
                                 <div className="aspect-video bg-black/90 flex items-center justify-center">
                                   {remoteScreenStream
