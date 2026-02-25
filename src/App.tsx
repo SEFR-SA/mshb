@@ -19,6 +19,7 @@ import InviteJoin from "@/pages/InviteJoin";
 import NotFound from "@/pages/NotFound";
 import "@/i18n";
 import React, { useEffect, useState } from 'react';
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { supabase } from "@/integrations/supabase/client";
 
 // --- TYPES FOR ELECTRON BRIDGE ---
@@ -149,6 +150,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 const App = () => (
+  <ErrorBoundary>
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AudioSettingsProvider>
@@ -186,6 +188,7 @@ const App = () => (
       </AudioSettingsProvider>
     </ThemeProvider>
   </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

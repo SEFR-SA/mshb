@@ -29,6 +29,7 @@ import MessageReactions from "@/components/chat/MessageReactions";
 import { useMessageReactions } from "@/hooks/useMessageReactions";
 import ServerInviteCard from "@/components/chat/ServerInviteCard";
 import { detectInviteInMessage } from "@/lib/inviteUtils";
+import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
@@ -77,7 +78,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
   const [mentionStart, setMentionStart] = useState<number | null>(null);
@@ -159,7 +160,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
     return () => { channel.unsubscribe(); };
   }, [channelId, loadProfiles, isLocked]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setNewMsg(val);
     const pos = e.target.selectionStart || 0;
@@ -430,7 +431,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
             <Button variant="ghost" size="sm" onClick={() => setSelectedFile(null)} className="h-6 text-xs">{t("actions.cancel")}</Button>
           </div>
         )}
-        <div className="relative flex items-center gap-2">
+        <div className="relative theme-input border border-border/40 rounded-xl flex items-start gap-2 px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
           {mentionOpen && serverId && (
             <MentionPopup
               serverId={serverId}
@@ -455,7 +456,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
             }}
             disabled={sending}
           />
-          <Input
+          <AutoResizeTextarea
             ref={inputRef}
             value={newMsg}
             onChange={handleInputChange}

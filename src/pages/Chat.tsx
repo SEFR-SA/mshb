@@ -37,6 +37,7 @@ import MessageReactions from "@/components/chat/MessageReactions";
 import { useMessageReactions } from "@/hooks/useMessageReactions";
 import ServerInviteCard from "@/components/chat/ServerInviteCard";
 import { detectInviteInMessage } from "@/lib/inviteUtils";
+import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import { startLoop, stopAllLoops, playSound } from "@/lib/soundManager";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -715,7 +716,7 @@ const Chat = () => {
 
       {/* Composer */}
       <div className="p-3 glass border-t border-border/50">
-        <div className="flex items-center gap-2">
+        <div className="theme-input border border-border/40 rounded-xl flex items-start gap-2 px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
           <ChatInputActions
             onFileSelect={setSelectedFile}
             onEmojiSelect={(emoji) => setNewMsg((prev) => prev + emoji)}
@@ -731,7 +732,7 @@ const Chat = () => {
             }}
             disabled={sending}
           />
-          <Input
+          <AutoResizeTextarea
             value={newMsg}
             onChange={(e) => { setNewMsg(e.target.value); broadcastTyping(); }}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendMessage())}
