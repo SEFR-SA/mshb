@@ -1,39 +1,39 @@
 
 
-## Fix: Server Invite Card Avatar Clipped
+## Fix: Server Member Profile Card Not Visible on Mobile
 
 ### Problem
-The server icon/avatar on the invite card is positioned to overlap the bottom edge of the banner using `absolute -bottom-5`, but the banner container has `overflow-hidden`, which clips the avatar in half.
+The member profile card uses a `Popover` with `side="left"`, which gets clipped or hidden on mobile screens since there's not enough horizontal space. The popover positioning doesn't adapt to small viewports.
 
 ### Solution
-Move the `overflow-hidden` from the outer banner `div` to the banner image only, so the avatar can visually overflow the banner area without being clipped.
+On mobile, replace the `Popover` with a `Dialog` that renders as a centered modal overlay. On desktop, keep the existing `Popover` behavior unchanged.
 
-### File: `src/components/chat/ServerInviteCard.tsx`
+### File: `src/components/server/ServerMemberList.tsx`
 
-**Line 132**: Remove `overflow-hidden` from the banner wrapper div. Instead, wrap only the banner image in its own clipping container.
+1. **Import additions**: Add `useIsMobile` hook, and import `Dialog`, `DialogContent`, `DialogTitle` from the UI components.
 
-Current:
-```html
-<div className="relative h-[80px] bg-gradient-to-br from-primary/30 to-muted/60 overflow-hidden">
+2. **Add state**: Track which member's profile dialog is open via `selectedMemberId` state.
+
+3. **Conditional rendering per member** (lines 151-244):
+   - **Desktop**: Keep the existing `Popover` + `PopoverTrigger` + `PopoverContent` as-is.
+   - **Mobile**: Replace with a `Dialog` that opens `onOpenChange` when the member button is clicked. The `DialogContent` will contain the same profile card content (banner, avatar, name, role badge, about me, dates, quick message input) styled identically, centered on screen.
+
+4. **Extract profile card content**: To avoid duplicating the card JSX, extract the inner card content (lines 178-242) into a local `ProfileCardContent` component that accepts `m` (member), `p` (profile), `name`, `username`, `status` as props, and reuse it in both the Popover and Dialog.
+
+### Structure
+
+```text
+Member button click
+├── Desktop (useIsMobile = false)
+│   └── Popover (side="left") — existing behavior
+└── Mobile (useIsMobile = true)
+    └── Dialog (centered modal)
+        └── DialogContent with profile card
 ```
 
-Change to:
-```html
-<div className="relative h-[80px] bg-gradient-to-br from-primary/30 to-muted/60">
-```
-
-And wrap the banner `<img>` in its own overflow-hidden container so it doesn't bleed outside the banner rectangle:
-```html
-<div className="absolute inset-0 overflow-hidden">
-  <img src={metadata.server_banner_url} alt="" className="w-full h-full object-cover" />
-</div>
-```
-
-This lets the avatar overlap freely while the banner image stays contained.
-
-### Files to modify
+### Changes Summary
 
 | File | Change |
 |------|--------|
-| `src/components/chat/ServerInviteCard.tsx` | Remove `overflow-hidden` from banner div, wrap banner `<img>` in its own clipping container |
+| `src/components/server/ServerMemberList.tsx` | Add mobile Dialog for profile card, extract shared card content, conditionally render Popover vs Dialog |
 
