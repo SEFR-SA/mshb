@@ -449,6 +449,7 @@ export default {
     noSources: "No sources found",
     watch: "Watch",
     watchStream: "Watch Stream",
+    stopWatching: "Stop Watching",
   },
   verifyEmail: {
     title: "Check Your Email",

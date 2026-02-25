@@ -23,7 +23,7 @@ const ServerView = () => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const { t } = useTranslation();
-  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStream, screenSharerName, remoteCameraStream, isWatchingStream } = useVoiceChannel();
+  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStream, screenSharerName, remoteCameraStream, isWatchingStream, setIsWatchingStream } = useVoiceChannel();
   const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean } | null>(null);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [showMembers, setShowMembers] = useState(!isMobile);
@@ -151,7 +151,7 @@ const ServerView = () => {
               </Sheet>
             </header>
             {remoteScreenStream && isWatchingStream && (
-              <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} />
+              <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
             )}
             <div className="flex-1 min-h-0">{renderMainContent()}</div>
           </div>
@@ -167,7 +167,7 @@ const ServerView = () => {
           <ServerRail />
           <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col">
             {remoteScreenStream && isWatchingStream && (
-              <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} />
+              <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
             )}
             <div className="flex-1 min-h-0 overflow-hidden">
               <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
@@ -186,7 +186,7 @@ const ServerView = () => {
         <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
         <div className="flex-1 flex flex-col min-h-0">
           {remoteScreenStream && isWatchingStream && (
-            <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} />
+            <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
           )}
           {remoteCameraStream && (
             <CameraViewer stream={remoteCameraStream} />
