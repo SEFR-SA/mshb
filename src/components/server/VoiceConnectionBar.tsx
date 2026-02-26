@@ -75,6 +75,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const volumeMonitorsRef = useRef<Array<{ cleanup: () => void }>>([]);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
+  const screenAudioSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
   const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
@@ -134,6 +135,12 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           const p = transceiver.sender.getParameters();
           if (p.encodings?.length) { p.degradationPreference = 'maintain-framerate'; transceiver.sender.setParameters(p); }
         } catch {}
+      }
+      // Also add the audio track if screen share has one
+      const screenAudioTracks = screenStreamRef.current.getAudioTracks();
+      if (screenAudioTracks.length > 0) {
+        const audioSender = pc.addTrack(screenAudioTracks[0], screenStreamRef.current);
+        screenAudioSendersRef.current.set(`${peerId}-audio`, audioSender);
       }
     }
     // If already camera sharing, add the video track to the new peer
@@ -213,7 +220,12 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           ? { maxWidth: 1920, maxHeight: 1080 }
           : {};
         stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
+          audio: {
+            mandatory: {
+              chromeMediaSource: "desktop",
+              chromeMediaSourceId: sourceId,
+            },
+          } as any,
           video: {
             mandatory: {
               chromeMediaSource: "desktop",
@@ -236,7 +248,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         };
         stream = await navigator.mediaDevices.getDisplayMedia({
           video: videoConstraints,
-          audio: false,
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
         });
       }
       screenStreamRef.current = stream;
@@ -268,6 +280,18 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           const p = transceiver.sender.getParameters();
           if (p.encodings?.length) { p.degradationPreference = 'maintain-framerate'; await transceiver.sender.setParameters(p); }
         } catch {}
+      }
+
+      // Add audio track to all peer connections (if system audio was captured)
+      const audioTracks = stream.getAudioTracks();
+      if (audioTracks.length > 0) {
+        for (const [peerId, pc] of peerConnectionsRef.current) {
+          const audioSender = pc.addTrack(audioTracks[0], stream);
+          screenAudioSendersRef.current.set(peerId, audioSender);
+        }
+        console.log('[ScreenShare] Audio track active');
+      } else {
+        console.log('[ScreenShare] No system audio captured — platform may not support it');
       }
 
       setIsScreenSharing(true);
@@ -318,11 +342,14 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     // Remove senders from peer connections
     peerConnectionsRef.current.forEach((pc, peerId) => {
       const sender = screenSendersRef.current.get(peerId);
-      if (sender) {
-        try { pc.removeTrack(sender); } catch {}
-      }
+      if (sender) { try { pc.removeTrack(sender); } catch {} }
+      const audioSender = screenAudioSendersRef.current.get(peerId);
+      if (audioSender) { try { pc.removeTrack(audioSender); } catch {} }
+      const audioSender2 = screenAudioSendersRef.current.get(`${peerId}-audio`);
+      if (audioSender2) { try { pc.removeTrack(audioSender2); } catch {} }
     });
     screenSendersRef.current.clear();
+    screenAudioSendersRef.current.clear();
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current = null;
     setIsScreenSharing(false);
@@ -557,6 +584,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       screenStreamRef.current = null;
       screenSendersRef.current.clear();
+      screenAudioSendersRef.current.clear();
       setIsScreenSharing(false);
       setRemoteScreenStream(null);
       setScreenSharerName(null);

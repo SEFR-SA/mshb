@@ -21,7 +21,6 @@ interface ScreenShareViewerProps {
 const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: ScreenShareViewerProps) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const preMuteVolumeRef = useRef(100);
@@ -48,25 +47,38 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
   // Attach stream to video/audio
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = stream;
-    if (audioRef.current) audioRef.current.srcObject = stream;
   }, [stream]);
 
-  // Fullscreen state tracking
+  // Fullscreen state tracking — Electron IPC primary, HTML5 API fallback
   useEffect(() => {
-    const handler = () =>
-      setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
-    document.addEventListener("fullscreenchange", handler);
-    document.addEventListener("webkitfullscreenchange", handler);
-    return () => {
-      document.removeEventListener("fullscreenchange", handler);
-      document.removeEventListener("webkitfullscreenchange", handler);
-    };
+    const electronAPI = window.electronAPI;
+    let cleanupElectron: (() => void) | undefined;
+
+    if (electronAPI?.onFullscreenChange) {
+      cleanupElectron = electronAPI.onFullscreenChange((isFull: boolean) => {
+        setIsFullscreen(isFull);
+      });
+      // Sync initial state (window may already be fullscreen when component mounts)
+      electronAPI.getFullscreen?.().then((isFull: boolean) => setIsFullscreen(isFull));
+    } else {
+      // HTML5 fallback for standard browser context
+      const handler = () =>
+        setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
+      document.addEventListener("fullscreenchange", handler);
+      document.addEventListener("webkitfullscreenchange", handler);
+      return () => {
+        document.removeEventListener("fullscreenchange", handler);
+        document.removeEventListener("webkitfullscreenchange", handler);
+      };
+    }
+
+    return () => { cleanupElectron?.(); };
   }, []);
 
   // Stream volume — responds to both slider and mute toggle
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : streamVolume / 100;
+    if (videoRef.current) {
+      videoRef.current.volume = isMuted ? 0 : streamVolume / 100;
     }
   }, [streamVolume, isMuted]);
 
@@ -158,18 +170,18 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
     }
   };
 
-  const handleFullscreen = async () => {
-    try {
-      const isInFullscreen = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
-      if (isInFullscreen) {
-        if (document.exitFullscreen) await document.exitFullscreen();
-        else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
-      } else if (containerRef.current) {
-        if (containerRef.current.requestFullscreen) await containerRef.current.requestFullscreen();
-        else if ((containerRef.current as any).webkitRequestFullscreen) (containerRef.current as any).webkitRequestFullscreen();
-      }
-    } catch (err) {
-      console.error("Fullscreen error:", err);
+  const handleFullscreen = () => {
+    const electronAPI = window.electronAPI;
+    if (electronAPI?.setFullscreen) {
+      // Electron: toggle native window fullscreen via IPC
+      electronAPI.setFullscreen(!isFullscreen);
+      return;
+    }
+    // HTML5 fallback (standard browser)
+    if (isFullscreen) {
+      document.exitFullscreen?.().catch(err => console.error("Exit fullscreen error:", err));
+    } else if (containerRef.current) {
+      containerRef.current.requestFullscreen?.().catch(err => console.error("Fullscreen error:", err));
     }
   };
 
@@ -180,7 +192,7 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
       onMouseLeave={handleMouseLeave}
       className={cn(
         "relative overflow-hidden bg-black select-none",
-        isFullscreen ? "w-screen h-screen" : "h-[360px] border-b border-border"
+        isFullscreen ? "fixed inset-0 z-50" : "h-[360px] border-b border-border"
       )}
     >
       {/* Video */}
@@ -190,7 +202,6 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
         playsInline
         className="absolute inset-0 w-full h-full object-contain"
       />
-      <audio ref={audioRef} autoPlay className="hidden" />
 
       {/* HUD Overlay — pointer-events-none on outer, gated on inner sections */}
       <div className={cn(

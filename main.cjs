@@ -238,6 +238,14 @@ function createWindow() {
     mainWindowReady = true;
     tryShowMain();
   });
+
+  // Push native fullscreen state changes to the renderer
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow.webContents.send('fullscreen-changed', true);
+  });
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow.webContents.send('fullscreen-changed', false);
+  });
 }
 
 // --- IPC Communication for Updates ---
@@ -283,6 +291,15 @@ ipcMain.handle('get-display-sources', async () => {
     thumbnail: s.thumbnail.toDataURL(),
     displayId: s.display_id,
   }));
+});
+
+// --- Fullscreen control ---
+ipcMain.handle('set-fullscreen', (_event, flag) => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setFullScreen(flag);
+});
+
+ipcMain.handle('get-fullscreen', () => {
+  return mainWindow ? mainWindow.isFullScreen() : false;
 });
 
 ipcMain.on('restart-app', () => {

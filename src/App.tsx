@@ -13,7 +13,7 @@ import HomeView from "@/pages/HomeView";
 import FriendsDashboard from "@/pages/FriendsDashboard";
 import Chat from "@/pages/Chat";
 import GroupChat from "@/pages/GroupChat";
-import Settings from "@/pages/Settings";
+import SettingsModal from "@/components/settings/SettingsModal";
 import ServerView from "@/pages/ServerView";
 import InviteJoin from "@/pages/InviteJoin";
 import NotFound from "@/pages/NotFound";
@@ -30,6 +30,9 @@ declare global {
       onUpdateDownloaded: (cb: () => void) => void;
       onDeepLink: (cb: (url: string) => void) => void;
       restartApp: () => void;
+      setFullscreen: (flag: boolean) => Promise<void>;
+      getFullscreen: () => Promise<boolean>;
+      onFullscreenChange: (callback: (isFull: boolean) => void) => () => void;
     };
   }
 }
@@ -176,7 +179,7 @@ const App = () => (
                     </Route>
                     <Route path="server/:serverId" element={<ServerView />} />
                     <Route path="server/:serverId/channel/:channelId" element={<ServerView />} />
-                    <Route path="settings" element={<Settings />} />
+                    <Route path="settings" element={<SettingsModal />} />
                   </Route>
                   <Route path="/invite/:code" element={<InviteJoin />} />
                   <Route path="*" element={<NotFound />} />
