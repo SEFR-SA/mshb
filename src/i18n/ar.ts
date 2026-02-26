@@ -1,6 +1,6 @@
 export default {
   app: {
-    name: "غالاكسي شات",
+    name: "المشب",
     install: "تثبيت التطبيق",
   },
   auth: {
@@ -41,6 +41,20 @@ export default {
     usernameTaken: "اسم المستخدم مستخدم بالفعل",
     usernameTooShort: "يجب أن يتكون اسم المستخدم من 3 أحرف على الأقل",
     usernameAvailable: "اسم المستخدم متاح",
+    createAccount: "إنشاء حساب",
+    heroHeadline: "عالمك، الآن على الإنترنت.",
+    heroSubtext: "انضم إلى آلاف المجتمعات، وتواصل مع أصدقائك، وجد مكانك الذي تنتمي إليه.",
+    emailAlreadyRegistered: "هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول بدلاً من ذلك.",
+    dateOfBirth: "تاريخ الميلاد",
+    dateOfBirthRequired: "تاريخ الميلاد مطلوب",
+    month: "الشهر",
+    day: "اليوم",
+    year: "السنة",
+    gender: "الجنس",
+    genderRequired: "الجنس مطلوب",
+    selectGender: "اختر الجنس",
+    male: "ذكر",
+    female: "أنثى",
   },
   nav: {
     inbox: "الرسائل",
@@ -191,6 +205,7 @@ export default {
     retry: "إعادة المحاولة",
     confirm: "تأكيد",
     cancel: "إلغاء",
+    optional: "اختياري",
   },
   notifications: {
     newMessage: "لديك رسالة جديدة",

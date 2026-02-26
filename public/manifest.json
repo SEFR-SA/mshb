@@ -1,6 +1,6 @@
 {
-  "name": "Galaxy Chat",
-  "short_name": "Galaxy Chat",
+  "name": "Mshb",
+  "short_name": "Mshb",
   "description": "Real-time messaging with a Purple Galaxy theme",
   "start_url": "/",
   "display": "standalone",

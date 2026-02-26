@@ -6,11 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import PasswordStrengthBar, { checkPasswordRules, allRulesPass } from "@/components/PasswordStrengthBar";
-import { CheckCircle2, XCircle, Eye, EyeOff, Mail } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, EyeOff, Mail, Lock } from "lucide-react";
 
 type AuthMode = "login" | "signup" | "reset" | "pending";
 
@@ -110,11 +109,11 @@ const Auth = () => {
         return;
       }
       if (!dobMonth || !dobDay || !dobYear) {
-        toast({ title: "Date of birth is required", variant: "destructive" });
+        toast({ title: t("auth.dateOfBirthRequired"), variant: "destructive" });
         return;
       }
       if (!gender) {
-        toast({ title: "Gender is required", variant: "destructive" });
+        toast({ title: t("auth.genderRequired"), variant: "destructive" });
         return;
       }
     } else {
@@ -145,7 +144,7 @@ const Auth = () => {
         if (error) {
           toast({ title: t("auth.signupError"), description: error.message, variant: "destructive" });
         } else if (data?.user?.identities?.length === 0) {
-          toast({ title: t("auth.emailAlreadyRegistered") || "This email is already registered. Please log in instead.", variant: "destructive" });
+          toast({ title: t("auth.emailAlreadyRegistered"), variant: "destructive" });
         } else {
           setPendingEmail(email);
           setMode("pending");
@@ -160,15 +159,43 @@ const Auth = () => {
     }
   };
 
+  // ── Shared layout components ──────────────────────────────────────────────
+
+  const LogoBadge = () => (
+    <div className="flex items-center gap-3">
+      <img src="/favicon.png" alt={t("app.name")} className="h-9 w-9 rounded-xl" />
+      <span className="text-xl font-bold tracking-tight">{t("app.name")}</span>
+    </div>
+  );
+
+  const LeftPanel = () => (
+    <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 border-r border-border bg-muted/30">
+      <LogoBadge />
+      <div className="space-y-4">
+        <h1 className="text-4xl font-bold leading-tight">{t("auth.heroHeadline")}</h1>
+        <p className="text-lg text-muted-foreground">{t("auth.heroSubtext")}</p>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        © {new Date().getFullYear()} {t("app.name")}
+      </p>
+    </div>
+  );
+
+  // ── Pending (email verification) state ───────────────────────────────────
+
   if (mode === "pending") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md glass text-center">
-          <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
+      <div className="min-h-screen w-full flex bg-background text-foreground overflow-x-hidden">
+        <LeftPanel />
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
+          <div className="max-w-md w-full flex flex-col items-center gap-4 text-center">
+            <div className="lg:hidden mb-4">
+              <LogoBadge />
+            </div>
             <div className="rounded-full bg-primary/10 p-4">
               <Mail className="h-10 w-10 text-primary" />
             </div>
-            <CardTitle className="text-2xl font-bold">{t("verifyEmail.title")}</CardTitle>
+            <h1 className="text-2xl font-bold">{t("verifyEmail.title")}</h1>
             <p className="text-muted-foreground text-sm max-w-xs">
               {t("verifyEmail.description", { email: pendingEmail })}
             </p>
@@ -181,43 +208,82 @@ const Auth = () => {
                 {t("verifyEmail.goBack")}
               </button>
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // ── Main auth forms (login / signup / reset) ─────────────────────────────
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md glass">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">
-            {mode === "login" ? t("auth.login") : mode === "signup" ? t("auth.createAccount", "Create an account") : t("auth.resetPassword")}
-          </CardTitle>
-          <CardDescription>
-            {mode === "login" ? t("auth.login") : mode === "signup" ? t("auth.signup") : t("auth.resetPassword")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="min-h-screen w-full flex bg-background text-foreground overflow-x-hidden">
+      <LeftPanel />
+
+      {/* Right panel */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
+        <div className="max-w-md w-full space-y-6">
+
+          {/* Mobile-only logo */}
+          <div className="lg:hidden mb-2">
+            <LogoBadge />
+          </div>
+
+          {/* Page heading + inline mode-switch */}
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold">
+              {mode === "login"
+                ? t("auth.login")
+                : mode === "signup"
+                ? t("auth.createAccount")
+                : t("auth.resetPassword")}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {mode === "login" && (
+                <>{t("auth.noAccount")}{" "}
+                  <button className="text-primary hover:underline" onClick={() => setMode("signup")}>
+                    {t("auth.signup")}
+                  </button>
+                </>
+              )}
+              {mode === "signup" && (
+                <>{t("auth.hasAccount")}{" "}
+                  <button className="text-primary hover:underline" onClick={() => setMode("login")}>
+                    {t("auth.login")}
+                  </button>
+                </>
+              )}
+            </p>
+          </div>
+
+          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+
+            {/* ── SIGNUP fields ── */}
             {mode === "signup" && (
               <>
-                {/* 1. Email */}
+                {/* Email */}
                 <div className="space-y-2">
                   <Label>{t("auth.email")}</Label>
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <div className="relative">
+                    <Mail className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="ps-10 h-12" />
+                  </div>
                 </div>
 
-                {/* 2. Display Name (optional) */}
+                {/* Display Name (optional) */}
                 <div className="space-y-2">
-                  <Label>{t("profile.displayName", "Display Name")} <span className="text-muted-foreground text-xs">({t("common.optional", "optional")})</span></Label>
-                  <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+                  <Label>
+                    {t("profile.displayName")}{" "}
+                    <span className="text-muted-foreground text-xs">({t("common.optional")})</span>
+                  </Label>
+                  <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="h-12" />
                 </div>
 
-                {/* 3. Username */}
+                {/* Username */}
                 <div className="space-y-2">
                   <Label>{t("auth.username")}</Label>
-                  <Input value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} required />
+                  <Input value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} required className="h-12" />
                   {usernameStatus === "too_short" && (
                     <p className="text-xs text-yellow-500 flex items-center gap-1">
                       <XCircle className="h-3.5 w-3.5" /> {t("auth.usernameTooShort")}
@@ -235,21 +301,22 @@ const Auth = () => {
                   )}
                 </div>
 
-                {/* 4. Password with eye toggle */}
+                {/* Password with strength bar */}
                 <div className="space-y-2">
                   <Label>{t("auth.password")}</Label>
                   <div className="relative">
+                    <Lock className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="pr-10"
+                      className="ps-10 pe-10 h-12"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
                       tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -258,21 +325,22 @@ const Auth = () => {
                   <PasswordStrengthBar password={password} />
                 </div>
 
-                {/* 5. Confirm Password with eye toggle */}
+                {/* Confirm Password */}
                 <div className="space-y-2">
                   <Label>{t("auth.confirmPassword")}</Label>
                   <div className="relative">
+                    <Lock className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
                       type={showConfirmPw ? "text" : "password"}
                       value={confirmPw}
                       onChange={(e) => setConfirmPw(e.target.value)}
                       required
-                      className="pr-10"
+                      className="ps-10 pe-10 h-12"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPw(!showConfirmPw)}
-                      className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
                       tabIndex={-1}
                     >
                       {showConfirmPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -280,20 +348,18 @@ const Auth = () => {
                   </div>
                 </div>
 
-                {/* 6. Date of Birth */}
+                {/* Date of Birth */}
                 <div className="space-y-2">
-                  <Label>Date of Birth</Label>
+                  <Label>{t("auth.dateOfBirth")}</Label>
                   <div className="grid grid-cols-3 gap-2">
                     <Select value={dobMonth} onValueChange={setDobMonth}>
-                      <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+                      <SelectTrigger className="h-12"><SelectValue placeholder={t("auth.month")} /></SelectTrigger>
                       <SelectContent>
-                        {MONTHS.map((m) => (
-                          <SelectItem key={m} value={m}>{m}</SelectItem>
-                        ))}
+                        {MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     <Select value={dobDay} onValueChange={setDobDay}>
-                      <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
+                      <SelectTrigger className="h-12"><SelectValue placeholder={t("auth.day")} /></SelectTrigger>
                       <SelectContent>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
                           <SelectItem key={d} value={String(d)}>{d}</SelectItem>
@@ -301,51 +367,62 @@ const Auth = () => {
                       </SelectContent>
                     </Select>
                     <Select value={dobYear} onValueChange={setDobYear}>
-                      <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+                      <SelectTrigger className="h-12"><SelectValue placeholder={t("auth.year")} /></SelectTrigger>
                       <SelectContent>
-                        {YEARS.map((y) => (
-                          <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                        ))}
+                        {YEARS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
-                {/* 7. Gender */}
+                {/* Gender */}
                 <div className="space-y-2">
-                  <Label>Gender</Label>
+                  <Label>{t("auth.gender")}</Label>
                   <Select value={gender} onValueChange={setGender}>
-                    <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                    <SelectTrigger className="h-12"><SelectValue placeholder={t("auth.selectGender")} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Male">Male</SelectItem>
-                      <SelectItem value="Female">Female</SelectItem>
+                      <SelectItem value="Male">{t("auth.male")}</SelectItem>
+                      <SelectItem value="Female">{t("auth.female")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </>
             )}
 
-            {/* Login mode fields */}
+            {/* ── LOGIN fields ── */}
             {mode === "login" && (
               <>
                 <div className="space-y-2">
                   <Label>{t("auth.emailOrUsername")}</Label>
-                  <Input type="text" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
+                  <div className="relative">
+                    <Mail className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input type="text" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required className="ps-10 h-12" />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>{t("auth.password")}</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>{t("auth.password")}</Label>
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline py-1"
+                      onClick={() => setMode("reset")}
+                    >
+                      {t("auth.forgotPassword")}
+                    </button>
+                  </div>
                   <div className="relative">
+                    <Lock className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="pr-10"
+                      className="ps-10 pe-10 h-12"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
                       tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -355,49 +432,38 @@ const Auth = () => {
               </>
             )}
 
-            {/* Reset mode fields */}
+            {/* ── RESET field ── */}
             {mode === "reset" && (
               <div className="space-y-2">
                 <Label>{t("auth.email")}</Label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <div className="relative">
+                  <Mail className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="ps-10 h-12" />
+                </div>
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={submitting || (mode === "signup" && (usernameStatus === "taken" || usernameStatus === "too_short" || usernameStatus === "checking"))}>
+            {/* Submit */}
+            <Button
+              type="submit"
+              className="w-full h-12"
+              disabled={submitting || (mode === "signup" && (usernameStatus === "taken" || usernameStatus === "too_short" || usernameStatus === "checking"))}
+            >
               {mode === "login" ? t("auth.login") : mode === "signup" ? t("auth.signup") : t("auth.sendResetLink")}
             </Button>
           </form>
 
-          <div className="mt-4 text-center text-sm space-y-2">
-            {mode === "login" && (
-              <>
-                <button className="text-primary hover:underline block w-full" onClick={() => setMode("reset")}>
-                  {t("auth.forgotPassword")}
-                </button>
-                <p className="text-muted-foreground">
-                  {t("auth.noAccount")}{" "}
-                  <button className="text-primary hover:underline" onClick={() => setMode("signup")}>
-                    {t("auth.signup")}
-                  </button>
-                </p>
-              </>
-            )}
-            {mode === "signup" && (
-              <p className="text-muted-foreground">
-                {t("auth.hasAccount")}{" "}
-                <button className="text-primary hover:underline" onClick={() => setMode("login")}>
-                  {t("auth.login")}
-                </button>
-              </p>
-            )}
-            {mode === "reset" && (
+          {/* Reset mode — back to login link */}
+          {mode === "reset" && (
+            <p className="text-center text-sm">
               <button className="text-primary hover:underline" onClick={() => setMode("login")}>
                 {t("auth.login")}
               </button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </p>
+          )}
+
+        </div>
+      </div>
     </div>
   );
 };

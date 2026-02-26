@@ -1,6 +1,6 @@
 export default {
   app: {
-    name: "Galaxy Chat",
+    name: "Mshb",
     install: "Install App",
   },
   auth: {
@@ -41,6 +41,20 @@ export default {
     usernameTaken: "Username is already taken",
     usernameTooShort: "Username must be at least 3 characters",
     usernameAvailable: "Username is available",
+    createAccount: "Create an account",
+    heroHeadline: "Your world, now online.",
+    heroSubtext: "Join thousands of communities, hang out with friends, and find where you belong.",
+    emailAlreadyRegistered: "This email is already registered. Please log in instead.",
+    dateOfBirth: "Date of Birth",
+    dateOfBirthRequired: "Date of birth is required",
+    month: "Month",
+    day: "Day",
+    year: "Year",
+    gender: "Gender",
+    genderRequired: "Gender is required",
+    selectGender: "Select gender",
+    male: "Male",
+    female: "Female",
   },
   nav: {
     inbox: "Messages",
@@ -191,6 +205,7 @@ export default {
     retry: "Retry",
     confirm: "Confirm",
     cancel: "Cancel",
+    optional: "optional",
   },
   notifications: {
     newMessage: "You have a new message",
