@@ -450,12 +450,6 @@ export default {
     watch: "Watch",
     watchStream: "Watch Stream",
     stopWatching: "Stop Watching",
-    fitMode: "Fit",
-    fillMode: "Fill",
-    popOut: "Pop Out",
-    popOutClose: "Pop Back In",
-    minimize: "Minimize",
-    restore: "Restore",
   },
   verifyEmail: {
     title: "Check Your Email",
