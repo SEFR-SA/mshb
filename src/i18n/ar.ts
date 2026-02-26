@@ -337,6 +337,8 @@ export default {
     channelDeleted: "حذف قناة #{{name}}",
     serverUpdated: "غيّر اسم السيرفر إلى {{name}}",
     memberKicked: "طرد {{name}}",
+    memberPromoted: "رقّى {{name}} إلى {{role}}",
+    memberDemoted: "خفّض {{name}} إلى {{role}}",
   },
   channels: {
     create: "إنشاء قناة",
