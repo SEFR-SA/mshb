@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { Copy, ArrowLeft, Check, Search } from "lucide-react";
+import { getAppBaseUrl } from "@/lib/inviteUtils";
 
 interface Props {
   open: boolean;
@@ -43,8 +44,6 @@ const MAX_USES_OPTIONS = [
   { value: "25", labelKey: "servers.maxUses25" },
 ];
 
-const BASE_URL = typeof window !== "undefined" ? window.location.origin : "";
-
 const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -61,7 +60,7 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
   const [maxUses, setMaxUses] = useState("0");
   const [temporary, setTemporary] = useState(false);
 
-  const inviteUrl = inviteCode ? `${BASE_URL}/invite/${inviteCode}` : "";
+  const inviteUrl = inviteCode ? `${getAppBaseUrl()}/invite/${inviteCode}` : "";
 
   const expiresLabel = t(EXPIRE_OPTIONS.find((o) => o.value === expireAfter)?.labelKey || "servers.expireOption7d");
 

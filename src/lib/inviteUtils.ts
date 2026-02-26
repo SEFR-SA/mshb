@@ -1,5 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Returns the base URL for invite links.
+ * Priority: VITE_APP_URL env var → window.location.origin (if not file://) → production fallback.
+ */
+export function getAppBaseUrl(): string {
+  if (import.meta.env.VITE_APP_URL) return import.meta.env.VITE_APP_URL as string;
+  if (typeof window !== "undefined" && !window.location.origin.startsWith("file://")) {
+    return window.location.origin;
+  }
+  return "https://mshb.vercel.app";
+}
+
 export interface ServerInviteMetadata {
   server_id: string;
   invite_code: string;
