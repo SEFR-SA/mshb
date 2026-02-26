@@ -596,6 +596,36 @@ export type Database = {
         }
         Relationships: []
       }
+      server_audit_logs: {
+        Row: {
+          action_type: string
+          actor_id: string
+          changes: Json | null
+          created_at: string
+          id: string
+          server_id: string
+          target_id: string | null
+        }
+        Insert: {
+          action_type: string
+          actor_id: string
+          changes?: Json | null
+          created_at?: string
+          id?: string
+          server_id: string
+          target_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          actor_id?: string
+          changes?: Json | null
+          created_at?: string
+          id?: string
+          server_id?: string
+          target_id?: string | null
+        }
+        Relationships: []
+      }
       server_folder_items: {
         Row: {
           created_at: string
