@@ -42,67 +42,46 @@ const InviteJoin = () => {
   }, [code, user, authLoading]);
 
   const loadInvite = async () => {
-    if (!code) { setStatus("invalid"); return; }
+    if (!code) { console.error("[InviteJoin] No invite code in URL"); setStatus("invalid"); return; }
 
-    // Validate the invite code
-    const { data: serverId } = await supabase.rpc("get_server_id_by_invite_link", { p_code: code });
-    if (!serverId) { setStatus("invalid"); return; }
-
-    // Fetch server details
-    const { data: serverData } = await supabase
-      .from("servers")
-      .select("id, name, icon_url, banner_url, created_at")
-      .eq("id", serverId)
-      .single();
-    if (!serverData) { setStatus("invalid"); return; }
-    setServer(serverData as any);
-
-    // Fetch invite validity info
-    const { data: inviteData } = await supabase
-      .from("invites" as any)
-      .select("expires_at, max_uses, use_count")
-      .eq("code", code)
-      .maybeSingle();
-
-    if (inviteData) {
-      const inv = inviteData as any;
-      const isExpired = inv.expires_at && new Date(inv.expires_at) < new Date();
-      const isMaxed = inv.max_uses && inv.use_count >= inv.max_uses;
-      if (isExpired || isMaxed) { setStatus("invalid"); return; }
-      setInvite({ expires_at: inv.expires_at, max_uses: inv.max_uses, use_count: inv.use_count });
+    // Single SECURITY DEFINER RPC — bypasses RLS on servers/invites/server_members
+    // so unauthenticated users and non-members can still see the preview.
+    const { data: rows, error } = await supabase.rpc("get_server_preview_by_invite" as any, { p_code: code });
+    if (error) {
+      console.error("[InviteJoin] RPC error from get_server_preview_by_invite:", error);
+      setStatus("invalid");
+      return;
     }
 
-    // Fetch members
-    const { data: members } = await supabase
-      .from("server_members" as any)
-      .select("user_id")
-      .eq("server_id", serverId);
-    const ids: string[] = (members || []).map((m: any) => m.user_id);
-    setMemberCount(ids.length);
-
-    // Online count
-    if (ids.length > 0) {
-      const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const { count } = await supabase
-        .from("profiles")
-        .select("user_id", { count: "exact", head: true })
-        .in("user_id", ids)
-        .gt("last_seen", since);
-      setOnlineCount(count ?? 0);
-    } else {
-      setOnlineCount(0);
+    const row = (rows as any)?.[0];
+    if (!row) {
+      console.error("[InviteJoin] Invite not found, expired, or maxed for code:", code);
+      setStatus("invalid");
+      return;
     }
 
-    // If user is authenticated, check membership and auto-navigate if already a member
+    setServer({
+      id: row.id,
+      name: row.name,
+      icon_url: row.icon_url,
+      banner_url: row.banner_url,
+      created_at: row.server_created_at,
+    });
+    setInvite({ expires_at: row.expires_at, max_uses: row.max_uses, use_count: row.use_count });
+    setMemberCount(Number(row.member_count));
+    setOnlineCount(Number(row.online_count));
+
+    // If user is authenticated, check membership and auto-navigate if already a member.
+    // Authenticated members pass the server_members RLS policy so this query works for them.
     if (user) {
       const { data: membership } = await supabase
         .from("server_members" as any)
         .select("id")
-        .eq("server_id", serverId)
+        .eq("server_id", row.id)
         .eq("user_id", user.id)
         .maybeSingle();
       if (membership) {
-        navigate(`/server/${serverId}`, { replace: true });
+        navigate(`/server/${row.id}`, { replace: true });
         return;
       }
     }

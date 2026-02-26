@@ -43,7 +43,7 @@ const MAX_USES_OPTIONS = [
   { value: "25", labelKey: "servers.maxUses25" },
 ];
 
-const BASE_URL = "https://mshb.lovable.app";
+const BASE_URL = typeof window !== "undefined" ? window.location.origin : "";
 
 const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
   const { t } = useTranslation();
