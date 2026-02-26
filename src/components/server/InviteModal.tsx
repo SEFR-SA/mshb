@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -55,6 +55,7 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(false);
   const [generatedExpiresAt, setGeneratedExpiresAt] = useState<string | null>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
 
   // Settings
   const [expireAfter, setExpireAfter] = useState("7d");
@@ -301,6 +302,7 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
               </Label>
               <div className="flex gap-2">
                 <Input
+                  ref={linkInputRef}
                   value={inviteUrl}
                   readOnly
                   className="font-mono text-xs"
@@ -309,7 +311,23 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
                 <Button
                   variant="default"
                   onClick={async () => {
-                    const ok = await copyToClipboard(inviteUrl);
+                    // Try selecting the already-rendered input first (most
+                    // reliable inside a Radix dialog with a focus trap).
+                    let ok = false;
+                    if (linkInputRef.current) {
+                      try {
+                        linkInputRef.current.focus();
+                        linkInputRef.current.select();
+                        ok = document.execCommand("copy");
+                      } catch {
+                        ok = false;
+                      }
+                    }
+                    // Fall back to the utility (handles navigator.clipboard +
+                    // textarea-in-dialog approach).
+                    if (!ok) {
+                      ok = await copyToClipboard(inviteUrl);
+                    }
                     if (ok) {
                       toast({ title: t("servers.copiedInvite") });
                     } else {

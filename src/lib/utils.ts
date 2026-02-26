@@ -22,21 +22,28 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     // fall through to legacy method
   }
 
-  // Legacy execCommand fallback
+  // Legacy execCommand fallback.
+  // Append inside an open Radix dialog (if any) so the focus trap doesn't
+  // steal focus back before execCommand fires.
   try {
     const textarea = document.createElement("textarea");
     textarea.value = text;
-    // Prevent layout shift / scroll jump
     textarea.style.position = "fixed";
     textarea.style.top = "0";
     textarea.style.left = "0";
+    textarea.style.width = "1px";
+    textarea.style.height = "1px";
     textarea.style.opacity = "0";
     textarea.style.pointerEvents = "none";
-    document.body.appendChild(textarea);
+    textarea.setAttribute("readonly", "");
+    const container =
+      (document.querySelector('[role="dialog"]') as HTMLElement | null) ??
+      document.body;
+    container.appendChild(textarea);
     textarea.focus();
-    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
     const ok = document.execCommand("copy");
-    document.body.removeChild(textarea);
+    container.removeChild(textarea);
     return ok;
   } catch {
     return false;
