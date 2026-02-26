@@ -252,6 +252,7 @@ export default {
     invalidCode: "رمز دعوة غير صالح",
     copyInvite: "نسخ رابط الدعوة",
     copiedInvite: "تم نسخ رابط الدعوة!",
+    copyFailed: "فشل نسخ الرابط إلى الحافظة.",
     members: "الأعضاء",
     leave: "مغادرة السيرفر",
     owner: "المالك",

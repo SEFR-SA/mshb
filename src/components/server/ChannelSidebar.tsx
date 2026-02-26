@@ -20,6 +20,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
+import { copyToClipboard } from "@/lib/utils";
+import { getAppBaseUrl } from "@/lib/inviteUtils";
 import ServerSettingsDialog from "./ServerSettingsDialog";
 import InviteModal from "./InviteModal";
 import GoLiveModal from "@/components/GoLiveModal";
@@ -296,10 +298,15 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setCreateOpen(false);
   };
 
-  const copyInvite = () => {
+  const copyInvite = async () => {
     if (server?.invite_code) {
-      navigator.clipboard.writeText(server.invite_code);
-      toast({ title: t("servers.copiedInvite") });
+      const url = `${getAppBaseUrl()}/invite/${server.invite_code}`;
+      const ok = await copyToClipboard(url);
+      if (ok) {
+        toast({ title: t("servers.copiedInvite") });
+      } else {
+        toast({ title: t("common.error"), description: t("servers.copyFailed"), variant: "destructive" });
+      }
     }
   };
 

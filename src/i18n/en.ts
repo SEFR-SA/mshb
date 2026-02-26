@@ -252,6 +252,7 @@ export default {
     invalidCode: "Invalid invite code",
     copyInvite: "Copy Invite Link",
     copiedInvite: "Invite link copied!",
+    copyFailed: "Failed to copy link to clipboard.",
     members: "Members",
     leave: "Leave Server",
     owner: "Owner",

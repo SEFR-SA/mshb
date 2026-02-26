@@ -16,6 +16,7 @@ import ServerSettingsDialog from "./ServerSettingsDialog";
 import ServerFolderDialog from "./ServerFolderDialog";
 import ServerFolder from "./ServerFolder";
 import { getAppBaseUrl } from "@/lib/inviteUtils";
+import { copyToClipboard } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { useServerUnread } from "@/hooks/useServerUnread";
@@ -134,8 +135,13 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
       .select("code")
       .single();
     if (!error && data) {
-      navigator.clipboard.writeText(`${getAppBaseUrl()}/invite/${(data as any).code}`);
-      toast({ title: t("servers.copiedInvite") });
+      const url = `${getAppBaseUrl()}/invite/${(data as any).code}`;
+      const ok = await copyToClipboard(url);
+      if (ok) {
+        toast({ title: t("servers.copiedInvite") });
+      } else {
+        toast({ title: t("common.error"), description: t("servers.copyFailed"), variant: "destructive" });
+      }
     }
   };
 

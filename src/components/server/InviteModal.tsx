@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { Copy, ArrowLeft, Check, Search } from "lucide-react";
 import { getAppBaseUrl } from "@/lib/inviteUtils";
+import { copyToClipboard } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -307,9 +308,13 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
                 />
                 <Button
                   variant="default"
-                  onClick={() => {
-                    navigator.clipboard.writeText(inviteUrl);
-                    toast({ title: t("servers.copiedInvite") });
+                  onClick={async () => {
+                    const ok = await copyToClipboard(inviteUrl);
+                    if (ok) {
+                      toast({ title: t("servers.copiedInvite") });
+                    } else {
+                      toast({ title: t("common.error"), description: t("servers.copyFailed"), variant: "destructive" });
+                    }
                   }}
                   disabled={!inviteCode}
                 >
