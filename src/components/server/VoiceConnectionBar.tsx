@@ -66,7 +66,7 @@ interface VoiceConnectionManagerProps {
 const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect }: VoiceConnectionManagerProps) => {
   const { user } = useAuth();
   const { globalMuted, globalDeafened } = useAudioSettings();
-  const { isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsCameraOn, setLocalCameraStream, setRemoteCameraStream } = useVoiceChannel();
+  const { isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsCameraOn, setLocalCameraStream, setRemoteCameraStream, addRemoteScreenStream, removeRemoteScreenStream } = useVoiceChannel();
   const [isJoined, setIsJoined] = useState(false);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudiosRef = useRef<HTMLAudioElement[]>([]);
@@ -158,9 +158,13 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           setRemoteCameraStream(e.streams[0]);
           e.track.onended = () => setRemoteCameraStream(null);
         } else {
-          // Remote screen share
+          // Remote screen share — update both single-stream (1:1 compat) and multi-stream Map
+          addRemoteScreenStream(peerId, e.streams[0]);
           setRemoteScreenStream(e.streams[0]);
-          e.track.onended = () => setRemoteScreenStream(null);
+          e.track.onended = () => {
+            removeRemoteScreenStream(peerId);
+            setRemoteScreenStream(null);
+          };
         }
       } else {
         const audio = new Audio();
@@ -194,7 +198,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       } catch {}
     };
     return pc;
-  }, [user, updateSpeaking, setRemoteScreenStream, setRemoteCameraStream]);
+  }, [user, updateSpeaking, setRemoteScreenStream, setRemoteCameraStream, addRemoteScreenStream, removeRemoteScreenStream]);
 
   // Screen share toggle handler
   const startScreenShare = useCallback(async (settings?: { resolution?: "720p" | "1080p" | "source"; fps?: 30 | 60; surface?: "monitor" | "window"; sourceId?: string }) => {
@@ -459,6 +463,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     .on("broadcast", { event: "voice-screen-share" }, ({ payload }) => {
       if (payload.userId === user?.id) return;
       if (!payload.sharing) {
+        removeRemoteScreenStream(payload.userId);
         setRemoteScreenStream(null);
         setScreenSharerName(null);
       }
@@ -472,7 +477,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       }
     })
     .subscribe();
-  }, [channelId, user, createPeerConnection, setRemoteScreenStream, setScreenSharerName, setRemoteCameraStream]);
+  }, [channelId, user, createPeerConnection, setRemoteScreenStream, setScreenSharerName, setRemoteCameraStream, removeRemoteScreenStream]);
 
   // Auto-join on mount
   useEffect(() => {

@@ -87,7 +87,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
-  const { voiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsWatchingStream } = useVoiceChannel();
+  const { voiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsWatchingStream, setWatchedSharerUserId, remoteScreenStreams } = useVoiceChannel();
   const { getUserStatus } = usePresence();
   const isMobile = useIsMobile();
   const status = (getUserStatus(profile) || "online") as UserStatus;
@@ -684,7 +684,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                             ) : null}
                             {isScreenSharer && isMobile && (
                               <button
-                                onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); }}
+                                onClick={(e) => { e.stopPropagation(); setWatchedSharerUserId(p.user_id); setIsWatchingStream(true); }}
                                 className="absolute end-1 opacity-100 transition-opacity bg-green-600 hover:bg-green-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded cursor-pointer"
                               >
                                 {t("streaming.watch")}
@@ -738,8 +738,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                               </VoiceUserContextMenu>
                               <PopoverContent side="right" align="start" sideOffset={8} className="w-[280px] p-0 overflow-hidden rounded-lg">
                                 <div className="aspect-video bg-black flex items-center justify-center">
-                                  {remoteScreenStream
-                                    ? <StreamPreviewVideo stream={remoteScreenStream} />
+                                  {(remoteScreenStreams.get(p.user_id) || remoteScreenStream)
+                                    ? <StreamPreviewVideo stream={remoteScreenStreams.get(p.user_id) || remoteScreenStream!} />
                                     : <Monitor className="h-8 w-8 text-muted-foreground" />
                                   }
                                 </div>
@@ -748,7 +748,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                     {p.display_name || p.username || "User"} · {t("streaming.live")}
                                   </p>
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); setStreamCardOpen(null); }}
+                                    onClick={(e) => { e.stopPropagation(); setWatchedSharerUserId(p.user_id); setIsWatchingStream(true); setStreamCardOpen(null); }}
                                     className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold py-1.5 rounded-md transition-colors"
                                   >
                                     {t("streaming.watchStream")}

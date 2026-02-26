@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import ChannelSidebar from "@/components/server/ChannelSidebar";
 import ServerChannelChat from "@/components/server/ServerChannelChat";
 import ServerMemberList from "@/components/server/ServerMemberList";
-import ScreenShareViewer from "@/components/server/ScreenShareViewer";
+import ScreenShareLayout from "@/components/server/ScreenShareLayout";
 import CameraViewer from "@/components/server/CameraViewer";
 import ServerRail from "@/components/server/ServerRail";
 
@@ -23,7 +23,7 @@ const ServerView = () => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const { t } = useTranslation();
-  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStream, screenSharerName, remoteCameraStream, isWatchingStream, setIsWatchingStream } = useVoiceChannel();
+  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteCameraStream, isWatchingStream, setIsWatchingStream, watchedSharerUserId, setWatchedSharerUserId, remoteScreenStreams } = useVoiceChannel();
   const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean } | null>(null);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [showMembers, setShowMembers] = useState(!isMobile);
@@ -150,8 +150,10 @@ const ServerView = () => {
                 </SheetContent>
               </Sheet>
             </header>
-            {remoteScreenStream && isWatchingStream && (
-              <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
+            {watchedSharerUserId && remoteScreenStreams.size > 0 && (
+              <ScreenShareLayout channelName={voiceChannel?.name || ""} serverId={serverId!}
+                onStopWatching={() => { setWatchedSharerUserId(null); setIsWatchingStream(false); }}
+                height="h-[360px] max-h-[50vh]" />
             )}
             <div className="flex-1 min-h-0">{renderMainContent()}</div>
           </div>
@@ -166,8 +168,10 @@ const ServerView = () => {
         <div className="flex h-full w-full max-w-full overflow-x-hidden">
           <ServerRail />
           <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col">
-            {remoteScreenStream && isWatchingStream && (
-              <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
+            {watchedSharerUserId && remoteScreenStreams.size > 0 && (
+              <ScreenShareLayout channelName={voiceChannel?.name || ""} serverId={serverId!}
+                onStopWatching={() => { setWatchedSharerUserId(null); setIsWatchingStream(false); }}
+                height="h-[320px] max-h-[45vh]" />
             )}
             <div className="flex-1 min-h-0 overflow-hidden">
               <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
@@ -185,8 +189,10 @@ const ServerView = () => {
       <div className="flex h-full">
         <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
         <div className="flex-1 flex flex-col min-h-0">
-          {remoteScreenStream && isWatchingStream && (
-            <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
+          {watchedSharerUserId && remoteScreenStreams.size > 0 && (
+            <ScreenShareLayout channelName={voiceChannel?.name || ""} serverId={serverId!}
+              onStopWatching={() => { setWatchedSharerUserId(null); setIsWatchingStream(false); }}
+              height="h-[480px] max-h-[65vh]" />
           )}
           {remoteCameraStream && (
             <CameraViewer stream={remoteCameraStream} />

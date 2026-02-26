@@ -26,6 +26,12 @@ interface VoiceChannelContextType {
   setRemoteCameraStream: (s: MediaStream | null) => void;
   userVolumes: Record<string, number>;
   setUserVolume: (userId: string, volume: number) => void;
+  // Multi-stream support for server voice channels
+  remoteScreenStreams: Map<string, MediaStream>;
+  addRemoteScreenStream: (userId: string, stream: MediaStream) => void;
+  removeRemoteScreenStream: (userId: string) => void;
+  watchedSharerUserId: string | null;
+  setWatchedSharerUserId: (id: string | null) => void;
 }
 
 const VoiceChannelContext = createContext<VoiceChannelContextType>({
@@ -48,6 +54,11 @@ const VoiceChannelContext = createContext<VoiceChannelContextType>({
   setRemoteCameraStream: () => {},
   userVolumes: {},
   setUserVolume: () => {},
+  remoteScreenStreams: new Map(),
+  addRemoteScreenStream: () => {},
+  removeRemoteScreenStream: () => {},
+  watchedSharerUserId: null,
+  setWatchedSharerUserId: () => {},
 });
 
 export const useVoiceChannel = () => useContext(VoiceChannelContext);
@@ -69,8 +80,31 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
   const [remoteCameraStream, setRemoteCameraStream] = useState<MediaStream | null>(null);
   const [userVolumes, setUserVolumes] = useState<Record<string, number>>({});
 
+  // Multi-stream state for server voice channels
+  const [remoteScreenStreams, setRemoteScreenStreams] = useState<Map<string, MediaStream>>(new Map());
+  const [watchedSharerUserId, setWatchedSharerUserIdState] = useState<string | null>(null);
+
   const setUserVolume = useCallback((userId: string, volume: number) => {
     setUserVolumes((prev) => ({ ...prev, [userId]: volume }));
+  }, []);
+
+  const addRemoteScreenStream = useCallback((userId: string, stream: MediaStream) => {
+    setRemoteScreenStreams(prev => new Map(prev).set(userId, stream));
+  }, []);
+
+  const removeRemoteScreenStream = useCallback((userId: string) => {
+    setRemoteScreenStreams(prev => {
+      const next = new Map(prev);
+      next.delete(userId);
+      return next;
+    });
+    // Auto-clear the watched sharer if their stream was removed
+    setWatchedSharerUserIdState(prev => (prev === userId ? null : prev));
+  }, []);
+
+  const setWatchedSharerUserId = useCallback((id: string | null) => {
+    setWatchedSharerUserIdState(id);
+    if (id) setIsWatchingStream(true);
   }, []);
 
   const disconnectVoice = useCallback(() => {
@@ -83,10 +117,24 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
     setLocalCameraStream(null);
     setRemoteCameraStream(null);
     setUserVolumes({});
+    setRemoteScreenStreams(new Map());
+    setWatchedSharerUserIdState(null);
   }, []);
 
   return (
-    <VoiceChannelContext.Provider value={{ voiceChannel, setVoiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, screenSharerName, setScreenSharerName, isWatchingStream, setIsWatchingStream, isCameraOn, setIsCameraOn, localCameraStream, setLocalCameraStream, remoteCameraStream, setRemoteCameraStream, userVolumes, setUserVolume }}>
+    <VoiceChannelContext.Provider value={{
+      voiceChannel, setVoiceChannel, disconnectVoice,
+      isScreenSharing, setIsScreenSharing,
+      remoteScreenStream, setRemoteScreenStream,
+      screenSharerName, setScreenSharerName,
+      isWatchingStream, setIsWatchingStream,
+      isCameraOn, setIsCameraOn,
+      localCameraStream, setLocalCameraStream,
+      remoteCameraStream, setRemoteCameraStream,
+      userVolumes, setUserVolume,
+      remoteScreenStreams, addRemoteScreenStream, removeRemoteScreenStream,
+      watchedSharerUserId, setWatchedSharerUserId,
+    }}>
       {children}
     </VoiceChannelContext.Provider>
   );

@@ -450,6 +450,12 @@ export default {
     watch: "مشاهدة",
     watchStream: "مشاهدة البث",
     stopWatching: "إيقاف المشاهدة",
+    fitMode: "ملاءمة",
+    fillMode: "ملء",
+    popOut: "فصل",
+    popOutClose: "إعادة الدمج",
+    minimize: "تصغير",
+    restore: "استعادة",
   },
   verifyEmail: {
     title: "تحقق من بريدك الإلكتروني",
