@@ -155,6 +155,13 @@ const ServerMemberContextMenu = ({
       .delete()
       .eq("server_id", serverId)
       .eq("user_id", targetUserId);
+    await supabase.from("server_audit_logs" as any).insert({
+      server_id: serverId,
+      actor_id: user?.id,
+      action_type: "member_kicked",
+      target_id: targetUserId,
+      changes: { target_username: targetUsername || targetUserId },
+    } as any);
     toast({ title: t("servers.kicked") });
   };
 

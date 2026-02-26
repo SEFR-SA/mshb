@@ -327,6 +327,16 @@ export default {
     inviteMaxReached: "This invite has reached its maximum uses.",
     requestNewInvite: "Request a new invite",
     youAreInvited: "You've been invited",
+    general: "General",
+  },
+  auditLog: {
+    title: "Audit Logs",
+    empty: "No audit log entries yet.",
+    loadError: "Failed to load audit logs.",
+    channelCreated: "created channel #{{name}}",
+    channelDeleted: "deleted channel #{{name}}",
+    serverUpdated: "updated server name to {{name}}",
+    memberKicked: "kicked {{name}}",
   },
   channels: {
     create: "Create Channel",
@@ -350,6 +360,10 @@ export default {
     manageMembersDesc: "Add or remove members from this private channel.",
     switchVoice: "You Sure?",
     switchVoiceDesc: "Looks like you're in another voice channel. Are you sure you want to switch to {{name}}?",
+    announcement: "Announcement Channel",
+    announcementDesc: "Only admins and owners can post in this channel.",
+    announcementReadOnly: "Only server admins can send messages in this channel.",
+    announcementBadge: "Announcement",
   },
   audio: {
     mute: "Mute",

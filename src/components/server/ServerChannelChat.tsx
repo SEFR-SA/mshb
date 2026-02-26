@@ -9,7 +9,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload, Lock } from "lucide-react";
+import { Send, Hash, Upload, Lock, Megaphone } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import MarkdownToolbar from "@/components/chat/MarkdownToolbar";
 import { toast } from "@/hooks/use-toast";
 import { uploadChatFile } from "@/lib/uploadChatFile";
 import FileAttachmentButton from "@/components/chat/FileAttachmentButton";
@@ -39,6 +42,8 @@ interface Props {
   channelName: string;
   isPrivate?: boolean;
   hasAccess?: boolean;
+  serverId?: string;
+  isAnnouncement?: boolean;
 }
 
 const renderMessageContent = (content: string, profiles: Map<string, any>, currentUserId?: string) => {
@@ -64,10 +69,11 @@ const renderMessageContent = (content: string, profiles: Map<string, any>, curre
   });
 };
 
-const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Props) => {
+const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { serverId } = useParams<{ serverId: string }>();
+  const { serverId: serverIdParam } = useParams<{ serverId: string }>();
+  const serverId = serverIdProp || serverIdParam;
   const [messages, setMessages] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<Map<string, any>>(new Map());
   const [newMsg, setNewMsg] = useState("");
@@ -86,7 +92,24 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
 
   const isLocked = isPrivate && hasAccess === false;
+  const [userRole, setUserRole] = useState<string>("member");
   const { reactions, toggleReaction } = useMessageReactions(messages.map((m: any) => m.id));
+
+  // Fetch user's role in this server for announcement channel access control
+  useEffect(() => {
+    if (!serverId || !user) return;
+    supabase
+      .from("server_members" as any)
+      .select("role")
+      .eq("server_id", serverId)
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setUserRole((data as any).role || "member");
+      });
+  }, [serverId, user?.id]);
+
+  const canPost = !isAnnouncement || userRole === "admin" || userRole === "owner";
 
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
@@ -283,8 +306,9 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
       )}
 
       <header className="flex items-center gap-2 p-3 glass border-b border-border/50">
-        {isPrivate ? <Lock className="h-5 w-5 text-muted-foreground" /> : <Hash className="h-5 w-5 text-muted-foreground" />}
+        {isPrivate ? <Lock className="h-5 w-5 text-muted-foreground" /> : isAnnouncement ? <Megaphone className="h-5 w-5 text-muted-foreground" /> : <Hash className="h-5 w-5 text-muted-foreground" />}
         <h2 className="font-semibold">{channelName}</h2>
+        {isAnnouncement && <span className="ms-1 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("channels.announcementBadge")}</span>}
       </header>
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -399,7 +423,34 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
                     <MessageFilePreview fileUrl={msg.file_url} fileName={msg.file_name || "file"} fileType={msg.file_type || ""} fileSize={msg.file_size || 0} isMine={isMine} />
                   </div>
                 ) : null}
-                {msg.content && <p className={`whitespace-pre-wrap break-words ${getEmojiClass(msg.content) || 'text-sm'}`}>{renderMessageContent(msg.content, profiles, user?.id)}</p>}
+                {msg.content && (
+                  isAnnouncement ? (
+                    <div className="text-sm leading-relaxed prose-sm">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          h1: ({ children }) => <h1 className="text-xl font-bold mt-2 mb-1">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-lg font-bold mt-1.5 mb-1">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-base font-semibold mt-1 mb-0.5">{children}</h3>,
+                          p:  ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
+                          ul: ({ children }) => <ul className="list-disc ms-4 mb-1.5 space-y-0.5">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal ms-4 mb-1.5 space-y-0.5">{children}</ol>,
+                          strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                          em: ({ children }) => <em className="italic">{children}</em>,
+                          del: ({ children }) => <del className="line-through opacity-70">{children}</del>,
+                          code: ({ children }) => <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
+                          pre: ({ children }) => <pre className="bg-muted p-3 rounded-lg text-xs font-mono overflow-x-auto mb-1.5">{children}</pre>,
+                          blockquote: ({ children }) => <blockquote className="border-s-4 border-primary/50 ps-3 italic text-muted-foreground mb-1.5">{children}</blockquote>,
+                          a: ({ href, children }) => <a href={href} className="text-primary underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className={`whitespace-pre-wrap break-words ${getEmojiClass(msg.content) || 'text-sm'}`}>{renderMessageContent(msg.content, profiles, user?.id)}</p>
+                  )
+                )}
                 <MessageReactions
                   messageId={msg.id}
                   reactions={reactions.get(msg.id) || []}
@@ -417,62 +468,88 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess }: Pro
         )}
       </div>
 
-      {/* Reply bar */}
-      {replyingTo && (
-        <div className="px-3 pt-2">
-          <ReplyInputBar authorName={replyingTo.authorName} onCancel={() => setReplyingTo(null)} />
+      {/* Read-only banner for members in announcement channels */}
+      {isAnnouncement && !canPost ? (
+        <div className="px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 border-t border-border/40">
+          <Megaphone className="h-4 w-4 shrink-0" />
+          {t("channels.announcementReadOnly")}
         </div>
-      )}
-      <div className="p-3 border-t border-border/50">
-        {uploadProgress !== null && <Progress value={uploadProgress} className="mb-2 h-1" />}
-        {selectedFile && (
-          <div className="flex items-center gap-2 mb-2 p-2 bg-muted rounded-lg text-sm">
-            <span className="truncate flex-1">{selectedFile.name}</span>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedFile(null)} className="h-6 text-xs">{t("actions.cancel")}</Button>
-          </div>
-        )}
-        <div className="relative theme-input border border-border/40 rounded-xl flex items-start gap-2 px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-          {mentionOpen && serverId && (
-            <MentionPopup
-              serverId={serverId}
-              filter={mentionFilter}
-              onSelect={handleMentionSelect}
-              onClose={() => setMentionOpen(false)}
-            />
+      ) : isAnnouncement && canPost ? (
+        /* Markdown toolbar for admins/owners in announcement channels */
+        <div className="p-3 border-t border-border/50">
+          {replyingTo && (
+            <div className="pb-2">
+              <ReplyInputBar authorName={replyingTo.authorName} onCancel={() => setReplyingTo(null)} />
+            </div>
           )}
-          <ChatInputActions
-            onFileSelect={(f) => {
-              if (f.size > MAX_FILE_SIZE) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
-              setSelectedFile(f);
-            }}
-            onEmojiSelect={(emoji) => { setNewMsg((prev) => prev + emoji); inputRef.current?.focus(); }}
-            onGifSelect={async (url) => {
-              if (!user) return;
-              await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "gif", file_name: "gif" } as any);
-            }}
-            onStickerSelect={async (url) => {
-              if (!user) return;
-              await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
-            }}
-            disabled={sending}
-          />
-          <AutoResizeTextarea
-            ref={inputRef}
+          <MarkdownToolbar
             value={newMsg}
-            onChange={handleInputChange}
-            onKeyDown={(e) => {
-              if (mentionOpen) return;
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-            }}
+            onChange={setNewMsg}
+            onSend={sendMessage}
+            disabled={sending}
             placeholder={`${t("chat.placeholder")} #${channelName}`}
-            className="flex-1"
-            maxLength={5000}
           />
-          <Button size="icon" onClick={sendMessage} disabled={(!newMsg.trim() && !selectedFile) || sending}>
-            <Send className="h-4 w-4" />
-          </Button>
         </div>
-      </div>
+      ) : (
+        /* Standard input for regular channels */
+        <>
+          {replyingTo && (
+            <div className="px-3 pt-2">
+              <ReplyInputBar authorName={replyingTo.authorName} onCancel={() => setReplyingTo(null)} />
+            </div>
+          )}
+          <div className="p-3 border-t border-border/50">
+            {uploadProgress !== null && <Progress value={uploadProgress} className="mb-2 h-1" />}
+            {selectedFile && (
+              <div className="flex items-center gap-2 mb-2 p-2 bg-muted rounded-lg text-sm">
+                <span className="truncate flex-1">{selectedFile.name}</span>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedFile(null)} className="h-6 text-xs">{t("actions.cancel")}</Button>
+              </div>
+            )}
+            <div className="relative theme-input border border-border/40 rounded-xl flex items-start gap-2 px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+              {mentionOpen && serverId && (
+                <MentionPopup
+                  serverId={serverId}
+                  filter={mentionFilter}
+                  onSelect={handleMentionSelect}
+                  onClose={() => setMentionOpen(false)}
+                />
+              )}
+              <ChatInputActions
+                onFileSelect={(f) => {
+                  if (f.size > MAX_FILE_SIZE) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
+                  setSelectedFile(f);
+                }}
+                onEmojiSelect={(emoji) => { setNewMsg((prev) => prev + emoji); inputRef.current?.focus(); }}
+                onGifSelect={async (url) => {
+                  if (!user) return;
+                  await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "gif", file_name: "gif" } as any);
+                }}
+                onStickerSelect={async (url) => {
+                  if (!user) return;
+                  await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
+                }}
+                disabled={sending}
+              />
+              <AutoResizeTextarea
+                ref={inputRef}
+                value={newMsg}
+                onChange={handleInputChange}
+                onKeyDown={(e) => {
+                  if (mentionOpen) return;
+                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+                }}
+                placeholder={`${t("chat.placeholder")} #${channelName}`}
+                className="flex-1"
+                maxLength={5000}
+              />
+              <Button size="icon" onClick={sendMessage} disabled={(!newMsg.trim() && !selectedFile) || sending}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

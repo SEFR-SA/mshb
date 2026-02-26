@@ -24,7 +24,7 @@ const ServerView = () => {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
   const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStream, screenSharerName, remoteCameraStream, isWatchingStream, setIsWatchingStream } = useVoiceChannel();
-  const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean } | null>(null);
+  const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean } | null>(null);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [showMembers, setShowMembers] = useState(!isMobile);
   const [pendingVoiceChannel, setPendingVoiceChannel] = useState<{ id: string; name: string } | null>(null);
@@ -48,7 +48,7 @@ const ServerView = () => {
   useEffect(() => {
     if (!serverId) return;
     if (channelId) {
-      supabase.from("channels" as any).select("id, name, type, is_private").eq("id", channelId).maybeSingle()
+      supabase.from("channels" as any).select("id, name, type, is_private, is_announcement").eq("id", channelId).maybeSingle()
         .then(({ data }) => { if (data) setActiveChannel(data as any); });
       return;
     }
@@ -56,7 +56,7 @@ const ServerView = () => {
     setActiveChannel(null);
   }, [serverId, channelId]);
 
-  const handleChannelSelect = (channel: { id: string; name: string; type: string; is_private?: boolean }) => {
+  const handleChannelSelect = (channel: { id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean }) => {
     if (channel.type !== "voice") {
       setActiveChannel(channel);
       // On mobile, navigate to the channel route for full-page chat
@@ -78,7 +78,7 @@ const ServerView = () => {
   const joinVoiceChannel = (channel: { id: string; name: string }) => {
     setVoiceCtx({ id: channel.id, name: channel.name, serverId: serverId! });
     if (!activeChannel && serverId && !isMobile) {
-      supabase.from("channels" as any).select("id, name, type, is_private").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
+      supabase.from("channels" as any).select("id, name, type, is_private, is_announcement").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
         .then(({ data }) => {
           if (data && (data as any[]).length > 0) {
             const ch = (data as any[])[0];
@@ -105,7 +105,7 @@ const ServerView = () => {
     if (!activeChannel) {
       return <div className="flex-1 flex items-center justify-center text-muted-foreground">Select a channel</div>;
     }
-    return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} isPrivate={activeChannel.is_private} hasAccess={hasAccess} />;
+    return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} isPrivate={activeChannel.is_private} hasAccess={hasAccess} serverId={serverId} isAnnouncement={activeChannel.is_announcement} />;
   };
 
   const switchDialog = (

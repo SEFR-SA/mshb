@@ -223,6 +223,13 @@ useEffect(() => { /* ... */ }, [messageIds.join(",")]);
 
 9. **Test mobile** using the `useIsMobile()` hook for responsive layout adjustments.
 
+### Mobile-First & Responsive Design
+All new UI components must be mobile-responsive by default. AI agents must follow these rules:
+1. **Tailwind Mobile-First:** Base utility classes must target mobile screens. Use breakpoints (`md:`, `lg:`, `xl:`) to scale up to desktop interfaces. Do NOT write desktop-first CSS.
+2. **The `use-mobile` Hook:** Use the provided `useIsMobile()` hook (from `src/hooks/use-mobile.tsx`) to conditionally render heavy components or switch behaviors (e.g., switching from a Sidebar to a Bottom Nav/Sheet).
+3. **Modals vs. Sheets:** For complex menus or filters, prefer `Dialog` on desktop, but use `Sheet` or `Drawer` from shadcn-ui on mobile screens for better UX.
+4. **Touch Targets:** Ensure interactive elements (buttons, links, icons) have adequate padding (at least `p-2` or `h-10 w-10`) to accommodate mobile touch targets.
+5. **Horizontal Scrolling:** Always prevent hidden horizontal overflow on mobile screens (`overflow-x-hidden` on main containers) unless explicitly building a swipeable carousel.
 ---
 
 ## Debugging Common Issues

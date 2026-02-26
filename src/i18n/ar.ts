@@ -327,6 +327,16 @@ export default {
     inviteMaxReached: "وصلت الدعوة إلى الحد الأقصى من الاستخدامات.",
     requestNewInvite: "طلب دعوة جديدة",
     youAreInvited: "لقد دُعيت",
+    general: "عام",
+  },
+  auditLog: {
+    title: "سجل التدقيق",
+    empty: "لا توجد إدخالات في سجل التدقيق بعد.",
+    loadError: "فشل تحميل سجلات التدقيق.",
+    channelCreated: "أنشأ قناة #{{name}}",
+    channelDeleted: "حذف قناة #{{name}}",
+    serverUpdated: "غيّر اسم السيرفر إلى {{name}}",
+    memberKicked: "طرد {{name}}",
   },
   channels: {
     create: "إنشاء قناة",
@@ -350,6 +360,10 @@ export default {
     manageMembersDesc: "إضافة أو إزالة أعضاء من هذه القناة الخاصة.",
     switchVoice: "هل أنت متأكد؟",
     switchVoiceDesc: "يبدو أنك في قناة صوتية أخرى. هل أنت متأكد أنك تريد الانتقال إلى {{name}}؟",
+    announcement: "قناة الإعلانات",
+    announcementDesc: "يمكن فقط للمشرفين والمالكين النشر في هذه القناة.",
+    announcementReadOnly: "يمكن فقط للمشرفين إرسال الرسائل في هذه القناة.",
+    announcementBadge: "إعلانات",
   },
   audio: {
     mute: "كتم الميكروفون",
