@@ -33,6 +33,10 @@ const formatAction = (log: AuditLog, t: (key: string, opts?: any) => string): st
       return t("auditLog.serverUpdated", { name: log.changes?.new_value || "" });
     case "member_kicked":
       return t("auditLog.memberKicked", { name: log.changes?.target_username || log.target_id || "" });
+    case "member_promoted":
+      return t("auditLog.memberPromoted", { name: log.changes?.target_username || log.target_id || "", role: log.changes?.new_role || "admin" });
+    case "member_demoted":
+      return t("auditLog.memberDemoted", { name: log.changes?.target_username || log.target_id || "", role: log.changes?.new_role || "member" });
     default:
       return log.action_type;
   }

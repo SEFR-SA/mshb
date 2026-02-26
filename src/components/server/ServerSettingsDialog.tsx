@@ -121,13 +121,29 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
   };
 
   const promoteToAdmin = async (userId: string) => {
+    const targetProfile = members.find((m) => m.user_id === userId);
     await supabase.from("server_members" as any).update({ role: "admin" } as any).eq("server_id", serverId).eq("user_id", userId);
+    await supabase.from("server_audit_logs" as any).insert({
+      server_id: serverId,
+      actor_id: user?.id,
+      action_type: "member_promoted",
+      target_id: userId,
+      changes: { target_username: targetProfile?.profile?.username || userId, new_role: "admin" },
+    } as any);
     setMembers((prev) => prev.map((m) => m.user_id === userId ? { ...m, role: "admin" } : m));
     toast({ title: t("servers.promoted") });
   };
 
   const demoteToMember = async (userId: string) => {
+    const targetProfile = members.find((m) => m.user_id === userId);
     await supabase.from("server_members" as any).update({ role: "member" } as any).eq("server_id", serverId).eq("user_id", userId);
+    await supabase.from("server_audit_logs" as any).insert({
+      server_id: serverId,
+      actor_id: user?.id,
+      action_type: "member_demoted",
+      target_id: userId,
+      changes: { target_username: targetProfile?.profile?.username || userId, new_role: "member" },
+    } as any);
     setMembers((prev) => prev.map((m) => m.user_id === userId ? { ...m, role: "member" } : m));
     toast({ title: t("servers.demoted") });
   };

@@ -1,0 +1,1 @@
+ALTER TABLE public.channels ADD COLUMN IF NOT EXISTS is_announcement boolean NOT NULL DEFAULT false;

@@ -118,6 +118,7 @@ export type Database = {
           category: string
           created_at: string
           id: string
+          is_announcement: boolean
           is_private: boolean
           name: string
           position: number
@@ -128,6 +129,7 @@ export type Database = {
           category?: string
           created_at?: string
           id?: string
+          is_announcement?: boolean
           is_private?: boolean
           name: string
           position?: number
@@ -138,6 +140,7 @@ export type Database = {
           category?: string
           created_at?: string
           id?: string
+          is_announcement?: boolean
           is_private?: boolean
           name?: string
           position?: number

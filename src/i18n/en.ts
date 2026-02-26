@@ -337,6 +337,8 @@ export default {
     channelDeleted: "deleted channel #{{name}}",
     serverUpdated: "updated server name to {{name}}",
     memberKicked: "kicked {{name}}",
+    memberPromoted: "promoted {{name}} to {{role}}",
+    memberDemoted: "demoted {{name}} to {{role}}",
   },
   channels: {
     create: "Create Channel",
