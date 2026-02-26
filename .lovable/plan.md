@@ -1,39 +1,49 @@
 
 
-## Fix: Server Member Profile Card Not Visible on Mobile
+## Analysis: Audit Logs Failing to Load
 
-### Problem
-The member profile card uses a `Popover` with `side="left"`, which gets clipped or hidden on mobile screens since there's not enough horizontal space. The popover positioning doesn't adapt to small viewports.
+### Root Cause
+The `server_audit_logs` table does **not exist** in the database. It's absent from the schema provided by the system, meaning the migration `20260226000002_server_audit_logs.sql` likely failed because it contains a **foreign key reference to `auth.users(id)`** — which is a reserved Supabase schema that causes migration failures.
 
-### Solution
-On mobile, replace the `Popover` with a `Dialog` that renders as a centered modal overlay. On desktop, keep the existing `Popover` behavior unchanged.
+The query in `AuditLogView.tsx` hits a non-existent table, returns an error, and triggers the "Failed to load audit logs" toast.
 
-### File: `src/components/server/ServerMemberList.tsx`
+### Fix
 
-1. **Import additions**: Add `useIsMobile` hook, and import `Dialog`, `DialogContent`, `DialogTitle` from the UI components.
+#### 1. New database migration
+Create the `server_audit_logs` table **without** the `auth.users` foreign key (per project conventions, reference user IDs without FK constraints to auth schema):
 
-2. **Add state**: Track which member's profile dialog is open via `selectedMemberId` state.
+```sql
+CREATE TABLE IF NOT EXISTS public.server_audit_logs (
+  id          uuid        NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  server_id   uuid        NOT NULL,
+  actor_id    uuid        NOT NULL,
+  action_type text        NOT NULL,
+  target_id   uuid,
+  changes     jsonb,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
 
-3. **Conditional rendering per member** (lines 151-244):
-   - **Desktop**: Keep the existing `Popover` + `PopoverTrigger` + `PopoverContent` as-is.
-   - **Mobile**: Replace with a `Dialog` that opens `onOpenChange` when the member button is clicked. The `DialogContent` will contain the same profile card content (banner, avatar, name, role badge, about me, dates, quick message input) styled identically, centered on screen.
+ALTER TABLE public.server_audit_logs ENABLE ROW LEVEL SECURITY;
 
-4. **Extract profile card content**: To avoid duplicating the card JSX, extract the inner card content (lines 178-242) into a local `ProfileCardContent` component that accepts `m` (member), `p` (profile), `name`, `username`, `status` as props, and reuse it in both the Popover and Dialog.
+CREATE POLICY "Admins can read audit logs"
+ON public.server_audit_logs FOR SELECT
+USING (public.is_server_admin(auth.uid(), server_id));
 
-### Structure
-
-```text
-Member button click
-├── Desktop (useIsMobile = false)
-│   └── Popover (side="left") — existing behavior
-└── Mobile (useIsMobile = true)
-    └── Dialog (centered modal)
-        └── DialogContent with profile card
+CREATE POLICY "Admins can insert audit logs"
+ON public.server_audit_logs FOR INSERT
+WITH CHECK (
+  auth.uid() = actor_id
+  AND public.is_server_admin(auth.uid(), server_id)
+);
 ```
 
-### Changes Summary
+#### 2. Fix MarkdownToolbar.tsx build error (unrelated but blocking)
+Line 109-110: TypeScript narrowing issue with the `TOOLBAR_BUTTONS` array — after the divider guard clause returns, TS doesn't narrow the type. Add a type assertion or explicit check for `title` and `action`.
+
+### Files
 
 | File | Change |
 |------|--------|
-| `src/components/server/ServerMemberList.tsx` | Add mobile Dialog for profile card, extract shared card content, conditionally render Popover vs Dialog |
+| New migration | Create `server_audit_logs` table without `auth.users` FK |
+| `src/components/chat/MarkdownToolbar.tsx` | Fix TS2339 build error on toolbar button type narrowing |
 
