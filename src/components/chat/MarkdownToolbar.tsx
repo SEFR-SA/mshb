@@ -102,12 +102,14 @@ const MarkdownToolbar = ({ value, onChange, onSend, disabled, placeholder }: Pro
             return <div key={i} className="w-px h-4 bg-border/50 mx-0.5" />;
           }
           const Icon = btn.icon!;
+          const title = "title" in btn ? btn.title : "";
+          const action = "action" in btn ? btn.action : () => {};
           return (
             <button
               key={i}
               type="button"
-              title={btn.title}
-              onMouseDown={(e) => { e.preventDefault(); btn.action(); }}
+              title={title}
+              onMouseDown={(e) => { e.preventDefault(); action(); }}
               className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground"
             >
               <Icon className="h-3.5 w-3.5" />
