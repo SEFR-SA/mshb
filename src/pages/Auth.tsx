@@ -163,7 +163,7 @@ const Auth = () => {
 
   const LogoBadge = () => (
     <div className="flex items-center gap-3">
-      <img src="/favicon.png" alt={t("app.name")} className="h-9 w-9 rounded-xl" />
+      <img src={`${import.meta.env.BASE_URL}favicon.png`} alt={t("app.name")} className="h-9 w-9 rounded-xl" />
       <span className="text-xl font-bold tracking-tight">{t("app.name")}</span>
     </div>
   );
