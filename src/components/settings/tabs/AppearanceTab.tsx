@@ -81,7 +81,7 @@ const AppearanceTab = () => {
       {/* Default Themes */}
       <div className="space-y-3">
         <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("settings.themes")}</h3>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {BASE_THEMES.map((bt) => (
             <button
               key={bt.id}

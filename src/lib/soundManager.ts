@@ -138,6 +138,29 @@ export function stopAllLoops(): void {
 }
 
 /**
+ * Play notification.mp3 via the warm AudioContext — bypasses HTMLAudioElement
+ * autoplay policy since the context is already unlocked by warmUp().
+ * Falls back silently if the file can't be fetched or decoded.
+ */
+export async function playNotificationSound(): Promise<void> {
+  try {
+    warmUp();
+    const ctx = getAudioContext();
+    if (ctx.state === "suspended") await ctx.resume();
+    const response = await fetch("/notification.mp3");
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.5;
+    source.buffer = audioBuffer;
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    source.start(0);
+  } catch {}
+}
+
+/**
  * Play a one-shot sound effect — fully synchronous, instant playback.
  * Works anywhere in the app (calls, voice channels, or standalone).
  */

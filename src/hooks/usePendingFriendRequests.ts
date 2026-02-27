@@ -2,14 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-
-const playNotificationSound = () => {
-  try {
-    const audio = new Audio("/notification.mp3");
-    audio.volume = 0.5;
-    audio.play().catch(() => {});
-  } catch {}
-};
+import { playNotificationSound } from "@/lib/soundManager";
 
 export function usePendingFriendRequests() {
   const { user } = useAuth();

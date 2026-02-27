@@ -277,42 +277,46 @@ const AccountTab = () => {
       {/* Danger Zone */}
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-4">
         <h3 className="font-semibold text-destructive text-sm uppercase tracking-wide">{t("settings.dangerZone")}</h3>
-        <div className="flex items-center justify-between">
+        <div className="flex items-start sm:items-center justify-between gap-3">
           <div>
             <p className="font-medium text-sm">{t("settings.deleteAccount")}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Permanently delete your account and all data.</p>
           </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">{t("settings.deleteAccount")}</Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t("settings.deleteAccount")}</AlertDialogTitle>
-                <AlertDialogDescription>{t("settings.deleteAccountConfirm")}</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  {t("settings.deleteAccount")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <div className="shrink-0">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">{t("settings.deleteAccount")}</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t("settings.deleteAccount")}</AlertDialogTitle>
+                  <AlertDialogDescription>{t("settings.deleteAccountConfirm")}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    {t("settings.deleteAccount")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-start sm:items-center justify-between gap-3">
           <div>
             <p className="font-medium text-sm">{t("settings.requestData")}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Download a copy of all your data.</p>
           </div>
-          <Button
-            variant="link"
-            size="sm"
-            className="text-muted-foreground"
-            onClick={() => toast({ title: "Data export", description: "Data export request sent. You'll receive an email shortly." })}
-          >
-            {t("settings.requestData")}
-          </Button>
+          <div className="shrink-0">
+            <Button
+              variant="link"
+              size="sm"
+              className="text-muted-foreground"
+              onClick={() => toast({ title: "Data export", description: "Data export request sent. You'll receive an email shortly." })}
+            >
+              {t("settings.requestData")}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
