@@ -736,6 +736,12 @@ export default {
     perm_deafen_members: "Deafen Members",
     perm_deafen_members_desc: "Allows members to server-deafen others in voice channels.",
   },
+  serverTags: {
+    title: "Server Tags",
+    description: "Select a server tag to display next to your name globally.",
+    none: "None",
+    selectTag: "Select a server tag..."
+  },
   voice: {
     soundboard: "Soundboard",
     noSounds: "No sounds uploaded yet",

@@ -188,16 +188,23 @@ const MessageItem = React.memo(({
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
               <UserContextMenu targetUserId={msg.author_id} targetUsername={p?.username || undefined}>
-                <StyledDisplayName
-                  displayName={name}
-                  gradientStart={p?.name_gradient_start}
-                  gradientEnd={p?.name_gradient_end}
-                  color={isMine ? undefined : roleInfo?.color}
-                  className={`text-sm font-semibold cursor-pointer hover:underline ${isMine ? "text-primary" : "text-foreground"}`}
-                />
-                {!isMine && roleInfo?.iconUrl && (
-                  <img src={roleInfo.iconUrl} className="h-3.5 w-3.5 rounded inline ms-1 align-middle" alt="role" />
-                )}
+                <span className="inline-flex items-center">
+                  <StyledDisplayName
+                    displayName={name}
+                    gradientStart={p?.name_gradient_start}
+                    gradientEnd={p?.name_gradient_end}
+                    color={isMine ? undefined : roleInfo?.color}
+                    className={`text-sm font-semibold cursor-pointer hover:underline ${isMine ? "text-primary" : "text-foreground"}`}
+                    serverTag={p?.active_server_tag ? {
+                      name: p.active_server_tag.server_tag_name,
+                      badge: p.active_server_tag.server_tag_badge,
+                      color: p.active_server_tag.server_tag_color
+                    } : null}
+                  />
+                  {!isMine && roleInfo?.iconUrl && (
+                    <img src={roleInfo.iconUrl} className="h-3.5 w-3.5 rounded shrink-0 ms-1" alt="role" />
+                  )}
+                </span>
               </UserContextMenu>
               <span className="text-[10px] text-muted-foreground">
                 {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -221,7 +228,7 @@ const MessageItem = React.memo(({
                       h1: ({ children }) => <h1 className="text-xl font-bold mt-2 mb-1">{children}</h1>,
                       h2: ({ children }) => <h2 className="text-lg font-bold mt-1.5 mb-1">{children}</h2>,
                       h3: ({ children }) => <h3 className="text-base font-semibold mt-1 mb-0.5">{children}</h3>,
-                      p:  ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
+                      p: ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
                       ul: ({ children }) => <ul className="list-disc ms-4 mb-1.5 space-y-0.5">{children}</ul>,
                       ol: ({ children }) => <ol className="list-decimal ms-4 mb-1.5 space-y-0.5">{children}</ol>,
                       strong: ({ children }) => <strong className="font-bold">{children}</strong>,
@@ -377,7 +384,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
     if (newIds.length === 0) return;
-    const { data } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, name_gradient_start, name_gradient_end").in("user_id", newIds);
+    const { data } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, name_gradient_start, name_gradient_end, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color)").in("user_id", newIds);
     if (data) {
       setProfiles((prev) => {
         const next = new Map(prev);

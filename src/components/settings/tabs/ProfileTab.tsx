@@ -20,12 +20,12 @@ const DURATION_MINUTES: Record<string, number | null> = {
   "15m": 15, "1h": 60, "8h": 480, "24h": 1440, "3d": 4320, forever: null,
 };
 const MONTHS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 const MONTH_KEYS = [
-  "january","february","march","april","may","june",
-  "july","august","september","october","november","december",
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
 ] as const;
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 100 }, (_, i) => currentYear - i);
@@ -50,6 +50,10 @@ const ProfileTab = () => {
   const [dobYear, setDobYear] = useState("");
   const [gender, setGender] = useState("");
 
+  // Server Tags
+  const [eligibleTags, setEligibleTags] = useState<any[]>([]);
+  const [activeServerTagId, setActiveServerTagId] = useState<string>("none");
+
   const p = profile as any;
 
   useEffect(() => {
@@ -68,8 +72,26 @@ const ProfileTab = () => {
         setDobYear(String(d.getFullYear()));
       }
       setGender(p?.gender || "");
+      setActiveServerTagId(p?.active_server_tag_id || "none");
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchTags = async () => {
+      const { data } = await supabase
+        .from("server_members" as any)
+        .select("server_id, servers(id, name, server_tag_name, server_tag_badge, server_tag_color)")
+        .eq("user_id", user.id);
+      if (data) {
+        const tags = data
+          .map((row: any) => row.servers)
+          .filter((s: any) => s && s.server_tag_name);
+        setEligibleTags(tags);
+      }
+    };
+    fetchTags();
+  }, [user]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -99,6 +121,7 @@ const ProfileTab = () => {
         name_gradient_end: gradientEnd || null,
         date_of_birth: dateOfBirth,
         gender: gender || null,
+        active_server_tag_id: activeServerTagId === "none" ? null : activeServerTagId,
       } as any)
       .eq("user_id", user.id);
 
@@ -300,6 +323,34 @@ const ProfileTab = () => {
         </div>
       </div>
 
+      {/* Server Tags */}
+      <div className="border-t border-border/50 pt-6 space-y-4">
+        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("serverTags.title", "Server Tags")}</h3>
+        <p className="text-xs text-muted-foreground">{t("serverTags.description", "Select a server tag to display next to your name globally.")}</p>
+        <Select value={activeServerTagId} onValueChange={setActiveServerTagId}>
+          <SelectTrigger className="bg-muted/30"><SelectValue placeholder="Select a tag" /></SelectTrigger>
+          <SelectContent className="bg-popover">
+            <SelectItem value="none">
+              <span className="text-muted-foreground">{t("serverTags.none", "None")}</span>
+            </SelectItem>
+            {eligibleTags.map((tag) => (
+              <SelectItem key={tag.id} value={tag.id}>
+                <div className="flex items-center gap-2">
+                  <span>{tag.name}</span>
+                  <span
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white inline-flex items-center gap-1"
+                    style={{ backgroundColor: tag.server_tag_color || "#6b7280" }}
+                  >
+                    {tag.server_tag_badge && <span>{tag.server_tag_badge}</span>}
+                    <span>{tag.server_tag_name}</span>
+                  </span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Name Style */}
       <div className="border-t border-border/50 pt-6 space-y-4">
         <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("nameStyle.title")}</h3>
@@ -314,11 +365,10 @@ const ProfileTab = () => {
                   const plain = revertToPlain(displayName);
                   setDisplayName(convertToFont(plain, font.id));
                 }}
-                className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${
-                  selectedFont === font.id
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:border-primary/50"
-                }`}
+                className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${selectedFont === font.id
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border hover:border-primary/50"
+                  }`}
               >
                 {font.preview}
               </button>

@@ -2,7 +2,7 @@
 
 ## Project Purpose
 
-MSHB is a **real-time communication platform** (Discord/Telegram-style) built as a web app, electron app for desktop and PWA. It is mainly an Electron application, and PWA. Core features:
+MSHB is a **real-time communication platform** (Discord/Telegram-style) built as a web app, electron app for desktop and PWA. It is mainly an Electron application. Core features:
 
 - **Direct messaging** — 1-on-1 DM threads
 - **Group chat** — multi-user conversations with roles

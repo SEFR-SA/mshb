@@ -34,6 +34,7 @@ import { useMessageReactions } from "@/hooks/useMessageReactions";
 import ServerInviteCard from "@/components/chat/ServerInviteCard";
 import { detectInviteInMessage } from "@/lib/inviteUtils";
 import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
+import StyledDisplayName from "@/components/StyledDisplayName";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -54,7 +55,7 @@ const GroupChat = () => {
   const [groupAvatarUrl, setGroupAvatarUrl] = useState("");
   const [memberCount, setMemberCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map());
+  const [profiles, setProfiles] = useState<Map<string, any>>(new Map());
   const [memberRoles, setMemberRoles] = useState<Map<string, string>>(new Map());
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
@@ -102,8 +103,8 @@ const GroupChat = () => {
 
       const userIds = members?.map((m: any) => m.user_id) || [];
       if (userIds.length > 0) {
-        const { data: profs } = await supabase.from("profiles").select("*").in("user_id", userIds);
-        const map = new Map<string, Profile>();
+        const { data: profs } = await supabase.from("profiles").select("*, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color)").in("user_id", userIds);
+        const map = new Map<string, any>();
         profs?.forEach((p) => map.set(p.user_id, p));
         setProfiles(map);
       }
@@ -361,189 +362,196 @@ const GroupChat = () => {
       <div className="flex-1 overflow-y-auto p-4">
         {messagesLoading ? <MessageSkeleton count={6} /> : (
           <div className="animate-fade-in">
-        {hasMore && (
-          <div className="text-center mb-2">
-            <Button variant="ghost" size="sm" onClick={() => messages.length > 0 && loadMessages(messages[0].created_at)} className="text-xs text-muted-foreground">
-              {t("chat.loadMore")}
-            </Button>
-          </div>
-        )}
-        {visibleMessages.map((msg, idx) => {
-          const isMine = msg.author_id === user?.id;
-          const isDeleted = msg.deleted_for_everyone;
-          const authorProfile = profiles.get(msg.author_id);
-          const msgAny = msg as any;
-          const prev = idx > 0 ? visibleMessages[idx - 1] : null;
-          const sameAuthor = prev && prev.author_id === msg.author_id;
-          const timeDiff = prev ? new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
-          const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
-
-          // Server invite card
-          if (msgAny.type === 'server_invite' && !isDeleted && msgAny.metadata) {
-            return (
-              <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
-                <ServerInviteCard metadata={msgAny.metadata} isMine={isMine} />
+            {hasMore && (
+              <div className="text-center mb-2">
+                <Button variant="ghost" size="sm" onClick={() => messages.length > 0 && loadMessages(messages[0].created_at)} className="text-xs text-muted-foreground">
+                  {t("chat.loadMore")}
+                </Button>
               </div>
-            );
-          }
+            )}
+            {visibleMessages.map((msg, idx) => {
+              const isMine = msg.author_id === user?.id;
+              const isDeleted = msg.deleted_for_everyone;
+              const authorProfile = profiles.get(msg.author_id);
+              const msgAny = msg as any;
+              const prev = idx > 0 ? visibleMessages[idx - 1] : null;
+              const sameAuthor = prev && prev.author_id === msg.author_id;
+              const timeDiff = prev ? new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
+              const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
 
-          return (
-            <MessageContextMenu
-              key={msg.id}
-              content={msg.content}
-              messageId={msg.id}
-              authorName={authorProfile?.display_name || authorProfile?.username || "User"}
-              isMine={isMine}
-              isDeleted={!!isDeleted}
-              onReply={(id, authorName, content) => setReplyingTo({ id, authorName, content })}
-              onEdit={(id, content) => { setEditingId(id); setEditContent(content); }}
-              onDeleteForMe={deleteForMe}
-              onDeleteForEveryone={isMine ? deleteForEveryone : undefined}
-              onMarkUnread={(id) => {
-                const msg = visibleMessages.find(m => m.id === id);
-                if (msg && user && groupId) {
-                  const before = new Date(new Date(msg.created_at).getTime() - 1000).toISOString();
-                  supabase.from("thread_read_status").upsert(
-                    { user_id: user.id, group_thread_id: groupId, last_read_at: before } as any,
-                    { onConflict: "user_id,thread_id" }
-                  ).then();
-                }
-              }}
-            >
-            <div id={`msg-${msg.id}`} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} group/msg hover:bg-muted/30 rounded-lg -mx-2 px-2 py-0.5 transition-colors ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
-              <div className="flex gap-2 max-w-[75%] flex-col">
-                {msgAny.reply_to_id && (() => {
-                  const original = visibleMessages.find(m => m.id === msgAny.reply_to_id);
-                  const origProfile = original ? profiles.get(original.author_id) : null;
-                  const origName = origProfile?.display_name || origProfile?.username || "…";
-                  const origAvatarUrl = origProfile?.avatar_url || "";
-                  return (
-                    <ReplyPreview
-                      authorName={origName}
-                      content={original?.content || "…"}
-                      avatarUrl={origAvatarUrl}
-                      onClick={() => {
-                        const el = document.getElementById(`msg-${msgAny.reply_to_id}`);
-                        if (el) {
-                          el.scrollIntoView({ behavior: "smooth", block: "center" });
-                          setHighlightedMsgId(msgAny.reply_to_id);
-                          setTimeout(() => setHighlightedMsgId(null), 2000);
-                        }
-                      }}
-                    />
-                  );
-                })()}
-              <div className="flex gap-2">
-                {!isMine && (
-                  <UserContextMenu targetUserId={msg.author_id} targetUsername={authorProfile?.username || undefined}>
-                  <Avatar className="h-7 w-7 mt-1 shrink-0 cursor-pointer">
-                    <AvatarImage src={authorProfile?.avatar_url || ""} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
-                      {(authorProfile?.display_name || "?").charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  </UserContextMenu>
-                )}
-                <div className={`group relative rounded-2xl px-4 py-2 ${
-                  isDeleted ? "bg-muted/50 italic text-muted-foreground"
-                    : isMine ? "bg-primary text-primary-foreground"
-                    : "bg-card border border-border/50"
-                }`}>
-                  {!isMine && !isDeleted && (
-                    <UserContextMenu targetUserId={msg.author_id} targetUsername={authorProfile?.username || undefined}>
-                    <p className="text-[11px] font-semibold text-primary mb-0.5 cursor-pointer hover:underline">
-                      {authorProfile?.display_name || authorProfile?.username || "User"}
-                    </p>
-                    </UserContextMenu>
-                  )}
-                  {editingId === msg.id ? (
-                    <div className="flex items-center gap-2">
-                      <Input value={editContent} onChange={(e) => setEditContent(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && editMessage(msg.id)}
-                        className="h-8 text-sm bg-background text-foreground" autoFocus />
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => editMessage(msg.id)}>
-                        <Check className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingId(null)}>
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      {!isDeleted && msgAny.file_url && (msgAny.file_type === "gif" || msgAny.file_type === "sticker") ? (
-                        <div className="mb-1">
-                          <img src={msgAny.file_url} alt={msgAny.file_type === "gif" ? "GIF" : "Sticker"} className="max-w-[240px] max-h-[200px] rounded-lg object-contain" loading="lazy" />
-                        </div>
-                      ) : !isDeleted && msgAny.file_url ? (
-                        <div className="mb-1">
-                          <MessageFilePreview
-                            fileUrl={msgAny.file_url}
-                            fileName={msgAny.file_name || "file"}
-                            fileType={msgAny.file_type || ""}
-                            fileSize={msgAny.file_size || 0}
-                            isMine={isMine}
+              // Server invite card
+              if (msgAny.type === 'server_invite' && !isDeleted && msgAny.metadata) {
+                return (
+                  <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
+                    <ServerInviteCard metadata={msgAny.metadata} isMine={isMine} />
+                  </div>
+                );
+              }
+
+              return (
+                <MessageContextMenu
+                  key={msg.id}
+                  content={msg.content}
+                  messageId={msg.id}
+                  authorName={authorProfile?.display_name || authorProfile?.username || "User"}
+                  isMine={isMine}
+                  isDeleted={!!isDeleted}
+                  onReply={(id, authorName, content) => setReplyingTo({ id, authorName, content })}
+                  onEdit={(id, content) => { setEditingId(id); setEditContent(content); }}
+                  onDeleteForMe={deleteForMe}
+                  onDeleteForEveryone={isMine ? deleteForEveryone : undefined}
+                  onMarkUnread={(id) => {
+                    const msg = visibleMessages.find(m => m.id === id);
+                    if (msg && user && groupId) {
+                      const before = new Date(new Date(msg.created_at).getTime() - 1000).toISOString();
+                      supabase.from("thread_read_status").upsert(
+                        { user_id: user.id, group_thread_id: groupId, last_read_at: before } as any,
+                        { onConflict: "user_id,thread_id" }
+                      ).then();
+                    }
+                  }}
+                >
+                  <div id={`msg-${msg.id}`} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} group/msg hover:bg-muted/30 rounded-lg -mx-2 px-2 py-0.5 transition-colors ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
+                    <div className="flex gap-2 max-w-[75%] flex-col">
+                      {msgAny.reply_to_id && (() => {
+                        const original = visibleMessages.find(m => m.id === msgAny.reply_to_id);
+                        const origProfile = original ? profiles.get(original.author_id) : null;
+                        const origName = origProfile?.display_name || origProfile?.username || "…";
+                        const origAvatarUrl = origProfile?.avatar_url || "";
+                        return (
+                          <ReplyPreview
+                            authorName={origName}
+                            content={original?.content || "…"}
+                            avatarUrl={origAvatarUrl}
+                            onClick={() => {
+                              const el = document.getElementById(`msg-${msgAny.reply_to_id}`);
+                              if (el) {
+                                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                                setHighlightedMsgId(msgAny.reply_to_id);
+                                setTimeout(() => setHighlightedMsgId(null), 2000);
+                              }
+                            }}
                           />
+                        );
+                      })()}
+                      <div className="flex gap-2">
+                        {!isMine && (
+                          <UserContextMenu targetUserId={msg.author_id} targetUsername={authorProfile?.username || undefined}>
+                            <Avatar className="h-7 w-7 mt-1 shrink-0 cursor-pointer">
+                              <AvatarImage src={authorProfile?.avatar_url || ""} />
+                              <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
+                                {(authorProfile?.display_name || "?").charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </UserContextMenu>
+                        )}
+                        <div className={`group relative rounded-2xl px-4 py-2 ${isDeleted ? "bg-muted/50 italic text-muted-foreground"
+                          : isMine ? "bg-primary text-primary-foreground"
+                            : "bg-card border border-border/50"
+                          }`}>
+                          {!isMine && !isDeleted && (
+                            <UserContextMenu targetUserId={msg.author_id} targetUsername={authorProfile?.username || undefined}>
+                              <StyledDisplayName
+                                displayName={authorProfile?.display_name || authorProfile?.username || "User"}
+                                gradientStart={(authorProfile as any)?.name_gradient_start}
+                                gradientEnd={(authorProfile as any)?.name_gradient_end}
+                                className="text-[11px] font-semibold text-primary mb-0.5 cursor-pointer hover:underline"
+                                serverTag={(authorProfile as any)?.active_server_tag ? {
+                                  name: (authorProfile as any).active_server_tag.server_tag_name,
+                                  badge: (authorProfile as any).active_server_tag.server_tag_badge,
+                                  color: (authorProfile as any).active_server_tag.server_tag_color
+                                } : null}
+                              />
+                            </UserContextMenu>
+                          )}
+                          {editingId === msg.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input value={editContent} onChange={(e) => setEditContent(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && editMessage(msg.id)}
+                                className="h-8 text-sm bg-background text-foreground" autoFocus />
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => editMessage(msg.id)}>
+                                <Check className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingId(null)}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              {!isDeleted && msgAny.file_url && (msgAny.file_type === "gif" || msgAny.file_type === "sticker") ? (
+                                <div className="mb-1">
+                                  <img src={msgAny.file_url} alt={msgAny.file_type === "gif" ? "GIF" : "Sticker"} className="max-w-[240px] max-h-[200px] rounded-lg object-contain" loading="lazy" />
+                                </div>
+                              ) : !isDeleted && msgAny.file_url ? (
+                                <div className="mb-1">
+                                  <MessageFilePreview
+                                    fileUrl={msgAny.file_url}
+                                    fileName={msgAny.file_name || "file"}
+                                    fileType={msgAny.file_type || ""}
+                                    fileSize={msgAny.file_size || 0}
+                                    isMine={isMine}
+                                  />
+                                </div>
+                              ) : null}
+                              <p className={`whitespace-pre-wrap break-words ${!isDeleted && getEmojiClass(msg.content) ? getEmojiClass(msg.content) : 'text-sm'}`}>
+                                {isDeleted ? t("chat.deleted") : renderLinkedText(msg.content)}
+                              </p>
+                              <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                                <span>{formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}</span>
+                                {msg.edited_at && !isDeleted && <span>· {t("chat.edited")}</span>}
+                              </div>
+                            </>
+                          )}
+                          {!editingId && (
+                            <div className="absolute top-1 end-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className={`h-6 w-6 ${isMine ? "text-primary-foreground/60 hover:text-primary-foreground" : ""}`}>
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {isMine && !isDeleted && (
+                                    <DropdownMenuItem onClick={() => { setEditingId(msg.id); setEditContent(msg.content); }}>
+                                      <Pencil className="h-4 w-4 me-2" /> {t("actions.edit")}
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => deleteForMe(msg.id)}>
+                                    <Trash2 className="h-4 w-4 me-2" /> {t("actions.deleteForMe")}
+                                  </DropdownMenuItem>
+                                  {isMine && !isDeleted && (
+                                    <DropdownMenuItem onClick={() => deleteForEveryone(msg.id)} className="text-destructive">
+                                      <Trash2 className="h-4 w-4 me-2" /> {t("actions.deleteForEveryone")}
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          )}
                         </div>
-                      ) : null}
-                      <p className={`whitespace-pre-wrap break-words ${!isDeleted && getEmojiClass(msg.content) ? getEmojiClass(msg.content) : 'text-sm'}`}>
-                        {isDeleted ? t("chat.deleted") : renderLinkedText(msg.content)}
-                      </p>
-                      <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                        <span>{formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}</span>
-                        {msg.edited_at && !isDeleted && <span>· {t("chat.edited")}</span>}
                       </div>
-                    </>
-                  )}
-                  {!editingId && (
-                    <div className="absolute top-1 end-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className={`h-6 w-6 ${isMine ? "text-primary-foreground/60 hover:text-primary-foreground" : ""}`}>
-                            <MoreVertical className="h-3.5 w-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {isMine && !isDeleted && (
-                            <DropdownMenuItem onClick={() => { setEditingId(msg.id); setEditContent(msg.content); }}>
-                              <Pencil className="h-4 w-4 me-2" /> {t("actions.edit")}
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem onClick={() => deleteForMe(msg.id)}>
-                            <Trash2 className="h-4 w-4 me-2" /> {t("actions.deleteForMe")}
-                          </DropdownMenuItem>
-                          {isMine && !isDeleted && (
-                            <DropdownMenuItem onClick={() => deleteForEveryone(msg.id)} className="text-destructive">
-                              <Trash2 className="h-4 w-4 me-2" /> {t("actions.deleteForEveryone")}
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {!isDeleted && (
+                        <MessageReactions
+                          messageId={msg.id}
+                          reactions={reactions.get(msg.id) || []}
+                          currentUserId={user?.id || ""}
+                          onToggle={(mid, emoji) => user && toggleReaction(mid, emoji, user.id)}
+                          isMine={isMine}
+                        />
+                      )}
                     </div>
-                  )}
+                  </div>
+                </MessageContextMenu>
+              );
+            })}
+            {typingNames && (
+              <div className="flex justify-start">
+                <div className="bg-muted rounded-2xl px-4 py-2 text-sm text-muted-foreground italic">
+                  {typingNames} {t("chat.typing")}
                 </div>
-                </div>
-                {!isDeleted && (
-                  <MessageReactions
-                    messageId={msg.id}
-                    reactions={reactions.get(msg.id) || []}
-                    currentUserId={user?.id || ""}
-                    onToggle={(mid, emoji) => user && toggleReaction(mid, emoji, user.id)}
-                    isMine={isMine}
-                  />
-                )}
               </div>
-            </div>
-            </MessageContextMenu>
-          );
-        })}
-        {typingNames && (
-          <div className="flex justify-start">
-            <div className="bg-muted rounded-2xl px-4 py-2 text-sm text-muted-foreground italic">
-              {typingNames} {t("chat.typing")}
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+            )}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>

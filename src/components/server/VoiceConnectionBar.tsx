@@ -36,7 +36,7 @@ function createVolumeMonitor(
     cleanup: () => {
       cancelAnimationFrame(rafId);
       source.disconnect();
-      audioCtx.close().catch(() => {});
+      audioCtx.close().catch(() => { });
     },
   };
 }
@@ -68,7 +68,7 @@ interface VoiceConnectionManagerProps {
 const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect }: VoiceConnectionManagerProps) => {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const { globalMuted, globalDeafened } = useAudioSettings();
+  const { globalMuted, globalDeafened, setGlobalMuted, setGlobalDeafened } = useAudioSettings();
   const { isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsCameraOn, setLocalCameraStream, setRemoteCameraStream, voiceChannel, setVoiceChannel } = useVoiceChannel();
   const [isJoined, setIsJoined] = useState(false);
   const [inactiveChannelId, setInactiveChannelId] = useState<string | null>(null);
@@ -97,6 +97,14 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       onDisconnect(); // auto-disconnect after 1 hour idle
     }, 60 * 60 * 1000);
   }, [onDisconnect]);
+
+  // Enforce AFK audio state
+  useEffect(() => {
+    if (inactiveChannelId && channelId === inactiveChannelId) {
+      if (!globalMuted) setGlobalMuted(true);
+      if (!globalDeafened) setGlobalDeafened(true);
+    }
+  }, [channelId, inactiveChannelId, globalMuted, globalDeafened, setGlobalMuted, setGlobalDeafened]);
 
   // Fetch AFK settings when connected
   useEffect(() => {
@@ -178,16 +186,16 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         try {
           const caps = (RTCRtpReceiver as any).getCapabilities?.('video');
           if (caps?.codecs) {
-            const h264Hi  = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && c.sdpFmtpLine?.includes('profile-level-id=64'));
+            const h264Hi = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && c.sdpFmtpLine?.includes('profile-level-id=64'));
             const h264Rst = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && !c.sdpFmtpLine?.includes('profile-level-id=64'));
-            const other   = caps.codecs.filter((c: any) => c.mimeType !== 'video/H264');
+            const other = caps.codecs.filter((c: any) => c.mimeType !== 'video/H264');
             transceiver.setCodecPreferences([...h264Hi, ...h264Rst, ...other]);
           }
-        } catch {}
+        } catch { }
         try {
           const p = transceiver.sender.getParameters();
           if (p.encodings?.length) { p.degradationPreference = 'maintain-framerate'; transceiver.sender.setParameters(p); }
-        } catch {}
+        } catch { }
       }
       // Also add the audio track if screen share has one
       const screenAudioTracks = screenStreamRef.current.getAudioTracks();
@@ -208,7 +216,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           params.encodings[0].maxBitrate = 4_000_000;
           (params as any).degradationPreference = "maintain-resolution";
           sender.setParameters(params);
-        } catch {}
+        } catch { }
       }
     }
     pc.ontrack = (e) => {
@@ -226,7 +234,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         const audio = new Audio();
         audio.srcObject = e.streams[0];
         audio.muted = globalDeafened;
-        audio.play().catch(() => {});
+        audio.play().catch(() => { });
         remoteAudiosRef.current.push(audio);
         const monitor = createVolumeMonitor(e.streams[0], (isSpeaking) => {
           updateSpeaking(peerId, isSpeaking);
@@ -251,7 +259,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           type: "broadcast", event: "voice-offer",
           payload: { sdp: { ...offer, sdp: patchedSdp }, senderId: user!.id, targetId: peerId },
         });
-      } catch {}
+      } catch { }
     };
     return pc;
   }, [user, updateSpeaking, setRemoteScreenStream, setRemoteCameraStream]);
@@ -270,8 +278,8 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         const sizeConstraints = res === "720p"
           ? { maxWidth: 1280, maxHeight: 720 }
           : res === "1080p"
-          ? { maxWidth: 1920, maxHeight: 1080 }
-          : {};
+            ? { maxWidth: 1920, maxHeight: 1080 }
+            : {};
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             mandatory: {
@@ -297,7 +305,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           frameRate: { ideal: fps, max: fps },
           ...(res === "720p" ? { width: 1280, height: 720 }
             : res === "1080p" ? { width: 1920, height: 1080 }
-            : {}),
+              : {}),
         };
         stream = await navigator.mediaDevices.getDisplayMedia({
           video: videoConstraints,
@@ -309,7 +317,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       videoTrack.contentHint = 'motion';
       try {
         await videoTrack.applyConstraints({ width: { min: 1280, ideal: 1920 }, height: { min: 720, ideal: 1080 }, frameRate: { min: 30, ideal: 60 } });
-      } catch {}
+      } catch { }
 
       // Add track to all peer connections with gaming-quality settings
       const bitrate = res === "720p" ? 6_000_000 : 8_000_000;
@@ -323,16 +331,16 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         try {
           const caps = (RTCRtpReceiver as any).getCapabilities?.('video');
           if (caps?.codecs) {
-            const h264Hi  = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && c.sdpFmtpLine?.includes('profile-level-id=64'));
+            const h264Hi = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && c.sdpFmtpLine?.includes('profile-level-id=64'));
             const h264Rst = caps.codecs.filter((c: any) => c.mimeType === 'video/H264' && !c.sdpFmtpLine?.includes('profile-level-id=64'));
-            const other   = caps.codecs.filter((c: any) => c.mimeType !== 'video/H264');
+            const other = caps.codecs.filter((c: any) => c.mimeType !== 'video/H264');
             transceiver.setCodecPreferences([...h264Hi, ...h264Rst, ...other]);
           }
-        } catch {}
+        } catch { }
         try {
           const p = transceiver.sender.getParameters();
           if (p.encodings?.length) { p.degradationPreference = 'maintain-framerate'; await transceiver.sender.setParameters(p); }
-        } catch {}
+        } catch { }
       }
 
       // Add audio track to all peer connections (if system audio was captured)
@@ -363,7 +371,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
               console.log('[ScreenShare] fps:', report.framesPerSecond, 'w:', report.frameWidth, 'h:', report.frameHeight, 'limitReason:', report.qualityLimitationReason);
             }
           });
-        } catch {}
+        } catch { }
       }, 5000);
 
       // Update is_screen_sharing in DB
@@ -395,11 +403,11 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     // Remove senders from peer connections
     peerConnectionsRef.current.forEach((pc, peerId) => {
       const sender = screenSendersRef.current.get(peerId);
-      if (sender) { try { pc.removeTrack(sender); } catch {} }
+      if (sender) { try { pc.removeTrack(sender); } catch { } }
       const audioSender = screenAudioSendersRef.current.get(peerId);
-      if (audioSender) { try { pc.removeTrack(audioSender); } catch {} }
+      if (audioSender) { try { pc.removeTrack(audioSender); } catch { } }
       const audioSender2 = screenAudioSendersRef.current.get(`${peerId}-audio`);
-      if (audioSender2) { try { pc.removeTrack(audioSender2); } catch {} }
+      if (audioSender2) { try { pc.removeTrack(audioSender2); } catch { } }
     });
     screenSendersRef.current.clear();
     screenAudioSendersRef.current.clear();
@@ -442,7 +450,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           params.encodings[0].maxBitrate = 4_000_000;
           (params as any).degradationPreference = "maintain-resolution";
           await sender.setParameters(params);
-        } catch {}
+        } catch { }
       }
 
       setIsCameraOn(true);
@@ -463,7 +471,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     peerConnectionsRef.current.forEach((pc, peerId) => {
       const sender = cameraSendersRef.current.get(peerId);
       if (sender) {
-        try { pc.removeTrack(sender); } catch {}
+        try { pc.removeTrack(sender); } catch { }
       }
     });
     cameraSendersRef.current.clear();
@@ -522,42 +530,42 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       await pc.setLocalDescription({ ...answer, sdp: patchedAnswer });
       ch.send({ type: "broadcast", event: "voice-answer", payload: { sdp: { ...answer, sdp: patchedAnswer }, senderId: user.id, targetId: payload.senderId } });
     })
-    .on("broadcast", { event: "voice-answer" }, async ({ payload }) => {
-      if (!user || payload.targetId !== user.id) return;
-      const pc = peerConnectionsRef.current.get(payload.senderId);
-      if (pc) await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-    })
-    .on("broadcast", { event: "voice-ice" }, async ({ payload }) => {
-      if (!user || payload.targetId !== user.id) return;
-      const pc = peerConnectionsRef.current.get(payload.senderId);
-      if (pc) await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-    })
-    .on("broadcast", { event: "voice-leave" }, ({ payload }) => {
-      const pc = peerConnectionsRef.current.get(payload.userId);
-      if (pc) { pc.close(); peerConnectionsRef.current.delete(payload.userId); }
-    })
-    .on("broadcast", { event: "voice-screen-share" }, ({ payload }) => {
-      if (payload.userId === user?.id) return;
-      if (!payload.sharing) {
-        setRemoteScreenStream(null);
-        setScreenSharerName(null);
-      }
-    })
-    .on("broadcast", { event: "voice-camera" }, ({ payload }) => {
-      if (payload.userId === user?.id) return;
-      if (payload.sharing) {
-        remoteCameraExpectedRef.current.add(payload.userId);
-      } else {
-        setRemoteCameraStream(null);
-      }
-    })
-    .on("broadcast", { event: "soundboard_play" }, ({ payload }) => {
-      if (!payload?.sound_url) return;
-      const audio = new Audio(payload.sound_url);
-      audio.volume = 0.7;
-      audio.play().catch(() => {});
-    })
-    .subscribe();
+      .on("broadcast", { event: "voice-answer" }, async ({ payload }) => {
+        if (!user || payload.targetId !== user.id) return;
+        const pc = peerConnectionsRef.current.get(payload.senderId);
+        if (pc) await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+      })
+      .on("broadcast", { event: "voice-ice" }, async ({ payload }) => {
+        if (!user || payload.targetId !== user.id) return;
+        const pc = peerConnectionsRef.current.get(payload.senderId);
+        if (pc) await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+      })
+      .on("broadcast", { event: "voice-leave" }, ({ payload }) => {
+        const pc = peerConnectionsRef.current.get(payload.userId);
+        if (pc) { pc.close(); peerConnectionsRef.current.delete(payload.userId); }
+      })
+      .on("broadcast", { event: "voice-screen-share" }, ({ payload }) => {
+        if (payload.userId === user?.id) return;
+        if (!payload.sharing) {
+          setRemoteScreenStream(null);
+          setScreenSharerName(null);
+        }
+      })
+      .on("broadcast", { event: "voice-camera" }, ({ payload }) => {
+        if (payload.userId === user?.id) return;
+        if (payload.sharing) {
+          remoteCameraExpectedRef.current.add(payload.userId);
+        } else {
+          setRemoteCameraStream(null);
+        }
+      })
+      .on("broadcast", { event: "soundboard_play" }, ({ payload }) => {
+        if (!payload?.sound_url) return;
+        const audio = new Audio(payload.sound_url);
+        audio.volume = 0.7;
+        audio.play().catch(() => { });
+      })
+      .subscribe();
   }, [channelId, user, createPeerConnection, setRemoteScreenStream, setScreenSharerName, setRemoteCameraStream]);
 
   // Auto-join on mount
@@ -623,16 +631,23 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     };
     join();
 
-    // Start idle + AFK timers on join
+    // Start idle timer on join
     resetIdleTimer();
-    resetAfkTimer();
 
     return () => {
       mounted = false;
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       if (afkTimerRef.current) clearTimeout(afkTimerRef.current);
     };
-  }, [channelId, user, setupSignaling, createPeerConnection, updateSpeaking, resetIdleTimer, resetAfkTimer]);
+  }, [channelId, user, setupSignaling, createPeerConnection, updateSpeaking, resetIdleTimer]);
+
+  // Start or restart AFK timer when settings load or change
+  useEffect(() => {
+    resetAfkTimer();
+    return () => {
+      if (afkTimerRef.current) clearTimeout(afkTimerRef.current);
+    };
+  }, [resetAfkTimer]);
 
   // Mute: toggle local audio tracks
   useEffect(() => {

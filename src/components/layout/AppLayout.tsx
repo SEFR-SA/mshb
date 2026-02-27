@@ -48,6 +48,7 @@ const AppLayout = () => {
 
         {voiceChannel && (
           <VoiceConnectionManager
+            key={voiceChannel.id}
             channelId={voiceChannel.id}
             channelName={voiceChannel.name}
             serverId={voiceChannel.serverId}
@@ -62,8 +63,7 @@ const AppLayout = () => {
               to="/"
               end
               className={({ isActive }) =>
-                `relative flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${
-                  isActive || location.pathname === "/friends" ? "text-primary" : "text-muted-foreground"
+                `relative flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive || location.pathname === "/friends" ? "text-primary" : "text-muted-foreground"
                 }`
               }
             >
@@ -78,8 +78,7 @@ const AppLayout = () => {
             <NavLink
               to="/settings"
               className={({ isActive }) =>
-                `flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${
-                  isActive ? "text-primary" : "text-muted-foreground"
+                `flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive ? "text-primary" : "text-muted-foreground"
                 }`
               }
             >

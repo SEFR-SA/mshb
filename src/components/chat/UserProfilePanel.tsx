@@ -52,6 +52,11 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
             gradientStart={p?.name_gradient_start}
             gradientEnd={p?.name_gradient_end}
             className="text-lg font-bold"
+            serverTag={p?.active_server_tag ? {
+              name: p.active_server_tag.server_tag_name,
+              badge: p.active_server_tag.server_tag_badge,
+              color: p.active_server_tag.server_tag_color
+            } : null}
           />
           {profile.username && (
             <p className="text-sm text-muted-foreground">@{profile.username}</p>

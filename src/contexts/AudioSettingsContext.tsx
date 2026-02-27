@@ -4,6 +4,8 @@ import { playSound } from "@/lib/soundManager";
 interface AudioSettings {
   globalMuted: boolean;
   globalDeafened: boolean;
+  setGlobalMuted: React.Dispatch<React.SetStateAction<boolean>>;
+  setGlobalDeafened: React.Dispatch<React.SetStateAction<boolean>>;
   toggleGlobalMute: () => void;
   toggleGlobalDeafen: () => void;
 }
@@ -11,8 +13,10 @@ interface AudioSettings {
 const AudioSettingsContext = createContext<AudioSettings>({
   globalMuted: false,
   globalDeafened: false,
-  toggleGlobalMute: () => {},
-  toggleGlobalDeafen: () => {},
+  setGlobalMuted: () => { },
+  setGlobalDeafened: () => { },
+  toggleGlobalMute: () => { },
+  toggleGlobalDeafen: () => { },
 });
 
 export const useAudioSettings = () => useContext(AudioSettingsContext);
@@ -40,7 +44,7 @@ export const AudioSettingsProvider = ({ children }: { children: React.ReactNode 
   }, []);
 
   return (
-    <AudioSettingsContext.Provider value={{ globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen }}>
+    <AudioSettingsContext.Provider value={{ globalMuted, globalDeafened, setGlobalMuted, setGlobalDeafened, toggleGlobalMute, toggleGlobalDeafen }}>
       {children}
     </AudioSettingsContext.Provider>
   );

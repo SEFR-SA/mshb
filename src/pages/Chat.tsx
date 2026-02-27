@@ -119,7 +119,7 @@ const Chat = () => {
       if (!thread) { navigate("/"); return; }
       const oid = thread.user1_id === user.id ? thread.user2_id : thread.user1_id;
       setOtherId(oid);
-      const { data: prof } = await supabase.from("profiles").select("*").eq("user_id", oid).maybeSingle();
+      const { data: prof } = await supabase.from("profiles").select("*, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color)").eq("user_id", oid).maybeSingle();
       setOtherProfile(prof);
 
       // Check pin status
@@ -439,6 +439,11 @@ const Chat = () => {
             gradientStart={(otherProfile as any)?.name_gradient_start}
             gradientEnd={(otherProfile as any)?.name_gradient_end}
             className="font-medium truncate"
+            serverTag={(otherProfile as any)?.active_server_tag ? {
+              name: (otherProfile as any).active_server_tag.server_tag_name,
+              badge: (otherProfile as any).active_server_tag.server_tag_badge,
+              color: (otherProfile as any).active_server_tag.server_tag_color
+            } : null}
           />
           <p className="text-xs text-muted-foreground">
             {otherStatus !== "offline"
@@ -488,201 +493,200 @@ const Chat = () => {
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
         {messagesLoading ? <MessageSkeleton count={6} /> : (
           <div className="animate-fade-in">
-        {hasMore && (
-          <div className="text-center mb-2">
-            <Button variant="ghost" size="sm" onClick={loadOlder} className="text-xs text-muted-foreground">
-              {t("chat.loadMore")}
-            </Button>
-          </div>
-        )}
-        {visibleMessages.map((msg, idx) => {
-          const isMine = msg.author_id === user?.id;
-          const isDeleted = msg.deleted_for_everyone;
-          const msgAny = msg as any;
-          const prev = idx > 0 ? visibleMessages[idx - 1] : null;
-          const sameAuthor = prev && prev.author_id === msg.author_id;
-          const timeDiff = prev ? new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
-          const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
-
-          // System call messages — rendered as centered pill
-          const msgTyped = msg as any;
-          const isCallNotification = msgTyped.type === 'call_notification'
-            || (msgTyped.type === 'message' && (msg.content.startsWith("📞") || msg.content.startsWith("📵")));
-          if (isCallNotification && !isDeleted) {
-            const isMissed = msg.content.toLowerCase().includes("missed") || msg.content.startsWith("📵");
-            const isEnded = msg.content.toLowerCase().includes("ended") || msg.content.startsWith("📞");
-            const pillIcon = isMissed
-              ? <PhoneMissed className="h-3 w-3 text-destructive shrink-0" />
-              : isEnded
-              ? <Phone className="h-3 w-3 text-primary shrink-0" />
-              : <PhoneOff className="h-3 w-3 text-muted-foreground shrink-0" />;
-
-            // Strip leading emoji for cleaner display if present
-            const displayContent = msg.content.replace(/^[📞📵]\s*/, "").trim();
-
-            return (
-              <div key={msg.id} className="flex justify-center w-full my-4">
-                <div className="flex items-center gap-2 bg-muted/40 rounded-full px-3 py-1 text-xs text-muted-foreground border border-border/20">
-                  {pillIcon}
-                  <span>{displayContent}</span>
-                </div>
+            {hasMore && (
+              <div className="text-center mb-2">
+                <Button variant="ghost" size="sm" onClick={loadOlder} className="text-xs text-muted-foreground">
+                  {t("chat.loadMore")}
+                </Button>
               </div>
-            );
-          }
+            )}
+            {visibleMessages.map((msg, idx) => {
+              const isMine = msg.author_id === user?.id;
+              const isDeleted = msg.deleted_for_everyone;
+              const msgAny = msg as any;
+              const prev = idx > 0 ? visibleMessages[idx - 1] : null;
+              const sameAuthor = prev && prev.author_id === msg.author_id;
+              const timeDiff = prev ? new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
+              const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
 
-          // Server invite card
-          if (msgTyped.type === 'server_invite' && !isDeleted && msgTyped.metadata) {
-            return (
-              <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
-                <ServerInviteCard metadata={msgTyped.metadata} isMine={isMine} />
-              </div>
-            );
-          }
+              // System call messages — rendered as centered pill
+              const msgTyped = msg as any;
+              const isCallNotification = msgTyped.type === 'call_notification'
+                || (msgTyped.type === 'message' && (msg.content.startsWith("📞") || msg.content.startsWith("📵")));
+              if (isCallNotification && !isDeleted) {
+                const isMissed = msg.content.toLowerCase().includes("missed") || msg.content.startsWith("📵");
+                const isEnded = msg.content.toLowerCase().includes("ended") || msg.content.startsWith("📞");
+                const pillIcon = isMissed
+                  ? <PhoneMissed className="h-3 w-3 text-destructive shrink-0" />
+                  : isEnded
+                    ? <Phone className="h-3 w-3 text-primary shrink-0" />
+                    : <PhoneOff className="h-3 w-3 text-muted-foreground shrink-0" />;
 
-          return (
-            <MessageContextMenu
-              key={msg.id}
-              content={msg.content}
-              messageId={msg.id}
-              authorName={isMine ? (user?.email?.split("@")[0] || "You") : (otherProfile?.display_name || otherProfile?.username || "User")}
-              isMine={isMine}
-              isDeleted={!!isDeleted}
-              onReply={(id, authorName, content) => setReplyingTo({ id, authorName, content })}
-              onEdit={(id, content) => { setEditingId(id); setEditContent(content); }}
-              onDeleteForMe={deleteForMe}
-              onDeleteForEveryone={isMine ? deleteForEveryone : undefined}
-              onMarkUnread={(id) => {
-                const msg = visibleMessages.find(m => m.id === id);
-                if (msg && user && threadId) {
-                  const before = new Date(new Date(msg.created_at).getTime() - 1000).toISOString();
-                  supabase.from("thread_read_status").upsert(
-                    { user_id: user.id, thread_id: threadId, last_read_at: before },
-                    { onConflict: "user_id,thread_id" }
-                  ).then();
-                }
-              }}
-            >
-            <div id={`msg-${msg.id}`} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} group/msg hover:bg-muted/30 rounded-lg -mx-2 px-2 py-0.5 transition-colors ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
-              <div className="max-w-[75%]">
-                {msgAny.reply_to_id && (() => {
-                  const original = visibleMessages.find(m => m.id === msgAny.reply_to_id);
-                  const origName = original ? (original.author_id === user?.id ? "You" : (otherProfile?.display_name || otherProfile?.username || "User")) : "…";
-                  const origAvatarUrl = original ? (original.author_id === user?.id ? "" : (otherProfile?.avatar_url || "")) : "";
-                  return (
-                    <ReplyPreview
-                      authorName={origName}
-                      content={original?.content || "…"}
-                      avatarUrl={origAvatarUrl}
-                      onClick={() => {
-                        const el = document.getElementById(`msg-${msgAny.reply_to_id}`);
-                        if (el) {
-                          el.scrollIntoView({ behavior: "smooth", block: "center" });
-                          setHighlightedMsgId(msgAny.reply_to_id);
-                          setTimeout(() => setHighlightedMsgId(null), 2000);
-                        }
-                      }}
-                    />
-                  );
-                })()}
-              <div className={`group relative rounded-2xl px-4 py-2 ${
-                isDeleted
-                  ? "bg-muted/50 italic text-muted-foreground"
-                  : isMine
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card border border-border/50"
-              }`}>
-                {editingId === msg.id ? (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={editContent}
-                      onChange={(e) => setEditContent(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && editMessage(msg.id)}
-                      className="h-8 text-sm bg-background text-foreground"
-                      autoFocus
-                    />
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => editMessage(msg.id)}>
-                      <Check className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingId(null)}>
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                // Strip leading emoji for cleaner display if present
+                const displayContent = msg.content.replace(/^[📞📵]\s*/, "").trim();
+
+                return (
+                  <div key={msg.id} className="flex justify-center w-full my-4">
+                    <div className="flex items-center gap-2 bg-muted/40 rounded-full px-3 py-1 text-xs text-muted-foreground border border-border/20">
+                      {pillIcon}
+                      <span>{displayContent}</span>
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    {!isDeleted && msgAny.file_url && (msgAny.file_type === "gif" || msgAny.file_type === "sticker") ? (
-                      <div className="mb-1">
-                        <img src={msgAny.file_url} alt={msgAny.file_type === "gif" ? "GIF" : "Sticker"} className="max-w-[240px] max-h-[200px] rounded-lg object-contain" loading="lazy" />
+                );
+              }
+
+              // Server invite card
+              if (msgTyped.type === 'server_invite' && !isDeleted && msgTyped.metadata) {
+                return (
+                  <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
+                    <ServerInviteCard metadata={msgTyped.metadata} isMine={isMine} />
+                  </div>
+                );
+              }
+
+              return (
+                <MessageContextMenu
+                  key={msg.id}
+                  content={msg.content}
+                  messageId={msg.id}
+                  authorName={isMine ? (user?.email?.split("@")[0] || "You") : (otherProfile?.display_name || otherProfile?.username || "User")}
+                  isMine={isMine}
+                  isDeleted={!!isDeleted}
+                  onReply={(id, authorName, content) => setReplyingTo({ id, authorName, content })}
+                  onEdit={(id, content) => { setEditingId(id); setEditContent(content); }}
+                  onDeleteForMe={deleteForMe}
+                  onDeleteForEveryone={isMine ? deleteForEveryone : undefined}
+                  onMarkUnread={(id) => {
+                    const msg = visibleMessages.find(m => m.id === id);
+                    if (msg && user && threadId) {
+                      const before = new Date(new Date(msg.created_at).getTime() - 1000).toISOString();
+                      supabase.from("thread_read_status").upsert(
+                        { user_id: user.id, thread_id: threadId, last_read_at: before },
+                        { onConflict: "user_id,thread_id" }
+                      ).then();
+                    }
+                  }}
+                >
+                  <div id={`msg-${msg.id}`} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} group/msg hover:bg-muted/30 rounded-lg -mx-2 px-2 py-0.5 transition-colors ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
+                    <div className="max-w-[75%]">
+                      {msgAny.reply_to_id && (() => {
+                        const original = visibleMessages.find(m => m.id === msgAny.reply_to_id);
+                        const origName = original ? (original.author_id === user?.id ? "You" : (otherProfile?.display_name || otherProfile?.username || "User")) : "…";
+                        const origAvatarUrl = original ? (original.author_id === user?.id ? "" : (otherProfile?.avatar_url || "")) : "";
+                        return (
+                          <ReplyPreview
+                            authorName={origName}
+                            content={original?.content || "…"}
+                            avatarUrl={origAvatarUrl}
+                            onClick={() => {
+                              const el = document.getElementById(`msg-${msgAny.reply_to_id}`);
+                              if (el) {
+                                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                                setHighlightedMsgId(msgAny.reply_to_id);
+                                setTimeout(() => setHighlightedMsgId(null), 2000);
+                              }
+                            }}
+                          />
+                        );
+                      })()}
+                      <div className={`group relative rounded-2xl px-4 py-2 ${isDeleted
+                        ? "bg-muted/50 italic text-muted-foreground"
+                        : isMine
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-card border border-border/50"
+                        }`}>
+                        {editingId === msg.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={editContent}
+                              onChange={(e) => setEditContent(e.target.value)}
+                              onKeyDown={(e) => e.key === "Enter" && editMessage(msg.id)}
+                              className="h-8 text-sm bg-background text-foreground"
+                              autoFocus
+                            />
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => editMessage(msg.id)}>
+                              <Check className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingId(null)}>
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            {!isDeleted && msgAny.file_url && (msgAny.file_type === "gif" || msgAny.file_type === "sticker") ? (
+                              <div className="mb-1">
+                                <img src={msgAny.file_url} alt={msgAny.file_type === "gif" ? "GIF" : "Sticker"} className="max-w-[240px] max-h-[200px] rounded-lg object-contain" loading="lazy" />
+                              </div>
+                            ) : !isDeleted && msgAny.file_url ? (
+                              <div className="mb-1">
+                                <MessageFilePreview
+                                  fileUrl={msgAny.file_url}
+                                  fileName={msgAny.file_name || "file"}
+                                  fileType={msgAny.file_type || ""}
+                                  fileSize={msgAny.file_size || 0}
+                                  isMine={isMine}
+                                />
+                              </div>
+                            ) : null}
+                            <p className={`whitespace-pre-wrap break-words ${!isDeleted && getEmojiClass(msg.content) ? getEmojiClass(msg.content) : 'text-sm'}`}>
+                              {isDeleted ? t("chat.deleted") : renderLinkedText(msg.content)}
+                            </p>
+                            <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                              <span>{formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}</span>
+                              {msg.edited_at && !isDeleted && <span>· {t("chat.edited")}</span>}
+                            </div>
+                          </>
+                        )}
+
+                        {!editingId && (
+                          <div className="absolute top-1 end-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className={`h-6 w-6 ${isMine ? "text-primary-foreground/60 hover:text-primary-foreground" : ""}`}>
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {isMine && !isDeleted && (
+                                  <DropdownMenuItem onClick={() => { setEditingId(msg.id); setEditContent(msg.content); }}>
+                                    <Pencil className="h-4 w-4 me-2" /> {t("actions.edit")}
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => deleteForMe(msg.id)}>
+                                  <Trash2 className="h-4 w-4 me-2" /> {t("actions.deleteForMe")}
+                                </DropdownMenuItem>
+                                {isMine && !isDeleted && (
+                                  <DropdownMenuItem onClick={() => deleteForEveryone(msg.id)} className="text-destructive">
+                                    <Trash2 className="h-4 w-4 me-2" /> {t("actions.deleteForEveryone")}
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        )}
                       </div>
-                    ) : !isDeleted && msgAny.file_url ? (
-                      <div className="mb-1">
-                        <MessageFilePreview
-                          fileUrl={msgAny.file_url}
-                          fileName={msgAny.file_name || "file"}
-                          fileType={msgAny.file_type || ""}
-                          fileSize={msgAny.file_size || 0}
+                      {!isDeleted && (
+                        <MessageReactions
+                          messageId={msg.id}
+                          reactions={reactions.get(msg.id) || []}
+                          currentUserId={user?.id || ""}
+                          onToggle={(mid, emoji) => user && toggleReaction(mid, emoji, user.id)}
                           isMine={isMine}
                         />
-                      </div>
-                    ) : null}
-                    <p className={`whitespace-pre-wrap break-words ${!isDeleted && getEmojiClass(msg.content) ? getEmojiClass(msg.content) : 'text-sm'}`}>
-                      {isDeleted ? t("chat.deleted") : renderLinkedText(msg.content)}
-                    </p>
-                    <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                      <span>{formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}</span>
-                      {msg.edited_at && !isDeleted && <span>· {t("chat.edited")}</span>}
+                      )}
                     </div>
-                  </>
-                )}
-
-                {!editingId && (
-                  <div className="absolute top-1 end-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className={`h-6 w-6 ${isMine ? "text-primary-foreground/60 hover:text-primary-foreground" : ""}`}>
-                          <MoreVertical className="h-3.5 w-3.5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {isMine && !isDeleted && (
-                          <DropdownMenuItem onClick={() => { setEditingId(msg.id); setEditContent(msg.content); }}>
-                            <Pencil className="h-4 w-4 me-2" /> {t("actions.edit")}
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => deleteForMe(msg.id)}>
-                          <Trash2 className="h-4 w-4 me-2" /> {t("actions.deleteForMe")}
-                        </DropdownMenuItem>
-                        {isMine && !isDeleted && (
-                          <DropdownMenuItem onClick={() => deleteForEveryone(msg.id)} className="text-destructive">
-                            <Trash2 className="h-4 w-4 me-2" /> {t("actions.deleteForEveryone")}
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </div>
-                )}
+                </MessageContextMenu>
+              );
+            })}
+            {typingUser && (
+              <div className="flex justify-start">
+                <div className="bg-muted rounded-2xl px-4 py-2 text-sm text-muted-foreground italic">
+                  {otherProfile?.display_name || "User"} {t("chat.typing")}
+                </div>
               </div>
-              {!isDeleted && (
-                <MessageReactions
-                  messageId={msg.id}
-                  reactions={reactions.get(msg.id) || []}
-                  currentUserId={user?.id || ""}
-                  onToggle={(mid, emoji) => user && toggleReaction(mid, emoji, user.id)}
-                  isMine={isMine}
-                />
-              )}
-              </div>
-            </div>
-            </MessageContextMenu>
-          );
-        })}
-        {typingUser && (
-          <div className="flex justify-start">
-            <div className="bg-muted rounded-2xl px-4 py-2 text-sm text-muted-foreground italic">
-              {otherProfile?.display_name || "User"} {t("chat.typing")}
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+            )}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>

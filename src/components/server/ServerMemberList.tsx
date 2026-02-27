@@ -75,7 +75,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       const userIds = (data as any[]).map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, created_at, name_gradient_start, name_gradient_end")
+        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, created_at, name_gradient_start, name_gradient_end, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color)")
         .in("user_id", userIds);
 
       const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
@@ -204,182 +204,187 @@ const ServerMemberList = ({ serverId }: Props) => {
           <MemberListSkeleton count={8} />
         ) : (
           <div className="animate-fade-in space-y-4">
-        {groupsArray.map(({ label, mems }) => (
-          <div key={label}>
-            <span className="text-[11px] font-semibold uppercase text-muted-foreground px-1">{label} — {mems.length}</span>
-            <div className="mt-1 space-y-0.5">
-              {mems.map((m) => {
-                const p = m.profile;
-                const name = p?.display_name || p?.username || "User";
-                const username = p?.username || "user";
-                const status = p?.status || "offline";
+            {groupsArray.map(({ label, mems }) => (
+              <div key={label}>
+                <span className="text-[11px] font-semibold uppercase text-muted-foreground px-1">{label} — {mems.length}</span>
+                <div className="mt-1 space-y-0.5">
+                  {mems.map((m) => {
+                    const p = m.profile;
+                    const name = p?.display_name || p?.username || "User";
+                    const username = p?.username || "user";
+                    const status = p?.status || "offline";
 
-                const profileCardContent = (
-                  <div className="overflow-hidden rounded-lg bg-popover">
-                    {/* Banner */}
-                    <div
-                      className="h-[60px] w-full bg-primary/60"
-                      style={p?.banner_url ? { backgroundImage: `url(${p.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
-                    />
-                    {/* Avatar + Info */}
-                    <div className="px-4 pb-3">
-                      <div className="relative -mt-8 mb-2">
-                        <Avatar className="h-16 w-16 border-4 border-popover">
-                          <AvatarImage src={p?.avatar_url || ""} />
-                          <AvatarFallback className="bg-primary/20 text-primary text-lg">{name.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="md" className="absolute bottom-1 start-12" />
-                      </div>
-
-                      <div className="font-bold text-foreground text-base">{name}</div>
-                      <div className="text-xs text-muted-foreground">@{username}</div>
-
-                      <Badge className={`mt-2 text-[10px] px-2 py-0.5 ${roleBadgeColors[m.role] || roleBadgeColors.member}`}>
-                        {t(`servers.${m.role}`)}
-                      </Badge>
-
-                      {p?.about_me && (
-                        <>
-                          <Separator className="my-3" />
-                          <div>
-                            <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">{t("profile.aboutMe")}</div>
-                            <p className="text-sm text-foreground whitespace-pre-wrap break-words">{p.about_me}</p>
+                    const profileCardContent = (
+                      <div className="overflow-hidden rounded-lg bg-popover">
+                        {/* Banner */}
+                        <div
+                          className="h-[60px] w-full bg-primary/60"
+                          style={p?.banner_url ? { backgroundImage: `url(${p.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                        />
+                        {/* Avatar + Info */}
+                        <div className="px-4 pb-3">
+                          <div className="relative -mt-8 mb-2">
+                            <Avatar className="h-16 w-16 border-4 border-popover">
+                              <AvatarImage src={p?.avatar_url || ""} />
+                              <AvatarFallback className="bg-primary/20 text-primary text-lg">{name.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="md" className="absolute bottom-1 start-12" />
                           </div>
-                        </>
-                      )}
 
-                      <Separator className="my-3" />
+                          <div className="font-bold text-foreground text-base">{name}</div>
+                          <div className="text-xs text-muted-foreground">@{username}</div>
 
-                      <div className="space-y-1.5">
-                        <div>
-                          <div className="text-xs font-semibold uppercase text-muted-foreground">{t("profile.memberSince")}</div>
-                          <div className="text-xs text-foreground">{p?.created_at ? format(new Date(p.created_at), "MMM d, yyyy") : "—"}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs font-semibold uppercase text-muted-foreground">{t("profile.joinedServer")}</div>
-                          <div className="text-xs text-foreground">{m.joined_at ? format(new Date(m.joined_at), "MMM d, yyyy") : "—"}</div>
-                        </div>
-                      </div>
+                          <Badge className={`mt-2 text-[10px] px-2 py-0.5 ${roleBadgeColors[m.role] || roleBadgeColors.member}`}>
+                            {t(`servers.${m.role}`)}
+                          </Badge>
 
-                      {user && m.user_id !== user.id && (
-                        <>
+                          {p?.about_me && (
+                            <>
+                              <Separator className="my-3" />
+                              <div>
+                                <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">{t("profile.aboutMe")}</div>
+                                <p className="text-sm text-foreground whitespace-pre-wrap break-words">{p.about_me}</p>
+                              </div>
+                            </>
+                          )}
+
                           <Separator className="my-3" />
-                          <Input
-                            placeholder={t("profile.messageUser", { name: username })}
-                            className="h-8 text-xs"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                const val = (e.target as HTMLInputElement).value;
-                                handleQuickMessage(m.user_id, val);
-                              }
-                            }}
-                          />
-                        </>
-                      )}
-                      {user && m.user_id === user.id && serverSounds.length > 0 && (
-                        <>
-                          <Separator className="my-3" />
-                          <div>
-                            <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">
-                              {t("servers.entranceSound")}
+
+                          <div className="space-y-1.5">
+                            <div>
+                              <div className="text-xs font-semibold uppercase text-muted-foreground">{t("profile.memberSince")}</div>
+                              <div className="text-xs text-foreground">{p?.created_at ? format(new Date(p.created_at), "MMM d, yyyy") : "—"}</div>
                             </div>
-                            <select
-                              value={entranceSoundId || ""}
-                              onChange={(e) => updateEntranceSound(e.target.value || null)}
-                              className="w-full text-xs h-8 rounded-md border border-input bg-background px-2"
-                            >
-                              <option value="">{t("servers.noEntranceSound")}</option>
-                              {serverSounds.map((s) => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                              ))}
-                            </select>
+                            <div>
+                              <div className="text-xs font-semibold uppercase text-muted-foreground">{t("profile.joinedServer")}</div>
+                              <div className="text-xs text-foreground">{m.joined_at ? format(new Date(m.joined_at), "MMM d, yyyy") : "—"}</div>
+                            </div>
                           </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
 
-                const highestRole = userHighestRoleMap.get(m.user_id);
-                const memberButton = (
-                  <button
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-sidebar-accent/50 transition-colors w-full text-start"
-                    onClick={isMobile ? () => setSelectedMemberId(m.user_id) : undefined}
-                  >
-                    <div className="relative">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={p?.avatar_url || ""} />
-                        <AvatarFallback className="bg-primary/20 text-primary text-xs">{name.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="sm" className="absolute bottom-0 end-0" />
-                    </div>
-                    <StyledDisplayName
-                      displayName={name}
-                      gradientStart={p?.name_gradient_start}
-                      gradientEnd={p?.name_gradient_end}
-                      color={status !== "offline" && status !== "invisible" ? (highestRole?.color ?? null) : null}
-                      className={`text-sm truncate ${status === "offline" || status === "invisible" ? "text-muted-foreground" : "text-foreground"}`}
-                    />
-                    {highestRole?.icon_url && (
-                      <img src={highestRole.icon_url} className="h-4 w-4 rounded shrink-0" alt={highestRole.name} />
-                    )}
-                  </button>
-                );
+                          {user && m.user_id !== user.id && (
+                            <>
+                              <Separator className="my-3" />
+                              <Input
+                                placeholder={t("profile.messageUser", { name: username })}
+                                className="h-8 text-xs"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    const val = (e.target as HTMLInputElement).value;
+                                    handleQuickMessage(m.user_id, val);
+                                  }
+                                }}
+                              />
+                            </>
+                          )}
+                          {user && m.user_id === user.id && serverSounds.length > 0 && (
+                            <>
+                              <Separator className="my-3" />
+                              <div>
+                                <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">
+                                  {t("servers.entranceSound")}
+                                </div>
+                                <select
+                                  value={entranceSoundId || ""}
+                                  onChange={(e) => updateEntranceSound(e.target.value || null)}
+                                  className="w-full text-xs h-8 rounded-md border border-input bg-background px-2"
+                                >
+                                  <option value="">{t("servers.noEntranceSound")}</option>
+                                  {serverSounds.map((s) => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
 
-                if (isMobile) {
-                  return (
-                    <React.Fragment key={m.user_id}>
-                      <ServerMemberContextMenu
-                        targetUserId={m.user_id}
-                        targetUsername={username}
-                        serverId={serverId}
-                        targetRole={m.role}
-                        currentUserRole={currentUserRole}
+                    const highestRole = userHighestRoleMap.get(m.user_id);
+                    const memberButton = (
+                      <button
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-sidebar-accent/50 transition-colors w-full text-start"
+                        onClick={isMobile ? () => setSelectedMemberId(m.user_id) : undefined}
                       >
-                        {memberButton}
-                      </ServerMemberContextMenu>
-                      <DialogPrimitive.Root
-                        open={selectedMemberId === m.user_id}
-                        onOpenChange={(open: boolean) => !open && setSelectedMemberId(null)}
-                      >
-                        <DialogPrimitive.Portal>
-                          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-                          <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-32px)] max-w-[340px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl shadow-2xl focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
-                            <DialogPrimitive.Title className="sr-only">{name}</DialogPrimitive.Title>
-                            {profileCardContent}
-                            <DialogPrimitive.Close className="absolute right-2 top-2 z-10 rounded-full bg-black/40 p-1.5 text-white opacity-80 hover:opacity-100 focus:outline-none transition-opacity">
-                              <X className="h-3.5 w-3.5" />
-                              <span className="sr-only">Close</span>
-                            </DialogPrimitive.Close>
-                          </DialogPrimitive.Content>
-                        </DialogPrimitive.Portal>
-                      </DialogPrimitive.Root>
-                    </React.Fragment>
-                  );
-                }
+                        <div className="relative">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={p?.avatar_url || ""} />
+                            <AvatarFallback className="bg-primary/20 text-primary text-xs">{name.charAt(0).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="sm" className="absolute bottom-0 end-0" />
+                        </div>
+                        <StyledDisplayName
+                          displayName={name}
+                          gradientStart={p?.name_gradient_start}
+                          gradientEnd={p?.name_gradient_end}
+                          color={status !== "offline" && status !== "invisible" ? (highestRole?.color ?? null) : null}
+                          className={`text-sm truncate ${status === "offline" || status === "invisible" ? "text-muted-foreground" : "text-foreground"}`}
+                          serverTag={(p as any)?.active_server_tag ? {
+                            name: (p as any).active_server_tag.server_tag_name,
+                            badge: (p as any).active_server_tag.server_tag_badge,
+                            color: (p as any).active_server_tag.server_tag_color
+                          } : null}
+                        />
+                        {highestRole?.icon_url && (
+                          <img src={highestRole.icon_url} className="h-4 w-4 rounded shrink-0" alt={highestRole.name} />
+                        )}
+                      </button>
+                    );
 
-                return (
-                  <Popover key={m.user_id}>
-                    <ServerMemberContextMenu
-                      targetUserId={m.user_id}
-                      targetUsername={username}
-                      serverId={serverId}
-                      targetRole={m.role}
-                      currentUserRole={currentUserRole}
-                    >
-                      <PopoverTrigger asChild>
-                        {memberButton}
-                      </PopoverTrigger>
-                    </ServerMemberContextMenu>
-                    <PopoverContent side="left" align="start" className="w-[300px] p-0 overflow-hidden rounded-lg">
-                      {profileCardContent}
-                    </PopoverContent>
-                  </Popover>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+                    if (isMobile) {
+                      return (
+                        <React.Fragment key={m.user_id}>
+                          <ServerMemberContextMenu
+                            targetUserId={m.user_id}
+                            targetUsername={username}
+                            serverId={serverId}
+                            targetRole={m.role}
+                            currentUserRole={currentUserRole}
+                          >
+                            {memberButton}
+                          </ServerMemberContextMenu>
+                          <DialogPrimitive.Root
+                            open={selectedMemberId === m.user_id}
+                            onOpenChange={(open: boolean) => !open && setSelectedMemberId(null)}
+                          >
+                            <DialogPrimitive.Portal>
+                              <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+                              <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-32px)] max-w-[340px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl shadow-2xl focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+                                <DialogPrimitive.Title className="sr-only">{name}</DialogPrimitive.Title>
+                                {profileCardContent}
+                                <DialogPrimitive.Close className="absolute right-2 top-2 z-10 rounded-full bg-black/40 p-1.5 text-white opacity-80 hover:opacity-100 focus:outline-none transition-opacity">
+                                  <X className="h-3.5 w-3.5" />
+                                  <span className="sr-only">Close</span>
+                                </DialogPrimitive.Close>
+                              </DialogPrimitive.Content>
+                            </DialogPrimitive.Portal>
+                          </DialogPrimitive.Root>
+                        </React.Fragment>
+                      );
+                    }
+
+                    return (
+                      <Popover key={m.user_id}>
+                        <ServerMemberContextMenu
+                          targetUserId={m.user_id}
+                          targetUsername={username}
+                          serverId={serverId}
+                          targetRole={m.role}
+                          currentUserRole={currentUserRole}
+                        >
+                          <PopoverTrigger asChild>
+                            {memberButton}
+                          </PopoverTrigger>
+                        </ServerMemberContextMenu>
+                        <PopoverContent side="left" align="start" className="w-[300px] p-0 overflow-hidden rounded-lg">
+                          {profileCardContent}
+                        </PopoverContent>
+                      </Popover>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

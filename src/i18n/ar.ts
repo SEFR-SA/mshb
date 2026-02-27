@@ -736,6 +736,12 @@ export default {
     perm_deafen_members: "إخراس الأعضاء",
     perm_deafen_members_desc: "يسمح بإخراس الآخرين في قنوات الصوت.",
   },
+  serverTags: {
+    title: "أوسمة السيرفر",
+    description: "اختر وسم سيرفر ليظهر بجانب اسمك في كل مكان.",
+    none: "لا يوجد",
+    selectTag: "اختر وسم سيرفر..."
+  },
   voice: {
     soundboard: "لوحة الأصوات",
     noSounds: "لا توجد أصوات مرفوعة بعد",
