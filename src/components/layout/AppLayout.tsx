@@ -12,6 +12,7 @@ import { Users } from "lucide-react";
 import CallListener from "@/components/chat/CallListener";
 import ServerRail from "@/components/server/ServerRail";
 import VoiceConnectionManager from "@/components/server/VoiceConnectionBar";
+import GlobalNotificationListener from "@/components/chat/GlobalNotificationListener";
 import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -39,6 +40,7 @@ const AppLayout = () => {
   return (
     <div className={`flex h-screen overflow-hidden ${colorTheme === "default" ? "bg-background" : ""}`} style={colorTheme !== "default" ? gradientStyle : undefined}>
       <CallListener />
+      <GlobalNotificationListener />
       {/* ServerRail is rendered by child views (HomeView, ServerView) on mobile, not here */}
       {!isMobile && <ServerRail />}
       <main className="flex-1 flex flex-col overflow-hidden">
