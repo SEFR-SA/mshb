@@ -18,6 +18,8 @@ import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 import AuditLogView from "./AuditLogView";
 import ServerProfileTab from "./settings/ServerProfileTab";
+import EngagementTab from "./settings/EngagementTab";
+import ServerTagTab from "./settings/ServerTagTab";
 
 interface Member {
   user_id: string;
@@ -269,6 +271,10 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
             </div>
           </div>
         );
+      case "engagement":
+        return <EngagementTab serverId={serverId} canEdit={canEdit} />;
+      case "tag":
+        return <ServerTagTab serverId={serverId} canEdit={canEdit} />;
       case "auditlogs":
         return canViewAuditLogs ? <AuditLogView serverId={serverId} /> : null;
       default:
