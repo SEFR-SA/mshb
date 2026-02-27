@@ -20,6 +20,9 @@ import AuditLogView from "./AuditLogView";
 import ServerProfileTab from "./settings/ServerProfileTab";
 import EngagementTab from "./settings/EngagementTab";
 import ServerTagTab from "./settings/ServerTagTab";
+import EmojisTab from "./settings/EmojisTab";
+import StickersTab from "./settings/StickersTab";
+import SoundboardTab from "./settings/SoundboardTab";
 
 interface Member {
   user_id: string;
@@ -275,6 +278,12 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
         return <EngagementTab serverId={serverId} canEdit={canEdit} />;
       case "tag":
         return <ServerTagTab serverId={serverId} canEdit={canEdit} />;
+      case "emojis":
+        return <EmojisTab serverId={serverId} canEdit={canEdit} />;
+      case "stickers":
+        return <StickersTab serverId={serverId} canEdit={canEdit} />;
+      case "soundboard":
+        return <SoundboardTab serverId={serverId} canEdit={canEdit} />;
       case "auditlogs":
         return canViewAuditLogs ? <AuditLogView serverId={serverId} /> : null;
       default:
