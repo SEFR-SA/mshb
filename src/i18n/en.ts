@@ -344,6 +344,9 @@ export default {
     requestNewInvite: "Request a new invite",
     youAreInvited: "You've been invited",
     general: "General",
+    entranceSound: "Entrance Sound",
+    noEntranceSound: "None",
+    entranceSoundUpdated: "Entrance sound updated",
   },
   auditLog: {
     title: "Audit Logs",
@@ -689,6 +692,10 @@ export default {
     roleCreated: "Role created",
     roleUpdated: "Role saved",
     roleDeleted: "Role deleted",
+    assignRoles: "Assign Roles",
+    noRolesAvailable: "No custom roles yet",
+    roleAssigned: "Role assigned",
+    roleUnassigned: "Role removed",
     deleteRole: "Delete Role",
     deleteRoleConfirmTitle: "Delete this role?",
     deleteRoleConfirmDesc: "This cannot be undone. Members with this role will lose it.",
@@ -728,5 +735,10 @@ export default {
     perm_mute_members_desc: "Allows members to server-mute others in voice channels.",
     perm_deafen_members: "Deafen Members",
     perm_deafen_members_desc: "Allows members to server-deafen others in voice channels.",
+  },
+  voice: {
+    soundboard: "Soundboard",
+    noSounds: "No sounds uploaded yet",
+    movedToAfk: "You were moved to the AFK channel for being inactive.",
   },
 };

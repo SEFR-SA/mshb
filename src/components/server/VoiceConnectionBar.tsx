@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 /** Monitor a MediaStream's volume via AnalyserNode and call back with isSpeaking */
 function createVolumeMonitor(
@@ -65,9 +67,14 @@ interface VoiceConnectionManagerProps {
 /** Headless component — manages WebRTC voice connection with no visible UI */
 const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect }: VoiceConnectionManagerProps) => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { globalMuted, globalDeafened } = useAudioSettings();
-  const { isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsCameraOn, setLocalCameraStream, setRemoteCameraStream } = useVoiceChannel();
+  const { isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsCameraOn, setLocalCameraStream, setRemoteCameraStream, voiceChannel, setVoiceChannel } = useVoiceChannel();
   const [isJoined, setIsJoined] = useState(false);
+  const [inactiveChannelId, setInactiveChannelId] = useState<string | null>(null);
+  const [inactiveTimeout, setInactiveTimeout] = useState<number | null>(null);
+  const [inactiveChannelName, setInactiveChannelName] = useState("AFK");
+  const afkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudiosRef = useRef<HTMLAudioElement[]>([]);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -91,11 +98,57 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     }, 60 * 60 * 1000);
   }, [onDisconnect]);
 
+  // Fetch AFK settings when connected
+  useEffect(() => {
+    if (!serverId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("servers" as any)
+        .select("inactive_channel_id, inactive_timeout")
+        .eq("id", serverId)
+        .maybeSingle();
+      const icId = (data as any)?.inactive_channel_id ?? null;
+      const icTimeout = (data as any)?.inactive_timeout ?? null;
+      setInactiveChannelId(icId);
+      setInactiveTimeout(icTimeout);
+      if (icId) {
+        const { data: chData } = await supabase
+          .from("channels" as any)
+          .select("name")
+          .eq("id", icId)
+          .maybeSingle();
+        setInactiveChannelName((chData as any)?.name ?? "AFK");
+      }
+    })();
+  }, [serverId]);
+
+  const resetAfkTimer = useCallback(() => {
+    if (afkTimerRef.current) clearTimeout(afkTimerRef.current);
+    if (!inactiveChannelId || !inactiveTimeout) return;
+    if (channelId === inactiveChannelId) return; // already in AFK channel
+    afkTimerRef.current = setTimeout(() => {
+      toast.info(t("voice.movedToAfk"));
+      setVoiceChannel({ id: inactiveChannelId, name: inactiveChannelName, serverId });
+    }, inactiveTimeout * 60 * 1000);
+  }, [inactiveChannelId, inactiveTimeout, inactiveChannelName, channelId, serverId, setVoiceChannel, t]);
+
+  // Listen for soundboard play events dispatched by ChannelSidebar
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const url = (e as CustomEvent).detail?.url;
+      if (!url) return;
+      channelRef.current?.send({ type: "broadcast", event: "soundboard_play", payload: { sound_url: url } });
+    };
+    window.addEventListener("play-soundboard", handler);
+    return () => window.removeEventListener("play-soundboard", handler);
+  }, []);
+
   const updateSpeaking = useCallback((userId: string, isSpeaking: boolean) => {
     if (lastSpeakingRef.current === isSpeaking) return;
     lastSpeakingRef.current = isSpeaking;
     if (isSpeaking && userId === user?.id) {
       resetIdleTimer();
+      resetAfkTimer();
     }
     supabase
       .from("voice_channel_participants" as any)
@@ -103,7 +156,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       .eq("channel_id", channelId)
       .eq("user_id", userId)
       .then();
-  }, [channelId, user?.id, resetIdleTimer]);
+  }, [channelId, user?.id, resetIdleTimer, resetAfkTimer]);
 
   const createPeerConnection = useCallback((peerId: string) => {
     const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
@@ -498,6 +551,12 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         setRemoteCameraStream(null);
       }
     })
+    .on("broadcast", { event: "soundboard_play" }, ({ payload }) => {
+      if (!payload?.sound_url) return;
+      const audio = new Audio(payload.sound_url);
+      audio.volume = 0.7;
+      audio.play().catch(() => {});
+    })
     .subscribe();
   }, [channelId, user, createPeerConnection, setRemoteScreenStream, setScreenSharerName, setRemoteCameraStream]);
 
@@ -519,6 +578,24 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         if (mounted) {
           setIsJoined(true);
           window.dispatchEvent(new CustomEvent("voice-participants-changed"));
+        }
+
+        // Broadcast entrance sound if set
+        if (serverId) {
+          const { data: memberData } = await supabase
+            .from("server_members" as any)
+            .select("entrance_sound_id, server_soundboard!entrance_sound_id(url)")
+            .eq("server_id", serverId)
+            .eq("user_id", user.id)
+            .maybeSingle();
+          const entranceSoundUrl = (memberData as any)?.server_soundboard?.url;
+          if (entranceSoundUrl) {
+            channelRef.current?.send({
+              type: "broadcast",
+              event: "soundboard_play",
+              payload: { sound_url: entranceSoundUrl },
+            });
+          }
         }
 
         const localMonitor = createVolumeMonitor(stream, (isSpeaking) => {
@@ -546,14 +623,16 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     };
     join();
 
-    // Start idle timer on join
+    // Start idle + AFK timers on join
     resetIdleTimer();
+    resetAfkTimer();
 
     return () => {
       mounted = false;
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      if (afkTimerRef.current) clearTimeout(afkTimerRef.current);
     };
-  }, [channelId, user, setupSignaling, createPeerConnection, updateSpeaking, resetIdleTimer]);
+  }, [channelId, user, setupSignaling, createPeerConnection, updateSpeaking, resetIdleTimer, resetAfkTimer]);
 
   // Mute: toggle local audio tracks
   useEffect(() => {

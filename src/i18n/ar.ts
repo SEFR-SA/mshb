@@ -344,6 +344,9 @@ export default {
     requestNewInvite: "طلب دعوة جديدة",
     youAreInvited: "لقد دُعيت",
     general: "عام",
+    entranceSound: "صوت الدخول",
+    noEntranceSound: "لا يوجد",
+    entranceSoundUpdated: "تم تحديث صوت الدخول",
   },
   auditLog: {
     title: "سجل التدقيق",
@@ -689,6 +692,10 @@ export default {
     roleCreated: "تم إنشاء الدور",
     roleUpdated: "تم حفظ الدور",
     roleDeleted: "تم حذف الدور",
+    assignRoles: "تعيين الأدوار",
+    noRolesAvailable: "لا توجد أدوار مخصصة بعد",
+    roleAssigned: "تم تعيين الدور",
+    roleUnassigned: "تمت إزالة الدور",
     deleteRole: "حذف الدور",
     deleteRoleConfirmTitle: "حذف هذا الدور؟",
     deleteRoleConfirmDesc: "لا يمكن التراجع عن هذا الإجراء. سيفقد الأعضاء المرتبطون بهذا الدور صلاحياته.",
@@ -728,5 +735,10 @@ export default {
     perm_mute_members_desc: "يسمح بكتم الآخرين في قنوات الصوت.",
     perm_deafen_members: "إخراس الأعضاء",
     perm_deafen_members_desc: "يسمح بإخراس الآخرين في قنوات الصوت.",
+  },
+  voice: {
+    soundboard: "لوحة الأصوات",
+    noSounds: "لا توجد أصوات مرفوعة بعد",
+    movedToAfk: "تم نقلك إلى قناة الخمول بسبب عدم النشاط.",
   },
 };

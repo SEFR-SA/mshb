@@ -10,9 +10,18 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, MoreHorizontal, MessageSquare, Phone, UserPlus, ShieldAlert, Shield, UserX, Ban } from "lucide-react";
+
+interface ServerRole {
+  id: string;
+  name: string;
+  color: string;
+  icon_url: string | null;
+  position: number;
+  permissions: Record<string, boolean>;
+}
 
 interface MemberWithProfile {
   id: string;
@@ -46,33 +55,45 @@ const MembersTab = ({ serverId }: Props) => {
   const [roleFilter, setRoleFilter] = useState<"all" | "owner" | "admin" | "member">("all");
   const [kickTargetId, setKickTargetId] = useState<string | null>(null);
   const [kickTargetName, setKickTargetName] = useState("");
+  const [serverRoles, setServerRoles] = useState<ServerRole[]>([]);
+  const [memberRolesMap, setMemberRolesMap] = useState<Map<string, string[]>>(new Map());
 
   const fetchMembers = async () => {
-    const { data: rows } = await supabase
-      .from("server_members" as any)
-      .select("id, user_id, role, joined_at")
-      .eq("server_id", serverId);
+    const [{ data: rows }, { data: roles }, { data: assigned }] = await Promise.all([
+      supabase.from("server_members" as any).select("id, user_id, role, joined_at").eq("server_id", serverId),
+      supabase.from("server_roles" as any).select("id, name, color, icon_url, position, permissions").eq("server_id", serverId).order("position"),
+      supabase.from("member_roles" as any).select("user_id, role_id").eq("server_id", serverId),
+    ]);
 
     const list = (rows as any[]) || [];
     if (list.length === 0) {
       setMembers([]);
-      return;
+    } else {
+      const userIds = list.map((m) => m.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, username, avatar_url, status, created_at")
+        .in("user_id", userIds);
+
+      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
+      const merged: MemberWithProfile[] = list.map((m) => ({
+        ...m,
+        profile: profileMap.get(m.user_id) ?? null,
+      }));
+
+      merged.sort((a, b) => (roleOrder[a.role] ?? 2) - (roleOrder[b.role] ?? 2));
+      setMembers(merged);
     }
 
-    const userIds = list.map((m) => m.user_id);
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, display_name, username, avatar_url, status, created_at")
-      .in("user_id", userIds);
+    setServerRoles((roles as any[]) || []);
 
-    const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
-    const merged: MemberWithProfile[] = list.map((m) => ({
-      ...m,
-      profile: profileMap.get(m.user_id) ?? null,
-    }));
-
-    merged.sort((a, b) => (roleOrder[a.role] ?? 2) - (roleOrder[b.role] ?? 2));
-    setMembers(merged);
+    const rmap = new Map<string, string[]>();
+    ((assigned as any[]) || []).forEach((r) => {
+      const arr = rmap.get(r.user_id) || [];
+      arr.push(r.role_id);
+      rmap.set(r.user_id, arr);
+    });
+    setMemberRolesMap(rmap);
   };
 
   useEffect(() => {
@@ -99,37 +120,51 @@ const MembersTab = ({ serverId }: Props) => {
   // ─── Actions ───────────────────────────────────────────────────────────────
 
   const handlePromote = async (userId: string, username: string) => {
-    await supabase
-      .from("server_members" as any)
-      .update({ role: "admin" } as any)
-      .eq("server_id", serverId)
-      .eq("user_id", userId);
-    await supabase.from("server_audit_logs" as any).insert({
-      server_id: serverId,
-      actor_id: user?.id,
-      action_type: "member_promoted",
-      target_id: userId,
-      changes: { target_username: username, new_role: "admin" },
-    } as any);
+    const previousMembers = members;
     setMembers((prev) => prev.map((m) => (m.user_id === userId ? { ...m, role: "admin" } : m)));
-    toast({ title: t("servers.promoted") });
+    try {
+      const { error } = await supabase
+        .from("server_members" as any)
+        .update({ role: "admin" } as any)
+        .eq("server_id", serverId)
+        .eq("user_id", userId);
+      if (error) throw error;
+      await supabase.from("server_audit_logs" as any).insert({
+        server_id: serverId,
+        actor_id: user?.id,
+        action_type: "member_promoted",
+        target_id: userId,
+        changes: { target_username: username, new_role: "admin" },
+      } as any);
+      toast({ title: t("servers.promoted") });
+    } catch {
+      setMembers(previousMembers);
+      toast({ title: t("common.error"), variant: "destructive" });
+    }
   };
 
   const handleDemote = async (userId: string, username: string) => {
-    await supabase
-      .from("server_members" as any)
-      .update({ role: "member" } as any)
-      .eq("server_id", serverId)
-      .eq("user_id", userId);
-    await supabase.from("server_audit_logs" as any).insert({
-      server_id: serverId,
-      actor_id: user?.id,
-      action_type: "member_demoted",
-      target_id: userId,
-      changes: { target_username: username, new_role: "member" },
-    } as any);
+    const previousMembers = members;
     setMembers((prev) => prev.map((m) => (m.user_id === userId ? { ...m, role: "member" } : m)));
-    toast({ title: t("servers.demoted") });
+    try {
+      const { error } = await supabase
+        .from("server_members" as any)
+        .update({ role: "member" } as any)
+        .eq("server_id", serverId)
+        .eq("user_id", userId);
+      if (error) throw error;
+      await supabase.from("server_audit_logs" as any).insert({
+        server_id: serverId,
+        actor_id: user?.id,
+        action_type: "member_demoted",
+        target_id: userId,
+        changes: { target_username: username, new_role: "member" },
+      } as any);
+      toast({ title: t("servers.demoted") });
+    } catch {
+      setMembers(previousMembers);
+      toast({ title: t("common.error"), variant: "destructive" });
+    }
   };
 
   const openKickConfirm = (userId: string, displayName: string) => {
@@ -139,21 +174,29 @@ const MembersTab = ({ serverId }: Props) => {
 
   const confirmKick = async () => {
     if (!kickTargetId) return;
-    await supabase
-      .from("server_members" as any)
-      .delete()
-      .eq("server_id", serverId)
-      .eq("user_id", kickTargetId);
-    await supabase.from("server_audit_logs" as any).insert({
-      server_id: serverId,
-      actor_id: user?.id,
-      action_type: "member_kicked",
-      target_id: kickTargetId,
-      changes: { target_username: kickTargetName },
-    } as any);
-    setMembers((prev) => prev.filter((m) => m.user_id !== kickTargetId));
-    toast({ title: t("servers.kicked") });
+    const previousMembers = members;
+    const targetId = kickTargetId;
+    setMembers((prev) => prev.filter((m) => m.user_id !== targetId));
     setKickTargetId(null);
+    try {
+      const { error } = await supabase
+        .from("server_members" as any)
+        .delete()
+        .eq("server_id", serverId)
+        .eq("user_id", targetId);
+      if (error) throw error;
+      await supabase.from("server_audit_logs" as any).insert({
+        server_id: serverId,
+        actor_id: user?.id,
+        action_type: "member_kicked",
+        target_id: targetId,
+        changes: { target_username: kickTargetName },
+      } as any);
+      toast({ title: t("servers.kicked") });
+    } catch {
+      setMembers(previousMembers);
+      toast({ title: t("common.error"), variant: "destructive" });
+    }
   };
 
   const handleMessage = async (targetUserId: string) => {
@@ -204,6 +247,40 @@ const MembersTab = ({ serverId }: Props) => {
   const handleComingSoon = () => {
     toast({ title: t("serverSettings.comingSoon") });
   };
+
+  const toggleMemberRole = async (targetUserId: string, roleId: string, currentlyHas: boolean) => {
+    const previousRolesMap = new Map(memberRolesMap);
+    // Optimistic update
+    setMemberRolesMap((prev) => {
+      const next = new Map(prev);
+      if (currentlyHas) {
+        next.set(targetUserId, (next.get(targetUserId) || []).filter((id) => id !== roleId));
+      } else {
+        next.set(targetUserId, [...(next.get(targetUserId) || []), roleId]);
+      }
+      return next;
+    });
+    try {
+      if (currentlyHas) {
+        const { error } = await supabase.from("member_roles" as any).delete()
+          .eq("user_id", targetUserId).eq("role_id", roleId).eq("server_id", serverId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("member_roles" as any).insert({ server_id: serverId, user_id: targetUserId, role_id: roleId } as any);
+        if (error) throw error;
+      }
+      toast({ title: currentlyHas ? t("serverSettings.roleUnassigned") : t("serverSettings.roleAssigned") });
+    } catch {
+      setMemberRolesMap(previousRolesMap);
+      toast({ title: t("common.error"), variant: "destructive" });
+    }
+  };
+
+  const currentUserRoleIds = memberRolesMap.get(user?.id) || [];
+  const hasManageRoles = serverRoles
+    .filter((r) => currentUserRoleIds.includes(r.id))
+    .some((r) => r.permissions?.manage_roles === true);
+  const canAssignRoles = isOwner || (isAdmin && hasManageRoles);
 
   // ─── Role badge helper ──────────────────────────────────────────────────────
 
@@ -382,6 +459,41 @@ const MembersTab = ({ serverId }: Props) => {
                               <UserPlus className="h-4 w-4 me-2" />
                               {t("serverSettings.actionAddFriend")}
                             </DropdownMenuItem>
+
+                            {/* Assign Roles */}
+                            {canAssignRoles && m.role !== "owner" && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>
+                                    <Shield className="h-4 w-4 me-2" />
+                                    {t("serverSettings.assignRoles")}
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    {serverRoles.length === 0 ? (
+                                      <p className="text-xs text-muted-foreground px-3 py-2">{t("serverSettings.noRolesAvailable")}</p>
+                                    ) : (
+                                      serverRoles.map((role) => {
+                                        const hasRole = (memberRolesMap.get(m.user_id) || []).includes(role.id);
+                                        return (
+                                          <DropdownMenuCheckboxItem
+                                            key={role.id}
+                                            checked={hasRole}
+                                            onCheckedChange={() => toggleMemberRole(m.user_id, role.id, hasRole)}
+                                          >
+                                            <span
+                                              className="h-3 w-3 rounded-full me-2 shrink-0 inline-block"
+                                              style={{ backgroundColor: role.color }}
+                                            />
+                                            {role.name}
+                                          </DropdownMenuCheckboxItem>
+                                        );
+                                      })
+                                    )}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              </>
+                            )}
 
                             {/* Moderation actions */}
                             {(canPromote || canDemote || canKick) && (

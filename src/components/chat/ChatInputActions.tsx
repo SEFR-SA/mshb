@@ -15,6 +15,7 @@ interface ChatInputActionsProps {
   onGifSelect: (url: string) => Promise<void>;
   onStickerSelect: (url: string) => Promise<void>;
   disabled?: boolean;
+  serverId?: string;
 }
 
 const ChatInputActions = ({
@@ -23,6 +24,7 @@ const ChatInputActions = ({
   onGifSelect,
   onStickerSelect,
   disabled,
+  serverId,
 }: ChatInputActionsProps) => {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
@@ -35,9 +37,9 @@ const ChatInputActions = ({
     return (
       <>
         <FileAttachmentButton onFileSelect={onFileSelect} disabled={disabled} />
-        <EmojiPicker onEmojiSelect={onEmojiSelect} />
+        <EmojiPicker onEmojiSelect={onEmojiSelect} serverId={serverId} />
         <GifPicker onGifSelect={onGifSelect} />
-        <StickerPicker onStickerSelect={onStickerSelect} />
+        <StickerPicker onStickerSelect={onStickerSelect} serverId={serverId} />
       </>
     );
   }
@@ -92,7 +94,7 @@ const ChatInputActions = ({
       )}
       {activePicker === "emoji" && (
         <MobilePickerWrapper onClose={() => setActivePicker(null)}>
-          <EmojiPicker onEmojiSelect={(emoji) => { onEmojiSelect(emoji); setActivePicker(null); }} />
+          <EmojiPicker onEmojiSelect={(emoji) => { onEmojiSelect(emoji); setActivePicker(null); }} serverId={serverId} />
         </MobilePickerWrapper>
       )}
       {activePicker === "gif" && (
@@ -102,7 +104,7 @@ const ChatInputActions = ({
       )}
       {activePicker === "sticker" && (
         <MobilePickerWrapper onClose={() => setActivePicker(null)}>
-          <StickerPicker onStickerSelect={(url) => { onStickerSelect(url); setActivePicker(null); }} />
+          <StickerPicker onStickerSelect={(url) => { onStickerSelect(url); setActivePicker(null); }} serverId={serverId} />
         </MobilePickerWrapper>
       )}
     </>

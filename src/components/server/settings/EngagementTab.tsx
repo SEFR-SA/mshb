@@ -67,13 +67,26 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
     load();
   }, [serverId]);
 
+  // Auto-save the welcome toggle immediately — no Save button needed for this single boolean
+  const handleWelcomeToggle = async (checked: boolean) => {
+    const previous = welcomeEnabled;
+    setWelcomeEnabled(checked);
+    const { error } = await supabase
+      .from("servers" as any)
+      .update({ welcome_message_enabled: checked } as any)
+      .eq("id", serverId);
+    if (error) {
+      setWelcomeEnabled(previous);
+      toast({ title: t("common.error"), variant: "destructive" });
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       await supabase
         .from("servers" as any)
         .update({
-          welcome_message_enabled: welcomeEnabled,
           system_message_channel_id: systemChannelId || null,
           default_notification_level: notifLevel,
           inactive_channel_id: inactiveChannelId || null,
@@ -124,7 +137,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           </Label>
           <Switch
             checked={welcomeEnabled}
-            onCheckedChange={setWelcomeEnabled}
+            onCheckedChange={canEdit ? handleWelcomeToggle : undefined}
             disabled={!canEdit}
             className="shrink-0"
           />

@@ -1,13 +1,16 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;
+  serverId?: string;
 }
 
 const categories = [
@@ -116,11 +119,21 @@ const emojiKeywords: Record<string, string[]> = {
   "✅": ["check","done","yes"], "❌": ["cross","no","wrong"], "⭐": ["star"],
 };
 
-const EmojiPicker = ({ onEmojiSelect }: EmojiPickerProps) => {
+const EmojiPicker = ({ onEmojiSelect, serverId }: EmojiPickerProps) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(0);
   const [search, setSearch] = useState("");
+  const [serverEmojis, setServerEmojis] = useState<{ id: string; name: string; url: string }[]>([]);
+
+  useEffect(() => {
+    if (!serverId) return;
+    supabase
+      .from("server_emojis" as any)
+      .select("id, name, url")
+      .eq("server_id", serverId)
+      .then(({ data }) => setServerEmojis((data as any[]) || []));
+  }, [serverId]);
 
   const filteredEmojis = useMemo(() => {
     if (!search.trim()) return null;
@@ -184,6 +197,28 @@ const EmojiPicker = ({ onEmojiSelect }: EmojiPickerProps) => {
 
           {/* Emoji grid */}
           <ScrollArea className="flex-1">
+            {/* Server emojis section */}
+            {!search.trim() && serverEmojis.length > 0 && (
+              <>
+                <div className="text-[10px] font-semibold uppercase text-muted-foreground px-3 pt-2 pb-1">
+                  {t("emoji.serverEmojis", "Server Emojis")}
+                </div>
+                <div className="grid grid-cols-8 gap-0.5 px-2">
+                  {serverEmojis.map((e) => (
+                    <button
+                      key={e.id}
+                      onClick={() => handleSelect(`:${e.name}:`)}
+                      className="h-9 w-9 flex items-center justify-center rounded hover:bg-muted transition-colors"
+                      type="button"
+                      title={`:${e.name}:`}
+                    >
+                      <img src={e.url} className="h-6 w-6 object-contain" alt={e.name} />
+                    </button>
+                  ))}
+                </div>
+                <Separator className="my-2" />
+              </>
+            )}
             <div className="grid grid-cols-8 gap-0.5 p-2">
               {displayEmojis.map((emoji, i) => (
                 <button

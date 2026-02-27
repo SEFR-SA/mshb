@@ -12,10 +12,23 @@ interface Props {
   currentUserId: string;
   onToggle: (messageId: string, emoji: string) => void;
   isMine?: boolean;
+  serverId?: string;
+  serverEmojis?: Array<{ name: string; url: string }>;
 }
 
-const MessageReactions = ({ messageId, reactions, currentUserId, onToggle, isMine }: Props) => {
+const MessageReactions = ({ messageId, reactions, currentUserId, onToggle, isMine, serverId, serverEmojis }: Props) => {
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  const renderEmoji = (emoji: string) => {
+    const m = emoji.match(/^:([a-zA-Z0-9_]+):$/);
+    if (m && serverEmojis) {
+      const found = serverEmojis.find((e) => e.name === m[1]);
+      if (found) {
+        return <img src={found.url} className="h-4 w-4 inline-block" alt={emoji} />;
+      }
+    }
+    return emoji;
+  };
 
   return (
     <div className={`flex flex-wrap items-center gap-1 mt-1 ${isMine ? "justify-end" : "justify-start"}`}>
@@ -31,7 +44,7 @@ const MessageReactions = ({ messageId, reactions, currentUserId, onToggle, isMin
                 : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted"
             }`}
           >
-            <span className="text-sm">{r.emoji}</span>
+            <span className="text-sm">{renderEmoji(r.emoji)}</span>
             <span className="font-medium">{r.count}</span>
           </button>
         );
@@ -57,7 +70,10 @@ const MessageReactions = ({ messageId, reactions, currentUserId, onToggle, isMin
               </button>
             ))}
           </div>
-          <EmojiPicker onEmojiSelect={(emoji) => { onToggle(messageId, emoji); setPickerOpen(false); }} />
+          <EmojiPicker
+            onEmojiSelect={(emoji) => { onToggle(messageId, emoji); setPickerOpen(false); }}
+            serverId={serverId}
+          />
         </PopoverContent>
       </Popover>
     </div>

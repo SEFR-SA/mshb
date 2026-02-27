@@ -35,6 +35,14 @@ interface Member {
   };
 }
 
+interface CustomRole {
+  id: string;
+  name: string;
+  color: string;
+  icon_url: string | null;
+  position: number;
+}
+
 interface Props {
   serverId: string;
 }
@@ -53,13 +61,16 @@ const ServerMemberList = ({ serverId }: Props) => {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [userHighestRoleMap, setUserHighestRoleMap] = useState<Map<string, CustomRole>>(new Map());
+  const [serverSounds, setServerSounds] = useState<{ id: string; name: string }[]>([]);
+  const [entranceSoundId, setEntranceSoundId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from("server_members" as any)
-        .select("user_id, role, joined_at")
-        .eq("server_id", serverId);
+      const [{ data }, { data: memberRolesData }] = await Promise.all([
+        supabase.from("server_members" as any).select("user_id, role, joined_at").eq("server_id", serverId),
+        supabase.from("member_roles" as any).select("user_id, server_roles(id, name, color, icon_url, position)").eq("server_id", serverId),
+      ]);
       if (!data) return;
       const userIds = (data as any[]).map((m) => m.user_id);
       const { data: profiles } = await supabase
@@ -71,15 +82,39 @@ const ServerMemberList = ({ serverId }: Props) => {
       setMembers(
         (data as any[]).map((m) => ({ ...m, profile: profileMap.get(m.user_id) }))
       );
+
+      const highestMap = new Map<string, CustomRole>();
+      ((memberRolesData as any[]) || []).forEach((mr) => {
+        const role = (mr as any).server_roles;
+        if (!role) return;
+        const existing = highestMap.get(mr.user_id);
+        if (!existing || role.position < existing.position) {
+          highestMap.set(mr.user_id, role);
+        }
+      });
+      setUserHighestRoleMap(highestMap);
+
+      // Fetch soundboard + own entrance sound
+      const [{ data: sounds }, { data: meData }] = await Promise.all([
+        supabase.from("server_soundboard" as any).select("id, name").eq("server_id", serverId).order("created_at"),
+        user ? supabase.from("server_members" as any).select("entrance_sound_id").eq("server_id", serverId).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+      setServerSounds((sounds as any[]) || []);
+      setEntranceSoundId((meData as any)?.entrance_sound_id ?? null);
+
       setLoading(false);
     };
     load();
 
-    const channel = supabase
+    const membersChannel = supabase
       .channel(`server-members-${serverId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "server_members", filter: `server_id=eq.${serverId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "member_roles", filter: `server_id=eq.${serverId}` }, () => load())
+      // Reload when role colors/names change so member list re-renders with the new color immediately
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "server_roles", filter: `server_id=eq.${serverId}` }, () => load())
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "server_roles", filter: `server_id=eq.${serverId}` }, () => load())
       .subscribe();
-    return () => { channel.unsubscribe(); };
+    return () => { membersChannel.unsubscribe(); };
   }, [serverId]);
 
   const handleQuickMessage = async (targetUserId: string, message: string) => {
@@ -118,18 +153,44 @@ const ServerMemberList = ({ serverId }: Props) => {
     navigate(`/chat/${threadId}`);
   };
 
-  const roleOrder = { owner: 0, admin: 1, member: 2 };
-  const grouped = members.reduce<Record<string, Member[]>>((acc, m) => {
-    const label = t(`servers.${m.role}`);
-    (acc[label] = acc[label] || []).push(m);
-    return acc;
-  }, {});
+  const updateEntranceSound = async (soundId: string | null) => {
+    await supabase
+      .from("server_members" as any)
+      .update({ entrance_sound_id: soundId } as any)
+      .eq("server_id", serverId)
+      .eq("user_id", user!.id);
+    setEntranceSoundId(soundId);
+    toast.success(t("servers.entranceSoundUpdated"));
+  };
 
-  const sortedGroups = Object.entries(grouped).sort(([, a], [, b]) => {
-    const ra = roleOrder[(a[0]?.role as keyof typeof roleOrder) || "member"] ?? 2;
-    const rb = roleOrder[(b[0]?.role as keyof typeof roleOrder) || "member"] ?? 2;
-    return ra - rb;
+  // Build role groups: owner always first, then custom-role groups by position, then admin/member fallback
+  const groupsArray: { label: string; mems: Member[]; sortKey: number }[] = [];
+  const owners = members.filter((m) => m.role === "owner");
+  if (owners.length > 0) groupsArray.push({ label: t("servers.owner"), mems: owners, sortKey: -2 });
+
+  const customRoleGroupMap = new Map<string, { role: CustomRole; mems: Member[] }>();
+  const noCustomRoleAdmins: Member[] = [];
+  const noCustomRoleMembers: Member[] = [];
+
+  members.filter((m) => m.role !== "owner").forEach((m) => {
+    const highestRole = userHighestRoleMap.get(m.user_id);
+    if (highestRole) {
+      const g = customRoleGroupMap.get(highestRole.id) || { role: highestRole, mems: [] };
+      g.mems.push(m);
+      customRoleGroupMap.set(highestRole.id, g);
+    } else if (m.role === "admin") {
+      noCustomRoleAdmins.push(m);
+    } else {
+      noCustomRoleMembers.push(m);
+    }
   });
+
+  [...customRoleGroupMap.values()]
+    .sort((a, b) => a.role.position - b.role.position)
+    .forEach((g) => groupsArray.push({ label: g.role.name, mems: g.mems, sortKey: g.role.position }));
+
+  if (noCustomRoleAdmins.length > 0) groupsArray.push({ label: t("servers.admin"), mems: noCustomRoleAdmins, sortKey: 1000 });
+  if (noCustomRoleMembers.length > 0) groupsArray.push({ label: t("servers.member"), mems: noCustomRoleMembers, sortKey: 1001 });
 
   const currentUserRole = members.find((m) => m.user_id === user?.id)?.role ?? null;
 
@@ -143,7 +204,7 @@ const ServerMemberList = ({ serverId }: Props) => {
           <MemberListSkeleton count={8} />
         ) : (
           <div className="animate-fade-in space-y-4">
-        {sortedGroups.map(([label, mems]) => (
+        {groupsArray.map(({ label, mems }) => (
           <div key={label}>
             <span className="text-[11px] font-semibold uppercase text-muted-foreground px-1">{label} — {mems.length}</span>
             <div className="mt-1 space-y-0.5">
@@ -215,10 +276,31 @@ const ServerMemberList = ({ serverId }: Props) => {
                           />
                         </>
                       )}
+                      {user && m.user_id === user.id && serverSounds.length > 0 && (
+                        <>
+                          <Separator className="my-3" />
+                          <div>
+                            <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">
+                              {t("servers.entranceSound")}
+                            </div>
+                            <select
+                              value={entranceSoundId || ""}
+                              onChange={(e) => updateEntranceSound(e.target.value || null)}
+                              className="w-full text-xs h-8 rounded-md border border-input bg-background px-2"
+                            >
+                              <option value="">{t("servers.noEntranceSound")}</option>
+                              {serverSounds.map((s) => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
 
+                const highestRole = userHighestRoleMap.get(m.user_id);
                 const memberButton = (
                   <button
                     className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-sidebar-accent/50 transition-colors w-full text-start"
@@ -235,8 +317,12 @@ const ServerMemberList = ({ serverId }: Props) => {
                       displayName={name}
                       gradientStart={p?.name_gradient_start}
                       gradientEnd={p?.name_gradient_end}
+                      color={status !== "offline" && status !== "invisible" ? (highestRole?.color ?? null) : null}
                       className={`text-sm truncate ${status === "offline" || status === "invisible" ? "text-muted-foreground" : "text-foreground"}`}
                     />
+                    {highestRole?.icon_url && (
+                      <img src={highestRole.icon_url} className="h-4 w-4 rounded shrink-0" alt={highestRole.name} />
+                    )}
                   </button>
                 );
 

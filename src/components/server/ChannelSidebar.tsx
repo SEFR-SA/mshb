@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone } from "lucide-react";
+import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone, Music } from "lucide-react";
 import VoiceUserContextMenu from "./VoiceUserContextMenu";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
@@ -50,6 +50,9 @@ interface Server {
   owner_id: string;
   icon_url: string | null;
   banner_url: string | null;
+  server_tag_name: string | null;
+  server_tag_badge: string | null;
+  server_tag_color: string | null;
 }
 
 interface VoiceParticipant {
@@ -131,6 +134,25 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [dragType, setDragType] = useState<"channel" | "section" | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+
+  // Soundboard
+  const [serverSounds, setServerSounds] = useState<{ id: string; name: string; url: string }[]>([]);
+  const [soundboardOpen, setSoundboardOpen] = useState(false);
+
+  useEffect(() => {
+    if (!voiceChannel?.serverId) { setServerSounds([]); return; }
+    supabase
+      .from("server_soundboard" as any)
+      .select("id, name, url")
+      .eq("server_id", voiceChannel.serverId)
+      .order("created_at")
+      .then(({ data }) => setServerSounds((data as any[]) || []));
+  }, [voiceChannel?.serverId]);
+
+  const playSoundboardSound = (url: string) => {
+    window.dispatchEvent(new CustomEvent("play-soundboard", { detail: { url } }));
+    setSoundboardOpen(false);
+  };
 
   // Section rename/delete state
   const [renamingCategory, setRenamingCategory] = useState<string | null>(null);
@@ -557,7 +579,17 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     <>
       <div className="w-[240px] max-md:w-full max-md:max-w-full h-full flex flex-col bg-sidebar-background/30 backdrop-blur-sm border-e border-sidebar-border shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
-          <h2 className="font-bold text-sm truncate">{server?.name || "..."}</h2>
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+            <h2 className="font-bold text-sm truncate">{server?.name || "..."}</h2>
+            {server?.server_tag_name && (
+              <span
+                className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap"
+                style={{ backgroundColor: server.server_tag_color || "#5865f2", color: "#ffffff" }}
+              >
+                {server.server_tag_badge ? `${server.server_tag_badge} ` : ""}{server.server_tag_name}
+              </span>
+            )}
+          </div>
           <div className="flex gap-1">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setInviteModalOpen(true)} title={t("servers.copyInvite")}>
               <Copy className="h-3.5 w-3.5" />
@@ -890,6 +922,27 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={toggleGlobalDeafen} title={globalDeafened ? t("audio.undeafen") : t("audio.deafen")}>
               {globalDeafened ? <HeadphoneOff className="h-4 w-4 text-destructive" /> : <Headphones className="h-4 w-4" />}
             </Button>
+            {voiceChannel && serverSounds.length > 0 && (
+              <Popover open={soundboardOpen} onOpenChange={setSoundboardOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title={t("voice.soundboard")}>
+                    <Music className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2" side="top">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">{t("voice.soundboard")}</p>
+                  {serverSounds.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => playSoundboardSound(s.url)}
+                      className="w-full text-start px-2 py-1.5 text-sm rounded hover:bg-accent"
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            )}
             <RouterNavLink to="/settings">
               <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title={t("nav.settings")}>
                 <Settings className="h-4 w-4" />

@@ -4,6 +4,7 @@ interface StyledDisplayNameProps {
   displayName: string;
   gradientStart?: string | null;
   gradientEnd?: string | null;
+  color?: string | null;
   className?: string;
 }
 
@@ -11,6 +12,7 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
   displayName,
   gradientStart,
   gradientEnd,
+  color,
   className = "",
 }) => {
   if (gradientStart && gradientEnd) {
@@ -31,6 +33,10 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
         {displayName}
       </span>
     );
+  }
+
+  if (color) {
+    return <span className={className} style={{ color }}>{displayName}</span>;
   }
 
   return <span className={className}>{displayName}</span>;

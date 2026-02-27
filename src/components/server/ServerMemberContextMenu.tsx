@@ -3,13 +3,17 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { MessageSquare, UserPlus, UserMinus, Phone, ClipboardCopy, ShieldCheck, ShieldOff, UserX } from "lucide-react";
+import { MessageSquare, UserPlus, UserMinus, Phone, ClipboardCopy, ShieldCheck, ShieldOff, ShieldAlert, UserX } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   ContextMenu,
+  ContextMenuCheckboxItem,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 
@@ -35,6 +39,9 @@ const ServerMemberContextMenu = ({
   const navigate = useNavigate();
   const [friendshipId, setFriendshipId] = useState<string | null>(null);
   const [friendStatus, setFriendStatus] = useState<string | null>(null);
+  const [cmRolesLoaded, setCmRolesLoaded] = useState(false);
+  const [cmServerRoles, setCmServerRoles] = useState<{ id: string; name: string; color: string }[]>([]);
+  const [cmMemberRoleIds, setCmMemberRoleIds] = useState<string[]>([]);
 
   const isSelf = user?.id === targetUserId;
   const isOwner = currentUserRole === "owner";
@@ -165,6 +172,29 @@ const ServerMemberContextMenu = ({
     toast({ title: t("servers.kicked") });
   };
 
+  const loadRolesIfNeeded = async () => {
+    if (cmRolesLoaded) return;
+    const [{ data: roles }, { data: assigned }] = await Promise.all([
+      supabase.from("server_roles" as any).select("id, name, color").eq("server_id", serverId).order("position"),
+      supabase.from("member_roles" as any).select("role_id").eq("server_id", serverId).eq("user_id", targetUserId),
+    ]);
+    setCmServerRoles((roles as any[]) || []);
+    setCmMemberRoleIds(((assigned as any[]) || []).map((r: any) => r.role_id));
+    setCmRolesLoaded(true);
+  };
+
+  const toggleCmRole = async (roleId: string, currentlyHas: boolean) => {
+    if (currentlyHas) {
+      await supabase.from("member_roles" as any).delete()
+        .eq("user_id", targetUserId).eq("role_id", roleId).eq("server_id", serverId);
+      setCmMemberRoleIds((prev) => prev.filter((id) => id !== roleId));
+    } else {
+      await supabase.from("member_roles" as any).insert({ server_id: serverId, user_id: targetUserId, role_id: roleId } as any);
+      setCmMemberRoleIds((prev) => [...prev, roleId]);
+    }
+    toast({ title: currentlyHas ? t("serverSettings.roleUnassigned") : t("serverSettings.roleAssigned") });
+  };
+
   if (isSelf) return <>{children}</>;
 
   const canPromote = isOwner && targetRole === "member";
@@ -208,6 +238,36 @@ const ServerMemberContextMenu = ({
               <ClipboardCopy className="h-4 w-4 me-2" />
               {t("actions.copyUsername")}
             </ContextMenuItem>
+          </>
+        )}
+        {(isOwner || isAdmin) && targetRole !== "owner" && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuSub onOpenChange={(open) => open && loadRolesIfNeeded()}>
+              <ContextMenuSubTrigger>
+                <ShieldAlert className="h-4 w-4 me-2" />
+                {t("serverSettings.assignRoles")}
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {cmServerRoles.length === 0 ? (
+                  <p className="text-xs text-muted-foreground px-3 py-2">{t("serverSettings.noRolesAvailable")}</p>
+                ) : (
+                  cmServerRoles.map((role) => {
+                    const hasRole = cmMemberRoleIds.includes(role.id);
+                    return (
+                      <ContextMenuCheckboxItem
+                        key={role.id}
+                        checked={hasRole}
+                        onCheckedChange={() => toggleCmRole(role.id, hasRole)}
+                      >
+                        <span className="h-3 w-3 rounded-full me-2 shrink-0 inline-block" style={{ backgroundColor: role.color }} />
+                        {role.name}
+                      </ContextMenuCheckboxItem>
+                    );
+                  })
+                )}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
           </>
         )}
         {hasAdminActions && (

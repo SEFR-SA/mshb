@@ -36,6 +36,8 @@ import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
+// Stable empty array reference — avoids creating new [] on every render for reactions-free messages
+const EMPTY_REACTIONS: any[] = [];
 
 interface Props {
   channelId: string;
@@ -46,7 +48,12 @@ interface Props {
   isAnnouncement?: boolean;
 }
 
-const renderMessageContent = (content: string, profiles: Map<string, any>, currentUserId?: string) => {
+const renderMessageContent = (
+  content: string,
+  profiles: Map<string, any>,
+  currentUserId?: string,
+  serverEmojis?: Array<{ name: string; url: string }>
+) => {
   const parts = content.split(/(@\w+)/g);
   return parts.map((part, i) => {
     if (part === "@all") {
@@ -64,10 +71,208 @@ const renderMessageContent = (content: string, profiles: Map<string, any>, curre
         );
       }
     }
-    // Apply link detection to non-mention text parts
-    return <React.Fragment key={i}>{renderLinkedText(part)}</React.Fragment>;
+    return <React.Fragment key={i}>{renderLinkedText(part, serverEmojis)}</React.Fragment>;
   });
 };
+
+// ─── MessageItem ────────────────────────────────────────────────────────────
+// Memoized so that typing in the input (parent state) or other unrelated parent
+// state changes don't cause the entire message list to re-render.
+
+interface MessageItemProps {
+  msg: any;
+  prevMsg: any | null;
+  replyToMsg: any | null;
+  profiles: Map<string, any>;
+  roleInfo: { color: string; iconUrl: string | null } | null;
+  currentUserId: string | undefined;
+  serverEmojis: Array<{ name: string; url: string }>;
+  serverId: string | undefined;
+  channelId: string;
+  isAnnouncement: boolean | undefined;
+  isFirstMessage: boolean;
+  isHighlighted: boolean;
+  reactions: any[];
+  user: any;
+  onReply: (id: string, authorName: string, content: string) => void;
+  onDeleteForMe: (id: string) => void;
+  onDeleteForEveryone: ((id: string) => void) | undefined;
+  onMarkUnread: (id: string, createdAt: string) => void;
+  onHighlight: React.Dispatch<React.SetStateAction<string | null>>;
+  toggleReaction: (mid: string, emoji: string, uid: string) => void;
+}
+
+const MessageItem = React.memo(({
+  msg, prevMsg, replyToMsg, profiles, roleInfo,
+  currentUserId, serverEmojis, serverId, channelId, isAnnouncement,
+  isFirstMessage, isHighlighted, reactions, user,
+  onReply, onDeleteForMe, onDeleteForEveryone, onMarkUnread, onHighlight,
+  toggleReaction,
+}: MessageItemProps) => {
+  const { t } = useTranslation();
+  const p = profiles.get(msg.author_id);
+  const name = p?.display_name || p?.username || "User";
+  const isMine = msg.author_id === currentUserId;
+  const sameAuthor = !!(prevMsg && prevMsg.author_id === msg.author_id);
+  const timeDiff = prevMsg ? new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime() : Infinity;
+  const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
+  const msgAny = msg as any;
+
+  // Welcome (join) message
+  if (msgAny.type === "welcome") {
+    return (
+      <div className="flex items-center gap-3 py-2 px-1 text-sm text-muted-foreground select-none">
+        <div className="flex-1 border-t border-border" />
+        <span className="shrink-0">
+          👋 <strong>{p?.display_name || p?.username || t("common.someone")}</strong>{" "}
+          {t("servers.joinedServer")}
+        </span>
+        <div className="flex-1 border-t border-border" />
+      </div>
+    );
+  }
+
+  // Server invite card
+  if (msgAny.type === "server_invite" && msgAny.metadata) {
+    return (
+      <div className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : isFirstMessage ? "" : "mt-3"}`}>
+        <ServerInviteCard metadata={msgAny.metadata} isMine={isMine} />
+      </div>
+    );
+  }
+
+  const replyAuthorProfile = replyToMsg ? profiles.get(replyToMsg.author_id) : null;
+  const replyName = replyAuthorProfile?.display_name || replyAuthorProfile?.username || "…";
+  const replyAvatarUrl = replyAuthorProfile?.avatar_url || "";
+
+  return (
+    <MessageContextMenu
+      content={msg.content}
+      messageId={msg.id}
+      authorName={name}
+      isMine={isMine}
+      isDeleted={false}
+      onReply={(id, authorName, content) => onReply(id, authorName, content)}
+      onDeleteForMe={(id) => onDeleteForMe(id)}
+      onDeleteForEveryone={onDeleteForEveryone}
+      onMarkUnread={(id) => onMarkUnread(id, msg.created_at)}
+    >
+      <div
+        id={`msg-${msg.id}`}
+        className={`hover:bg-muted/30 rounded-lg px-2 py-1 -mx-2 transition-colors group ${isGrouped ? "mt-0.5" : isFirstMessage ? "" : "mt-3"} ${isHighlighted ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}
+      >
+        {msgAny.reply_to_id && replyToMsg && (
+          <div className="ms-5">
+            <ReplyPreview
+              authorName={replyName}
+              content={replyToMsg.content || "…"}
+              avatarUrl={replyAvatarUrl}
+              onClick={() => {
+                const el = document.getElementById(`msg-${msgAny.reply_to_id}`);
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  onHighlight(msgAny.reply_to_id);
+                  setTimeout(() => onHighlight(null), 2000);
+                }
+              }}
+            />
+          </div>
+        )}
+        <div className="flex gap-3">
+          <UserContextMenu targetUserId={msg.author_id} targetUsername={p?.username || undefined}>
+            <Avatar className="h-9 w-9 mt-0.5 shrink-0 cursor-pointer">
+              <AvatarImage src={p?.avatar_url || ""} />
+              <AvatarFallback className="bg-primary/20 text-primary text-xs">{name.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+          </UserContextMenu>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-2">
+              <UserContextMenu targetUserId={msg.author_id} targetUsername={p?.username || undefined}>
+                <StyledDisplayName
+                  displayName={name}
+                  gradientStart={p?.name_gradient_start}
+                  gradientEnd={p?.name_gradient_end}
+                  color={isMine ? undefined : roleInfo?.color}
+                  className={`text-sm font-semibold cursor-pointer hover:underline ${isMine ? "text-primary" : "text-foreground"}`}
+                />
+                {!isMine && roleInfo?.iconUrl && (
+                  <img src={roleInfo.iconUrl} className="h-3.5 w-3.5 rounded inline ms-1 align-middle" alt="role" />
+                )}
+              </UserContextMenu>
+              <span className="text-[10px] text-muted-foreground">
+                {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+            {msg.file_url && (msg.file_type === "gif" || msg.file_type === "sticker") ? (
+              <div className="mt-1">
+                <img src={msg.file_url} alt={msg.file_type === "gif" ? "GIF" : "Sticker"} className="max-w-[240px] max-h-[200px] rounded-lg object-contain" loading="lazy" />
+              </div>
+            ) : msg.file_url ? (
+              <div className="mt-1">
+                <MessageFilePreview fileUrl={msg.file_url} fileName={msg.file_name || "file"} fileType={msg.file_type || ""} fileSize={msg.file_size || 0} isMine={isMine} />
+              </div>
+            ) : null}
+            {msg.content && (
+              isAnnouncement ? (
+                <div className="text-sm leading-relaxed prose-sm">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      h1: ({ children }) => <h1 className="text-xl font-bold mt-2 mb-1">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-lg font-bold mt-1.5 mb-1">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-base font-semibold mt-1 mb-0.5">{children}</h3>,
+                      p:  ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
+                      ul: ({ children }) => <ul className="list-disc ms-4 mb-1.5 space-y-0.5">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal ms-4 mb-1.5 space-y-0.5">{children}</ol>,
+                      strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                      em: ({ children }) => <em className="italic">{children}</em>,
+                      del: ({ children }) => <del className="line-through opacity-70">{children}</del>,
+                      code: ({ children }) => <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
+                      pre: ({ children }) => <pre className="bg-muted p-3 rounded-lg text-xs font-mono overflow-x-auto mb-1.5">{children}</pre>,
+                      blockquote: ({ children }) => <blockquote className="border-s-4 border-primary/50 ps-3 italic text-muted-foreground mb-1.5">{children}</blockquote>,
+                      a: ({ href, children }) => <a href={href} className="text-primary underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <p className={`whitespace-pre-wrap break-words ${getEmojiClass(msg.content) || "text-sm"}`}>
+                  {renderMessageContent(msg.content, profiles, currentUserId, serverEmojis)}
+                </p>
+              )
+            )}
+            <MessageReactions
+              messageId={msg.id}
+              reactions={reactions}
+              currentUserId={user?.id || ""}
+              onToggle={(mid, emoji) => user && toggleReaction(mid, emoji, user.id)}
+              serverId={serverId}
+              serverEmojis={serverEmojis}
+            />
+          </div>
+        </div>
+      </div>
+    </MessageContextMenu>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparator: only re-render when this message's own data changed.
+  // This prevents the whole list from re-rendering when the user types, drags
+  // a file, or triggers any other parent-level state change.
+  return (
+    prevProps.msg === nextProps.msg &&
+    prevProps.prevMsg === nextProps.prevMsg &&
+    prevProps.replyToMsg === nextProps.replyToMsg &&
+    prevProps.profiles === nextProps.profiles &&
+    prevProps.roleInfo === nextProps.roleInfo &&
+    prevProps.serverEmojis === nextProps.serverEmojis &&
+    prevProps.isHighlighted === nextProps.isHighlighted &&
+    prevProps.reactions === nextProps.reactions &&
+    prevProps.isFirstMessage === nextProps.isFirstMessage
+  );
+});
+
+// ─── ServerChannelChat ───────────────────────────────────────────────────────
 
 const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement }: Props) => {
   const { t } = useTranslation();
@@ -93,6 +298,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
 
   const isLocked = isPrivate && hasAccess === false;
   const [userRole, setUserRole] = useState<string>("member");
+  const [userRoleColorMap, setUserRoleColorMap] = useState<Map<string, { color: string; iconUrl: string | null }>>(new Map());
   const { reactions, toggleReaction } = useMessageReactions(messages.map((m: any) => m.id));
 
   // Fetch user's role in this server for announcement channel access control
@@ -109,12 +315,69 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       });
   }, [serverId, user?.id]);
 
+  // Fetch custom role colors for all members in this server
+  useEffect(() => {
+    if (!serverId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("member_roles" as any)
+        .select("user_id, server_roles(id, color, icon_url, position)")
+        .eq("server_id", serverId);
+      const map = new Map<string, { color: string; iconUrl: string | null }>();
+      ((data as any[]) || []).forEach((mr) => {
+        const role = (mr as any).server_roles;
+        if (!role) return;
+        const existing = map.get(mr.user_id);
+        if (!existing || role.position < (existing as any)._position) {
+          map.set(mr.user_id, { color: role.color, iconUrl: role.icon_url, _position: role.position } as any);
+        }
+      });
+      setUserRoleColorMap(map);
+    })();
+  }, [serverId]);
+
+  const [serverEmojis, setServerEmojis] = useState<{ name: string; url: string }[]>([]);
+
+  // Initial fetch of server emojis
+  useEffect(() => {
+    if (!serverId) return;
+    supabase
+      .from("server_emojis" as any)
+      .select("name, url")
+      .eq("server_id", serverId)
+      .then(({ data }) => setServerEmojis((data as any[]) || []));
+  }, [serverId]);
+
+  // Realtime subscription: keep serverEmojis in sync when admin adds/removes emojis
+  useEffect(() => {
+    if (!serverId) return;
+    const channel = supabase
+      .channel(`server-emojis-${serverId}`)
+      .on("postgres_changes",
+        { event: "INSERT", schema: "public", table: "server_emojis", filter: `server_id=eq.${serverId}` },
+        (payload) => {
+          setServerEmojis((prev) => [
+            ...prev,
+            { name: (payload.new as any).name, url: (payload.new as any).url },
+          ]);
+        }
+      )
+      .on("postgres_changes",
+        { event: "DELETE", schema: "public", table: "server_emojis", filter: `server_id=eq.${serverId}` },
+        (payload) => {
+          setServerEmojis((prev) => prev.filter((e) => e.name !== (payload.old as any).name));
+        }
+      )
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [serverId]);
+
   const canPost = !isAnnouncement || userRole === "admin" || userRole === "owner";
 
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
     if (newIds.length === 0) return;
-    const { data } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url").in("user_id", newIds);
+    const { data } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, name_gradient_start, name_gradient_end").in("user_id", newIds);
     if (data) {
       setProfiles((prev) => {
         const next = new Map(prev);
@@ -183,6 +446,30 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     return () => { channel.unsubscribe(); };
   }, [channelId, loadProfiles, isLocked]);
 
+  // ── Stable action callbacks for MessageItem (prevent memo from busting) ──
+
+  const handleReply = useCallback((id: string, authorName: string, content: string) => {
+    setReplyingTo({ id, authorName, content });
+  }, []);
+
+  const handleDeleteForMe = useCallback(async (id: string) => {
+    if (!user) return;
+    await supabase.from("message_hidden").insert({ user_id: user.id, message_id: id });
+  }, [user]);
+
+  const handleDeleteForEveryone = useCallback(async (id: string) => {
+    await supabase.from("messages").update({ deleted_for_everyone: true, content: "" }).eq("id", id);
+  }, []);
+
+  const handleMarkUnread = useCallback((msgId: string, msgCreatedAt: string) => {
+    if (!user) return;
+    const before = new Date(new Date(msgCreatedAt).getTime() - 1000).toISOString();
+    supabase.from("channel_read_status" as any).upsert(
+      { channel_id: channelId, user_id: user.id, last_read_at: before } as any,
+      { onConflict: "channel_id,user_id" } as any
+    ).then();
+  }, [user, channelId]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setNewMsg(val);
@@ -235,7 +522,6 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       const replyId = replyingTo?.id || null;
       setReplyingTo(null);
 
-      // Detect invite URL (only for text-only messages)
       if (!file && content) {
         const invite = await detectInviteInMessage(content);
         if (invite.isInvite) {
@@ -316,154 +602,46 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
           <MessageSkeleton count={6} />
         ) : (
           <div className="animate-fade-in">
-        {hasMore && messages.length > 0 && (
-          <div className="text-center mb-2">
-            <Button variant="ghost" size="sm" onClick={() => loadMessages(messages[0]?.created_at)} className="text-xs text-muted-foreground">
-              {t("chat.loadMore")}
-            </Button>
-          </div>
-        )}
-        {messages.map((msg, idx) => {
-          const p = profiles.get(msg.author_id);
-          const name = p?.display_name || p?.username || "User";
-          const isMine = msg.author_id === user?.id;
-          const prev = idx > 0 ? messages[idx - 1] : null;
-          const sameAuthor = prev && prev.author_id === msg.author_id;
-          const timeDiff = prev ? new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() : Infinity;
-          const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
-          const msgAny = msg as any;
-
-          // Server invite card
-          if (msgAny.type === 'server_invite' && msgAny.metadata) {
-            return (
-              <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"}`}>
-                <ServerInviteCard metadata={msgAny.metadata} isMine={isMine} />
+            {hasMore && messages.length > 0 && (
+              <div className="text-center mb-2">
+                <Button variant="ghost" size="sm" onClick={() => loadMessages(messages[0]?.created_at)} className="text-xs text-muted-foreground">
+                  {t("chat.loadMore")}
+                </Button>
               </div>
-            );
-          }
-
-          return (
-            <MessageContextMenu
-              key={msg.id}
-              content={msg.content}
-              messageId={msg.id}
-              authorName={name}
-              isMine={isMine}
-              isDeleted={false}
-              onReply={(id, authorName, content) => setReplyingTo({ id, authorName, content })}
-              onDeleteForMe={async (id) => {
-                if (!user) return;
-                await supabase.from("message_hidden").insert({ user_id: user.id, message_id: id });
-              }}
-              onDeleteForEveryone={isMine ? async (id) => {
-                await supabase.from("messages").update({ deleted_for_everyone: true, content: "" }).eq("id", id);
-              } : undefined}
-              onMarkUnread={(id) => {
-                const targetMsg = messages.find(m => m.id === id);
-                if (targetMsg && user) {
-                  const before = new Date(new Date(targetMsg.created_at).getTime() - 1000).toISOString();
-                  supabase.from("channel_read_status" as any).upsert(
-                    { channel_id: channelId, user_id: user.id, last_read_at: before } as any,
-                    { onConflict: "channel_id,user_id" } as any
-                  ).then();
-                }
-              }}
-            >
-            <div id={`msg-${msg.id}`} className={`hover:bg-muted/30 rounded-lg px-2 py-1 -mx-2 transition-colors group ${isGrouped ? "mt-0.5" : idx === 0 ? "" : "mt-3"} ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
-              {(msg as any).reply_to_id && (() => {
-                const original = messages.find(m => m.id === (msg as any).reply_to_id);
-                const origProfile = original ? profiles.get(original.author_id) : null;
-                const origName = origProfile?.display_name || origProfile?.username || "…";
-                const origAvatarUrl = origProfile?.avatar_url || "";
-                return (
-                  <div className="ms-5">
-                    <ReplyPreview
-                      authorName={origName}
-                      content={original?.content || "…"}
-                      avatarUrl={origAvatarUrl}
-                      onClick={() => {
-                        const el = document.getElementById(`msg-${(msg as any).reply_to_id}`);
-                        if (el) {
-                          el.scrollIntoView({ behavior: "smooth", block: "center" });
-                          setHighlightedMsgId((msg as any).reply_to_id);
-                          setTimeout(() => setHighlightedMsgId(null), 2000);
-                        }
-                      }}
-                    />
-                  </div>
-                );
-              })()}
-              <div className="flex gap-3">
-              <UserContextMenu targetUserId={msg.author_id} targetUsername={p?.username || undefined}>
-              <Avatar className="h-9 w-9 mt-0.5 shrink-0 cursor-pointer">
-                <AvatarImage src={p?.avatar_url || ""} />
-                <AvatarFallback className="bg-primary/20 text-primary text-xs">{name.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              </UserContextMenu>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <UserContextMenu targetUserId={msg.author_id} targetUsername={p?.username || undefined}>
-                  <StyledDisplayName
-                    displayName={name}
-                    gradientStart={p?.name_gradient_start}
-                    gradientEnd={p?.name_gradient_end}
-                    className={`text-sm font-semibold cursor-pointer hover:underline ${isMine ? "text-primary" : "text-foreground"}`}
-                  />
-                  </UserContextMenu>
-                  <span className="text-[10px] text-muted-foreground">
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </div>
-                {msg.file_url && (msg.file_type === "gif" || msg.file_type === "sticker") ? (
-                  <div className="mt-1">
-                    <img src={msg.file_url} alt={msg.file_type === "gif" ? "GIF" : "Sticker"} className="max-w-[240px] max-h-[200px] rounded-lg object-contain" loading="lazy" />
-                  </div>
-                ) : msg.file_url ? (
-                  <div className="mt-1">
-                    <MessageFilePreview fileUrl={msg.file_url} fileName={msg.file_name || "file"} fileType={msg.file_type || ""} fileSize={msg.file_size || 0} isMine={isMine} />
-                  </div>
-                ) : null}
-                {msg.content && (
-                  isAnnouncement ? (
-                    <div className="text-sm leading-relaxed prose-sm">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          h1: ({ children }) => <h1 className="text-xl font-bold mt-2 mb-1">{children}</h1>,
-                          h2: ({ children }) => <h2 className="text-lg font-bold mt-1.5 mb-1">{children}</h2>,
-                          h3: ({ children }) => <h3 className="text-base font-semibold mt-1 mb-0.5">{children}</h3>,
-                          p:  ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
-                          ul: ({ children }) => <ul className="list-disc ms-4 mb-1.5 space-y-0.5">{children}</ul>,
-                          ol: ({ children }) => <ol className="list-decimal ms-4 mb-1.5 space-y-0.5">{children}</ol>,
-                          strong: ({ children }) => <strong className="font-bold">{children}</strong>,
-                          em: ({ children }) => <em className="italic">{children}</em>,
-                          del: ({ children }) => <del className="line-through opacity-70">{children}</del>,
-                          code: ({ children }) => <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
-                          pre: ({ children }) => <pre className="bg-muted p-3 rounded-lg text-xs font-mono overflow-x-auto mb-1.5">{children}</pre>,
-                          blockquote: ({ children }) => <blockquote className="border-s-4 border-primary/50 ps-3 italic text-muted-foreground mb-1.5">{children}</blockquote>,
-                          a: ({ href, children }) => <a href={href} className="text-primary underline" target="_blank" rel="noopener noreferrer">{children}</a>,
-                        }}
-                      >
-                        {msg.content}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className={`whitespace-pre-wrap break-words ${getEmojiClass(msg.content) || 'text-sm'}`}>{renderMessageContent(msg.content, profiles, user?.id)}</p>
-                  )
-                )}
-                <MessageReactions
-                  messageId={msg.id}
-                  reactions={reactions.get(msg.id) || []}
-                  currentUserId={user?.id || ""}
-                  onToggle={(mid, emoji) => user && toggleReaction(mid, emoji, user.id)}
+            )}
+            {messages.map((msg, idx) => {
+              const prevMsg = idx > 0 ? messages[idx - 1] : null;
+              const replyToMsg = (msg as any).reply_to_id
+                ? messages.find((m) => m.id === (msg as any).reply_to_id) || null
+                : null;
+              const roleInfo = userRoleColorMap.get(msg.author_id) || null;
+              return (
+                <MessageItem
+                  key={msg.id}
+                  msg={msg}
+                  prevMsg={prevMsg}
+                  replyToMsg={replyToMsg}
+                  profiles={profiles}
+                  roleInfo={roleInfo}
+                  currentUserId={user?.id}
+                  serverEmojis={serverEmojis}
+                  serverId={serverId}
+                  channelId={channelId}
+                  isAnnouncement={isAnnouncement}
+                  isFirstMessage={idx === 0}
+                  isHighlighted={highlightedMsgId === msg.id}
+                  reactions={reactions.get(msg.id) || EMPTY_REACTIONS}
+                  user={user}
+                  onReply={handleReply}
+                  onDeleteForMe={handleDeleteForMe}
+                  onDeleteForEveryone={msg.author_id === user?.id ? handleDeleteForEveryone : undefined}
+                  onMarkUnread={handleMarkUnread}
+                  onHighlight={setHighlightedMsgId}
+                  toggleReaction={toggleReaction}
                 />
-              </div>
-              </div>
-            </div>
-            </MessageContextMenu>
-          );
-        })}
-        <div ref={messagesEndRef} />
+              );
+            })}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
@@ -530,6 +708,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                   await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
                 }}
                 disabled={sending}
+                serverId={serverId}
               />
               <AutoResizeTextarea
                 ref={inputRef}
