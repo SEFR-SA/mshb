@@ -8,13 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "@/hooks/use-toast";
-import { Crown, Menu, Shield, ShieldAlert, UserX, Trash2, User, Tag, Sparkles, Smile, StickerIcon, Volume2, Users, ShieldCheck, ScrollText } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
+import { Menu, Trash2, User, Tag, Sparkles, Smile, StickerIcon, Volume2, Users, ShieldCheck, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AuditLogView from "./AuditLogView";
 import ServerProfileTab from "./settings/ServerProfileTab";
@@ -23,6 +20,7 @@ import ServerTagTab from "./settings/ServerTagTab";
 import EmojisTab from "./settings/EmojisTab";
 import StickersTab from "./settings/StickersTab";
 import SoundboardTab from "./settings/SoundboardTab";
+import MembersTab from "./settings/MembersTab";
 
 interface Member {
   user_id: string;
@@ -87,39 +85,6 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
     load();
   }, [open, serverId]);
 
-  const promoteToAdmin = async (userId: string) => {
-    const targetProfile = members.find((m) => m.user_id === userId);
-    await supabase.from("server_members" as any).update({ role: "admin" } as any).eq("server_id", serverId).eq("user_id", userId);
-    await supabase.from("server_audit_logs" as any).insert({
-      server_id: serverId, actor_id: user?.id, action_type: "member_promoted", target_id: userId,
-      changes: { target_username: targetProfile?.profile?.username || userId, new_role: "admin" },
-    } as any);
-    setMembers((prev) => prev.map((m) => m.user_id === userId ? { ...m, role: "admin" } : m));
-    toast({ title: t("servers.promoted") });
-  };
-
-  const demoteToMember = async (userId: string) => {
-    const targetProfile = members.find((m) => m.user_id === userId);
-    await supabase.from("server_members" as any).update({ role: "member" } as any).eq("server_id", serverId).eq("user_id", userId);
-    await supabase.from("server_audit_logs" as any).insert({
-      server_id: serverId, actor_id: user?.id, action_type: "member_demoted", target_id: userId,
-      changes: { target_username: targetProfile?.profile?.username || userId, new_role: "member" },
-    } as any);
-    setMembers((prev) => prev.map((m) => m.user_id === userId ? { ...m, role: "member" } : m));
-    toast({ title: t("servers.demoted") });
-  };
-
-  const kickMember = async (userId: string) => {
-    const kickedProfile = members.find((m) => m.user_id === userId);
-    await supabase.from("server_members" as any).delete().eq("server_id", serverId).eq("user_id", userId);
-    await supabase.from("server_audit_logs" as any).insert({
-      server_id: serverId, actor_id: user?.id, action_type: "member_kicked", target_id: userId,
-      changes: { target_username: kickedProfile?.profile?.username || userId },
-    } as any);
-    setMembers((prev) => prev.filter((m) => m.user_id !== userId));
-    toast({ title: t("servers.kicked") });
-  };
-
   const handleDeleteServer = async () => {
     if (deleteInput !== serverName) return;
     // Delete channels, members, then server
@@ -131,9 +96,6 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
     onOpenChange(false);
     navigate("/");
   };
-
-  const roleOrder = { owner: 0, admin: 1, member: 2 };
-  const sortedMembers = [...members].sort((a, b) => (roleOrder[a.role as keyof typeof roleOrder] ?? 2) - (roleOrder[b.role as keyof typeof roleOrder] ?? 2));
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: "profile", label: t("serverSettings.serverProfile"), icon: <User className="h-4 w-4" /> },
@@ -219,61 +181,7 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
           />
         );
       case "members":
-        return (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">{t("serverSettings.members")} — {members.length}</h2>
-            <div className="space-y-1">
-              {sortedMembers.map((m) => {
-                const p = m.profile;
-                const name = p?.display_name || p?.username || "User";
-                const status = p?.status || "offline";
-                const canManage = isOwner && m.user_id !== user?.id && m.role !== "owner";
-                return (
-                  <div key={m.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="relative">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={p?.avatar_url || ""} />
-                        <AvatarFallback className="bg-primary/20 text-primary text-xs">{name.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="sm" className="absolute bottom-0 end-0" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{name}</p>
-                      <p className="text-[11px] text-muted-foreground capitalize">{t(`servers.${m.role}`)}</p>
-                    </div>
-                    {m.role === "owner" && <Crown className="h-4 w-4 text-primary shrink-0" />}
-                    {canManage && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
-                            <Shield className="h-3.5 w-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {m.role === "member" ? (
-                            <DropdownMenuItem onClick={() => promoteToAdmin(m.user_id)}>
-                              <ShieldAlert className="h-4 w-4 me-2" />
-                              {t("servers.promoteAdmin")}
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem onClick={() => demoteToMember(m.user_id)}>
-                              <Shield className="h-4 w-4 me-2" />
-                              {t("servers.demoteToMember")}
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem className="text-destructive" onClick={() => kickMember(m.user_id)}>
-                            <UserX className="h-4 w-4 me-2" />
-                            {t("servers.kick")}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
+        return <MembersTab serverId={serverId} canEdit={canEdit} />;
       case "engagement":
         return <EngagementTab serverId={serverId} canEdit={canEdit} />;
       case "tag":
