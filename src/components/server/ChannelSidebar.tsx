@@ -25,6 +25,7 @@ import { getAppBaseUrl } from "@/lib/inviteUtils";
 import ServerSettingsDialog from "./ServerSettingsDialog";
 import InviteModal from "./InviteModal";
 import GoLiveModal from "@/components/GoLiveModal";
+import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { usePresence } from "@/hooks/usePresence";
@@ -583,10 +584,11 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             <h2 className="font-bold text-sm truncate">{server?.name || "..."}</h2>
             {server?.server_tag_name && (
               <span
-                className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap"
-                style={{ backgroundColor: server.server_tag_color || "#5865f2", color: "#ffffff" }}
+                className="inline-flex items-center gap-1 shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm leading-none whitespace-nowrap text-white"
+                style={{ backgroundColor: server.server_tag_color || "#5865f2" }}
               >
-                {server.server_tag_badge ? `${server.server_tag_badge} ` : ""}{server.server_tag_name}
+                <ServerTagBadgeIcon badgeName={server.server_tag_badge} className="h-2.5 w-2.5" />
+                {server.server_tag_name.substring(0, 4).toUpperCase()}
               </span>
             )}
           </div>
@@ -612,264 +614,262 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             <ChannelListSkeleton count={4} />
           ) : (
             <div className="animate-fade-in space-y-4">
-          {Object.entries(grouped).map(([category, chs]) => (
-            <Collapsible key={category} open={!collapsedCategories.has(category)}>
-              <div
-                className={`flex items-center justify-between px-1 mb-1 rounded ${dragOverTarget === `section-${category}` ? 'bg-primary/10' : ''}`}
-                draggable={isAdmin}
-                onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, category, "section"); }}
-                onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleSectionDragOver(e, category)}
-                onDrop={(e) => handleSectionDrop(e, category)}
-              >
-                <CollapsibleTrigger onClick={() => toggleCategory(category)} className="flex items-center gap-1 cursor-pointer hover:text-foreground transition-colors flex-1 min-w-0">
-                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 shrink-0 ${collapsedCategories.has(category) ? '-rotate-90' : ''}`} />
-                  {renamingCategory === category ? (
-                    <Input
-                      className="h-5 text-[11px] font-semibold uppercase px-1 py-0"
-                      value={renameCategoryValue}
-                      onChange={(e) => setRenameCategoryValue(e.target.value)}
-                      onBlur={() => handleRenameCategory(category, renameCategoryValue)}
-                      onKeyDown={(e) => {
-                        e.stopPropagation();
-                        if (e.key === "Enter") handleRenameCategory(category, renameCategoryValue);
-                        if (e.key === "Escape") setRenamingCategory(null);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      autoFocus
-                    />
-                  ) : (
-                    <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wide truncate">{category}</span>
-                  )}
-                </CollapsibleTrigger>
-                {isAdmin && (
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 p-0.5" onClick={(e) => e.stopPropagation()}>
-                          <MoreVertical className="h-3 w-3" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem onClick={() => { setRenamingCategory(category); setRenameCategoryValue(category); }}>
-                          <Pencil className="h-3.5 w-3.5 me-2" />
-                          Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          disabled={chs.length > 0}
-                          onClick={() => {
-                            if (chs.length > 0) {
-                              toast({ title: "Section not empty", description: "Delete all channels first." });
-                            }
+              {Object.entries(grouped).map(([category, chs]) => (
+                <Collapsible key={category} open={!collapsedCategories.has(category)}>
+                  <div
+                    className={`flex items-center justify-between px-1 mb-1 rounded ${dragOverTarget === `section-${category}` ? 'bg-primary/10' : ''}`}
+                    draggable={isAdmin}
+                    onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, category, "section"); }}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => handleSectionDragOver(e, category)}
+                    onDrop={(e) => handleSectionDrop(e, category)}
+                  >
+                    <CollapsibleTrigger onClick={() => toggleCategory(category)} className="flex items-center gap-1 cursor-pointer hover:text-foreground transition-colors flex-1 min-w-0">
+                      <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 shrink-0 ${collapsedCategories.has(category) ? '-rotate-90' : ''}`} />
+                      {renamingCategory === category ? (
+                        <Input
+                          className="h-5 text-[11px] font-semibold uppercase px-1 py-0"
+                          value={renameCategoryValue}
+                          onChange={(e) => setRenameCategoryValue(e.target.value)}
+                          onBlur={() => handleRenameCategory(category, renameCategoryValue)}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === "Enter") handleRenameCategory(category, renameCategoryValue);
+                            if (e.key === "Escape") setRenamingCategory(null);
                           }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 me-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <button
-                      onClick={() => { setNewCategory(category); setNewType(category.toLowerCase().includes("voice") ? "voice" : "text"); setCreateOpen(true); }}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <CollapsibleContent>
-              {chs.map((ch) => {
-                const ChannelIcon = ch.is_private ? Lock : (ch.type === "voice" ? Volume2 : (ch.is_announcement ? Megaphone : Hash));
-
-                if (ch.type === "voice") {
-                  const participants = voiceParticipants.get(ch.id) || [];
-                  const hasParticipants = participants.length > 0;
-                  return (
-                    <div key={ch.id}>
-                      {dragOverTarget === ch.id && dragType === "channel" && <div className="h-0.5 bg-primary rounded-full mx-2" />}
-                      <div
-                        className={`group flex items-center ${dragItem === ch.id ? 'opacity-50' : ''}`}
-                        draggable={isAdmin}
-                        onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, ch.id, "channel"); }}
-                        onDragEnd={handleDragEnd}
-                        onDragOver={(e) => handleChannelDragOver(e, ch.id)}
-                        onDrop={(e) => handleChannelDrop(e, ch.id, category)}
-                      >
+                          onClick={(e) => e.stopPropagation()}
+                          autoFocus
+                        />
+                      ) : (
+                        <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wide truncate">{category}</span>
+                      )}
+                    </CollapsibleTrigger>
+                    {isAdmin && (
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 hover:opacity-100 focus:opacity-100 p-0.5" onClick={(e) => e.stopPropagation()}>
+                              <MoreVertical className="h-3 w-3" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem onClick={() => { setRenamingCategory(category); setRenameCategoryValue(category); }}>
+                              <Pencil className="h-3.5 w-3.5 me-2" />
+                              Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              disabled={chs.length > 0}
+                              onClick={() => {
+                                if (chs.length > 0) {
+                                  toast({ title: "Section not empty", description: "Delete all channels first." });
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 me-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <button
-                          onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name })}
-                          className={`flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors hover:bg-sidebar-accent/50 ${
-                            hasParticipants
-                              ? "font-bold text-white"
-                              : "font-medium text-[#949BA4] hover:text-[#DBDEE1]"
-                          }`}
+                          onClick={() => { setNewCategory(category); setNewType(category.toLowerCase().includes("voice") ? "voice" : "text"); setCreateOpen(true); }}
+                          className="text-muted-foreground hover:text-foreground"
                         >
-                          <ChannelIcon className={`h-4 w-4 shrink-0 ${hasParticipants && !ch.is_private ? "text-green-500" : ""}`} />
-                          <span className="truncate">{ch.name}</span>
+                          <Plus className="h-3.5 w-3.5" />
                         </button>
-                        {renderAdminDropdown(ch)}
                       </div>
-                      {participants.map((p) => {
-                        const isScreenSharer = p.is_screen_sharing && p.user_id !== user?.id;
+                    )}
+                  </div>
+                  <CollapsibleContent>
+                    {chs.map((ch) => {
+                      const ChannelIcon = ch.is_private ? Lock : (ch.type === "voice" ? Volume2 : (ch.is_announcement ? Megaphone : Hash));
 
-                        const innerRow = (
-                          <div className="relative group flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground cursor-default">
-                            <div className="relative shrink-0">
-                              <Avatar className="h-5 w-5">
-                                <AvatarImage src={p.avatar_url || ""} />
-                                <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
-                                  {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              {p.is_screen_sharing && (
-                                <span className="absolute -bottom-1 -end-1 bg-green-600 text-white text-[7px] font-bold leading-none px-0.5 py-px rounded-sm">
-                                  {t("streaming.live")}
-                                </span>
-                              )}
-                            </div>
-                            <span className="truncate">{p.display_name || p.username || "User"}</span>
-                            {p.is_screen_sharing && (
-                              <Monitor className="h-3 w-3 text-green-500 shrink-0" />
-                            )}
-                            {p.is_deafened ? (
-                              <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
-                            ) : p.is_muted ? (
-                              <MicOff className="h-3 w-3 text-destructive shrink-0" />
-                            ) : p.is_speaking ? (
-                              <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
-                            ) : null}
-                            {isScreenSharer && isMobile && (
+                      if (ch.type === "voice") {
+                        const participants = voiceParticipants.get(ch.id) || [];
+                        const hasParticipants = participants.length > 0;
+                        return (
+                          <div key={ch.id}>
+                            {dragOverTarget === ch.id && dragType === "channel" && <div className="h-0.5 bg-primary rounded-full mx-2" />}
+                            <div
+                              className={`group flex items-center ${dragItem === ch.id ? 'opacity-50' : ''}`}
+                              draggable={isAdmin}
+                              onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, ch.id, "channel"); }}
+                              onDragEnd={handleDragEnd}
+                              onDragOver={(e) => handleChannelDragOver(e, ch.id)}
+                              onDrop={(e) => handleChannelDrop(e, ch.id, category)}
+                            >
                               <button
-                                onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); }}
-                                className="absolute end-1 opacity-100 transition-opacity bg-green-600 hover:bg-green-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded cursor-pointer"
+                                onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name })}
+                                className={`flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors hover:bg-sidebar-accent/50 ${hasParticipants
+                                    ? "font-bold text-white"
+                                    : "font-medium text-[#949BA4] hover:text-[#DBDEE1]"
+                                  }`}
                               >
-                                {t("streaming.watch")}
+                                <ChannelIcon className={`h-4 w-4 shrink-0 ${hasParticipants && !ch.is_private ? "text-green-500" : ""}`} />
+                                <span className="truncate">{ch.name}</span>
                               </button>
-                            )}
+                              {renderAdminDropdown(ch)}
+                            </div>
+                            {participants.map((p) => {
+                              const isScreenSharer = p.is_screen_sharing && p.user_id !== user?.id;
+
+                              const innerRow = (
+                                <div className="relative group flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground cursor-default">
+                                  <div className="relative shrink-0">
+                                    <Avatar className="h-5 w-5">
+                                      <AvatarImage src={p.avatar_url || ""} />
+                                      <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
+                                        {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    {p.is_screen_sharing && (
+                                      <span className="absolute -bottom-1 -end-1 bg-green-600 text-white text-[7px] font-bold leading-none px-0.5 py-px rounded-sm">
+                                        {t("streaming.live")}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="truncate">{p.display_name || p.username || "User"}</span>
+                                  {p.is_screen_sharing && (
+                                    <Monitor className="h-3 w-3 text-green-500 shrink-0" />
+                                  )}
+                                  {p.is_deafened ? (
+                                    <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
+                                  ) : p.is_muted ? (
+                                    <MicOff className="h-3 w-3 text-destructive shrink-0" />
+                                  ) : p.is_speaking ? (
+                                    <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
+                                  ) : null}
+                                  {isScreenSharer && isMobile && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); }}
+                                      className="absolute end-1 opacity-100 transition-opacity bg-green-600 hover:bg-green-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded cursor-pointer"
+                                    >
+                                      {t("streaming.watch")}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+
+                              if (!isMobile && isScreenSharer) {
+                                const clickableRow = (
+                                  <div className="relative group flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground cursor-pointer">
+                                    <div className="relative shrink-0">
+                                      <Avatar className="h-5 w-5">
+                                        <AvatarImage src={p.avatar_url || ""} />
+                                        <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
+                                          {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="absolute -bottom-1 -end-1 bg-green-600 text-white text-[7px] font-bold leading-none px-0.5 py-px rounded-sm">
+                                        {t("streaming.live")}
+                                      </span>
+                                    </div>
+                                    <span className="truncate">{p.display_name || p.username || "User"}</span>
+                                    <Monitor className="h-3 w-3 text-green-500 shrink-0" />
+                                    {p.is_deafened ? (
+                                      <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
+                                    ) : p.is_muted ? (
+                                      <MicOff className="h-3 w-3 text-destructive shrink-0" />
+                                    ) : p.is_speaking ? (
+                                      <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
+                                    ) : null}
+                                  </div>
+                                );
+                                return (
+                                  <Popover
+                                    key={p.user_id}
+                                    open={streamCardOpen === p.user_id}
+                                    onOpenChange={(open) => setStreamCardOpen(open ? p.user_id : null)}
+                                  >
+                                    <VoiceUserContextMenu
+                                      targetUserId={p.user_id}
+                                      targetUsername={p.username || undefined}
+                                      serverId={serverId}
+                                      channelId={ch.id}
+                                      serverOwnerId={server?.owner_id || ""}
+                                      currentUserRole={currentUserRole}
+                                    >
+                                      <PopoverTrigger asChild>
+                                        {clickableRow}
+                                      </PopoverTrigger>
+                                    </VoiceUserContextMenu>
+                                    <PopoverContent side="right" align="start" sideOffset={8} className="w-[280px] p-0 overflow-hidden rounded-lg">
+                                      <div className="aspect-video bg-black flex items-center justify-center">
+                                        {remoteScreenStream
+                                          ? <StreamPreviewVideo stream={remoteScreenStream} />
+                                          : <Monitor className="h-8 w-8 text-muted-foreground" />
+                                        }
+                                      </div>
+                                      <div className="p-3 flex flex-col items-center gap-2.5">
+                                        <p className="text-xs font-semibold text-foreground text-center">
+                                          {p.display_name || p.username || "User"} · {t("streaming.live")}
+                                        </p>
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); setStreamCardOpen(null); }}
+                                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold py-1.5 rounded-md transition-colors"
+                                        >
+                                          {t("streaming.watchStream")}
+                                        </button>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                );
+                              }
+
+                              return (
+                                <VoiceUserContextMenu
+                                  key={p.user_id}
+                                  targetUserId={p.user_id}
+                                  targetUsername={p.username || undefined}
+                                  serverId={serverId}
+                                  channelId={ch.id}
+                                  serverOwnerId={server?.owner_id || ""}
+                                  currentUserRole={currentUserRole}
+                                >
+                                  {innerRow}
+                                </VoiceUserContextMenu>
+                              );
+                            })}
                           </div>
                         );
-
-                        if (!isMobile && isScreenSharer) {
-                          const clickableRow = (
-                            <div className="relative group flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground cursor-pointer">
-                              <div className="relative shrink-0">
-                                <Avatar className="h-5 w-5">
-                                  <AvatarImage src={p.avatar_url || ""} />
-                                  <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
-                                    {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="absolute -bottom-1 -end-1 bg-green-600 text-white text-[7px] font-bold leading-none px-0.5 py-px rounded-sm">
-                                  {t("streaming.live")}
-                                </span>
-                              </div>
-                              <span className="truncate">{p.display_name || p.username || "User"}</span>
-                              <Monitor className="h-3 w-3 text-green-500 shrink-0" />
-                              {p.is_deafened ? (
-                                <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
-                              ) : p.is_muted ? (
-                                <MicOff className="h-3 w-3 text-destructive shrink-0" />
-                              ) : p.is_speaking ? (
-                                <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
-                              ) : null}
-                            </div>
-                          );
-                          return (
-                            <Popover
-                              key={p.user_id}
-                              open={streamCardOpen === p.user_id}
-                              onOpenChange={(open) => setStreamCardOpen(open ? p.user_id : null)}
-                            >
-                              <VoiceUserContextMenu
-                                targetUserId={p.user_id}
-                                targetUsername={p.username || undefined}
-                                serverId={serverId}
-                                channelId={ch.id}
-                                serverOwnerId={server?.owner_id || ""}
-                                currentUserRole={currentUserRole}
-                              >
-                                <PopoverTrigger asChild>
-                                  {clickableRow}
-                                </PopoverTrigger>
-                              </VoiceUserContextMenu>
-                              <PopoverContent side="right" align="start" sideOffset={8} className="w-[280px] p-0 overflow-hidden rounded-lg">
-                                <div className="aspect-video bg-black flex items-center justify-center">
-                                  {remoteScreenStream
-                                    ? <StreamPreviewVideo stream={remoteScreenStream} />
-                                    : <Monitor className="h-8 w-8 text-muted-foreground" />
-                                  }
-                                </div>
-                                <div className="p-3 flex flex-col items-center gap-2.5">
-                                  <p className="text-xs font-semibold text-foreground text-center">
-                                    {p.display_name || p.username || "User"} · {t("streaming.live")}
-                                  </p>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); setStreamCardOpen(null); }}
-                                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold py-1.5 rounded-md transition-colors"
-                                  >
-                                    {t("streaming.watchStream")}
-                                  </button>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          );
-                        }
-
-                        return (
-                          <VoiceUserContextMenu
-                            key={p.user_id}
-                            targetUserId={p.user_id}
-                            targetUsername={p.username || undefined}
-                            serverId={serverId}
-                            channelId={ch.id}
-                            serverOwnerId={server?.owner_id || ""}
-                            currentUserRole={currentUserRole}
+                      }
+                      return (
+                        <div key={ch.id}>
+                          {dragOverTarget === ch.id && dragType === "channel" && <div className="h-0.5 bg-primary rounded-full mx-2" />}
+                          <div
+                            className={`group flex items-center ${dragItem === ch.id ? 'opacity-50' : ''}`}
+                            draggable={isAdmin}
+                            onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, ch.id, "channel"); }}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => handleChannelDragOver(e, ch.id)}
+                            onDrop={(e) => handleChannelDrop(e, ch.id, category)}
                           >
-                            {innerRow}
-                          </VoiceUserContextMenu>
-                        );
-                      })}
-                    </div>
-                  );
-                }
-                return (
-                  <div key={ch.id}>
-                    {dragOverTarget === ch.id && dragType === "channel" && <div className="h-0.5 bg-primary rounded-full mx-2" />}
-                    <div
-                      className={`group flex items-center ${dragItem === ch.id ? 'opacity-50' : ''}`}
-                      draggable={isAdmin}
-                      onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, ch.id, "channel"); }}
-                      onDragEnd={handleDragEnd}
-                      onDragOver={(e) => handleChannelDragOver(e, ch.id)}
-                      onDrop={(e) => handleChannelDrop(e, ch.id, category)}
-                    >
-                      <NavLink
-                        to={`/server/${serverId}/channel/${ch.id}`}
-                        onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private, is_announcement: ch.is_announcement })}
-                        className={({ isActive }) =>
-                          `flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
-                            isActive || ch.id === activeChannelId
-                              ? "bg-sidebar-accent text-white font-bold"
-                              : unreadSet.has(ch.id)
-                                ? "text-white font-bold hover:bg-sidebar-accent/50"
-                                : "font-medium text-[#949BA4] hover:text-[#DBDEE1] hover:bg-sidebar-accent/50"
-                          }`
-                        }
-                      >
-                        <ChannelIcon className="h-4 w-4 shrink-0" />
-                        <span className="truncate">{ch.name}</span>
-                        {unreadSet.has(ch.id) && !(activeChannelId === ch.id) && (
-                          <div className="ms-auto w-2 h-2 bg-white rounded-full shrink-0" />
-                        )}
-                      </NavLink>
-                      {renderAdminDropdown(ch)}
-                    </div>
-                  </div>
-                );
-              })}
-              </CollapsibleContent>
-            </Collapsible>
-          ))}
+                            <NavLink
+                              to={`/server/${serverId}/channel/${ch.id}`}
+                              onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private, is_announcement: ch.is_announcement })}
+                              className={({ isActive }) =>
+                                `flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${isActive || ch.id === activeChannelId
+                                  ? "bg-sidebar-accent text-white font-bold"
+                                  : unreadSet.has(ch.id)
+                                    ? "text-white font-bold hover:bg-sidebar-accent/50"
+                                    : "font-medium text-[#949BA4] hover:text-[#DBDEE1] hover:bg-sidebar-accent/50"
+                                }`
+                              }
+                            >
+                              <ChannelIcon className="h-4 w-4 shrink-0" />
+                              <span className="truncate">{ch.name}</span>
+                              {unreadSet.has(ch.id) && !(activeChannelId === ch.id) && (
+                                <div className="ms-auto w-2 h-2 bg-white rounded-full shrink-0" />
+                              )}
+                            </NavLink>
+                            {renderAdminDropdown(ch)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
             </div>
           )}
         </div>

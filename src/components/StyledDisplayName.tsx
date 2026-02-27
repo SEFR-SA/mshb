@@ -1,4 +1,5 @@
 import React from "react";
+import ServerTagBadgeIcon from "./ServerTagBadgeIcon";
 
 interface StyledDisplayNameProps {
   displayName: string;
@@ -23,11 +24,11 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
 }) => {
   const tagEl = serverTag ? (
     <span
-      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white ml-1.5 inline-flex items-center gap-1 align-middle whitespace-nowrap"
+      className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm leading-none ml-1.5 text-white align-middle whitespace-nowrap"
       style={{ backgroundColor: serverTag.color || "#6b7280" }}
     >
-      {serverTag.badge && <span>{serverTag.badge}</span>}
-      <span>{serverTag.name}</span>
+      <ServerTagBadgeIcon badgeName={serverTag.badge} className="h-2.5 w-2.5" />
+      {serverTag.name ? serverTag.name.substring(0, 4).toUpperCase() : ""}
     </span>
   ) : null;
 

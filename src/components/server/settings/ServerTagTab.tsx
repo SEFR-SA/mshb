@@ -135,11 +135,11 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
           <span className="text-sm font-medium">Username</span>
           {/* Tag pill */}
           <span
-            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-white"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-semibold leading-none text-white shrink-0"
             style={{ backgroundColor: tagColor }}
           >
-            <ActiveBadgeIcon className="h-3 w-3" />
-            {tagName || t("serverSettings.serverTag")}
+            <ActiveBadgeIcon className="h-2.5 w-2.5" />
+            {(tagName || t("serverSettings.serverTag")).substring(0, 4).toUpperCase()}
           </span>
         </div>
       </div>
@@ -153,11 +153,11 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         </p>
         <Input
           value={tagName}
-          onChange={(e) => setTagName(e.target.value)}
+          onChange={(e) => setTagName(e.target.value.toUpperCase())}
           placeholder={t("serverSettings.serverTagNamePlaceholder")}
           disabled={!canEdit}
-          maxLength={32}
-          className="max-w-xs"
+          maxLength={4}
+          className="max-w-xs uppercase"
         />
       </div>
 
