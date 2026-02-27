@@ -724,6 +724,7 @@ export type Database = {
         Row: {
           banner_url: string | null
           created_at: string
+          description: string | null
           icon_url: string | null
           id: string
           invite_code: string
@@ -733,6 +734,7 @@ export type Database = {
         Insert: {
           banner_url?: string | null
           created_at?: string
+          description?: string | null
           icon_url?: string | null
           id?: string
           invite_code?: string
@@ -742,6 +744,7 @@ export type Database = {
         Update: {
           banner_url?: string | null
           created_at?: string
+          description?: string | null
           icon_url?: string | null
           id?: string
           invite_code?: string
@@ -841,6 +844,21 @@ export type Database = {
       get_server_id_by_invite_link: {
         Args: { p_code: string }
         Returns: string
+      }
+      get_server_preview_by_invite: {
+        Args: { p_code: string }
+        Returns: {
+          banner_url: string
+          expires_at: string
+          icon_url: string
+          id: string
+          max_uses: number
+          member_count: number
+          name: string
+          online_count: number
+          server_created_at: string
+          use_count: number
+        }[]
       }
       is_channel_member: {
         Args: { _channel_id: string; _user_id: string }
