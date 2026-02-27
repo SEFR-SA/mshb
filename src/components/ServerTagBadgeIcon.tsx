@@ -21,6 +21,18 @@ const BADGE_MAP: Record<string, LucideIcon> = {
 
 const ServerTagBadgeIcon = ({ badgeName, className = "h-3 w-3" }: Props) => {
     if (!badgeName) return null;
+
+    if (badgeName.startsWith("http")) {
+        return (
+            <img
+                src={badgeName}
+                alt="tag badge"
+                className={className}
+                style={{ objectFit: "contain" }}
+            />
+        );
+    }
+
     const Icon = BADGE_MAP[badgeName];
     if (!Icon) return null;
 

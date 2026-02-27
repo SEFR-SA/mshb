@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,26 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Star, Flame, Zap, Shield, Crown, Award, Gem, Rocket, Music, Heart, LucideIcon } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 
 interface Props {
   serverId: string;
   canEdit: boolean;
 }
 
-const BADGE_OPTIONS: { name: string; Icon: LucideIcon }[] = [
-  { name: "Star", Icon: Star },
-  { name: "Flame", Icon: Flame },
-  { name: "Zap", Icon: Zap },
-  { name: "Shield", Icon: Shield },
-  { name: "Crown", Icon: Crown },
-  { name: "Award", Icon: Award },
-  { name: "Gem", Icon: Gem },
-  { name: "Rocket", Icon: Rocket },
-  { name: "Music", Icon: Music },
-  { name: "Heart", Icon: Heart },
-];
+const MAX_BADGE_BYTES = 512 * 1024; // 512 KB
 
 const PRESET_COLORS = [
   "#7c3aed",
@@ -46,11 +36,14 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [tagName, setTagName] = useState("");
-  const [tagBadge, setTagBadge] = useState("Star");
+  const [tagBadge, setTagBadge] = useState("");
   const [tagColor, setTagColor] = useState(DEFAULT_COLOR);
   const [hexInput, setHexInput] = useState(DEFAULT_COLOR);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!serverId) return;
@@ -64,7 +57,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       if (s) {
         setTagName((s as any).server_tag_name ?? "");
-        setTagBadge((s as any).server_tag_badge ?? "Star");
+        setTagBadge((s as any).server_tag_badge ?? "");
         const color = (s as any).server_tag_color ?? DEFAULT_COLOR;
         setTagColor(color);
         setHexInput(color);
@@ -86,6 +79,32 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
     }
   };
 
+  const handleBadgeFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_BADGE_BYTES) {
+      toast({ title: t("serverSettings.serverTagBadgeTooBig"), variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const filePath = `${serverId}/tag-badges/${Date.now()}_badge.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("server-assets")
+        .upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("server-assets").getPublicUrl(filePath);
+      setTagBadge(urlData.publicUrl);
+    } catch {
+      toast({ title: t("common.error"), variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -93,7 +112,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         .from("servers" as any)
         .update({
           server_tag_name: tagName.trim() || null,
-          server_tag_badge: tagBadge,
+          server_tag_badge: tagBadge || null,
           server_tag_color: tagColor,
         } as any)
         .eq("id", serverId);
@@ -105,8 +124,6 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
       setSaving(false);
     }
   };
-
-  const ActiveBadgeIcon = BADGE_OPTIONS.find((b) => b.name === tagBadge)?.Icon ?? Star;
 
   if (loading) {
     return (
@@ -138,7 +155,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-semibold leading-none text-white shrink-0"
             style={{ backgroundColor: tagColor }}
           >
-            <ActiveBadgeIcon className="h-2.5 w-2.5" />
+            <ServerTagBadgeIcon badgeName={tagBadge} className="h-2.5 w-2.5" />
             {(tagName || t("serverSettings.serverTag")).substring(0, 4).toUpperCase()}
           </span>
         </div>
@@ -163,28 +180,63 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       <Separator />
 
-      {/* Section 2 — Choose Badge */}
+      {/* Section 2 — Badge Image */}
       <div className="space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           {t("serverSettings.serverTagBadge")}
         </p>
-        <div className="grid grid-cols-5 gap-2 max-w-xs">
-          {BADGE_OPTIONS.map(({ name, Icon }) => (
-            <button
-              key={name}
-              onClick={() => canEdit && setTagBadge(name)}
-              disabled={!canEdit}
-              className={cn(
-                "h-10 w-10 rounded-md flex items-center justify-center transition-colors",
-                "bg-muted/50 hover:bg-muted",
-                tagBadge === name && "ring-2 ring-primary bg-primary/10"
-              )}
-              title={name}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png, image/jpeg, image/gif"
+          className="hidden"
+          onChange={handleBadgeFileChange}
+          disabled={!canEdit}
+        />
+
+        {tagBadge?.startsWith("http") ? (
+          <div className="flex items-center gap-3">
+            <img
+              src={tagBadge}
+              alt="badge preview"
+              className="h-12 w-12 rounded-md object-contain border border-border bg-muted/30"
+            />
+            {canEdit && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  {isUploading && <Loader2 className="h-3.5 w-3.5 animate-spin me-1.5" />}
+                  {t("serverSettings.serverTagChangeBadge")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setTagBadge("")}
+                  className="text-destructive hover:text-destructive"
+                >
+                  {t("serverSettings.serverTagRemoveBadge")}
+                </Button>
+              </>
+            )}
+          </div>
+        ) : (
+          canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
             >
-              <Icon className="h-5 w-5" />
-            </button>
-          ))}
-        </div>
+              {isUploading && <Loader2 className="h-3.5 w-3.5 animate-spin me-1.5" />}
+              {t("serverSettings.serverTagUploadBadge")}
+            </Button>
+          )
+        )}
       </div>
 
       <Separator />
