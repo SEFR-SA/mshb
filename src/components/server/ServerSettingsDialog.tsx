@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "@/hooks/use-toast";
-import { Menu, Trash2, User, Tag, Sparkles, Smile, StickerIcon, Volume2, Users, ShieldCheck, ScrollText } from "lucide-react";
+import { Menu, Trash2, User, Tag, Sparkles, Smile, StickerIcon, Volume2, Users, ShieldCheck, ScrollText, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AuditLogView from "./AuditLogView";
 import ServerProfileTab from "./settings/ServerProfileTab";
@@ -209,22 +209,34 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-4xl h-[85vh] p-0 gap-0 flex flex-col">
+        <DialogContent className="max-w-none w-screen h-screen m-0 p-0 rounded-none border-none flex bg-background overflow-hidden [&>button]:hidden">
           <DialogHeader className="sr-only">
             <DialogTitle>{t("servers.settings")}</DialogTitle>
             <DialogDescription>{t("servers.settingsDesc")}</DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex w-full h-full overflow-hidden">
             {/* Desktop sidebar */}
             {!isMobile && (
-              <aside className="w-56 border-e bg-muted/30 shrink-0 overflow-y-auto">
+              <aside className="w-64 hidden md:flex shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground border-e border-border/50">
                 {sidebarContent}
               </aside>
             )}
 
             {/* Content area */}
-            <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="flex-1 flex flex-col overflow-hidden bg-background relative">
+              {/* Discord-style Close Button */}
+              <button
+                onClick={() => onOpenChange(false)}
+                className="absolute top-4 end-4 sm:top-8 sm:end-8 z-20 flex flex-col items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
+                aria-label="Close settings"
+              >
+                <div className="h-9 w-9 rounded-full border-2 border-muted-foreground flex items-center justify-center">
+                  <X className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <span className="text-[10px] font-bold text-muted-foreground">ESC</span>
+              </button>
+
               {/* Mobile header */}
               {isMobile && (
                 <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 border-b bg-background shrink-0">
@@ -234,7 +246,7 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
                         <Menu className="h-5 w-5" />
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="w-64 p-0">
+                    <SheetContent side="left" className="w-64 p-0 bg-sidebar text-sidebar-foreground flex flex-col">
                       {sidebarContent}
                     </SheetContent>
                   </Sheet>
@@ -245,8 +257,10 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
               {activeTab === "roles" ? (
                 <div className="flex-1 overflow-hidden">{renderContent()}</div>
               ) : (
-                <div className="flex-1 overflow-y-auto">
-                  <div className="p-6">{renderContent()}</div>
+                <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                  <div className="max-w-3xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
+                    {renderContent()}
+                  </div>
                 </div>
               )}
             </div>
