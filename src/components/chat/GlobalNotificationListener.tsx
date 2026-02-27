@@ -31,7 +31,7 @@ const GlobalNotificationListener = () => {
                 // Fetch channel and server info to get notification settings and names
                 const res = await supabase
                     .from("channels" as any)
-                    .select("name, server_id, servers(name, default_notification_level)")
+                    .select("name, server_id, servers(name)")
                     .eq("id", msg.channel_id)
                     .maybeSingle();
 
@@ -45,6 +45,7 @@ const GlobalNotificationListener = () => {
                 // 2. Parse Mentions
                 const content = msg.content || "";
                 const isMentioned =
+                    content.includes("@all") ||
                     content.includes("@everyone") ||
                     content.includes("@here") ||
                     (profile?.username && content.includes(`@${profile.username}`)) ||
