@@ -21,6 +21,7 @@ import EmojisTab from "./settings/EmojisTab";
 import StickersTab from "./settings/StickersTab";
 import SoundboardTab from "./settings/SoundboardTab";
 import MembersTab from "./settings/MembersTab";
+import RolesTab from "./settings/RolesTab";
 
 interface Member {
   user_id: string;
@@ -192,6 +193,8 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
         return <StickersTab serverId={serverId} canEdit={canEdit} />;
       case "soundboard":
         return <SoundboardTab serverId={serverId} canEdit={canEdit} />;
+      case "roles":
+        return <RolesTab serverId={serverId} canEdit={canEdit} />;
       case "auditlogs":
         return canViewAuditLogs ? <AuditLogView serverId={serverId} /> : null;
       default:
@@ -221,10 +224,10 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
             )}
 
             {/* Content area */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-hidden flex flex-col">
               {/* Mobile header */}
               {isMobile && (
-                <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 border-b bg-background">
+                <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 border-b bg-background shrink-0">
                   <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
                     <SheetTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -239,7 +242,13 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
                 </div>
               )}
 
-              <div className="p-6">{renderContent()}</div>
+              {activeTab === "roles" ? (
+                <div className="flex-1 overflow-hidden">{renderContent()}</div>
+              ) : (
+                <div className="flex-1 overflow-y-auto">
+                  <div className="p-6">{renderContent()}</div>
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>
