@@ -105,7 +105,7 @@ const RolesTab = ({ serverId, canEdit }: Props) => {
       .select("*")
       .eq("server_id", serverId)
       .order("position");
-    setRoles((data as ServerRole[]) || []);
+    setRoles((data as unknown as ServerRole[]) || []);
   };
 
   useEffect(() => {
@@ -158,7 +158,7 @@ const RolesTab = ({ serverId, canEdit }: Props) => {
         .select()
         .single();
       if (error) throw error;
-      const newRole = data as ServerRole;
+      const newRole = data as unknown as ServerRole;
       setRoles((prev) => [...prev, newRole]);
       setSelectedRoleId(newRole.id);
       loadEditState(newRole);

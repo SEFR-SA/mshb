@@ -61,7 +61,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         setInactiveChannelId((s as any).inactive_channel_id ?? "");
         setInactiveTimeout((s as any).inactive_timeout ? String((s as any).inactive_timeout) : "");
       }
-      setChannels((ch as Channel[]) || []);
+      setChannels((ch as unknown as Channel[]) || []);
       setLoading(false);
     };
     load();
