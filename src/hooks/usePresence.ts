@@ -30,6 +30,16 @@ export function usePresence() {
         });
         setPresenceMap(map);
       })
+      .on("presence", { event: "join" }, ({ key }: { key: string }) => {
+        setPresenceMap((prev) => ({ ...prev, [key]: { online: true } }));
+      })
+      .on("presence", { event: "leave" }, ({ key }: { key: string }) => {
+        setPresenceMap((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+      })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           await channel.track({ user_id: user.id, online_at: new Date().toISOString() });
@@ -47,6 +57,7 @@ export function usePresence() {
 
     return () => {
       clearInterval(interval);
+      channel.untrack();
       channel.unsubscribe();
     };
   }, [user]);

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface VoiceChannel {
   id: string;
@@ -71,6 +72,36 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
 
   const setUserVolume = useCallback((userId: string, volume: number) => {
     setUserVolumes((prev) => ({ ...prev, [userId]: volume }));
+  }, []);
+
+  // Wipe any ghost voice-channel rows from a previous crash or hard-close
+  useEffect(() => {
+    const cleanup = (userId: string) => {
+      supabase.from("voice_channel_participants").delete().eq("user_id", userId);
+    };
+
+    // 1. Startup wipe — user already has a persisted session on app restart
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.id) cleanup(session.user.id);
+    });
+
+    // 2. Post-login wipe — session not ready yet at mount (cold start / first login)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user?.id) cleanup(session.user.id);
+    });
+
+    // 3. Graceful close (best-effort fire-and-forget; may not complete before unload)
+    const handleBeforeUnload = () => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user?.id) cleanup(session.user.id);
+      });
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
   }, []);
 
   const disconnectVoice = useCallback(() => {

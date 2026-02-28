@@ -17,6 +17,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import ServerMemberContextMenu from "@/components/server/ServerMemberContextMenu";
 import StyledDisplayName from "@/components/StyledDisplayName";
+import { usePresence } from "@/hooks/usePresence";
 
 interface Member {
   user_id: string;
@@ -58,6 +59,7 @@ const ServerMemberList = ({ serverId }: Props) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { getUserStatus } = usePresence();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
@@ -212,7 +214,7 @@ const ServerMemberList = ({ serverId }: Props) => {
                     const p = m.profile;
                     const name = p?.display_name || p?.username || "User";
                     const username = p?.username || "user";
-                    const status = p?.status || "offline";
+                    const status = getUserStatus({ user_id: m.user_id, status: p?.status });
 
                     const profileCardContent = (
                       <div className="overflow-hidden rounded-lg bg-popover">
