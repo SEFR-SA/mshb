@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 export interface GoLiveSettings {
@@ -29,11 +31,20 @@ interface Props {
 
 const isElectron = () => !!(window as any).electronAPI?.getDisplaySources;
 
+const ProBadge = () => (
+  <span className="ms-1 text-[9px] font-bold bg-primary text-primary-foreground px-1 py-0.5 rounded leading-none">
+    PRO
+  </span>
+);
+
 const GoLiveModal = ({ open, onOpenChange, onGoLive }: Props) => {
   const { t } = useTranslation();
+  const { profile } = useAuth();
+  const isPro = (profile as any)?.is_pro ?? false;
+
   const [surface, setSurface] = useState<"monitor" | "window">("monitor");
   const [resolution, setResolution] = useState<"720p" | "1080p" | "source">("1080p");
-  const [fps, setFps] = useState<30 | 60>(60);
+  const [fps, setFps] = useState<30 | 60>(30);
   const [sources, setSources] = useState<DesktopSource[]>([]);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [loadingSources, setLoadingSources] = useState(false);
@@ -66,6 +77,24 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive }: Props) => {
   };
 
   const canGoLive = !isElectron() || selectedSourceId !== null;
+
+  const handleResolutionChange = (v: string) => {
+    if (!v) return;
+    if (v === "source" && !isPro) {
+      toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
+      return;
+    }
+    setResolution(v as "720p" | "1080p" | "source");
+  };
+
+  const handleFpsChange = (v: string) => {
+    if (!v) return;
+    if (v === "60" && !isPro) {
+      toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
+      return;
+    }
+    setFps(Number(v) as 30 | 60);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -146,12 +175,17 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive }: Props) => {
             <ToggleGroup
               type="single"
               value={resolution}
-              onValueChange={(v) => { if (v) setResolution(v as "720p" | "1080p" | "source"); }}
+              onValueChange={handleResolutionChange}
               className="w-full"
             >
               <ToggleGroupItem value="720p" className="flex-1 text-xs">720p</ToggleGroupItem>
               <ToggleGroupItem value="1080p" className="flex-1 text-xs">1080p</ToggleGroupItem>
-              <ToggleGroupItem value="source" className="flex-1 text-xs">{t("streaming.sourceRes")}</ToggleGroupItem>
+              <ToggleGroupItem
+                value="source"
+                className={cn("flex-1 text-xs", !isPro && "opacity-60")}
+              >
+                {t("streaming.sourceRes")}<ProBadge />
+              </ToggleGroupItem>
             </ToggleGroup>
           </div>
 
@@ -161,11 +195,16 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive }: Props) => {
             <ToggleGroup
               type="single"
               value={String(fps)}
-              onValueChange={(v) => { if (v) setFps(Number(v) as 30 | 60); }}
+              onValueChange={handleFpsChange}
               className="w-full"
             >
               <ToggleGroupItem value="30" className="flex-1 text-xs">{t("streaming.fps30")}</ToggleGroupItem>
-              <ToggleGroupItem value="60" className="flex-1 text-xs">{t("streaming.fps60")}</ToggleGroupItem>
+              <ToggleGroupItem
+                value="60"
+                className={cn("flex-1 text-xs", !isPro && "opacity-60")}
+              >
+                {t("streaming.fps60")}<ProBadge />
+              </ToggleGroupItem>
             </ToggleGroup>
           </div>
 

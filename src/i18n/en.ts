@@ -751,4 +751,11 @@ export default {
     noSounds: "No sounds uploaded yet",
     movedToAfk: "You were moved to the AFK channel for being inactive.",
   },
+  pro: {
+    upgradeToast: "Upgrade to Mshb Pro to unlock this feature.",
+    proRequired: "Mshb Pro Required",
+    billingComingSoon: "Billing integration coming soon!",
+    subscribeButton: "Subscribe to Mshb Pro",
+    upgradeForMore: "Upgrade to Mshb Pro for more slots.",
+  },
 };

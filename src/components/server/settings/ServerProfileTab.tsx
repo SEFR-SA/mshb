@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerOwnerIsPro } from "@/hooks/useServerOwnerIsPro";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ const ServerProfileTab = ({
   userId,
 }: Props) => {
   const { t } = useTranslation();
+  const ownerIsPro = useServerOwnerIsPro(serverId);
   const [saving, setSaving] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -55,6 +57,11 @@ const ServerProfileTab = ({
   const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!ownerIsPro && (file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif"))) {
+      toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast"), variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
     setUploadingIcon(true);
     try {
       const url = await uploadImage(file, "icon");
@@ -71,6 +78,11 @@ const ServerProfileTab = ({
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!ownerIsPro && (file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif"))) {
+      toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast"), variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
     setUploadingBanner(true);
     try {
       const url = await uploadImage(file, "banner");

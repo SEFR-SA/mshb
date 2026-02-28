@@ -1,3 +1,4 @@
+```markdown
 # CLAUDE.md — MSHB Project Guide
 
 ## Project Purpose
@@ -35,7 +36,9 @@ MSHB is a **real-time communication platform** (Discord/Telegram-style) built as
 
 ## Project Structure
 
+
 ```
+
 src/
 ├── App.tsx                    # Root: routing tree + provider stack
 ├── pages/                     # Route-level components
@@ -52,8 +55,8 @@ src/
 │   ├── layout/                # AppLayout, HomeSidebar
 │   └── ui/                    # shadcn-ui primitives (don't edit)
 ├── contexts/
-│   ├── AuthContext.tsx         # Session, user, profile — useAuth()
-│   ├── ThemeContext.tsx        # Light/dark/custom theme — useTheme()
+│   ├── AuthContext.tsx        # Session, user, profile — useAuth()
+│   ├── ThemeContext.tsx       # Light/dark/custom theme — useTheme()
 │   ├── VoiceChannelContext.tsx # Voice channel state + WebRTC
 │   └── AudioSettingsContext.tsx# Global mute/deafen — useAudioSettings()
 ├── hooks/                     # Custom hooks (usePresence, useWebRTC, etc.)
@@ -67,14 +70,21 @@ src/
 │   ├── emojiUtils.ts          # Emoji-only detection & sizing
 │   └── unicodeFonts.ts        # Unicode decorative font conversion
 └── i18n/
-    ├── en.ts                  # English translations
-    ├── ar.ts                  # Arabic translations
-    └── index.ts               # i18next configuration
+├── en.ts                  # English translations
+├── ar.ts                  # Arabic translations
+└── index.ts               # i18next configuration
+
 ```
 
 ---
 
 ## Key Architecture Decisions
+
+### Monetization & Mshb Pro (CRITICAL)
+- **Pro-Only by Default:** Treat all newly requested features as **exclusive to Mshb Pro** plan holders unless explicitly instructed otherwise by the user. 
+- **Graceful Degradation:** Do NOT completely hide premium features from free users. Instead, display them in the UI with a "Lock" icon, a "PRO" badge, or `opacity-50`.
+- **UI Locks & Toasts:** If a free user attempts to interact with a Pro feature, block the action and show a UI toast (e.g., "Requires Mshb Pro. Upgrade to unlock this feature.").
+- **Validation:** Always verify the user's status via `profile?.is_pro` (accessible through `useAuth()`) before executing premium logic or rendering premium modals.
 
 ### Data Fetching
 Supabase is called **directly** inside components and hooks — no React Query wrappers. Pattern:
@@ -87,9 +97,11 @@ useEffect(() => {
     if (data) setData(data);
   });
 }, [user.id]);
+
 ```
 
 ### Real-time Updates
+
 All live data (messages, presence, reactions) is driven by **Supabase Realtime** subscriptions:
 
 ```typescript
@@ -102,31 +114,41 @@ useEffect(() => {
     .subscribe();
   return () => { channel.unsubscribe(); }; // ALWAYS clean up
 }, [id]);
+
 ```
 
 For a table to emit realtime events, it must be added in a migration:
+
 ```sql
 ALTER PUBLICATION supabase_realtime ADD TABLE public.your_table;
+
 ```
 
 ### Global State
+
 Four Context providers (order in `App.tsx` matters):
+
 1. `QueryClientProvider` → `ThemeProvider` → `AudioSettingsProvider` → `VoiceChannelProvider` → `AuthProvider`
 
 Access them via their exported hooks: `useAuth()`, `useTheme()`, `useAudioSettings()`, `useVoiceChannel()`.
 
 ### Security
-- **RLS (Row-Level Security)** is enabled on all tables. Never disable it, never write client-side bypass logic.
-- All access control logic lives in SQL policies in `supabase/migrations/`.
+
+* **RLS (Row-Level Security)** is enabled on all tables. Never disable it, never write client-side bypass logic.
+* All access control logic lives in SQL policies in `supabase/migrations/`.
 
 ### TypeScript
+
 The config is **lenient** (`strict: false`, `noImplicitAny: false`). Use `as any` when Supabase's generated types don't match a query (common for RPC calls and complex joins). Don't fight the types excessively.
 
 ### Path Alias
+
 Always use `@/` for imports — it maps to `src/`:
+
 ```typescript
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+
 ```
 
 ---
@@ -134,6 +156,7 @@ import { cn } from "@/lib/utils";
 ## Coding Conventions
 
 ### Components
+
 ```typescript
 // PascalCase filename, Props interface at top, default export at bottom
 interface Props {
@@ -147,9 +170,11 @@ const MyComponent = ({ threadId, onClose }: Props) => {
 };
 
 export default MyComponent;
+
 ```
 
 ### Hooks
+
 ```typescript
 // use prefix, return an object
 export const useMyHook = (id: string) => {
@@ -157,24 +182,31 @@ export const useMyHook = (id: string) => {
   // ...
   return { value, setValue };
 };
+
 ```
 
 ### Database Types
+
 ```typescript
 import type { Tables } from "@/integrations/supabase/types";
 type Profile = Tables<"profiles">;
 type Message = Tables<"messages">;
+
 ```
 
 ### CSS / Styling
+
 ```typescript
 import { cn } from "@/lib/utils";
 
 <div className={cn("base-class", isActive && "active-class", className)} />
+
 ```
 
 ### Translations
+
 Every user-visible string must have entries in **both** `src/i18n/en.ts` and `src/i18n/ar.ts`:
+
 ```typescript
 // en.ts
 myFeature: { title: "My Feature", action: "Do Thing" }
@@ -182,12 +214,16 @@ myFeature: { title: "My Feature", action: "Do Thing" }
 // In component:
 const { t } = useTranslation();
 <h1>{t("myFeature.title")}</h1>
+
 ```
 
 ### Array Dependencies
+
 When an array is used as a `useEffect` dependency, use `.join(",")` to prevent infinite loops:
+
 ```typescript
 useEffect(() => { /* ... */ }, [messageIds.join(",")]);
+
 ```
 
 ---
@@ -195,47 +231,49 @@ useEffect(() => { /* ... */ }, [messageIds.join(",")]);
 ## Adding a New Feature
 
 1. **Write a migration** in `supabase/migrations/` (filename: timestamp + description):
-   ```sql
-   ALTER TABLE public.messages ADD COLUMN is_pinned BOOLEAN NOT NULL DEFAULT false;
-   ALTER PUBLICATION supabase_realtime ADD TABLE public.new_table; -- if new table
-   ```
+```sql
+ALTER TABLE public.messages ADD COLUMN is_pinned BOOLEAN NOT NULL DEFAULT false;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.new_table; -- if new table
+
+```
+
 
 2. **Add/update RLS policies** in the same migration file.
-
 3. **Reference types** via `Tables<"table_name">` — no manual type editing needed.
-
 4. **Build the component** in the appropriate `src/components/` subdirectory (chat/, server/, layout/).
-
 5. **Create a page** in `src/pages/` only if it needs its own route.
-
 6. **Add the route** to `src/App.tsx`:
-   ```typescript
-   // Protected, nested under AppLayout:
-   <Route path="/my-page" element={<MyPage />} />
+```typescript
+// Protected, nested under AppLayout:
+<Route path="/my-page" element={<MyPage />} />
 
-   // Protected, standalone:
-   <Route path="/my-page" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
-   ```
+// Protected, standalone:
+<Route path="/my-page" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
+
+```
+
 
 7. **Set up realtime** with proper cleanup (see pattern above).
-
-8. **Add translations** to both `en.ts` and `ar.ts`.
-
-9. **Test mobile** using the `useIsMobile()` hook for responsive layout adjustments.
+8. **Enforce Pro Locks:** Ensure the new feature is locked behind the `profile?.is_pro` check. Implement UI visual locks (badges/lock icons) and display an upgrade toast if a free user attempts to access it.
+9. **Add translations** to both `en.ts` and `ar.ts`.
+10. **Test mobile** using the `useIsMobile()` hook for responsive layout adjustments.
 
 ### Mobile-First & Responsive Design
+
 All new UI components must be mobile-responsive by default. AI agents must follow these rules:
+
 1. **Tailwind Mobile-First:** Base utility classes must target mobile screens. Use breakpoints (`md:`, `lg:`, `xl:`) to scale up to desktop interfaces. Do NOT write desktop-first CSS.
 2. **The `use-mobile` Hook:** Use the provided `useIsMobile()` hook (from `src/hooks/use-mobile.tsx`) to conditionally render heavy components or switch behaviors (e.g., switching from a Sidebar to a Bottom Nav/Sheet).
 3. **Modals vs. Sheets:** For complex menus or filters, prefer `Dialog` on desktop, but use `Sheet` or `Drawer` from shadcn-ui on mobile screens for better UX.
 4. **Touch Targets:** Ensure interactive elements (buttons, links, icons) have adequate padding (at least `p-2` or `h-10 w-10`) to accommodate mobile touch targets.
 5. **Horizontal Scrolling:** Always prevent hidden horizontal overflow on mobile screens (`overflow-x-hidden` on main containers) unless explicitly building a swipeable carousel.
+
 ---
 
 ## Debugging Common Issues
 
 | Problem | Where to look |
-|---------|--------------|
+| --- | --- |
 | Auth / sign-in fails | `AuthContext.tsx` — `signIn` resolves usernames to emails via a Supabase RPC call |
 | Realtime subscription not firing | Check the migration added the table to `supabase_realtime` publication |
 | Subscription fires but UI doesn't update | Ensure state setter is called correctly; watch for stale closures in handlers |
@@ -250,16 +288,20 @@ All new UI components must be mobile-responsive by default. AI agents must follo
 ## Key Files Quick Reference
 
 | File | Purpose |
-|------|---------|
-| [src/App.tsx](src/App.tsx) | Routing tree and provider stack |
-| [src/contexts/AuthContext.tsx](src/contexts/AuthContext.tsx) | Auth state, session, profile — `useAuth()` |
-| [src/integrations/supabase/client.ts](src/integrations/supabase/client.ts) | Supabase client singleton |
-| [src/integrations/supabase/types.ts](src/integrations/supabase/types.ts) | Auto-generated DB types |
-| [src/i18n/en.ts](src/i18n/en.ts) | English translations |
-| [src/i18n/ar.ts](src/i18n/ar.ts) | Arabic translations |
-| [src/lib/utils.ts](src/lib/utils.ts) | `cn()` for Tailwind class merging |
-| [src/lib/uploadChatFile.ts](src/lib/uploadChatFile.ts) | File upload with progress tracking |
-| [src/lib/soundManager.ts](src/lib/soundManager.ts) | Audio playback for notifications/calls |
-| [src/hooks/usePresence.ts](src/hooks/usePresence.ts) | Online presence and user status |
-| [src/hooks/useWebRTC.ts](src/hooks/useWebRTC.ts) | Voice/video call management |
-| [supabase/migrations/](supabase/migrations/) | All database schema changes |
+| --- | --- |
+| [src/App.tsx](https://www.google.com/search?q=src/App.tsx) | Routing tree and provider stack |
+| [src/contexts/AuthContext.tsx](https://www.google.com/search?q=src/contexts/AuthContext.tsx) | Auth state, session, profile — `useAuth()` |
+| [src/integrations/supabase/client.ts](https://www.google.com/search?q=src/integrations/supabase/client.ts) | Supabase client singleton |
+| [src/integrations/supabase/types.ts](https://www.google.com/search?q=src/integrations/supabase/types.ts) | Auto-generated DB types |
+| [src/i18n/en.ts](https://www.google.com/search?q=src/i18n/en.ts) | English translations |
+| [src/i18n/ar.ts](https://www.google.com/search?q=src/i18n/ar.ts) | Arabic translations |
+| [src/lib/utils.ts](https://www.google.com/search?q=src/lib/utils.ts) | `cn()` for Tailwind class merging |
+| [src/lib/uploadChatFile.ts](https://www.google.com/search?q=src/lib/uploadChatFile.ts) | File upload with progress tracking |
+| [src/lib/soundManager.ts](https://www.google.com/search?q=src/lib/soundManager.ts) | Audio playback for notifications/calls |
+| [src/hooks/usePresence.ts](https://www.google.com/search?q=src/hooks/usePresence.ts) | Online presence and user status |
+| [src/hooks/useWebRTC.ts](https://www.google.com/search?q=src/hooks/useWebRTC.ts) | Voice/video call management |
+| [supabase/migrations/](https://www.google.com/search?q=supabase/migrations/) | All database schema changes |
+
+```
+
+```

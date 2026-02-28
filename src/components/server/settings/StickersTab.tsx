@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useServerOwnerIsPro } from "@/hooks/useServerOwnerIsPro";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +39,8 @@ const getFormat = (filename: string): string => {
 const StickersTab = ({ serverId, canEdit }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const ownerIsPro = useServerOwnerIsPro(serverId);
+  const STICKER_LIMIT = ownerIsPro ? 50 : 5;
 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -159,12 +162,26 @@ const StickersTab = ({ serverId, canEdit }: Props) => {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">{t("serverSettings.stickers")}</h2>
+        <div>
+          <h2 className="text-lg font-semibold">{t("serverSettings.stickers")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("serverSettings.emojisUsed", { count: items.length, max: STICKER_LIMIT })}
+          </p>
+        </div>
         {canEdit && (
-          <Button onClick={handleOpenDialog} size="sm">
-            <Upload className="h-4 w-4 me-2" />
-            {t("serverSettings.uploadSticker")}
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              onClick={handleOpenDialog}
+              disabled={items.length >= STICKER_LIMIT}
+              size="sm"
+            >
+              <Upload className="h-4 w-4 me-2" />
+              {t("serverSettings.uploadSticker")}
+            </Button>
+            {items.length >= STICKER_LIMIT && !ownerIsPro && (
+              <p className="text-xs text-muted-foreground">{t("pro.upgradeForMore")}</p>
+            )}
+          </div>
         )}
       </div>
 

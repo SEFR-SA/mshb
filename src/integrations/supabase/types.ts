@@ -541,6 +541,7 @@ export type Database = {
           display_name: string | null
           gender: string | null
           id: string
+          is_pro: boolean
           language: string | null
           last_seen: string | null
           name_gradient_end: string | null
@@ -563,6 +564,7 @@ export type Database = {
           display_name?: string | null
           gender?: string | null
           id?: string
+          is_pro?: boolean
           language?: string | null
           last_seen?: string | null
           name_gradient_end?: string | null
@@ -585,6 +587,7 @@ export type Database = {
           display_name?: string | null
           gender?: string | null
           id?: string
+          is_pro?: boolean
           language?: string | null
           last_seen?: string | null
           name_gradient_end?: string | null

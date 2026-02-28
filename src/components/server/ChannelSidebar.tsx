@@ -579,6 +579,13 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   return (
     <>
       <div className="w-[240px] max-md:w-full max-md:max-w-full h-full flex flex-col bg-sidebar-background/30 backdrop-blur-sm border-e border-sidebar-border shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
+        {server?.banner_url && (
+          <img
+            src={server.banner_url}
+            alt=""
+            className="w-full h-24 object-cover shrink-0"
+          />
+        )}
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
             <h2 className="font-bold text-sm truncate">{server?.name || "..."}</h2>

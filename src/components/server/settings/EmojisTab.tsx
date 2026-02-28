@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useServerOwnerIsPro } from "@/hooks/useServerOwnerIsPro";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Trash2, Upload } from "lucide-react";
 
-const EMOJI_LIMIT = 100;
+// Limit is dynamic based on server owner's Pro status — set inside component
 
 interface EmojiItem {
   id: string;
@@ -29,6 +30,8 @@ interface Props {
 const EmojisTab = ({ serverId, canEdit }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const ownerIsPro = useServerOwnerIsPro(serverId);
+  const EMOJI_LIMIT = ownerIsPro ? 250 : 50;
 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -135,18 +138,23 @@ const EmojisTab = ({ serverId, canEdit }: Props) => {
           </p>
         </div>
         {canEdit && (
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading || items.length >= EMOJI_LIMIT}
-            size="sm"
-          >
-            {uploading ? (
-              <Loader2 className="h-4 w-4 animate-spin me-2" />
-            ) : (
-              <Upload className="h-4 w-4 me-2" />
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || items.length >= EMOJI_LIMIT}
+              size="sm"
+            >
+              {uploading ? (
+                <Loader2 className="h-4 w-4 animate-spin me-2" />
+              ) : (
+                <Upload className="h-4 w-4 me-2" />
+              )}
+              {uploading ? t("serverSettings.uploading") : t("serverSettings.uploadEmoji")}
+            </Button>
+            {items.length >= EMOJI_LIMIT && !ownerIsPro && (
+              <p className="text-xs text-muted-foreground">{t("pro.upgradeForMore")}</p>
             )}
-            {uploading ? t("serverSettings.uploading") : t("serverSettings.uploadEmoji")}
-          </Button>
+          </div>
         )}
         <input
           ref={fileInputRef}

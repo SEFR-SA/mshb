@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme, COLOR_THEME_PRESETS } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Label } from "@/components/ui/label";
-import { Palette } from "lucide-react";
+import { Palette, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 type Density = "compact" | "default" | "spacious";
 
@@ -26,15 +28,18 @@ const ACCENT_PRESETS = [
 
 // Light/Sado/Dark/Majls are meta-presets that map theme + colorTheme
 const BASE_THEMES = [
-  { id: "light", label: "themeLight", theme: "light" as const, colorTheme: "default", bg: "#f8f8f8", fg: "#1a1a1a" },
-  { id: "sado",  label: "themeSado",  theme: "sado"  as const, colorTheme: "default", bg: "#fffdfa", fg: "#c44a3d" },
-  { id: "dark",  label: "themeDark",  theme: "dark"  as const, colorTheme: "default", bg: "#1e1e2e", fg: "#e0e0e0" },
-  { id: "majls", label: "themeMajls", theme: "majls" as const, colorTheme: "default", bg: "#1f130c", fg: "#c44a3d" },
+  { id: "light", label: "themeLight", theme: "light" as const, colorTheme: "default", bg: "#f8f8f8", fg: "#1a1a1a", pro: false },
+  { id: "sado",  label: "themeSado",  theme: "sado"  as const, colorTheme: "default", bg: "#fffdfa", fg: "#c44a3d", pro: true },
+  { id: "dark",  label: "themeDark",  theme: "dark"  as const, colorTheme: "default", bg: "#1e1e2e", fg: "#e0e0e0", pro: false },
+  { id: "majls", label: "themeMajls", theme: "majls" as const, colorTheme: "default", bg: "#1f130c", fg: "#c44a3d", pro: true },
 ] as const;
 
 const AppearanceTab = () => {
   const { t } = useTranslation();
   const { theme, setTheme, accentColor, setAccentColor, colorTheme, setColorTheme } = useTheme();
+  const { profile } = useAuth();
+  const isPro = (profile as any)?.is_pro ?? false;
+
   const [customColor1, setCustomColor1] = useState("#1a1a2e");
   const [customColor2, setCustomColor2] = useState("#0f3460");
   const [prefs, setPrefs] = useState<AppearancePrefs>(DEFAULT_PREFS);
@@ -68,8 +73,7 @@ const AppearanceTab = () => {
     }
   };
 
-  // Determine current base theme selection
-  const activeBaseTheme = BASE_THEMES.find((bt) => bt.theme === theme) || BASE_THEMES[2];
+  const showUpgradeToast = () => toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
 
   return (
     <div className="space-y-8">
@@ -82,29 +86,41 @@ const AppearanceTab = () => {
       <div className="space-y-3">
         <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("settings.themes")}</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {BASE_THEMES.map((bt) => (
-            <button
-              key={bt.id}
-              onClick={() => setTheme(bt.theme)}
-              className={cn(
-                "rounded-xl border-2 p-1 transition-all hover:scale-105",
-                bt.theme === theme
-                  ? "border-primary ring-2 ring-primary/30"
-                  : "border-border"
-              )}
-              title={t(`settings.${bt.label}`)}
-            >
-              <div className="rounded-lg h-14 flex flex-col overflow-hidden" style={{ background: bt.bg }}>
-                <div className="h-3 flex gap-0.5 p-0.5">
-                  {[0,1,2].map(i => <div key={i} className="flex-1 rounded-full opacity-30" style={{ background: bt.fg }} />)}
+          {BASE_THEMES.map((bt) => {
+            const locked = bt.pro && !isPro;
+            return (
+              <button
+                key={bt.id}
+                onClick={() => {
+                  if (locked) { showUpgradeToast(); return; }
+                  setTheme(bt.theme);
+                }}
+                className={cn(
+                  "rounded-xl border-2 p-1 transition-all hover:scale-105 relative",
+                  locked ? "opacity-60 cursor-not-allowed" : "",
+                  bt.theme === theme && !locked
+                    ? "border-primary ring-2 ring-primary/30"
+                    : "border-border"
+                )}
+                title={t(`settings.${bt.label}`)}
+              >
+                <div className="rounded-lg h-14 flex flex-col overflow-hidden" style={{ background: bt.bg }}>
+                  <div className="h-3 flex gap-0.5 p-0.5">
+                    {[0,1,2].map(i => <div key={i} className="flex-1 rounded-full opacity-30" style={{ background: bt.fg }} />)}
+                  </div>
+                  <div className="flex-1 p-1 flex flex-col gap-0.5">
+                    {[0,1].map(i => <div key={i} className="h-1.5 rounded-full w-3/4 opacity-20" style={{ background: bt.fg }} />)}
+                  </div>
                 </div>
-                <div className="flex-1 p-1 flex flex-col gap-0.5">
-                  {[0,1].map(i => <div key={i} className="h-1.5 rounded-full w-3/4 opacity-20" style={{ background: bt.fg }} />)}
-                </div>
-              </div>
-              <p className="text-xs text-center mt-1 text-muted-foreground font-medium">{t(`settings.${bt.label}`)}</p>
-            </button>
-          ))}
+                {locked && (
+                  <div className="absolute top-1.5 end-1.5 bg-background/80 rounded-full p-0.5">
+                    <Lock className="h-2.5 w-2.5 text-muted-foreground" />
+                  </div>
+                )}
+                <p className="text-xs text-center mt-1 text-muted-foreground font-medium">{t(`settings.${bt.label}`)}</p>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -135,36 +151,59 @@ const AppearanceTab = () => {
       <div className="space-y-3">
         <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
           <Palette className="h-3.5 w-3.5" /> {t("profile.colorThemes")}
+          {!isPro && (
+            <span className="ms-1 text-[10px] font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+              <Lock className="h-2.5 w-2.5" /> PRO
+            </span>
+          )}
         </h3>
         <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-          {COLOR_THEME_PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              onClick={() => setColorTheme(preset.id)}
-              className={cn(
-                "h-12 w-full rounded-lg border-2 transition-all hover:scale-105",
-                colorTheme === preset.id ? "border-primary ring-2 ring-primary/30 scale-105" : "border-border"
-              )}
-              style={preset.colors.length > 0 ? { background: `linear-gradient(135deg, ${preset.colors.join(", ")})` } : {}}
-              title={preset.name}
-            >
-              {preset.id === "default" && <span className="text-xs text-muted-foreground">{t("profile.defaultTheme")}</span>}
-            </button>
-          ))}
+          {COLOR_THEME_PRESETS.map((preset) => {
+            const locked = preset.id !== "default" && !isPro;
+            return (
+              <button
+                key={preset.id}
+                onClick={() => {
+                  if (locked) { showUpgradeToast(); return; }
+                  setColorTheme(preset.id);
+                }}
+                className={cn(
+                  "h-12 w-full rounded-lg border-2 transition-all hover:scale-105 relative",
+                  locked ? "opacity-50 cursor-not-allowed" : "",
+                  colorTheme === preset.id ? "border-primary ring-2 ring-primary/30 scale-105" : "border-border"
+                )}
+                style={preset.colors.length > 0 ? { background: `linear-gradient(135deg, ${preset.colors.join(", ")})` } : {}}
+                title={preset.name}
+              >
+                {preset.id === "default" && <span className="text-xs text-muted-foreground">{t("profile.defaultTheme")}</span>}
+                {locked && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Lock className="h-3.5 w-3.5 text-white drop-shadow-md" />
+                  </div>
+                )}
+              </button>
+            );
+          })}
           {/* Custom swatch */}
           <button
-            onClick={() => setColorTheme(`custom:${customColor1},${customColor2}`)}
+            onClick={() => {
+              if (!isPro) { showUpgradeToast(); return; }
+              setColorTheme(`custom:${customColor1},${customColor2}`);
+            }}
             className={cn(
-              "h-12 w-full rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center",
+              "h-12 w-full rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center relative",
+              !isPro ? "opacity-50 cursor-not-allowed" : "",
               colorTheme.startsWith("custom:") ? "border-primary ring-2 ring-primary/30 scale-105" : "border-dashed border-muted-foreground"
             )}
             style={colorTheme.startsWith("custom:") ? { background: `linear-gradient(135deg, ${customColor1}, ${customColor2})` } : {}}
             title={t("profile.customTheme")}
           >
-            {!colorTheme.startsWith("custom:") && <Palette className="h-4 w-4 text-muted-foreground" />}
+            {!colorTheme.startsWith("custom:") && (
+              isPro ? <Palette className="h-4 w-4 text-muted-foreground" /> : <Lock className="h-4 w-4 text-muted-foreground" />
+            )}
           </button>
         </div>
-        {colorTheme.startsWith("custom:") && (
+        {colorTheme.startsWith("custom:") && isPro && (
           <div className="flex items-center gap-3 mt-2">
             <label className="h-8 w-8 rounded-full border border-border cursor-pointer overflow-hidden relative">
               <div className="h-full w-full" style={{ backgroundColor: customColor1 }} />

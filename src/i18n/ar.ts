@@ -751,4 +751,11 @@ export default {
     noSounds: "لا توجد أصوات مرفوعة بعد",
     movedToAfk: "تم نقلك إلى قناة الخمول بسبب عدم النشاط.",
   },
+  pro: {
+    upgradeToast: "قم بالترقية إلى Mshb Pro لفتح هذه الميزة.",
+    proRequired: "يتطلب Mshb Pro",
+    billingComingSoon: "تكامل الفوترة قريباً!",
+    subscribeButton: "اشترك في Mshb Pro",
+    upgradeForMore: "قم بالترقية إلى Mshb Pro للحصول على مزيد من الشرائح.",
+  },
 };

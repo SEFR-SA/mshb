@@ -3,8 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Paperclip } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
-const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200 MB
+import { useAuth } from "@/contexts/AuthContext";
 
 interface FileAttachmentButtonProps {
   onFileSelect: (file: File) => void;
@@ -13,7 +12,11 @@ interface FileAttachmentButtonProps {
 
 const FileAttachmentButton = ({ onFileSelect, disabled }: FileAttachmentButtonProps) => {
   const { t } = useTranslation();
+  const { profile } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const isPro = (profile as any)?.is_pro ?? false;
+  const MAX_FILE_SIZE = isPro ? 1024 * 1024 * 1024 : 50 * 1024 * 1024; // 1 GB vs 50 MB
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

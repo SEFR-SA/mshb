@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useServerOwnerIsPro } from "@/hooks/useServerOwnerIsPro";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, Loader2, Plus, Trash2, Upload } from "lucide-react";
+import { ChevronLeft, Loader2, Lock, Plus, Trash2, Upload } from "lucide-react";
 
 interface ServerRole {
   id: string;
@@ -80,6 +81,7 @@ const RolesTab = ({ serverId, canEdit }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const ownerIsPro = useServerOwnerIsPro(serverId);
 
   const [roles, setRoles] = useState<ServerRole[]>([]);
   const [loading, setLoading] = useState(true);
@@ -433,7 +435,14 @@ const RolesTab = ({ serverId, canEdit }: Props) => {
 
                 {/* Role Icon */}
                 <div className="space-y-2">
-                  <Label>{t("serverSettings.roleIcon")}</Label>
+                  <Label className="flex items-center gap-1.5">
+                    {t("serverSettings.roleIcon")}
+                    {!ownerIsPro && (
+                      <span className="text-[10px] font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                        <Lock className="h-2.5 w-2.5" /> PRO
+                      </span>
+                    )}
+                  </Label>
                   <p className="text-xs text-muted-foreground">{t("serverSettings.roleIconDesc")}</p>
                   <div className="flex flex-wrap items-center gap-3">
                     {editIconUrl && (
@@ -448,13 +457,15 @@ const RolesTab = ({ serverId, canEdit }: Props) => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => iconInputRef.current?.click()}
+                          onClick={() => ownerIsPro && iconInputRef.current?.click()}
                           type="button"
+                          disabled={!ownerIsPro}
+                          title={!ownerIsPro ? t("pro.proRequired") : undefined}
                         >
                           <Upload className="h-4 w-4 me-2" />
                           {t("serverSettings.roleIconUpload")}
                         </Button>
-                        {editIconUrl && (
+                        {editIconUrl && ownerIsPro && (
                           <Button
                             variant="ghost"
                             size="sm"

@@ -123,7 +123,20 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
       .channel("server-members-rail")
       .on("postgres_changes", { event: "*", schema: "public", table: "server_members", filter: `user_id=eq.${user.id}` }, () => loadData())
       .subscribe();
-    return () => { channel.unsubscribe(); };
+    const serversChannel = supabase
+      .channel("servers-rail-updates")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "servers" }, (payload) => {
+        setServers((prev) =>
+          prev.map((s) =>
+            s.id === (payload.new as any).id ? { ...s, ...(payload.new as any) } : s
+          )
+        );
+      })
+      .subscribe();
+    return () => {
+      channel.unsubscribe();
+      serversChannel.unsubscribe();
+    };
   }, [user, loadData]);
 
   const handleCopyInvite = async (sId: string) => {
