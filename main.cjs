@@ -199,6 +199,12 @@ function createWindow() {
     show: false,
     icon: path.join(__dirname, 'assets/icon.ico'),
     autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#2f3237',       // dark theme default (--background: 223 7% 20%)
+      symbolColor: '#f0f4f8', // dark theme foreground (--foreground: 220 20% 96%)
+      height: 32,
+    },
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -300,6 +306,12 @@ ipcMain.handle('set-fullscreen', (_event, flag) => {
 
 ipcMain.handle('get-fullscreen', () => {
   return mainWindow ? mainWindow.isFullScreen() : false;
+});
+
+ipcMain.on('set-title-bar-color', (_event, color, symbolColor) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setTitleBarOverlay({ color, symbolColor });
+  }
 });
 
 ipcMain.on('restart-app', () => {

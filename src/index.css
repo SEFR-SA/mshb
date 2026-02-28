@@ -251,6 +251,24 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 
+  /* Electron WCO: interactive elements must opt out of the drag region */
+  button,
+  a,
+  input,
+  textarea,
+  select,
+  label,
+  [role="button"],
+  [role="tab"],
+  [role="checkbox"],
+  [role="menuitem"],
+  [role="option"],
+  [role="slider"],
+  [role="combobox"],
+  [contenteditable="true"] {
+    -webkit-app-region: no-drag;
+  }
+
   [dir="rtl"] {
     font-family: var(--font-arabic), var(--font-sans), sans-serif;
   }

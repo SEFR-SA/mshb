@@ -39,6 +39,20 @@ const AppLayout = () => {
 
   return (
     <div className={`flex h-screen overflow-hidden ${colorTheme === "default" ? "bg-background" : ""}`} style={colorTheme !== "default" ? gradientStyle : undefined}>
+      {/* Electron WCO: transparent drag region lets users move the window */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 32,
+          zIndex: 0,
+          WebkitAppRegion: "drag",
+          WebkitUserSelect: "none",
+        } as React.CSSProperties}
+      />
       <CallListener />
       <GlobalNotificationListener />
       {/* ServerRail is rendered by child views (HomeView, ServerView) on mobile, not here */}

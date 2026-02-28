@@ -158,6 +158,53 @@ function removeGradientOverrides() {
   root.classList.remove("gradient-active", "gradient-light");
 }
 
+/** Convert CSS HSL string ("h s% l%") to a hex color */
+function cssHslToHex(hslStr: string): string {
+  const parts = hslStr.trim().split(/\s+/);
+  if (parts.length < 3) return "#000000";
+  const h = parseFloat(parts[0]);
+  const s = parseFloat(parts[1]) / 100;
+  const l = parseFloat(parts[2]) / 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, "0");
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+/** True if a hex color is perceptually light */
+function isLightHex(hex: string): boolean {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5;
+}
+
+/**
+ * Send the current background colour to Electron's native title bar overlay.
+ * If overrideHex is provided (gradient themes), use that directly.
+ * No-op when not running inside Electron.
+ */
+function syncElectronTitleBar(overrideHex?: string): void {
+  const electronAPI = (window as any).electronAPI;
+  if (!electronAPI?.setTitleBarColor) return;
+  if (overrideHex) {
+    electronAPI.setTitleBarColor(
+      overrideHex,
+      isLightHex(overrideHex) ? "#000000" : "#ffffff"
+    );
+    return;
+  }
+  const root = document.documentElement;
+  const bgHsl = getComputedStyle(root).getPropertyValue("--background").trim();
+  if (!bgHsl) return;
+  const bgHex = cssHslToHex(bgHsl);
+  const bgLightness = parseFloat(bgHsl.split(/\s+/)[2] ?? "50");
+  electronAPI.setTitleBarColor(bgHex, bgLightness < 50 ? "#ffffff" : "#000000");
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem("app-theme");
@@ -185,6 +232,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.classList.remove("dark", "light", "sado", "majls");
     root.classList.add(theme);
     localStorage.setItem("app-theme", theme);
+    requestAnimationFrame(() => syncElectronTitleBar());
   }, [theme]);
 
   useEffect(() => {
@@ -200,8 +248,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (isGradientActive) {
       applyGradientOverrides(colors, isGradientLight);
+      requestAnimationFrame(() => syncElectronTitleBar(colors[0]));
     } else {
       removeGradientOverrides();
+      requestAnimationFrame(() => syncElectronTitleBar());
     }
 
     return () => {
