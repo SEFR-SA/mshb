@@ -82,6 +82,7 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive }: Props) => {
     if (!v) return;
     if (v === "source" && !isPro) {
       toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
+      setResolution("1080p");
       return;
     }
     setResolution(v as "720p" | "1080p" | "source");
@@ -93,7 +94,6 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive }: Props) => {
 
   const handleFpsChange = (v: string) => {
     if (!v) return;
-    // 60fps is free at 720p; requires Pro at 1080p or source
     if (v === "60" && !isPro && resolution !== "720p") {
       toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
       return;
@@ -208,7 +208,7 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive }: Props) => {
                 value="60"
                 className={cn("flex-1 text-xs", !isPro && resolution !== "720p" && "opacity-60")}
               >
-                {t("streaming.fps60")}{(!isPro && resolution !== "720p") && <ProBadge />}
+                {t("streaming.fps60")}{!isPro && resolution !== "720p" && <ProBadge />}
               </ToggleGroupItem>
             </ToggleGroup>
           </div>

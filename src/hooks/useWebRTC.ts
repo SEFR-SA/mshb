@@ -62,6 +62,8 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
   const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]);
   // Flag to suppress onnegotiationneeded during initial setup
   const suppressNegotiationRef = useRef(false);
+  const remoteScreenStreamIdsRef = useRef<Set<string>>(new Set());
+  const audiosByStreamIdRef = useRef<Map<string, HTMLAudioElement>>(new Map());
 
   const cleanup = useCallback(() => {
     if (durationInterval.current) clearInterval(durationInterval.current);
@@ -83,6 +85,8 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
     setRemoteCameraStream(null);
     remoteAudiosRef.current.forEach((a) => { a.pause(); a.srcObject = null; });
     remoteAudiosRef.current = [];
+    remoteScreenStreamIdsRef.current.clear();
+    audiosByStreamIdRef.current.clear();
     pcRef.current?.close();
     pcRef.current = null;
     if (channelRef.current) {
@@ -146,15 +150,38 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
           setRemoteCameraStream(event.streams[0]);
           event.track.onended = () => setRemoteCameraStream(null);
         } else {
+          const screenStreamId = event.streams[0]?.id;
+          if (screenStreamId) {
+            remoteScreenStreamIdsRef.current.add(screenStreamId);
+            const wrongAudio = audiosByStreamIdRef.current.get(screenStreamId);
+            if (wrongAudio) {
+              wrongAudio.pause();
+              wrongAudio.srcObject = null;
+              remoteAudiosRef.current = remoteAudiosRef.current.filter(a => a !== wrongAudio);
+              audiosByStreamIdRef.current.delete(screenStreamId);
+            }
+          }
           setRemoteScreenStream(event.streams[0]);
-          event.track.onended = () => setRemoteScreenStream(null);
+          event.track.onended = () => {
+            if (screenStreamId) remoteScreenStreamIdsRef.current.delete(screenStreamId);
+            setRemoteScreenStream(null);
+          };
         }
       } else {
+        const streamId = event.streams[0]?.id;
+        const isScreenAudio =
+          (streamId && remoteScreenStreamIdsRef.current.has(streamId)) ||
+          (event.streams[0]?.getVideoTracks().length ?? 0) > 0;
+        if (isScreenAudio) {
+          if (streamId) remoteScreenStreamIdsRef.current.add(streamId);
+          return;
+        }
         const audio = new Audio();
         audio.srcObject = event.streams[0];
         audio.muted = isDeafened;
         audio.play().catch(() => {});
         remoteAudiosRef.current.push(audio);
+        if (streamId) audiosByStreamIdRef.current.set(streamId, audio);
       }
     };
 
@@ -320,11 +347,14 @@ export function useWebRTC({ sessionId, isCaller, onEnded, initialMuted = false, 
   }, []);
 
   // Screen sharing
-  const startScreenShare = useCallback(async (settings?: { resolution?: "720p" | "1080p" | "source"; fps?: 30 | 60; surface?: "monitor" | "window"; sourceId?: string }) => {
+  const startScreenShare = useCallback(async (settings?: { resolution?: "720p" | "1080p" | "source"; fps?: 30 | 60; surface?: "monitor" | "window"; sourceId?: string; isPro?: boolean }) => {
     const pc = pcRef.current;
     if (!pc || isScreenSharing) return;
-    const res = settings?.resolution ?? "1080p";
-    const fps = settings?.fps ?? 60;
+    const isPro = settings?.isPro ?? true; // default true = no restriction if caller omits flag
+    const res = (!isPro && settings?.resolution === "source") ? "1080p"
+              : (settings?.resolution ?? "1080p");
+    const fps = (!isPro && res !== "720p" && (settings?.fps ?? 30) === 60) ? 30
+              : (settings?.fps ?? 30);
     const surface = settings?.surface ?? "monitor";
     const sourceId = settings?.sourceId;
     try {

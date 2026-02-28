@@ -87,6 +87,8 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
   const remoteCameraExpectedRef = useRef<Set<string>>(new Set());
+  const remoteScreenStreamIdsRef = useRef<Set<string>>(new Set());
+  const audiosByStreamIdRef = useRef<Map<string, HTMLAudioElement>>(new Map());
 
   const lastSpeakingRef = useRef<boolean>(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -226,16 +228,42 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           setRemoteCameraStream(e.streams[0]);
           e.track.onended = () => setRemoteCameraStream(null);
         } else {
-          // Remote screen share
+          // Remote screen share — tag stream ID so audio handler skips it
+          const screenStreamId = e.streams[0]?.id;
+          if (screenStreamId) {
+            remoteScreenStreamIdsRef.current.add(screenStreamId);
+            // If screen audio arrived before video and was wrongly played globally, stop it
+            const wrongAudio = audiosByStreamIdRef.current.get(screenStreamId);
+            if (wrongAudio) {
+              wrongAudio.pause();
+              wrongAudio.srcObject = null;
+              remoteAudiosRef.current = remoteAudiosRef.current.filter(a => a !== wrongAudio);
+              audiosByStreamIdRef.current.delete(screenStreamId);
+            }
+          }
           setRemoteScreenStream(e.streams[0]);
-          e.track.onended = () => setRemoteScreenStream(null);
+          e.track.onended = () => {
+            if (screenStreamId) remoteScreenStreamIdsRef.current.delete(screenStreamId);
+            setRemoteScreenStream(null);
+          };
         }
       } else {
+        // Skip screen-share audio — ScreenShareViewer plays it via the video element
+        const streamId = e.streams[0]?.id;
+        const isScreenAudio =
+          (streamId && remoteScreenStreamIdsRef.current.has(streamId)) ||
+          (e.streams[0]?.getVideoTracks().length ?? 0) > 0;
+        if (isScreenAudio) {
+          if (streamId) remoteScreenStreamIdsRef.current.add(streamId);
+          return;
+        }
+        // Mic audio — play globally and monitor for speaking detection
         const audio = new Audio();
         audio.srcObject = e.streams[0];
         audio.muted = globalDeafened;
         audio.play().catch(() => { });
         remoteAudiosRef.current.push(audio);
+        if (streamId) audiosByStreamIdRef.current.set(streamId, audio);
         const monitor = createVolumeMonitor(e.streams[0], (isSpeaking) => {
           updateSpeaking(peerId, isSpeaking);
         });
@@ -323,17 +351,21 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         } catch { }
       }
 
-      // Detect native resolution and expose it to the UI
-      const trackSettings = videoTrack.getSettings();
-      const tw = trackSettings.width ?? 0;
-      const th = trackSettings.height ?? 0;
-      const resLabel =
-        tw >= 3840 || th >= 2160 ? "4K"
-        : tw >= 2560 || th >= 1440 ? "2K"
-        : th >= 1080 ? "1080p"
-        : th >= 720 ? "720p"
-        : th > 0 ? `${th}p`
-        : null;
+      // Expose resolution label to the UI.
+      // For source resolution, detect native size from the actual captured track.
+      // For 720p / 1080p, use the selected preset directly — getSettings() may
+      // return the monitor's native size before constraints fully take effect.
+      const resLabel: string | null = res === "source"
+        ? (() => {
+            const { width: tw = 0, height: th = 0 } = videoTrack.getSettings();
+            return tw >= 3840 || th >= 2160 ? "4K"
+                 : tw >= 2560 || th >= 1440 ? "2K"
+                 : th >= 1080 ? "1080p"
+                 : th >= 720  ? "720p"
+                 : th > 0     ? `${th}p`
+                 : null;
+          })()
+        : res; // "720p" or "1080p" — display exactly what the user selected
       setNativeResolutionLabel(resLabel);
 
       // Add track to all peer connections with gaming-quality settings
@@ -714,6 +746,8 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
 
       volumeMonitorsRef.current.forEach((m) => m.cleanup());
       volumeMonitorsRef.current = [];
+      remoteScreenStreamIdsRef.current.clear();
+      audiosByStreamIdRef.current.clear();
       if (user) {
         channelRef.current?.send({ type: "broadcast", event: "voice-leave", payload: { userId: user.id } });
         supabase.from("voice_channel_participants" as any).delete().eq("channel_id", channelId).eq("user_id", user.id).then();

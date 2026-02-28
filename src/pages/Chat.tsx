@@ -49,7 +49,7 @@ const Chat = () => {
   const { t } = useTranslation();
   const { threadId } = useParams<{ threadId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { isOnline, getUserStatus } = usePresence();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -480,7 +480,7 @@ const Chat = () => {
         isScreenSharing={isScreenSharing}
         localScreenStream={localScreenStream}
         remoteScreenStream={remoteScreenStream}
-        onStartScreenShare={(settings) => startScreenShare(settings)}
+        onStartScreenShare={(settings) => startScreenShare({ ...settings, isPro: (profile as any)?.is_pro ?? false })}
         onStopScreenShare={stopScreenShare}
         isCameraOn={isCameraOn}
         localCameraStream={localCameraStream}
