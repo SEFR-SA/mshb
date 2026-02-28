@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
 
-type Theme = "dark" | "light";
+type Theme = "dark" | "light" | "sado" | "majls";
 
 export interface ColorThemePreset {
   id: string;
@@ -161,7 +161,8 @@ function removeGradientOverrides() {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem("app-theme");
-    return (stored === "light" ? "light" : "dark") as Theme;
+    if (stored === "light" || stored === "dark" || stored === "sado" || stored === "majls") return stored;
+    return "dark";
   });
 
   const [accentColor, setAccentColorState] = useState<string>(() => {
@@ -181,7 +182,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove("dark", "light");
+    root.classList.remove("dark", "light", "sado", "majls");
     root.classList.add(theme);
     localStorage.setItem("app-theme", theme);
   }, [theme]);

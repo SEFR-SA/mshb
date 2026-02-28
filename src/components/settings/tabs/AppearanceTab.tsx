@@ -24,12 +24,12 @@ const ACCENT_PRESETS = [
   { hex: "#0d9488", label: "Teal" },
 ];
 
-// Light/Ash/Dark/Onyx are meta-presets that map theme + colorTheme
+// Light/Sado/Dark/Majls are meta-presets that map theme + colorTheme
 const BASE_THEMES = [
-  { id: "light",  label: "themeLight",  theme: "light" as const, colorTheme: "default", bg: "#f8f8f8",  fg: "#1a1a1a" },
-  { id: "ash",    label: "themeAsh",    theme: "light" as const, colorTheme: "default", bg: "#e8e4e0",  fg: "#2a2016" },
-  { id: "dark",   label: "themeDark",   theme: "dark"  as const, colorTheme: "default", bg: "#1e1e2e",  fg: "#e0e0e0" },
-  { id: "onyx",   label: "themeOnyx",   theme: "dark"  as const, colorTheme: "default", bg: "#0a0a0a",  fg: "#c0c0c0" },
+  { id: "light", label: "themeLight", theme: "light" as const, colorTheme: "default", bg: "#f8f8f8", fg: "#1a1a1a" },
+  { id: "sado",  label: "themeSado",  theme: "sado"  as const, colorTheme: "default", bg: "#fffdfa", fg: "#c44a3d" },
+  { id: "dark",  label: "themeDark",  theme: "dark"  as const, colorTheme: "default", bg: "#1e1e2e", fg: "#e0e0e0" },
+  { id: "majls", label: "themeMajls", theme: "majls" as const, colorTheme: "default", bg: "#1f130c", fg: "#c44a3d" },
 ] as const;
 
 const AppearanceTab = () => {
@@ -88,7 +88,7 @@ const AppearanceTab = () => {
               onClick={() => setTheme(bt.theme)}
               className={cn(
                 "rounded-xl border-2 p-1 transition-all hover:scale-105",
-                theme === bt.theme && bt.id === (theme === "light" ? "light" : "dark")
+                bt.theme === theme
                   ? "border-primary ring-2 ring-primary/30"
                   : "border-border"
               )}

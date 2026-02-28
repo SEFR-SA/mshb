@@ -13,6 +13,7 @@ import { Camera, ImagePlus } from "lucide-react";
 import { FONT_STYLES, convertToFont, revertToPlain, type FontStyle } from "@/lib/unicodeFonts";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
+import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 
 const STATUSES: UserStatus[] = ["online", "busy", "dnd", "idle", "invisible"];
 const DURATIONS = ["15m", "1h", "8h", "24h", "3d", "forever"] as const;
@@ -341,7 +342,7 @@ const ProfileTab = () => {
                     className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white inline-flex items-center gap-1"
                     style={{ backgroundColor: tag.server_tag_color || "#6b7280" }}
                   >
-                    {tag.server_tag_badge && <span>{tag.server_tag_badge}</span>}
+                    <ServerTagBadgeIcon badgeName={tag.server_tag_badge} className="w-3 h-3 object-contain shrink-0" />
                     <span>{tag.server_tag_name}</span>
                   </span>
                 </div>

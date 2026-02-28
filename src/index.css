@@ -93,6 +93,90 @@
     --online: 142 76% 46%;
     --theme-gradient: none;
   }
+
+  .sado {
+    --background: 36 100% 99%;
+    --foreground: 25 44% 25%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 25 44% 25%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 25 44% 25%;
+
+    --primary: 6 53% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 36 50% 92%;
+    --secondary-foreground: 25 44% 25%;
+
+    --muted: 36 50% 92%;
+    --muted-foreground: 30 1% 41%;
+
+    --accent: 36 50% 92%;
+    --accent-foreground: 25 44% 25%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 36 33% 83%;
+    --input: 36 33% 83%;
+    --ring: 6 53% 50%;
+
+    --sidebar-background: 36 50% 92%;
+    --sidebar-foreground: 25 44% 25%;
+    --sidebar-primary: 6 53% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 36 33% 83%;
+    --sidebar-accent-foreground: 25 44% 25%;
+    --sidebar-border: 36 33% 83%;
+    --sidebar-ring: 6 53% 50%;
+
+    --online: 142 76% 36%;
+    --theme-gradient: none;
+  }
+
+  .majls {
+    --background: 22 44% 8%;
+    --foreground: 36 56% 95%;
+
+    --card: 23 47% 13%;
+    --card-foreground: 36 56% 95%;
+
+    --popover: 23 47% 13%;
+    --popover-foreground: 36 56% 95%;
+
+    --primary: 6 53% 50%;
+    --primary-foreground: 36 100% 99%;
+
+    --secondary: 23 50% 10%;
+    --secondary-foreground: 36 56% 95%;
+
+    --muted: 23 50% 10%;
+    --muted-foreground: 32 11% 66%;
+
+    --accent: 22 48% 20%;
+    --accent-foreground: 36 56% 95%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 22 48% 20%;
+    --input: 22 44% 8%;
+    --ring: 6 53% 50%;
+
+    --sidebar-background: 23 47% 13%;
+    --sidebar-foreground: 36 56% 95%;
+    --sidebar-primary: 6 53% 50%;
+    --sidebar-primary-foreground: 36 100% 99%;
+    --sidebar-accent: 22 48% 20%;
+    --sidebar-accent-foreground: 36 56% 95%;
+    --sidebar-border: 22 48% 20%;
+    --sidebar-ring: 6 53% 50%;
+
+    --online: 142 76% 46%;
+    --theme-gradient: none;
+  }
 }
 
 @layer base {
