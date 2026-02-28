@@ -344,6 +344,45 @@ export type Database = {
           },
         ]
       }
+      member_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role_id: string
+          server_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role_id: string
+          server_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role_id?: string
+          server_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_roles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "server_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_roles_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_hidden: {
         Row: {
           created_at: string
@@ -533,6 +572,7 @@ export type Database = {
       profiles: {
         Row: {
           about_me: string | null
+          active_server_tag_id: string | null
           avatar_url: string | null
           banner_url: string | null
           color_theme: string | null
@@ -556,6 +596,7 @@ export type Database = {
         }
         Insert: {
           about_me?: string | null
+          active_server_tag_id?: string | null
           avatar_url?: string | null
           banner_url?: string | null
           color_theme?: string | null
@@ -579,6 +620,7 @@ export type Database = {
         }
         Update: {
           about_me?: string | null
+          active_server_tag_id?: string | null
           avatar_url?: string | null
           banner_url?: string | null
           color_theme?: string | null
@@ -600,7 +642,15 @@ export type Database = {
           user_id?: string
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_active_server_tag_id_fkey"
+            columns: ["active_server_tag_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       server_audit_logs: {
         Row: {
@@ -631,6 +681,41 @@ export type Database = {
           target_id?: string | null
         }
         Relationships: []
+      }
+      server_emojis: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          server_id: string
+          uploaded_by: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          server_id: string
+          uploaded_by: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          server_id?: string
+          uploaded_by?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_emojis_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       server_folder_items: {
         Row: {
@@ -693,6 +778,7 @@ export type Database = {
       }
       server_members: {
         Row: {
+          entrance_sound_id: string | null
           id: string
           joined_at: string
           role: string
@@ -700,6 +786,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          entrance_sound_id?: string | null
           id?: string
           joined_at?: string
           role?: string
@@ -707,6 +794,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          entrance_sound_id?: string | null
           id?: string
           joined_at?: string
           role?: string
@@ -715,7 +803,128 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "server_members_entrance_sound_id_fkey"
+            columns: ["entrance_sound_id"]
+            isOneToOne: false
+            referencedRelation: "server_soundboard"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "server_members_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      server_roles: {
+        Row: {
+          color: string
+          created_at: string
+          icon_url: string | null
+          id: string
+          name: string
+          permissions: Json
+          position: number
+          server_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          name?: string
+          permissions?: Json
+          position?: number
+          server_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          name?: string
+          permissions?: Json
+          position?: number
+          server_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_roles_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      server_soundboard: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          server_id: string
+          uploaded_by: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          server_id: string
+          uploaded_by: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          server_id?: string
+          uploaded_by?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_soundboard_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      server_stickers: {
+        Row: {
+          created_at: string
+          format: string
+          id: string
+          name: string
+          server_id: string
+          uploaded_by: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          format?: string
+          id?: string
+          name: string
+          server_id: string
+          uploaded_by: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          format?: string
+          id?: string
+          name?: string
+          server_id?: string
+          uploaded_by?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_stickers_server_id_fkey"
             columns: ["server_id"]
             isOneToOne: false
             referencedRelation: "servers"
@@ -727,34 +936,73 @@ export type Database = {
         Row: {
           banner_url: string | null
           created_at: string
+          default_notification_level: string
           description: string | null
           icon_url: string | null
           id: string
+          inactive_channel_id: string | null
+          inactive_timeout: number | null
           invite_code: string
           name: string
           owner_id: string
+          server_tag_badge: string | null
+          server_tag_color: string | null
+          server_tag_name: string | null
+          system_message_channel_id: string | null
+          welcome_message_enabled: boolean
         }
         Insert: {
           banner_url?: string | null
           created_at?: string
+          default_notification_level?: string
           description?: string | null
           icon_url?: string | null
           id?: string
+          inactive_channel_id?: string | null
+          inactive_timeout?: number | null
           invite_code?: string
           name: string
           owner_id: string
+          server_tag_badge?: string | null
+          server_tag_color?: string | null
+          server_tag_name?: string | null
+          system_message_channel_id?: string | null
+          welcome_message_enabled?: boolean
         }
         Update: {
           banner_url?: string | null
           created_at?: string
+          default_notification_level?: string
           description?: string | null
           icon_url?: string | null
           id?: string
+          inactive_channel_id?: string | null
+          inactive_timeout?: number | null
           invite_code?: string
           name?: string
           owner_id?: string
+          server_tag_badge?: string | null
+          server_tag_color?: string | null
+          server_tag_name?: string | null
+          system_message_channel_id?: string | null
+          welcome_message_enabled?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "servers_inactive_channel_id_fkey"
+            columns: ["inactive_channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "servers_system_message_channel_id_fkey"
+            columns: ["system_message_channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       thread_read_status: {
         Row: {
