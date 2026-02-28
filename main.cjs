@@ -66,6 +66,7 @@ if (process.env.MSHB_DISABLE_GPU === '1') {
   // disable-software-rasterizer REMOVED — prevents software fallback when GPU fails → white screen
   // enable-native-gpu-memory-buffers REMOVED — GPU OOM during capture on some hardware
   app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
+  app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
   app.commandLine.appendSwitch('disable-renderer-backgrounding');
   app.commandLine.appendSwitch('enable-features',
     'WebRTCPipeWireCapturer,CanvasOopRasterization,' +

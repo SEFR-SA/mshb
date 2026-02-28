@@ -46,7 +46,11 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
 
   // Attach stream to video/audio
   useEffect(() => {
-    if (videoRef.current) videoRef.current.srcObject = stream;
+    const video = videoRef.current;
+    if (!video) return;
+    video.srcObject = stream;
+    video.muted = false;
+    video.play().catch(() => {});
   }, [stream]);
 
   // Fullscreen state tracking — Electron IPC primary, HTML5 API fallback
