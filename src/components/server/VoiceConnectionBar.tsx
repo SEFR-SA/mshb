@@ -69,7 +69,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const { user } = useAuth();
   const { t } = useTranslation();
   const { globalMuted, globalDeafened, setGlobalMuted, setGlobalDeafened } = useAudioSettings();
-  const { isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsCameraOn, setLocalCameraStream, setRemoteCameraStream, voiceChannel, setVoiceChannel } = useVoiceChannel();
+  const { isScreenSharing, setIsScreenSharing, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsCameraOn, setLocalCameraStream, setRemoteCameraStream, voiceChannel, setVoiceChannel, setNativeResolutionLabel } = useVoiceChannel();
   const [isJoined, setIsJoined] = useState(false);
   const [inactiveChannelId, setInactiveChannelId] = useState<string | null>(null);
   const [inactiveTimeout, setInactiveTimeout] = useState<number | null>(null);
@@ -292,6 +292,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
               chromeMediaSource: "desktop",
               chromeMediaSourceId: sourceId,
               maxFrameRate: fps,
+              ...(res === "source" ? { minFrameRate: fps } : {}),
               ...sizeConstraints,
             },
           } as any,
@@ -302,7 +303,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           displaySurface: surface,
           cursor: "always",
           logicalSurface: true,
-          frameRate: { ideal: fps, max: fps },
+          frameRate: { ideal: fps, max: fps, ...(res === "source" ? { min: fps } : {}) },
           ...(res === "720p" ? { width: 1280, height: 720 }
             : res === "1080p" ? { width: 1920, height: 1080 }
               : {}),
@@ -315,12 +316,31 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       screenStreamRef.current = stream;
       const videoTrack = stream.getVideoTracks()[0];
       videoTrack.contentHint = 'motion';
-      try {
-        await videoTrack.applyConstraints({ width: { min: 1280, ideal: 1920 }, height: { min: 720, ideal: 1080 }, frameRate: { min: 30, ideal: 60 } });
-      } catch { }
+      // For source resolution, skip resolution-capping applyConstraints — only enforce framerate
+      if (res !== "source") {
+        try {
+          await videoTrack.applyConstraints({ frameRate: { min: 30, ideal: fps } });
+        } catch { }
+      }
+
+      // Detect native resolution and expose it to the UI
+      const trackSettings = videoTrack.getSettings();
+      const tw = trackSettings.width ?? 0;
+      const th = trackSettings.height ?? 0;
+      const resLabel =
+        tw >= 3840 || th >= 2160 ? "4K"
+        : tw >= 2560 || th >= 1440 ? "2K"
+        : th >= 1080 ? "1080p"
+        : th >= 720 ? "720p"
+        : th > 0 ? `${th}p`
+        : null;
+      setNativeResolutionLabel(resLabel);
 
       // Add track to all peer connections with gaming-quality settings
-      const bitrate = res === "720p" ? 6_000_000 : 8_000_000;
+      const bitrate =
+        res === "720p"    ? 6_000_000   // 6 Mbps
+        : res === "1080p" ? 15_000_000  // 15 Mbps
+        :                   25_000_000; // 25 Mbps — source (2K/4K@60fps)
       for (const [peerId, pc] of peerConnectionsRef.current) {
         const transceiver = pc.addTransceiver(videoTrack, {
           direction: 'sendonly',
@@ -400,6 +420,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
 
   const stopScreenShare = useCallback(() => {
     if (statsIntervalRef.current) { clearInterval(statsIntervalRef.current); statsIntervalRef.current = null; }
+    setNativeResolutionLabel(null);
     // Remove senders from peer connections
     peerConnectionsRef.current.forEach((pc, peerId) => {
       const sender = screenSendersRef.current.get(peerId);

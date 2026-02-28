@@ -27,6 +27,8 @@ interface VoiceChannelContextType {
   setRemoteCameraStream: (s: MediaStream | null) => void;
   userVolumes: Record<string, number>;
   setUserVolume: (userId: string, volume: number) => void;
+  nativeResolutionLabel: string | null;
+  setNativeResolutionLabel: (label: string | null) => void;
 }
 
 const VoiceChannelContext = createContext<VoiceChannelContextType>({
@@ -49,6 +51,8 @@ const VoiceChannelContext = createContext<VoiceChannelContextType>({
   setRemoteCameraStream: () => {},
   userVolumes: {},
   setUserVolume: () => {},
+  nativeResolutionLabel: null,
+  setNativeResolutionLabel: () => {},
 });
 
 export const useVoiceChannel = () => useContext(VoiceChannelContext);
@@ -69,6 +73,7 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
   const [localCameraStream, setLocalCameraStream] = useState<MediaStream | null>(null);
   const [remoteCameraStream, setRemoteCameraStream] = useState<MediaStream | null>(null);
   const [userVolumes, setUserVolumes] = useState<Record<string, number>>({});
+  const [nativeResolutionLabel, setNativeResolutionLabel] = useState<string | null>(null);
 
   const setUserVolume = useCallback((userId: string, volume: number) => {
     setUserVolumes((prev) => ({ ...prev, [userId]: volume }));
@@ -114,10 +119,11 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
     setLocalCameraStream(null);
     setRemoteCameraStream(null);
     setUserVolumes({});
+    setNativeResolutionLabel(null);
   }, []);
 
   return (
-    <VoiceChannelContext.Provider value={{ voiceChannel, setVoiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, screenSharerName, setScreenSharerName, isWatchingStream, setIsWatchingStream, isCameraOn, setIsCameraOn, localCameraStream, setLocalCameraStream, remoteCameraStream, setRemoteCameraStream, userVolumes, setUserVolume }}>
+    <VoiceChannelContext.Provider value={{ voiceChannel, setVoiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, screenSharerName, setScreenSharerName, isWatchingStream, setIsWatchingStream, isCameraOn, setIsCameraOn, localCameraStream, setLocalCameraStream, remoteCameraStream, setRemoteCameraStream, userVolumes, setUserVolume, nativeResolutionLabel, setNativeResolutionLabel }}>
       {children}
     </VoiceChannelContext.Provider>
   );

@@ -94,7 +94,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
-  const { voiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsWatchingStream } = useVoiceChannel();
+  const { voiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsWatchingStream, nativeResolutionLabel } = useVoiceChannel();
   const { getUserStatus } = usePresence();
   const isMobile = useIsMobile();
   const status = (getUserStatus(profile) || "online") as UserStatus;
@@ -888,6 +888,11 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             <div className="flex items-center gap-2 px-3 py-2 bg-sidebar-accent/50">
               <div className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
               <span className="text-xs font-medium truncate flex-1">#{voiceChannel.name}</span>
+              {isScreenSharing && nativeResolutionLabel && (
+                <span className="text-[10px] font-bold text-green-400 shrink-0 leading-none">
+                  {nativeResolutionLabel}
+                </span>
+              )}
               <Button
                 variant="ghost"
                 size="icon"

@@ -86,9 +86,15 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
   useEffect(() => {
     const track = stream.getVideoTracks()[0];
     if (!track) { setResolutionLabel(""); return; }
-    const { height, frameRate } = track.getSettings();
+    const { width, height, frameRate } = track.getSettings();
     if (!height) { setResolutionLabel(""); return; }
-    const res = height >= 1080 ? "1080p" : height >= 720 ? "720p" : height >= 480 ? "480p" : `${height}p`;
+    const res =
+      (width && width >= 3840) || height >= 2160 ? "4K"
+      : (width && width >= 2560) || height >= 1440 ? "2K"
+      : height >= 1080 ? "1080p"
+      : height >= 720 ? "720p"
+      : height >= 480 ? "480p"
+      : `${height}p`;
     const fps = frameRate ? ` ${Math.round(frameRate)}FPS` : "";
     setResolutionLabel(`${res}${fps}`);
   }, [stream]);
