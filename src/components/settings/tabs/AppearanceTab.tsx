@@ -17,15 +17,6 @@ interface AppearancePrefs {
 
 const DEFAULT_PREFS: AppearancePrefs = { messageSpacing: 2, fontSize: 14, density: "default" };
 
-const ACCENT_PRESETS = [
-  { hex: "#084f00", label: "Green" },
-  { hex: "#2563eb", label: "Blue" },
-  { hex: "#7c3aed", label: "Purple" },
-  { hex: "#dc2626", label: "Red" },
-  { hex: "#ea580c", label: "Orange" },
-  { hex: "#0d9488", label: "Teal" },
-];
-
 // Light/Sado/Dark/Majls are meta-presets that map theme + colorTheme
 const BASE_THEMES = [
   { id: "light", label: "themeLight", theme: "light" as const, colorTheme: "default", bg: "#f8f8f8", fg: "#1a1a1a", pro: false },
@@ -36,12 +27,10 @@ const BASE_THEMES = [
 
 const AppearanceTab = () => {
   const { t } = useTranslation();
-  const { theme, setTheme, accentColor, setAccentColor, colorTheme, setColorTheme } = useTheme();
+  const { theme, setTheme, colorTheme, setColorTheme } = useTheme();
   const { profile } = useAuth();
   const isPro = (profile as any)?.is_pro ?? false;
 
-  const [customColor1, setCustomColor1] = useState("#1a1a2e");
-  const [customColor2, setCustomColor2] = useState("#0f3460");
   const [prefs, setPrefs] = useState<AppearancePrefs>(DEFAULT_PREFS);
 
   useEffect(() => {
@@ -53,13 +42,8 @@ const AppearanceTab = () => {
         document.documentElement.style.setProperty("--message-gap", `${p.messageSpacing * 4}px`);
         document.documentElement.style.setProperty("--chat-font-size", `${p.fontSize}px`);
       }
-      if (colorTheme.startsWith("custom:")) {
-        const parts = colorTheme.replace("custom:", "").split(",");
-        if (parts[0]) setCustomColor1(parts[0]);
-        if (parts[1]) setCustomColor2(parts[1]);
-      }
     } catch {}
-  }, [colorTheme]);
+  }, []);
 
   const updatePrefs = (patch: Partial<AppearancePrefs>) => {
     const next = { ...prefs, ...patch };
@@ -124,29 +108,6 @@ const AppearanceTab = () => {
         </div>
       </div>
 
-      {/* Accent Color */}
-      <div className="space-y-3">
-        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("profile.accentColor")}</h3>
-        <div className="flex items-center gap-2 flex-wrap">
-          {ACCENT_PRESETS.map((preset) => (
-            <button
-              key={preset.hex}
-              onClick={() => setAccentColor(preset.hex)}
-              className={cn(
-                "h-8 w-8 rounded-full border-2 transition-transform hover:scale-110",
-                accentColor === preset.hex ? "border-foreground scale-110" : "border-transparent"
-              )}
-              style={{ backgroundColor: preset.hex }}
-              title={preset.label}
-            />
-          ))}
-          <label className="h-8 w-8 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center cursor-pointer hover:border-foreground transition-colors overflow-hidden relative" title="Custom">
-            <span className="text-xs text-muted-foreground">+</span>
-            <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
-          </label>
-        </div>
-      </div>
-
       {/* Color Themes */}
       <div className="space-y-3">
         <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
@@ -157,7 +118,7 @@ const AppearanceTab = () => {
             </span>
           )}
         </h3>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
           {COLOR_THEME_PRESETS.map((preset) => {
             const locked = preset.id !== "default" && !isPro;
             return (
@@ -168,53 +129,34 @@ const AppearanceTab = () => {
                   setColorTheme(preset.id);
                 }}
                 className={cn(
-                  "h-12 w-full rounded-lg border-2 transition-all hover:scale-105 relative",
+                  "rounded-lg border-2 transition-all hover:scale-105 relative overflow-hidden",
                   locked ? "opacity-50 cursor-not-allowed" : "",
                   colorTheme === preset.id ? "border-primary ring-2 ring-primary/30 scale-105" : "border-border"
                 )}
-                style={preset.colors.length > 0 ? { background: `linear-gradient(135deg, ${preset.colors.join(", ")})` } : {}}
                 title={preset.name}
               >
-                {preset.id === "default" && <span className="text-xs text-muted-foreground">{t("profile.defaultTheme")}</span>}
-                {locked && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Lock className="h-3.5 w-3.5 text-white drop-shadow-md" />
-                  </div>
-                )}
+                <div
+                  className="h-10 w-full"
+                  style={preset.colors.length > 0 ? { background: `linear-gradient(135deg, ${preset.colors.join(", ")})` } : {}}
+                >
+                  {preset.id === "default" && (
+                    <span className="flex items-center justify-center h-full text-[10px] text-muted-foreground font-medium">
+                      {t("profile.defaultTheme")}
+                    </span>
+                  )}
+                  {locked && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Lock className="h-3 w-3 text-white drop-shadow-md" />
+                    </div>
+                  )}
+                </div>
+                <p className="text-[9px] text-center py-0.5 text-muted-foreground font-medium truncate px-0.5">
+                  {preset.name}
+                </p>
               </button>
             );
           })}
-          {/* Custom swatch */}
-          <button
-            onClick={() => {
-              if (!isPro) { showUpgradeToast(); return; }
-              setColorTheme(`custom:${customColor1},${customColor2}`);
-            }}
-            className={cn(
-              "h-12 w-full rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center relative",
-              !isPro ? "opacity-50 cursor-not-allowed" : "",
-              colorTheme.startsWith("custom:") ? "border-primary ring-2 ring-primary/30 scale-105" : "border-dashed border-muted-foreground"
-            )}
-            style={colorTheme.startsWith("custom:") ? { background: `linear-gradient(135deg, ${customColor1}, ${customColor2})` } : {}}
-            title={t("profile.customTheme")}
-          >
-            {!colorTheme.startsWith("custom:") && (
-              isPro ? <Palette className="h-4 w-4 text-muted-foreground" /> : <Lock className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
         </div>
-        {colorTheme.startsWith("custom:") && isPro && (
-          <div className="flex items-center gap-3 mt-2">
-            <label className="h-8 w-8 rounded-full border border-border cursor-pointer overflow-hidden relative">
-              <div className="h-full w-full" style={{ backgroundColor: customColor1 }} />
-              <input type="color" value={customColor1} onChange={(e) => { setCustomColor1(e.target.value); setColorTheme(`custom:${e.target.value},${customColor2}`); }} className="absolute inset-0 opacity-0 cursor-pointer" />
-            </label>
-            <label className="h-8 w-8 rounded-full border border-border cursor-pointer overflow-hidden relative">
-              <div className="h-full w-full" style={{ backgroundColor: customColor2 }} />
-              <input type="color" value={customColor2} onChange={(e) => { setCustomColor2(e.target.value); setColorTheme(`custom:${customColor1},${e.target.value}`); }} className="absolute inset-0 opacity-0 cursor-pointer" />
-            </label>
-          </div>
-        )}
       </div>
 
       {/* UI Customization */}
