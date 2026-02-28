@@ -47,6 +47,7 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const isElectron = typeof window !== "undefined" && !!(window as any).electronAPI;
 
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [serverName, setServerName] = useState("");
@@ -209,7 +210,7 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-none w-screen h-screen m-0 p-0 rounded-none border-none flex bg-background overflow-hidden [&>button]:hidden">
+        <DialogContent className={`max-w-none w-screen h-screen m-0 p-0 rounded-none border-none flex bg-background overflow-hidden [&>button]:hidden${isElectron ? " pt-8" : ""}`}>
           <DialogHeader className="sr-only">
             <DialogTitle>{t("servers.settings")}</DialogTitle>
             <DialogDescription>{t("servers.settingsDesc")}</DialogDescription>

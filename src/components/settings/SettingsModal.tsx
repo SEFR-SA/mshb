@@ -83,6 +83,8 @@ const SettingsModal = () => {
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  const isElectron = typeof window !== "undefined" && !!(window as any).electronAPI;
+
   const close = () => navigate(-1);
 
   // ESC to close
@@ -164,10 +166,13 @@ const SettingsModal = () => {
   return (
     <div className="fixed inset-0 z-50 flex animate-in fade-in duration-150">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={close} />
+      <div className={`absolute inset-0 ${isElectron ? "bg-transparent backdrop-blur-none" : "bg-black/70 backdrop-blur-sm"}`} onClick={close} />
+
+      {/* Separator line at the WCO boundary — mirrors the AppLayout title bar separator */}
+      {isElectron && <div className="absolute left-0 right-0 top-8 h-px bg-border/40 z-20" />}
 
       {/* Modal panel — sits on top of backdrop */}
-      <div className="relative z-10 flex w-full h-full overflow-hidden">
+      <div className={`relative z-10 flex w-full h-full overflow-hidden${isElectron ? " pt-8" : ""}`}>
 
         {/* ── LEFT SIDEBAR — desktop only ── */}
         <aside className="hidden md:flex md:w-56 shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground border-e border-border/50">
