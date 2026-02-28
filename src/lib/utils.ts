@@ -12,6 +12,16 @@ export function cn(...inputs: ClassValue[]) {
  * running on a file:// origin).
  * Returns true on success, false on failure.
  */
+/**
+ * Formats a message timestamp respecting the user's mshb_time_format preference.
+ * Reads "12h" or "24h" from localStorage; defaults to "12h".
+ */
+export function formatTime(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const fmt = localStorage.getItem("mshb_time_format") ?? "12h";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: fmt === "12h" });
+}
+
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     if (navigator.clipboard) {

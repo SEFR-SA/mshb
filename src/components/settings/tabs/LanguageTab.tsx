@@ -1,10 +1,26 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 
 type TimeFormat = "12h" | "24h";
+
+const LANGUAGES = [
+  {
+    code: "en" as const,
+    label: "English",
+    nativeLabel: "English",
+    flagUrl: "https://flagcdn.com/w40/gb.png",
+  },
+  {
+    code: "ar" as const,
+    label: "Arabic",
+    nativeLabel: "العربية",
+    flagUrl: "https://flagcdn.com/w40/sa.png",
+  },
+];
 
 const LanguageTab = () => {
   const { t, i18n } = useTranslation();
@@ -31,6 +47,7 @@ const LanguageTab = () => {
   };
 
   const currentLang = i18n.language.split("-")[0] as "en" | "ar";
+  const currentLangData = LANGUAGES.find((l) => l.code === currentLang) ?? LANGUAGES[0];
 
   return (
     <div className="space-y-8">
@@ -39,55 +56,47 @@ const LanguageTab = () => {
         <p className="text-sm text-muted-foreground">Set your preferred language and time format.</p>
       </div>
 
-      {/* Language */}
+      {/* Language — dropdown */}
       <div className="space-y-3">
-        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("settings.selectLanguage")}</h3>
-        <div className="grid grid-cols-2 gap-3">
-          {/* English */}
-          <button
-            onClick={() => switchLanguage("en")}
-            className={cn(
-              "rounded-xl border-2 p-4 flex items-center gap-3 transition-all hover:border-primary/50",
-              currentLang === "en" ? "border-primary bg-primary/5" : "border-border bg-muted/10"
-            )}
-          >
-            <span className="text-3xl">🇬🇧</span>
-            <div className="text-start">
-              <p className="font-semibold">{t("settings.english")}</p>
-              <p className="text-xs text-muted-foreground">English</p>
+        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+          {t("settings.selectLanguage")}
+        </h3>
+        <Select value={currentLang} onValueChange={(v) => switchLanguage(v as "en" | "ar")}>
+          <SelectTrigger className="bg-background h-11">
+            {/* Custom trigger display: flag image + label */}
+            <div className="flex items-center gap-2.5">
+              <img
+                src={currentLangData.flagUrl}
+                alt={currentLangData.code}
+                className="w-6 h-4 object-cover rounded-sm flex-shrink-0"
+              />
+              <span className="font-medium">{currentLangData.label}</span>
+              <span className="text-muted-foreground text-xs">({currentLangData.nativeLabel})</span>
             </div>
-            {currentLang === "en" && (
-              <div className="ms-auto h-4 w-4 rounded-full bg-primary flex items-center justify-center">
-                <div className="h-2 w-2 rounded-full bg-primary-foreground" />
-              </div>
-            )}
-          </button>
-
-          {/* Arabic */}
-          <button
-            onClick={() => switchLanguage("ar")}
-            className={cn(
-              "rounded-xl border-2 p-4 flex items-center gap-3 transition-all hover:border-primary/50",
-              currentLang === "ar" ? "border-primary bg-primary/5" : "border-border bg-muted/10"
-            )}
-          >
-            <span className="text-3xl">🇸🇦</span>
-            <div className="text-start">
-              <p className="font-semibold">{t("settings.arabic")}</p>
-              <p className="text-xs text-muted-foreground">العربية</p>
-            </div>
-            {currentLang === "ar" && (
-              <div className="ms-auto h-4 w-4 rounded-full bg-primary flex items-center justify-center">
-                <div className="h-2 w-2 rounded-full bg-primary-foreground" />
-              </div>
-            )}
-          </button>
-        </div>
+          </SelectTrigger>
+          <SelectContent className="bg-popover">
+            {LANGUAGES.map((lang) => (
+              <SelectItem key={lang.code} value={lang.code}>
+                <div className="flex items-center gap-2.5 py-0.5">
+                  <img
+                    src={lang.flagUrl}
+                    alt={lang.code}
+                    className="w-6 h-4 object-cover rounded-sm flex-shrink-0"
+                  />
+                  <span className="font-medium">{lang.label}</span>
+                  <span className="text-muted-foreground text-xs">({lang.nativeLabel})</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Time Format */}
       <div className="space-y-3">
-        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("settings.timeFormat")}</h3>
+        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+          {t("settings.timeFormat")}
+        </h3>
         <div className="grid grid-cols-2 gap-3">
           {(["12h", "24h"] as TimeFormat[]).map((fmt) => (
             <button

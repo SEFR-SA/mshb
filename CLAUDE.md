@@ -282,6 +282,7 @@ All new UI components must be mobile-responsive by default. AI agents must follo
 | DB type errors on query | Cast with `as any` for RPC calls and complex queries that outpace the generated types |
 | Status not resetting | `AuthContext` checks `status_until` on load and resets expired statuses |
 | File upload failing | Check Supabase Storage bucket policies; `uploadChatFile()` in `src/lib/uploadChatFile.ts` |
+| Images/assets broken in Electron | **Never use absolute paths (`/image.png`, `/placeholder.svg`) for static assets.** Electron runs on a `file://` origin where `/foo.png` resolves to the filesystem root, not the app's `public/` folder. Use: (1) imported assets via `import img from "@/assets/image.png"` (Vite resolves these correctly in all contexts), (2) fully-qualified external CDN URLs (`https://…`), or (3) inline SVG / data URIs. Always add an `onError` fallback on `<img>` tags to degrade gracefully. |
 
 ---
 

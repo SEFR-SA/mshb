@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,11 @@ const VoiceVideoTab = () => {
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
   const [prefs, setPrefs] = useState<DevicePrefs>(DEFAULT_PREFS);
   const [micLevel, setMicLevel] = useState(0);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isMonitoring, setIsMonitoring] = useState(false);
   const animFrameRef = useRef<number>(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     try {
@@ -40,6 +41,7 @@ const VoiceVideoTab = () => {
     return () => {
       cancelAnimationFrame(animFrameRef.current);
       micStreamRef.current?.getTracks().forEach((t) => t.stop());
+      audioCtxRef.current?.close().catch(() => {});
     };
   }, []);
 
@@ -49,16 +51,37 @@ const VoiceVideoTab = () => {
     localStorage.setItem("mshb_device_prefs", JSON.stringify(next));
   };
 
-  const startMicMonitor = useCallback(async () => {
+  // Stop the mic monitor, close streams and audio context
+  const stopMicMonitor = useCallback(() => {
+    cancelAnimationFrame(animFrameRef.current);
+    micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    micStreamRef.current = null;
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    analyserRef.current = null;
+    setMicLevel(0);
+    setIsMonitoring(false);
+  }, []);
+
+  const startMicMonitor = useCallback(async (deviceId: string) => {
+    // Always stop any existing monitor first so the old device is released
+    cancelAnimationFrame(animFrameRef.current);
+    micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    micStreamRef.current = null;
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    setMicLevel(0);
+
     try {
       const constraints: MediaStreamConstraints = {
-        audio: prefs.micDeviceId !== "default" ? { deviceId: { exact: prefs.micDeviceId } } : true,
+        audio: deviceId !== "default" ? { deviceId: { exact: deviceId } } : true,
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      micStreamRef.current?.getTracks().forEach((t) => t.stop());
       micStreamRef.current = stream;
+      setIsMonitoring(true);
 
       const ctx = new AudioContext();
+      audioCtxRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
@@ -73,28 +96,47 @@ const VoiceVideoTab = () => {
         animFrameRef.current = requestAnimationFrame(draw);
       };
       draw();
-    } catch {}
-  }, [prefs.micDeviceId]);
+    } catch {
+      // Selected device unavailable — leave meter at 0
+      setIsMonitoring(false);
+      setMicLevel(0);
+    }
+  }, []);
 
-  const stopMicMonitor = () => {
-    cancelAnimationFrame(animFrameRef.current);
-    micStreamRef.current?.getTracks().forEach((t) => t.stop());
-    micStreamRef.current = null;
-    setMicLevel(0);
+  // When user changes mic device while monitoring, restart with the new device
+  const handleMicChange = (deviceId: string) => {
+    updatePrefs({ micDeviceId: deviceId });
+    if (isMonitoring) {
+      startMicMonitor(deviceId);
+    }
   };
 
-  const testSpeaker = () => {
+  // Route speaker test tone to the selected output device via setSinkId
+  const testSpeaker = async () => {
     try {
       const ctx = new AudioContext();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+      const dest = ctx.createMediaStreamDestination();
+
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(dest);
+
       osc.frequency.value = 440;
       gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
       osc.start();
-      osc.stop(ctx.currentTime + 1);
+      osc.stop(ctx.currentTime + 1.2);
+
+      const audio = new Audio();
+      audio.srcObject = dest.stream;
+
+      // Route to the selected output device if the browser supports setSinkId
+      if (prefs.speakerDeviceId !== "default" && typeof (audio as any).setSinkId === "function") {
+        await (audio as any).setSinkId(prefs.speakerDeviceId);
+      }
+
+      await audio.play();
     } catch {}
   };
 
@@ -111,7 +153,7 @@ const VoiceVideoTab = () => {
         {/* Microphone */}
         <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-3">
           <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("settings.microphone")}</h3>
-          <Select value={prefs.micDeviceId} onValueChange={(v) => updatePrefs({ micDeviceId: v })}>
+          <Select value={prefs.micDeviceId} onValueChange={handleMicChange}>
             <SelectTrigger className="bg-background">
               <SelectValue placeholder={t("settings.noDevices")} />
             </SelectTrigger>
@@ -133,7 +175,10 @@ const VoiceVideoTab = () => {
               />
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="text-xs h-7" onClick={startMicMonitor}>
+              <Button
+                size="sm" variant="outline" className="text-xs h-7"
+                onClick={() => startMicMonitor(prefs.micDeviceId)}
+              >
                 Test Mic
               </Button>
               <Button size="sm" variant="ghost" className="text-xs h-7" onClick={stopMicMonitor}>

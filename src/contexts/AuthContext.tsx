@@ -10,11 +10,14 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  purchasedItemIds: string[];
+  equippedItems: Record<string, string>;
   signUp: (email: string, password: string, username?: string, displayName?: string, dateOfBirth?: string, gender?: string) => Promise<{ error: Error | null; data: any }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
+  refreshPurchases: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +27,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [purchasedItemIds, setPurchasedItemIds] = useState<string[]>([]);
+  const [equippedItems, setEquippedItems] = useState<Record<string, string>>({});
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -46,6 +51,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user) await fetchProfile(user.id);
   };
 
+  const fetchPurchases = async (userId: string) => {
+    const [{ data: purchases }, { data: equipped }] = await Promise.all([
+      supabase.from("user_purchases").select("item_id").eq("user_id", userId),
+      supabase.from("user_equipped").select("category, item_id").eq("user_id", userId),
+    ]);
+    if (purchases) setPurchasedItemIds((purchases as any[]).map((p) => p.item_id));
+    if (equipped)  setEquippedItems(Object.fromEntries((equipped as any[]).map((e) => [e.category, e.item_id])));
+  };
+
+  const refreshPurchases = () => {
+    if (user) fetchPurchases(user.id);
+  };
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
@@ -53,9 +71,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         if (session?.user) {
           // Use setTimeout to avoid Supabase deadlock
-          setTimeout(() => fetchProfile(session.user.id), 0);
+          setTimeout(() => {
+            fetchProfile(session.user.id);
+            fetchPurchases(session.user.id);
+          }, 0);
         } else {
           setProfile(null);
+          setPurchasedItemIds([]);
+          setEquippedItems({});
         }
         setLoading(false);
       }
@@ -66,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        fetchPurchases(session.user.id);
       }
       setLoading(false);
     });
@@ -107,6 +131,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setPurchasedItemIds([]);
+    setEquippedItems({});
   };
 
   const resetPassword = async (email: string) => {
@@ -117,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signUp, signIn, signOut, resetPassword, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, profile, loading, purchasedItemIds, equippedItems, signUp, signIn, signOut, resetPassword, refreshProfile, refreshPurchases }}>
       {children}
     </AuthContext.Provider>
   );

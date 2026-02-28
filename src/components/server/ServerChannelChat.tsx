@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { MessageSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { getEmojiClass } from "@/lib/emojiUtils";
+import { formatTime } from "@/lib/utils";
 import { renderLinkedText } from "@/lib/renderLinkedText";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
@@ -207,7 +208,7 @@ const MessageItem = React.memo(({
                 </span>
               </UserContextMenu>
               <span className="text-[10px] text-muted-foreground">
-                {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {formatTime(msg.created_at)}
               </span>
             </div>
             {msg.file_url && (msg.file_type === "gif" || msg.file_type === "sticker") ? (

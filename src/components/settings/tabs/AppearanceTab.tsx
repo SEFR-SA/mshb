@@ -1,21 +1,9 @@
-import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme, COLOR_THEME_PRESETS } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Label } from "@/components/ui/label";
 import { Palette, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-
-type Density = "compact" | "default" | "spacious";
-
-interface AppearancePrefs {
-  messageSpacing: number;
-  fontSize: number;
-  density: Density;
-}
-
-const DEFAULT_PREFS: AppearancePrefs = { messageSpacing: 2, fontSize: 14, density: "default" };
 
 // Light/Sado/Dark/Majls are meta-presets that map theme + colorTheme
 const BASE_THEMES = [
@@ -30,32 +18,6 @@ const AppearanceTab = () => {
   const { theme, setTheme, colorTheme, setColorTheme } = useTheme();
   const { profile } = useAuth();
   const isPro = (profile as any)?.is_pro ?? false;
-
-  const [prefs, setPrefs] = useState<AppearancePrefs>(DEFAULT_PREFS);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("mshb_appearance_prefs");
-      if (stored) {
-        const p = { ...DEFAULT_PREFS, ...JSON.parse(stored) };
-        setPrefs(p);
-        document.documentElement.style.setProperty("--message-gap", `${p.messageSpacing * 4}px`);
-        document.documentElement.style.setProperty("--chat-font-size", `${p.fontSize}px`);
-      }
-    } catch {}
-  }, []);
-
-  const updatePrefs = (patch: Partial<AppearancePrefs>) => {
-    const next = { ...prefs, ...patch };
-    setPrefs(next);
-    localStorage.setItem("mshb_appearance_prefs", JSON.stringify(next));
-    if (patch.messageSpacing !== undefined) {
-      document.documentElement.style.setProperty("--message-gap", `${patch.messageSpacing * 4}px`);
-    }
-    if (patch.fontSize !== undefined) {
-      document.documentElement.style.setProperty("--chat-font-size", `${patch.fontSize}px`);
-    }
-  };
 
   const showUpgradeToast = () => toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
 
@@ -159,63 +121,6 @@ const AppearanceTab = () => {
         </div>
       </div>
 
-      {/* UI Customization */}
-      <div className="space-y-5 border-t border-border/50 pt-6">
-        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("settings.uiCustomization")}</h3>
-
-        {/* Message Spacing */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm">{t("settings.messageSpacing")}</Label>
-            <span className="text-xs text-muted-foreground">{prefs.messageSpacing}</span>
-          </div>
-          <input
-            type="range" min={0} max={4} step={1}
-            value={prefs.messageSpacing}
-            onChange={(e) => updatePrefs({ messageSpacing: Number(e.target.value) })}
-            className="w-full accent-primary"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>None</span><span>Comfortable</span>
-          </div>
-        </div>
-
-        {/* Font Size */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm">{t("settings.chatFontSize")}</Label>
-            <span className="text-xs text-muted-foreground">{prefs.fontSize}px</span>
-          </div>
-          <input
-            type="range" min={12} max={18} step={1}
-            value={prefs.fontSize}
-            onChange={(e) => updatePrefs({ fontSize: Number(e.target.value) })}
-            className="w-full accent-primary"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>12px</span><span>18px</span>
-          </div>
-        </div>
-
-        {/* Density */}
-        <div className="space-y-2">
-          <Label className="text-sm">{t("settings.uiDensity")}</Label>
-          <div className="grid grid-cols-3 gap-2">
-            {(["compact", "default", "spacious"] as Density[]).map((d) => (
-              <button
-                key={d}
-                onClick={() => updatePrefs({ density: d })}
-                className={cn(
-                  "py-2 rounded-lg border-2 text-sm font-medium transition-colors",
-                  prefs.density === d ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"
-                )}
-              >
-                {t(`settings.density${d.charAt(0).toUpperCase() + d.slice(1)}`)}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

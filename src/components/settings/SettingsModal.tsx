@@ -7,7 +7,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import {
   User, Shield, Users, Bell, Star, CreditCard,
-  Palette, Mic, Globe, LogOut, X, Menu,
+  Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag,
 } from "lucide-react";
 
 // Lazy-load tab content to keep initial bundle small
@@ -20,10 +20,12 @@ const BillingTab       = lazy(() => import("./tabs/BillingTab"));
 const AppearanceTab    = lazy(() => import("./tabs/AppearanceTab"));
 const VoiceVideoTab    = lazy(() => import("./tabs/VoiceVideoTab"));
 const LanguageTab      = lazy(() => import("./tabs/LanguageTab"));
+const MarketplaceTab   = lazy(() => import("./tabs/MarketplaceTab"));
 
 type TabId =
   | "profile" | "account" | "social" | "notifications"
-  | "subscriptions" | "billing" | "appearance" | "voice" | "language";
+  | "subscriptions" | "billing" | "appearance" | "voice" | "language"
+  | "marketplace";
 
 interface NavItem {
   id: TabId;
@@ -52,8 +54,9 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "subscriptions", labelKey: "settings.subscriptions",icon: Star },
       { id: "billing",       labelKey: "settings.billing",      icon: CreditCard },
       { id: "appearance",    labelKey: "settings.appearance",   icon: Palette },
-      { id: "voice",         labelKey: "settings.voiceVideo",   icon: Mic },
-      { id: "language",      labelKey: "settings.languageTime", icon: Globe },
+      { id: "voice",         labelKey: "settings.voiceVideo",    icon: Mic },
+      { id: "language",      labelKey: "settings.languageTime",  icon: Globe },
+      { id: "marketplace",   labelKey: "settings.marketplace",   icon: ShoppingBag },
     ],
   },
 ];
@@ -68,6 +71,7 @@ const TAB_COMPONENTS: Record<TabId, React.LazyExoticComponent<() => React.ReactE
   appearance:    AppearanceTab,
   voice:         VoiceVideoTab,
   language:      LanguageTab,
+  marketplace:   MarketplaceTab,
 };
 
 const TabFallback = () => (
