@@ -53,7 +53,7 @@ const AppLayout = () => {
             style={{ WebkitAppRegion: "drag", WebkitUserSelect: "none" } as React.CSSProperties}
           >
             <img
-              src="/favicon.png"
+              src={new URL("favicon.png", document.baseURI).href}
               alt="MSHB"
               className="h-5 w-5 object-contain"
               style={{ WebkitAppRegion: "no-drag" } as any}
