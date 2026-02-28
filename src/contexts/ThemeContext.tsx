@@ -214,6 +214,8 @@ const COLOR_THEME_EXTRA_VARS = [
   "--color-text", "--color-text-muted", "--color-text-on-primary",
   "--color-hover", "--color-shadow",
   "--primary", "--ring", "--sidebar-primary", "--sidebar-ring",
+  // Shadcn standard vars overridden per-theme (must be cleared on reset):
+  "--background", "--muted", "--border", "--primary-foreground",
 ];
 
 function applyGradientOverrides(colors: string[], isLight: boolean) {
@@ -324,28 +326,45 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return getAverageLuminance(colors) > 0.4;
   }, [colors, isGradientActive]);
 
+  // Unified DOM effect — always clears all theme classes before applying one,
+  // ensuring base themes and gradient themes are mutually exclusive on the DOM.
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove("dark", "light", "sado", "majls");
-    root.classList.add(theme);
-    localStorage.setItem("app-theme", theme);
-    requestAnimationFrame(() => syncElectronTitleBar());
-  }, [theme]);
 
-  // Gradient + theme effect: inject/remove CSS variable overrides
-  useEffect(() => {
-    const gradient = buildGradient(colors);
-    document.documentElement.style.setProperty("--theme-gradient", gradient);
+    root.style.setProperty("--theme-gradient", buildGradient(colors));
+    localStorage.setItem("app-theme", theme);
     localStorage.setItem("app-color-theme", colorTheme);
 
-    if (isGradientActive) {
-      applyGradientOverrides(colors, isGradientLight);
+    // Always clear ALL base theme classes first — prevents class conflicts
+    // (e.g., .light class from a previous selection staying on the DOM when a gradient is applied)
+    root.classList.remove("dark", "light", "sado", "majls");
 
-      // Apply per-theme --color-* variables and primary accent
+    if (isGradientActive) {
+      // Gradient themes are all dark-based; add "dark" so Tailwind dark: variants work correctly
+      root.classList.add("dark");
+      applyGradientOverrides(colors, isGradientLight);
       const preset = COLOR_THEME_PRESETS.find(p => p.id === colorTheme);
-      const root = document.documentElement;
       if (preset?.vars) {
-        Object.entries(preset.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+        const pv = preset.vars;
+        Object.entries(pv).forEach(([k, v]) => root.style.setProperty(k, v));
+        // Map --color-* → shadcn standard variables
+        root.style.setProperty("--background", hexToHsl(colors[0]));
+        if (pv["--color-text"]) {
+          const fg = hexToHsl(pv["--color-text"]);
+          root.style.setProperty("--foreground", fg);
+          root.style.setProperty("--card-foreground", fg);
+          root.style.setProperty("--popover-foreground", fg);
+          root.style.setProperty("--sidebar-foreground", fg);
+        }
+        if (pv["--color-bg-muted"])   root.style.setProperty("--muted", hexToHsl(pv["--color-bg-muted"]));
+        if (pv["--color-text-muted"]) root.style.setProperty("--muted-foreground", hexToHsl(pv["--color-text-muted"]));
+        if (pv["--color-surface"]) {
+          const surf = hexToHsl(pv["--color-surface"]);
+          root.style.setProperty("--card", surf);
+          root.style.setProperty("--popover", surf);
+        }
+        if (pv["--color-border"])          root.style.setProperty("--border", hexToHsl(pv["--color-border"]));
+        if (pv["--color-text-on-primary"]) root.style.setProperty("--primary-foreground", hexToHsl(pv["--color-text-on-primary"]));
       }
       if (preset?.primary) {
         const hsl = hexToHsl(preset.primary);
@@ -354,17 +373,28 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         root.style.setProperty("--sidebar-primary", hsl);
         root.style.setProperty("--sidebar-ring", hsl);
       }
-
       requestAnimationFrame(() => syncElectronTitleBar(colors[0]));
     } else {
+      root.classList.add(theme);
       removeGradientOverrides();
       requestAnimationFrame(() => syncElectronTitleBar());
     }
-  }, [colorTheme, theme, colors, isGradientActive, isGradientLight]);
+  }, [theme, colorTheme, colors, isGradientActive, isGradientLight]);
 
-  const setTheme = (t: Theme) => setThemeState(t);
-  const toggleTheme = () => setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
-  const setColorTheme = (id: string) => setColorThemeState(id);
+  const setTheme = (t: Theme) => {
+    setThemeState(t);
+    setColorThemeState("default"); // selecting a base theme clears any active gradient
+  };
+  const toggleTheme = () => {
+    setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
+    setColorThemeState("default"); // gradient is cleared when toggling base theme
+  };
+  const setColorTheme = (id: string) => {
+    setColorThemeState(id);
+    if (id !== "default") {
+      setThemeState("dark"); // all gradient themes are dark-based; prevents .light/.sado/.majls conflict
+    }
+  };
 
   const getGradientStyle = (): React.CSSProperties => {
     if (colors.length === 0) return {};

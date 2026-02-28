@@ -82,7 +82,7 @@ const AppearanceTab = () => {
                 className={cn(
                   "rounded-xl border-2 p-1 transition-all hover:scale-105 relative",
                   locked ? "opacity-60 cursor-not-allowed" : "",
-                  bt.theme === theme && !locked
+                  bt.theme === theme && colorTheme === "default" && !locked
                     ? "border-primary ring-2 ring-primary/30"
                     : "border-border"
                 )}
