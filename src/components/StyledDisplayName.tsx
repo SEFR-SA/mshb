@@ -25,10 +25,10 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
 }) => {
   const tagEl = serverTag ? (
     <span
-      className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm leading-none ml-1.5 text-white align-middle whitespace-nowrap"
+      className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded leading-none ml-1.5 text-white align-middle whitespace-nowrap"
       style={{ backgroundColor: serverTag.color || "#6b7280" }}
     >
-      <ServerTagBadgeIcon badgeName={serverTag.badge} color={serverTag.badgeColor ?? serverTag.color ?? undefined} className="h-2.5 w-2.5" />
+      <ServerTagBadgeIcon badgeName={serverTag.badge} color={serverTag.badgeColor ?? serverTag.color ?? undefined} className="h-3 w-3" />
       {serverTag.name ? serverTag.name.substring(0, 4).toUpperCase() : ""}
     </span>
   ) : null;

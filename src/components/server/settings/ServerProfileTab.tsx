@@ -117,7 +117,7 @@ const ServerProfileTab = ({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">{t("serverSettings.serverProfile")}</h2>
+      <h2 className="text-base font-extrabold">{t("serverSettings.serverProfile")}</h2>
 
       {/* Banner */}
       <div className="relative">

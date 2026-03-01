@@ -182,7 +182,7 @@ const ProfileTab = () => {
   const initials = (profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-foreground mb-1">{t("settings.myProfile")}</h2>
         <p className="text-sm text-muted-foreground">Manage your public profile information.</p>
@@ -226,25 +226,25 @@ const ProfileTab = () => {
       </div>
 
       {/* Fields */}
-      <div className="space-y-5">
+      <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("profile.username")}</Label>
-          <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" className="bg-muted/30" />
+          <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.username")}</Label>
+          <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" className="bg-muted/40" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("profile.displayName")}</Label>
-          <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="bg-muted/30" />
+          <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.displayName")}</Label>
+          <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="bg-muted/40" />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("profile.statusText")}</Label>
-          <Input value={statusText} onChange={(e) => setStatusText(e.target.value)} placeholder="What's on your mind?" className="bg-muted/30" />
+          <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.statusText")}</Label>
+          <Input value={statusText} onChange={(e) => setStatusText(e.target.value)} placeholder="What's on your mind?" className="bg-muted/40" />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("status.label")}</Label>
+            <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("status.label")}</Label>
             <Select value={status} onValueChange={(v) => { setStatus(v as UserStatus); if (v === "online") setStatusDuration("forever"); }}>
-              <SelectTrigger className="bg-muted/30"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="bg-muted/40"><SelectValue /></SelectTrigger>
               <SelectContent className="bg-popover">
                 {STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>
@@ -259,9 +259,9 @@ const ProfileTab = () => {
           </div>
           {status !== "online" && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("status.duration")}</Label>
+              <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("status.duration")}</Label>
               <Select value={statusDuration} onValueChange={setStatusDuration}>
-                <SelectTrigger className="bg-muted/30"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-muted/40"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-popover">
                   {DURATIONS.map((d) => (
                     <SelectItem key={d} value={d}>{t(`duration.${d}`)}</SelectItem>
@@ -273,23 +273,23 @@ const ProfileTab = () => {
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("profile.aboutMeLabel")}</Label>
+          <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.aboutMeLabel")}</Label>
           <Textarea
             value={aboutMe}
             onChange={(e) => setAboutMe(e.target.value.slice(0, 500))}
             placeholder={t("profile.aboutMePlaceholder")}
             rows={4}
-            className="bg-muted/30 resize-none"
+            className="bg-muted/40 resize-none"
           />
           <p className="text-xs text-muted-foreground text-end">{aboutMe.length}/500</p>
         </div>
 
         {/* Date of Birth */}
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("profile.dateOfBirth")}</Label>
+          <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.dateOfBirth")}</Label>
           <div className="grid grid-cols-3 gap-2">
             <Select value={dobMonth} onValueChange={setDobMonth}>
-              <SelectTrigger className="bg-muted/30"><SelectValue placeholder={t("profile.monthPlaceholder")} /></SelectTrigger>
+              <SelectTrigger className="bg-muted/40"><SelectValue placeholder={t("profile.monthPlaceholder")} /></SelectTrigger>
               <SelectContent className="bg-popover">
                 {MONTHS.map((m, i) => (
                   <SelectItem key={m} value={m}>{t(`profile.months.${MONTH_KEYS[i]}`)}</SelectItem>
@@ -297,7 +297,7 @@ const ProfileTab = () => {
               </SelectContent>
             </Select>
             <Select value={dobDay} onValueChange={setDobDay}>
-              <SelectTrigger className="bg-muted/30"><SelectValue placeholder={t("profile.dayPlaceholder")} /></SelectTrigger>
+              <SelectTrigger className="bg-muted/40"><SelectValue placeholder={t("profile.dayPlaceholder")} /></SelectTrigger>
               <SelectContent className="bg-popover">
                 {Array.from(
                   { length: dobMonth && dobYear ? new Date(Number(dobYear), MONTHS.indexOf(dobMonth) + 1, 0).getDate() : 31 },
@@ -308,7 +308,7 @@ const ProfileTab = () => {
               </SelectContent>
             </Select>
             <Select value={dobYear} onValueChange={setDobYear}>
-              <SelectTrigger className="bg-muted/30"><SelectValue placeholder={t("profile.yearPlaceholder")} /></SelectTrigger>
+              <SelectTrigger className="bg-muted/40"><SelectValue placeholder={t("profile.yearPlaceholder")} /></SelectTrigger>
               <SelectContent className="bg-popover">
                 {YEARS.map((y) => (
                   <SelectItem key={y} value={String(y)}>{y}</SelectItem>
@@ -319,9 +319,9 @@ const ProfileTab = () => {
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("profile.gender")}</Label>
+          <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.gender")}</Label>
           <Select value={gender} onValueChange={setGender}>
-            <SelectTrigger className="bg-muted/30"><SelectValue placeholder={t("profile.selectGender")} /></SelectTrigger>
+            <SelectTrigger className="bg-muted/40"><SelectValue placeholder={t("profile.selectGender")} /></SelectTrigger>
             <SelectContent className="bg-popover">
               <SelectItem value="Male">{t("profile.male")}</SelectItem>
               <SelectItem value="Female">{t("profile.female")}</SelectItem>
@@ -332,10 +332,10 @@ const ProfileTab = () => {
 
       {/* Server Tags */}
       <div className="border-t border-border/50 pt-6 space-y-4">
-        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("serverTags.title", "Server Tags")}</h3>
+        <h3 className="font-extrabold text-xs uppercase tracking-wider text-muted-foreground">{t("serverTags.title", "Server Tags")}</h3>
         <p className="text-xs text-muted-foreground">{t("serverTags.description", "Select a server tag to display next to your name globally.")}</p>
         <Select value={activeServerTagId} onValueChange={setActiveServerTagId}>
-          <SelectTrigger className="bg-muted/30"><SelectValue placeholder="Select a tag" /></SelectTrigger>
+          <SelectTrigger className="bg-muted/40"><SelectValue placeholder="Select a tag" /></SelectTrigger>
           <SelectContent className="bg-popover">
             <SelectItem value="none">
               <span className="text-muted-foreground">{t("serverTags.none", "None")}</span>
@@ -360,7 +360,7 @@ const ProfileTab = () => {
 
       {/* Name Style */}
       <div className="border-t border-border/50 pt-6 space-y-4">
-        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("nameStyle.title")}</h3>
+        <h3 className="font-extrabold text-xs uppercase tracking-wider text-muted-foreground">{t("nameStyle.title")}</h3>
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">{t("nameStyle.fontStyle")}</Label>
           <div className="flex flex-wrap gap-2">
@@ -405,7 +405,7 @@ const ProfileTab = () => {
               </Button>
             )}
           </div>
-          <div className="p-3 rounded-lg bg-muted/30 border border-border/50 mt-2">
+          <div className="p-3 rounded-lg bg-muted/40 border border-border/50 mt-2">
             <StyledDisplayName
               displayName={displayName || "Your Name"}
               gradientStart={gradientStart || null}

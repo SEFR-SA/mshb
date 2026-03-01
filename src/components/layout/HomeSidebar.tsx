@@ -304,7 +304,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
         onMarkAsRead={() => markAsRead(item.id, item.type)}
       >
         <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
-          className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
+          className={`flex items-center gap-2 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/60"}`}>
           <div className="relative shrink-0">
             <Avatar className={isMobileExpanded ? "h-10 w-10" : "h-8 w-8"}>
               <AvatarImage src={item.avatarUrl} />
@@ -316,7 +316,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <p className={`font-medium truncate ${isMobileExpanded ? "text-base" : "text-sm"}`}>{item.name}</p>
+              <p className={`font-semibold truncate ${isMobileExpanded ? "text-base" : "text-sm"}`}>{item.name}</p>
               {item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
             </div>
             <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
@@ -332,8 +332,8 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
       <div className="p-2">
         <button
           onClick={() => navigate("/friends")}
-          className={`flex items-center gap-3 w-full p-2 rounded-md transition-colors ${
-            isFriendsActive ? "bg-muted" : "hover:bg-muted/50"
+          className={`flex items-center gap-2 w-full p-2 rounded-md transition-colors ${
+            isFriendsActive ? "bg-muted" : "hover:bg-muted/60"
           }`}
         >
           <Users className="h-5 w-5" />
@@ -348,7 +348,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
 
       {/* DM header */}
       <div className="px-3 pt-2 pb-1 flex items-center justify-between">
-        <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+        <h3 className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">
           {t("inbox.title")}
         </h3>
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCreateGroupOpen(true)}>
@@ -402,7 +402,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
             {/* Pinned section */}
             {items.some((item) => pinnedIds.has(item.id)) && (
               <>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2 pb-1 flex items-center gap-1">
+                <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider px-2 pt-2 pb-1 flex items-center gap-1">
                   <Pin className="h-3 w-3" /> {t("chat.pinned")}
                 </p>
                 {items.filter((item) => pinnedIds.has(item.id)).map(renderThreadItem)}
@@ -417,7 +417,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
       {/* Bottom User Panel */}
       {!isMobileExpanded && (
         <div className="border-t border-border/50 mt-auto">
-          <div className="flex items-center gap-1 px-2 py-1.5">
+          <div className="flex items-center gap-2 px-3 py-2">
             <NavLink to="/settings" className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/50 rounded-md px-1 py-0.5">
               <div className="relative shrink-0">
                 <Avatar className="h-8 w-8">
@@ -434,7 +434,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate leading-tight">{myProfile?.display_name || myProfile?.username || "User"}</p>
+                <p className="text-sm font-semibold truncate leading-tight">{myProfile?.display_name || myProfile?.username || "User"}</p>
                 {myProfile?.username && <p className="text-[11px] text-muted-foreground truncate leading-tight">@{myProfile.username}</p>}
               </div>
             </NavLink>

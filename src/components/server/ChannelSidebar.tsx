@@ -591,10 +591,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             <h2 className="font-bold text-sm truncate">{server?.name || "..."}</h2>
             {server?.server_tag_name && (
               <span
-                className="inline-flex items-center gap-1 shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm leading-none whitespace-nowrap text-white"
+                className="inline-flex items-center gap-1 shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded leading-none whitespace-nowrap text-white"
                 style={{ backgroundColor: server.server_tag_color || "#5865f2" }}
               >
-                <ServerTagBadgeIcon badgeName={server.server_tag_badge} className="h-2.5 w-2.5" />
+                <ServerTagBadgeIcon badgeName={server.server_tag_badge} className="h-3 w-3" />
                 {server.server_tag_name.substring(0, 4).toUpperCase()}
               </span>
             )}
@@ -648,7 +648,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                           autoFocus
                         />
                       ) : (
-                        <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wide truncate">{category}</span>
+                        <span className="text-[11px] font-extrabold uppercase text-muted-foreground tracking-wider truncate">{category}</span>
                       )}
                     </CollapsibleTrigger>
                     {isAdmin && (
@@ -721,7 +721,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                               const isScreenSharer = p.is_screen_sharing && p.user_id !== user?.id;
 
                               const innerRow = (
-                                <div className="relative group flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground cursor-default">
+                                <div className="relative group flex items-center gap-2 ps-8 py-1.5 text-xs font-medium text-muted-foreground cursor-default">
                                   <div className="relative shrink-0">
                                     <Avatar className="h-5 w-5">
                                       <AvatarImage src={p.avatar_url || ""} />
@@ -759,7 +759,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
                               if (!isMobile && isScreenSharer) {
                                 const clickableRow = (
-                                  <div className="relative group flex items-center gap-2 ps-8 py-1 text-xs text-muted-foreground cursor-pointer">
+                                  <div className="relative group flex items-center gap-2 ps-8 py-1.5 text-xs font-medium text-muted-foreground cursor-pointer">
                                     <div className="relative shrink-0">
                                       <Avatar className="h-5 w-5">
                                         <AvatarImage src={p.avatar_url || ""} />

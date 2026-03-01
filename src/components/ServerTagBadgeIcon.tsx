@@ -1,6 +1,7 @@
 import React from "react";
-import { Crown, Sword, Skull, FlaskConical, Star, Flame, Zap, Shield, LucideIcon } from "lucide-react";
+import { Sword, Skull, FlaskConical, Star, Flame, Zap, Shield, LucideIcon } from "lucide-react";
 import { OrbBadge } from "@/components/ui/badges/OrbBadge";
+import { CrownBadge } from "@/components/ui/badges/CrownBadge";
 
 interface Props {
     badgeName?: string | null;
@@ -10,7 +11,6 @@ interface Props {
 
 // Lucide icon placeholders — color applied via style.color (CSS currentColor inheritance)
 const LUCIDE_BADGE_COMPONENTS: Record<string, LucideIcon> = {
-    crown:  Crown,
     sword:  Sword,
     skull:  Skull,
     potion: FlaskConical,
@@ -23,7 +23,8 @@ const LUCIDE_BADGE_COMPONENTS: Record<string, LucideIcon> = {
 // Custom SVG badge components — color applied via the `color` prop
 type CustomBadgeComponent = React.ComponentType<{ color?: string; className?: string }>;
 const CUSTOM_BADGE_COMPONENTS: Record<string, CustomBadgeComponent> = {
-    orb: OrbBadge,
+    crown: CrownBadge,
+    orb:   OrbBadge,
 };
 
 const ServerTagBadgeIcon = ({ badgeName, color, className = "h-3 w-3" }: Props) => {

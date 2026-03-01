@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { Crown, Sword, Skull, FlaskConical, Star, Flame, Zap, Shield, Loader2, Lock } from "lucide-react";
+import { Sword, Skull, FlaskConical, Star, Flame, Zap, Shield, Loader2, Lock } from "lucide-react";
 import { OrbBadge } from "@/components/ui/badges/OrbBadge";
+import { CrownBadge } from "@/components/ui/badges/CrownBadge";
 import { cn } from "@/lib/utils";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 
@@ -33,7 +34,7 @@ const DEFAULT_CONTAINER_COLOR = "#1e293b";
 const HEX_REGEX = /^#[0-9a-fA-F]{6}$/;
 
 const BADGE_OPTIONS = [
-  { id: "crown",  Icon: Crown,        label: "Crown"  },
+  { id: "crown",  Icon: CrownBadge,   label: "Crown",  custom: true },
   { id: "sword",  Icon: Sword,        label: "Sword"  },
   { id: "skull",  Icon: Skull,        label: "Skull"  },
   { id: "potion", Icon: FlaskConical, label: "Potion" },
@@ -159,7 +160,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       {/* Preview */}
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <p className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
           {t("serverSettings.serverTagPreview")}
         </p>
         <p className="text-xs text-muted-foreground">{t("serverSettings.serverTagPreviewDesc")}</p>
@@ -170,10 +171,10 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
           </div>
           <span className="text-sm font-medium">Username</span>
           <span
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-semibold leading-none text-white shrink-0"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold leading-none text-white shrink-0"
             style={{ backgroundColor: tagContainerColor }}
           >
-            <ServerTagBadgeIcon badgeName={tagBadge} color={tagColor} className="h-2.5 w-2.5" />
+            <ServerTagBadgeIcon badgeName={tagBadge} color={tagColor} className="h-3 w-3" />
             {(tagName || t("serverSettings.serverTag")).substring(0, 4).toUpperCase()}
           </span>
         </div>
@@ -183,7 +184,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       {/* Section 1 — Tag Name */}
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <p className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
           {t("serverSettings.serverTagName")}
         </p>
         <Input
@@ -201,7 +202,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       {/* Section 2 — Choose Badge */}
       <div className="space-y-3">
-        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <p className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
           {t("serverSettings.serverTagBadgeSelect")}
         </p>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
@@ -235,7 +236,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       {/* Section 3 — Badge Color (SVG fill) */}
       <div className="space-y-3">
-        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <p className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
           {t("serverSettings.serverTagBadgeColor")}
         </p>
 
@@ -309,7 +310,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       {/* Section 4 — Background Color (pill container) */}
       <div className="space-y-3">
-        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <p className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider">
           {t("serverSettings.serverTagContainerColor")}
         </p>
 

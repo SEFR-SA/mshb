@@ -250,16 +250,16 @@ const Settings = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>{t("profile.username")}</Label>
-            <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" />
+            <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" className="bg-muted/40" />
           </div>
           <div className="space-y-2">
             <Label>{t("profile.displayName")}</Label>
-            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="bg-muted/40" />
           </div>
           <div className="space-y-2">
             <Label>{t("status.label")}</Label>
             <Select value={status} onValueChange={(v) => { setStatus(v as UserStatus); if (v === "online") setStatusDuration("forever"); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="bg-muted/40"><SelectValue /></SelectTrigger>
               <SelectContent className="bg-popover">
                 {STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>
@@ -276,7 +276,7 @@ const Settings = () => {
             <div className="space-y-2">
               <Label>{t("status.duration")}</Label>
               <Select value={statusDuration} onValueChange={setStatusDuration}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-muted/40"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-popover">
                   {DURATIONS.map((d) => (
                     <SelectItem key={d} value={d}>{t(`duration.${d}`)}</SelectItem>
@@ -293,6 +293,7 @@ const Settings = () => {
               placeholder={t("profile.aboutMePlaceholder")}
               rows={4}
               maxLength={500}
+              className="bg-muted/40 resize-none"
             />
             <p className="text-xs text-muted-foreground text-end">{aboutMe.length}/500</p>
           </div>
@@ -302,7 +303,7 @@ const Settings = () => {
             <Label>{t("profile.dateOfBirth")}</Label>
             <div className="grid grid-cols-3 gap-2">
               <Select value={dobMonth} onValueChange={setDobMonth}>
-                <SelectTrigger><SelectValue placeholder={t("profile.monthPlaceholder")} /></SelectTrigger>
+                <SelectTrigger className="bg-muted/40"><SelectValue placeholder={t("profile.monthPlaceholder")} /></SelectTrigger>
                 <SelectContent className="bg-popover">
                   {MONTHS.map((m, i) => (
                     <SelectItem key={m} value={m}>{t(`profile.months.${MONTH_KEYS[i]}`)}</SelectItem>
@@ -310,7 +311,7 @@ const Settings = () => {
                 </SelectContent>
               </Select>
               <Select value={dobDay} onValueChange={setDobDay}>
-                <SelectTrigger><SelectValue placeholder={t("profile.dayPlaceholder")} /></SelectTrigger>
+                <SelectTrigger className="bg-muted/40"><SelectValue placeholder={t("profile.dayPlaceholder")} /></SelectTrigger>
                 <SelectContent className="bg-popover">
                   {Array.from({ length: dobMonth && dobYear ? new Date(Number(dobYear), MONTHS.indexOf(dobMonth) + 1, 0).getDate() : 31 }, (_, i) => i + 1).map((d) => (
                     <SelectItem key={d} value={String(d)}>{d}</SelectItem>
@@ -318,7 +319,7 @@ const Settings = () => {
                 </SelectContent>
               </Select>
               <Select value={dobYear} onValueChange={setDobYear}>
-                <SelectTrigger><SelectValue placeholder={t("profile.yearPlaceholder")} /></SelectTrigger>
+                <SelectTrigger className="bg-muted/40"><SelectValue placeholder={t("profile.yearPlaceholder")} /></SelectTrigger>
                 <SelectContent className="bg-popover">
                   {YEARS.map((y) => (
                     <SelectItem key={y} value={String(y)}>{y}</SelectItem>
@@ -332,7 +333,7 @@ const Settings = () => {
           <div className="space-y-2">
             <Label>{t("profile.gender")}</Label>
             <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger><SelectValue placeholder={t("profile.selectGender")} /></SelectTrigger>
+              <SelectTrigger className="bg-muted/40"><SelectValue placeholder={t("profile.selectGender")} /></SelectTrigger>
               <SelectContent className="bg-popover">
                 <SelectItem value="Male">{t("profile.male")}</SelectItem>
                 <SelectItem value="Female">{t("profile.female")}</SelectItem>

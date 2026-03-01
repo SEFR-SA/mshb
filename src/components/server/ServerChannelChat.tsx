@@ -195,7 +195,7 @@ const MessageItem = React.memo(({
                     gradientStart={p?.name_gradient_start}
                     gradientEnd={p?.name_gradient_end}
                     color={isMine ? undefined : roleInfo?.color}
-                    className={`text-sm font-semibold cursor-pointer hover:underline ${isMine ? "text-primary" : "text-foreground"}`}
+                    className={`text-sm font-bold cursor-pointer hover:underline ${isMine ? "text-primary" : "text-foreground"}`}
                     serverTag={p?.active_server_tag ? {
                       name: p.active_server_tag.server_tag_name,
                       badge: p.active_server_tag.server_tag_badge,
@@ -663,7 +663,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
         </div>
       ) : isAnnouncement && canPost ? (
         /* Markdown toolbar for admins/owners in announcement channels */
-        <div className="p-3 border-t border-border/50">
+        <div className="p-4 border-t border-border/50">
           {replyingTo && (
             <div className="pb-2">
               <ReplyInputBar authorName={replyingTo.authorName} onCancel={() => setReplyingTo(null)} />
@@ -685,7 +685,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
               <ReplyInputBar authorName={replyingTo.authorName} onCancel={() => setReplyingTo(null)} />
             </div>
           )}
-          <div className="p-3 border-t border-border/50">
+          <div className="p-4 border-t border-border/50">
             {uploadProgress !== null && <Progress value={uploadProgress} className="mb-2 h-1" />}
             {selectedFile && (
               <div className="flex items-center gap-2 mb-2 p-2 bg-muted rounded-lg text-sm">
@@ -693,7 +693,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                 <Button variant="ghost" size="sm" onClick={() => setSelectedFile(null)} className="h-6 text-xs">{t("actions.cancel")}</Button>
               </div>
             )}
-            <div className="relative theme-input border border-border/40 rounded-xl flex items-start gap-2 px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+            <div className="relative theme-input border border-border/40 rounded-xl flex items-start gap-2 px-3 py-2.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
               {mentionOpen && serverId && (
                 <MentionPopup
                   serverId={serverId}

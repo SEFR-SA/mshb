@@ -411,7 +411,7 @@ const GroupChat = () => {
                     }
                   }}
                 >
-                  <div id={`msg-${msg.id}`} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} group/msg hover:bg-muted/30 rounded-lg -mx-2 px-2 py-0.5 transition-colors ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
+                  <div id={`msg-${msg.id}`} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} group/msg hover:bg-muted/30 rounded-lg -mx-2 px-2 py-1 transition-colors ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
                     <div className="flex gap-2 max-w-[75%] flex-col">
                       {msgAny.reply_to_id && (() => {
                         const original = visibleMessages.find(m => m.id === msgAny.reply_to_id);
@@ -434,10 +434,10 @@ const GroupChat = () => {
                           />
                         );
                       })()}
-                      <div className="flex gap-2">
+                      <div className="flex gap-2.5">
                         {!isMine && (
                           <UserContextMenu targetUserId={msg.author_id} targetUsername={authorProfile?.username || undefined}>
-                            <Avatar className="h-7 w-7 mt-1 shrink-0 cursor-pointer">
+                            <Avatar className="h-8 w-8 mt-1 shrink-0 cursor-pointer">
                               <AvatarImage src={authorProfile?.avatar_url || ""} />
                               <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
                                 {(authorProfile?.display_name || "?").charAt(0).toUpperCase()}
@@ -455,7 +455,7 @@ const GroupChat = () => {
                                 displayName={authorProfile?.display_name || authorProfile?.username || "User"}
                                 gradientStart={(authorProfile as any)?.name_gradient_start}
                                 gradientEnd={(authorProfile as any)?.name_gradient_end}
-                                className="text-[11px] font-semibold text-primary mb-0.5 cursor-pointer hover:underline"
+                                className="text-[11px] font-bold text-primary mb-0.5 cursor-pointer hover:underline"
                                 serverTag={(authorProfile as any)?.active_server_tag ? {
                                   name: (authorProfile as any).active_server_tag.server_tag_name,
                                   badge: (authorProfile as any).active_server_tag.server_tag_badge,
@@ -585,8 +585,8 @@ const GroupChat = () => {
       )}
 
       {/* Composer */}
-      <div className="p-3 glass border-t border-border/50">
-        <div className="theme-input border border-border/40 rounded-xl flex items-start gap-2 px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+      <div className="p-4 glass border-t border-border/50">
+        <div className="theme-input border border-border/40 rounded-xl flex items-start gap-2 px-3 py-2.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
           <ChatInputActions
             onFileSelect={setSelectedFile}
             onEmojiSelect={(emoji) => setNewMsg((prev) => prev + emoji)}

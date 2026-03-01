@@ -127,7 +127,7 @@ const SettingsModal = () => {
       <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-4 mt-2">
         {NAV_GROUPS.map((group) => (
           <div key={group.headerKey}>
-            <p className="px-2 mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+            <p className="px-2 mb-1 text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground/70">
               {t(group.headerKey)}
             </p>
             <div className="space-y-0.5">
