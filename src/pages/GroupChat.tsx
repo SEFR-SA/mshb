@@ -103,7 +103,7 @@ const GroupChat = () => {
 
       const userIds = members?.map((m: any) => m.user_id) || [];
       if (userIds.length > 0) {
-        const { data: profs } = await supabase.from("profiles").select("*, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color)").in("user_id", userIds);
+        const { data: profs } = await supabase.from("profiles").select("*, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").in("user_id", userIds);
         const map = new Map<string, any>();
         profs?.forEach((p) => map.set(p.user_id, p));
         setProfiles(map);
@@ -459,7 +459,8 @@ const GroupChat = () => {
                                 serverTag={(authorProfile as any)?.active_server_tag ? {
                                   name: (authorProfile as any).active_server_tag.server_tag_name,
                                   badge: (authorProfile as any).active_server_tag.server_tag_badge,
-                                  color: (authorProfile as any).active_server_tag.server_tag_color
+                                  color: (authorProfile as any).active_server_tag.server_tag_container_color ?? (authorProfile as any).active_server_tag.server_tag_color,
+                                  badgeColor: (authorProfile as any).active_server_tag.server_tag_color,
                                 } : null}
                               />
                             </UserContextMenu>

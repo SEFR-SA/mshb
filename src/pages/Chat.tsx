@@ -119,7 +119,7 @@ const Chat = () => {
       if (!thread) { navigate("/"); return; }
       const oid = thread.user1_id === user.id ? thread.user2_id : thread.user1_id;
       setOtherId(oid);
-      const { data: prof } = await supabase.from("profiles").select("*, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color)").eq("user_id", oid).maybeSingle();
+      const { data: prof } = await supabase.from("profiles").select("*, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").eq("user_id", oid).maybeSingle();
       setOtherProfile(prof);
 
       // Check pin status
@@ -442,7 +442,8 @@ const Chat = () => {
             serverTag={(otherProfile as any)?.active_server_tag ? {
               name: (otherProfile as any).active_server_tag.server_tag_name,
               badge: (otherProfile as any).active_server_tag.server_tag_badge,
-              color: (otherProfile as any).active_server_tag.server_tag_color
+              color: (otherProfile as any).active_server_tag.server_tag_container_color ?? (otherProfile as any).active_server_tag.server_tag_color,
+              badgeColor: (otherProfile as any).active_server_tag.server_tag_color,
             } : null}
           />
           <p className="text-xs text-muted-foreground">

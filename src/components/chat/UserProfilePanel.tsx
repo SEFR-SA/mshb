@@ -55,7 +55,8 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
             serverTag={p?.active_server_tag ? {
               name: p.active_server_tag.server_tag_name,
               badge: p.active_server_tag.server_tag_badge,
-              color: p.active_server_tag.server_tag_color
+              color: (p.active_server_tag as any).server_tag_container_color ?? p.active_server_tag.server_tag_color,
+              badgeColor: p.active_server_tag.server_tag_color,
             } : null}
           />
           {profile.username && (

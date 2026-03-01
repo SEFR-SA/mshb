@@ -1,42 +1,43 @@
 import React from "react";
-import { Star, Flame, Zap, Shield, Crown, Award, Gem, Rocket, Music, Heart, LucideIcon } from "lucide-react";
+import { Crown, Sword, Skull, FlaskConical, Star, Flame, Zap, Shield, LucideIcon } from "lucide-react";
+import { OrbBadge } from "@/components/ui/badges/OrbBadge";
 
 interface Props {
     badgeName?: string | null;
+    color?: string;
     className?: string;
 }
 
-const BADGE_MAP: Record<string, LucideIcon> = {
-    Star,
-    Flame,
-    Zap,
-    Shield,
-    Crown,
-    Award,
-    Gem,
-    Rocket,
-    Music,
-    Heart,
+// Lucide icon placeholders — color applied via style.color (CSS currentColor inheritance)
+const LUCIDE_BADGE_COMPONENTS: Record<string, LucideIcon> = {
+    crown:  Crown,
+    sword:  Sword,
+    skull:  Skull,
+    potion: FlaskConical,
+    star:   Star,
+    flame:  Flame,
+    zap:    Zap,
+    shield: Shield,
 };
 
-const ServerTagBadgeIcon = ({ badgeName, className = "h-3 w-3" }: Props) => {
+// Custom SVG badge components — color applied via the `color` prop
+type CustomBadgeComponent = React.ComponentType<{ color?: string; className?: string }>;
+const CUSTOM_BADGE_COMPONENTS: Record<string, CustomBadgeComponent> = {
+    orb: OrbBadge,
+};
+
+const ServerTagBadgeIcon = ({ badgeName, color, className = "h-3 w-3" }: Props) => {
     if (!badgeName) return null;
 
-    if (badgeName.startsWith("http")) {
-        return (
-            <img
-                src={badgeName}
-                alt="tag badge"
-                className={className}
-                style={{ objectFit: "contain" }}
-            />
-        );
+    const CustomComp = CUSTOM_BADGE_COMPONENTS[badgeName];
+    if (CustomComp) {
+        return <CustomComp color={color} className={className} />;
     }
 
-    const Icon = BADGE_MAP[badgeName];
+    const Icon = LUCIDE_BADGE_COMPONENTS[badgeName];
     if (!Icon) return null;
 
-    return <Icon className={className} />;
+    return <Icon className={className} style={color ? { color } : undefined} />;
 };
 
 export default ServerTagBadgeIcon;

@@ -346,6 +346,52 @@ Ensure `--color-bg-muted` is visibly distinct from `--color-bg`. The app uses `-
 
 ---
 
+## Adding a New SVG Badge
+
+When the user provides a raw SVG component and asks to add it as a badge, **execute immediately** — no planning step required.
+
+### The 3 Files to Edit
+
+1. **Create** `src/components/ui/badges/<BadgeName>Badge.tsx`
+   — Paste the user's code. Fix any malformed `xmlns` (markdown hyperlink format is invalid SVG).
+   — Component interface must be: `{ color: string; className?: string }`
+   — Use `fill="currentColor"` for the dynamic-color path; `style={{ color }}` on the `<svg>` element.
+
+2. **`src/components/ServerTagBadgeIcon.tsx`** — Add to `CUSTOM_BADGE_COMPONENTS` (not the LUCIDE map):
+   ```typescript
+   const CUSTOM_BADGE_COMPONENTS: Record<string, CustomBadgeComponent> = {
+     orb: OrbBadge,
+     myNewBadge: MyNewBadge,  // ← add here
+   };
+   ```
+
+3. **`src/components/server/settings/ServerTagTab.tsx`** — Import the component, add to `BADGE_OPTIONS` with `custom: true`:
+   ```typescript
+   { id: "myNewBadge", Icon: MyNewBadge, label: "My Badge", custom: true },
+   ```
+
+### What NOT to Change
+- No migration needed (badge ID is just a string stored in `server_tag_badge`)
+- No i18n changes needed — badge labels are hardcoded in `BADGE_OPTIONS`
+- Do not edit the badge component's SVG paths — paste as-is from the user
+
+### Why `custom: true`?
+Lucide icon placeholders use `style={{ color }}` (CSS `currentColor` inheritance).
+Custom SVG components use a `color` prop directly (they set their own `style={{ color }}`).
+The `custom: true` flag tells the badge grid render to pass `color` as a prop instead of `style`.
+
+### xmlns Bug to Always Fix
+Markdown often corrupts the SVG `xmlns` attribute into a hyperlink format:
+```
+xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)"  ← INVALID
+```
+Always fix to:
+```
+xmlns="http://www.w3.org/2000/svg"  ← CORRECT
+```
+
+---
+
 ## Debugging Common Issues
 
 | Problem | Where to look |

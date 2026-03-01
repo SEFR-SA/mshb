@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, ImagePlus, Lock } from "lucide-react";
+import { Camera, ImagePlus } from "lucide-react";
 import { FONT_STYLES, convertToFont, revertToPlain, type FontStyle } from "@/lib/unicodeFonts";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
@@ -83,7 +83,7 @@ const ProfileTab = () => {
     const fetchTags = async () => {
       const { data } = await supabase
         .from("server_members" as any)
-        .select("server_id, servers(id, name, server_tag_name, server_tag_badge, server_tag_color)")
+        .select("server_id, servers(id, name, server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
         .eq("user_id", user.id);
       if (data) {
         const tags = data
@@ -340,25 +340,20 @@ const ProfileTab = () => {
             <SelectItem value="none">
               <span className="text-muted-foreground">{t("serverTags.none", "None")}</span>
             </SelectItem>
-            {eligibleTags.map((tag) => {
-              const hasImageBadge = tag.server_tag_badge?.startsWith("http");
-              const tagLocked = hasImageBadge && !isPro;
-              return (
-                <SelectItem key={tag.id} value={tag.id} disabled={tagLocked}>
-                  <div className="flex items-center gap-2">
-                    <span>{tag.name}</span>
-                    <span
-                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white inline-flex items-center gap-1"
-                      style={{ backgroundColor: tag.server_tag_color || "#6b7280" }}
-                    >
-                      <ServerTagBadgeIcon badgeName={tag.server_tag_badge} className="w-3 h-3 object-contain shrink-0" />
-                      <span>{tag.server_tag_name}</span>
-                    </span>
-                    {tagLocked && <Lock className="h-2.5 w-2.5 text-muted-foreground shrink-0" />}
-                  </div>
-                </SelectItem>
-              );
-            })}
+            {eligibleTags.map((tag) => (
+              <SelectItem key={tag.id} value={tag.id}>
+                <div className="flex items-center gap-2">
+                  <span>{tag.name}</span>
+                  <span
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white inline-flex items-center gap-1"
+                    style={{ backgroundColor: tag.server_tag_container_color || tag.server_tag_color || "#6b7280" }}
+                  >
+                    <ServerTagBadgeIcon badgeName={tag.server_tag_badge} color={tag.server_tag_color} className="w-3 h-3 shrink-0" />
+                    <span>{tag.server_tag_name}</span>
+                  </span>
+                </div>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

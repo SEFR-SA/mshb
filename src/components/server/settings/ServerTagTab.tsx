@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Crown, Sword, Skull, FlaskConical, Star, Flame, Zap, Shield, Loader2, Lock } from "lucide-react";
+import { OrbBadge } from "@/components/ui/badges/OrbBadge";
 import { cn } from "@/lib/utils";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 
@@ -14,8 +16,6 @@ interface Props {
   serverId: string;
   canEdit: boolean;
 }
-
-const MAX_BADGE_BYTES = 512 * 1024; // 512 KB
 
 const PRESET_COLORS = [
   "#7c3aed",
@@ -29,21 +29,38 @@ const PRESET_COLORS = [
 ];
 
 const DEFAULT_COLOR = "#7c3aed";
+const DEFAULT_CONTAINER_COLOR = "#1e293b";
 const HEX_REGEX = /^#[0-9a-fA-F]{6}$/;
+
+const BADGE_OPTIONS = [
+  { id: "crown",  Icon: Crown,        label: "Crown"  },
+  { id: "sword",  Icon: Sword,        label: "Sword"  },
+  { id: "skull",  Icon: Skull,        label: "Skull"  },
+  { id: "potion", Icon: FlaskConical, label: "Potion" },
+  { id: "star",   Icon: Star,         label: "Star"   },
+  { id: "flame",  Icon: Flame,        label: "Flame"  },
+  { id: "zap",    Icon: Zap,          label: "Zap"    },
+  { id: "shield", Icon: Shield,       label: "Shield" },
+  { id: "orb",    Icon: OrbBadge,     label: "Orb",   custom: true },
+];
 
 const ServerTagTab = ({ serverId, canEdit }: Props) => {
   const { t } = useTranslation();
+  const { profile } = useAuth();
+  const isPro = !!profile?.is_pro;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
 
   const [tagName, setTagName] = useState("");
-  const [tagBadge, setTagBadge] = useState("");
+  const [tagBadge, setTagBadge] = useState("crown");
   const [tagColor, setTagColor] = useState(DEFAULT_COLOR);
   const [hexInput, setHexInput] = useState(DEFAULT_COLOR);
+  const [tagContainerColor, setTagContainerColor] = useState(DEFAULT_CONTAINER_COLOR);
+  const [containerHexInput, setContainerHexInput] = useState(DEFAULT_CONTAINER_COLOR);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const badgeColorInputRef = useRef<HTMLInputElement>(null);
+  const containerColorInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!serverId) return;
@@ -51,57 +68,48 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
       setLoading(true);
       const { data: s } = await supabase
         .from("servers" as any)
-        .select("server_tag_name, server_tag_badge, server_tag_color")
+        .select("server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color")
         .eq("id", serverId)
         .maybeSingle();
 
       if (s) {
         setTagName((s as any).server_tag_name ?? "");
-        setTagBadge((s as any).server_tag_badge ?? "");
-        const color = (s as any).server_tag_color ?? DEFAULT_COLOR;
-        setTagColor(color);
-        setHexInput(color);
+        setTagBadge((s as any).server_tag_badge ?? "crown");
+        const badgeColor = (s as any).server_tag_color ?? DEFAULT_COLOR;
+        setTagColor(badgeColor);
+        setHexInput(badgeColor);
+        const containerColor = (s as any).server_tag_container_color ?? (s as any).server_tag_color ?? DEFAULT_CONTAINER_COLOR;
+        setTagContainerColor(containerColor);
+        setContainerHexInput(containerColor);
       }
       setLoading(false);
     };
     load();
   }, [serverId]);
 
-  const handleColorSelect = (color: string) => {
+  const handleBadgeColorSelect = (color: string) => {
     setTagColor(color);
     setHexInput(color);
   };
 
-  const handleHexChange = (val: string) => {
+  const handleBadgeHexChange = (val: string) => {
     setHexInput(val);
-    if (HEX_REGEX.test(val)) {
-      setTagColor(val);
-    }
+    if (HEX_REGEX.test(val)) setTagColor(val);
   };
 
-  const handleBadgeFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_BADGE_BYTES) {
-      toast({ title: t("serverSettings.serverTagBadgeTooBig"), variant: "destructive" });
-      e.target.value = "";
-      return;
-    }
-    setIsUploading(true);
-    try {
-      const ext = file.name.split(".").pop();
-      const filePath = `${serverId}/tag-badges/${Date.now()}_badge.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("server-assets")
-        .upload(filePath, file, { upsert: true });
-      if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("server-assets").getPublicUrl(filePath);
-      setTagBadge(urlData.publicUrl);
-    } catch {
-      toast({ title: t("common.error"), variant: "destructive" });
-    } finally {
-      setIsUploading(false);
-      e.target.value = "";
+  const handleContainerColorSelect = (color: string) => {
+    setTagContainerColor(color);
+    setContainerHexInput(color);
+  };
+
+  const handleContainerHexChange = (val: string) => {
+    setContainerHexInput(val);
+    if (HEX_REGEX.test(val)) setTagContainerColor(val);
+  };
+
+  const handleProBlock = () => {
+    if (!isPro) {
+      toast({ title: t("pro.requiresPro", "Requires Mshb Pro. Upgrade to unlock this feature."), variant: "destructive" });
     }
   };
 
@@ -114,6 +122,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
           server_tag_name: tagName.trim() || null,
           server_tag_badge: tagBadge || null,
           server_tag_color: tagColor,
+          server_tag_container_color: tagContainerColor,
         } as any)
         .eq("id", serverId);
 
@@ -133,9 +142,20 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
     );
   }
 
+  const canInteract = canEdit && isPro;
+
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">{t("serverSettings.serverTag")}</h2>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{t("serverSettings.serverTag")}</h2>
+        {!isPro && (
+          <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+            <Lock className="h-3 w-3" />
+            PRO
+          </span>
+        )}
+      </div>
 
       {/* Preview */}
       <div className="space-y-2">
@@ -145,17 +165,15 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         <p className="text-xs text-muted-foreground">{t("serverSettings.serverTagPreviewDesc")}</p>
 
         <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 w-fit">
-          {/* Mock user avatar */}
           <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
             U
           </div>
           <span className="text-sm font-medium">Username</span>
-          {/* Tag pill */}
           <span
             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-semibold leading-none text-white shrink-0"
-            style={{ backgroundColor: tagColor }}
+            style={{ backgroundColor: tagContainerColor }}
           >
-            <ServerTagBadgeIcon badgeName={tagBadge} className="h-2.5 w-2.5" />
+            <ServerTagBadgeIcon badgeName={tagBadge} color={tagColor} className="h-2.5 w-2.5" />
             {(tagName || t("serverSettings.serverTag")).substring(0, 4).toUpperCase()}
           </span>
         </div>
@@ -163,7 +181,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       <Separator />
 
-      {/* Section 1 — Choose Name */}
+      {/* Section 1 — Tag Name */}
       <div className="space-y-2">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           {t("serverSettings.serverTagName")}
@@ -171,8 +189,9 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         <Input
           value={tagName}
           onChange={(e) => setTagName(e.target.value.toUpperCase())}
+          onClick={!canInteract ? handleProBlock : undefined}
           placeholder={t("serverSettings.serverTagNamePlaceholder")}
-          disabled={!canEdit}
+          disabled={!canInteract}
           maxLength={4}
           className="max-w-xs uppercase"
         />
@@ -180,91 +199,90 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       <Separator />
 
-      {/* Section 2 — Badge Image */}
+      {/* Section 2 — Choose Badge */}
       <div className="space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          {t("serverSettings.serverTagBadge")}
+          {t("serverSettings.serverTagBadgeSelect")}
         </p>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png, image/jpeg, image/gif"
-          className="hidden"
-          onChange={handleBadgeFileChange}
-          disabled={!canEdit}
-        />
-
-        {tagBadge?.startsWith("http") ? (
-          <div className="flex items-center gap-3">
-            <img
-              src={tagBadge}
-              alt="badge preview"
-              className="h-12 w-12 rounded-md object-contain border border-border bg-muted/30"
-            />
-            {canEdit && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                >
-                  {isUploading && <Loader2 className="h-3.5 w-3.5 animate-spin me-1.5" />}
-                  {t("serverSettings.serverTagChangeBadge")}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setTagBadge("")}
-                  className="text-destructive hover:text-destructive"
-                >
-                  {t("serverSettings.serverTagRemoveBadge")}
-                </Button>
-              </>
-            )}
-          </div>
-        ) : (
-          canEdit && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+          {BADGE_OPTIONS.map(({ id, Icon, label, custom }) => (
+            <button
+              key={id}
+              onClick={() => {
+                if (!canInteract) { handleProBlock(); return; }
+                setTagBadge(id);
+              }}
+              className={cn(
+                "flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all text-xs",
+                tagBadge === id
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-transparent bg-muted/30 text-muted-foreground hover:bg-muted/60",
+                !canInteract && "opacity-50 cursor-not-allowed"
+              )}
+              title={label}
             >
-              {isUploading && <Loader2 className="h-3.5 w-3.5 animate-spin me-1.5" />}
-              {t("serverSettings.serverTagUploadBadge")}
-            </Button>
-          )
-        )}
+              {custom
+                ? <Icon color={tagBadge === id ? tagColor : undefined} className="h-5 w-5" />
+                : <Icon className="h-5 w-5" style={tagBadge === id ? { color: tagColor } : undefined} />
+              }
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <Separator />
 
-      {/* Section 3 — Choose Color */}
+      {/* Section 3 — Badge Color (SVG fill) */}
       <div className="space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          {t("serverSettings.serverTagColor")}
+          {t("serverSettings.serverTagBadgeColor")}
         </p>
 
-        {/* Preset swatches */}
         <div className="flex flex-wrap gap-2">
           {PRESET_COLORS.map((color) => (
             <button
               key={color}
-              onClick={() => canEdit && handleColorSelect(color)}
-              disabled={!canEdit}
+              onClick={() => {
+                if (!canInteract) { handleProBlock(); return; }
+                handleBadgeColorSelect(color);
+              }}
               className={cn(
                 "h-8 w-8 rounded-full transition-all",
-                tagColor === color && "ring-2 ring-offset-2 ring-primary"
+                tagColor === color && "ring-2 ring-offset-2 ring-primary",
+                !canInteract && "opacity-50 cursor-not-allowed"
               )}
               style={{ backgroundColor: color }}
               title={color}
             />
           ))}
+          {/* Custom color picker */}
+          <div className="relative h-8 w-8">
+            <div
+              className={cn(
+                "h-8 w-8 rounded-full border-2 border-dashed border-border flex items-center justify-center text-muted-foreground text-xs font-bold cursor-pointer hover:border-primary transition-colors",
+                !canInteract && "opacity-50 cursor-not-allowed"
+              )}
+              style={!PRESET_COLORS.includes(tagColor) ? { backgroundColor: tagColor } : undefined}
+              onClick={() => {
+                if (!canInteract) { handleProBlock(); return; }
+                badgeColorInputRef.current?.click();
+              }}
+              title="Custom color"
+            >
+              {PRESET_COLORS.includes(tagColor) ? "+" : null}
+            </div>
+            <input
+              ref={badgeColorInputRef}
+              type="color"
+              value={tagColor}
+              onChange={(e) => handleBadgeColorSelect(e.target.value)}
+              className="absolute inset-0 opacity-0 cursor-pointer w-0 h-0"
+              disabled={!canInteract}
+            />
+          </div>
         </div>
 
-        {/* Custom hex input */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <Label className="text-xs text-muted-foreground shrink-0">
             {t("serverSettings.serverTagHexColor")}
@@ -276,9 +294,84 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
             />
             <Input
               value={hexInput}
-              onChange={(e) => handleHexChange(e.target.value)}
-              disabled={!canEdit}
+              onChange={(e) => handleBadgeHexChange(e.target.value)}
+              onClick={!canInteract ? handleProBlock : undefined}
+              disabled={!canInteract}
               placeholder="#7c3aed"
+              maxLength={7}
+              className="w-28 font-mono text-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Section 4 — Background Color (pill container) */}
+      <div className="space-y-3">
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          {t("serverSettings.serverTagContainerColor")}
+        </p>
+
+        <div className="flex flex-wrap gap-2">
+          {PRESET_COLORS.map((color) => (
+            <button
+              key={color}
+              onClick={() => {
+                if (!canInteract) { handleProBlock(); return; }
+                handleContainerColorSelect(color);
+              }}
+              className={cn(
+                "h-8 w-8 rounded-full transition-all",
+                tagContainerColor === color && "ring-2 ring-offset-2 ring-primary",
+                !canInteract && "opacity-50 cursor-not-allowed"
+              )}
+              style={{ backgroundColor: color }}
+              title={color}
+            />
+          ))}
+          {/* Custom color picker */}
+          <div className="relative h-8 w-8">
+            <div
+              className={cn(
+                "h-8 w-8 rounded-full border-2 border-dashed border-border flex items-center justify-center text-muted-foreground text-xs font-bold cursor-pointer hover:border-primary transition-colors",
+                !canInteract && "opacity-50 cursor-not-allowed"
+              )}
+              style={!PRESET_COLORS.includes(tagContainerColor) ? { backgroundColor: tagContainerColor } : undefined}
+              onClick={() => {
+                if (!canInteract) { handleProBlock(); return; }
+                containerColorInputRef.current?.click();
+              }}
+              title="Custom color"
+            >
+              {PRESET_COLORS.includes(tagContainerColor) ? "+" : null}
+            </div>
+            <input
+              ref={containerColorInputRef}
+              type="color"
+              value={tagContainerColor}
+              onChange={(e) => handleContainerColorSelect(e.target.value)}
+              className="absolute inset-0 opacity-0 cursor-pointer w-0 h-0"
+              disabled={!canInteract}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <Label className="text-xs text-muted-foreground shrink-0">
+            {t("serverSettings.serverTagHexColor")}
+          </Label>
+          <div className="flex items-center gap-2">
+            <div
+              className="h-7 w-7 rounded-md border border-border shrink-0"
+              style={{ backgroundColor: HEX_REGEX.test(containerHexInput) ? containerHexInput : tagContainerColor }}
+            />
+            <Input
+              value={containerHexInput}
+              onChange={(e) => handleContainerHexChange(e.target.value)}
+              onClick={!canInteract ? handleProBlock : undefined}
+              disabled={!canInteract}
+              placeholder="#1e293b"
               maxLength={7}
               className="w-28 font-mono text-sm"
             />
@@ -288,7 +381,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       {canEdit && (
         <div className="pt-2">
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={canInteract ? handleSave : handleProBlock} disabled={saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
             {t("actions.save")}
           </Button>

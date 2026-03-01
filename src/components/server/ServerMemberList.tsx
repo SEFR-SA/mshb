@@ -77,7 +77,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       const userIds = (data as any[]).map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, created_at, name_gradient_start, name_gradient_end, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color)")
+        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, created_at, name_gradient_start, name_gradient_end, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
         .in("user_id", userIds);
 
       const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
@@ -324,7 +324,8 @@ const ServerMemberList = ({ serverId }: Props) => {
                           serverTag={(p as any)?.active_server_tag ? {
                             name: (p as any).active_server_tag.server_tag_name,
                             badge: (p as any).active_server_tag.server_tag_badge,
-                            color: (p as any).active_server_tag.server_tag_color
+                            color: (p as any).active_server_tag.server_tag_container_color ?? (p as any).active_server_tag.server_tag_color,
+                            badgeColor: (p as any).active_server_tag.server_tag_color,
                           } : null}
                         />
                         {highestRole?.icon_url && (
