@@ -8,6 +8,7 @@ export interface ColorThemePreset {
   colors: string[];                   // gradient stop hexes (used for buildGradient)
   primary?: string;                   // accent hex — applied to --primary/--ring/--sidebar-primary/--sidebar-ring
   vars?: Record<string, string>;      // full --color-* variable block
+  solid?: boolean;                    // true = solid background, skip glassmorphism + use .solid-theme-active class
 }
 
 export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
@@ -55,6 +56,16 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
     colors: ["#c0d8f0", "#d8e8f8", "#eef6ff"], primary: "#0066aa",
     vars: { "--color-bg": "linear-gradient(135deg, #c0d8f0, #d8e8f8, #eef6ff)", "--color-bg-muted": "#dde8f5", "--color-surface": "#f5f9ff", "--color-border": "#b8d0e8", "--color-primary": "#0066aa", "--color-primary-dark": "#004480", "--color-text": "#1a2840", "--color-text-muted": "#3d5880", "--color-text-on-primary": "#ffffff", "--color-hover": "#d5e5f5", "--color-shadow": "rgba(0,102,170,0.2)" },
   },
+  {
+    id: "jade_blossom", name: "Jade Blossom",
+    colors: ["#f9fbfa", "#d4f0e5", "#f0faf5"], primary: "#18e47e", solid: true,
+    vars: { "--color-bg": "#f9fbfa", "--color-bg-muted": "#edf2f0", "--color-surface": "#ffffff", "--color-border": "#dce5e0", "--color-primary": "#18e47e", "--color-primary-dark": "#119e58", "--color-text": "#264033", "--color-text-muted": "#618473", "--color-text-on-primary": "#ffffff", "--color-hover": "#15bf6a", "--color-shadow": "rgba(0, 0, 0, 0.06)" },
+  },
+  {
+    id: "amber_glow", name: "Amber Glow",
+    colors: ["#fbfaf9"], primary: "#f0a22e", solid: true,
+    vars: { "--color-bg": "#fbfaf9", "--color-bg-muted": "#f3f0ed", "--color-surface": "#ffffff", "--color-border": "#e6e2da", "--color-primary": "#f0a22e", "--color-primary-dark": "#c27a0e", "--color-text": "#423624", "--color-text-muted": "#8a775c", "--color-text-on-primary": "#ffffff", "--color-hover": "#e48f11", "--color-shadow": "rgba(0, 0, 0, 0.06)" },
+  },
 
   // ─── VIBRANT / SYNTHWAVE THEMES (8) ─────────────────────────────────────
 
@@ -97,6 +108,11 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
     id: "dragon_fire", name: "Dragon Fire",
     colors: ["#1a0d00", "#8b3500", "#ff2200"], primary: "#ff6600",
     vars: { "--color-bg": "linear-gradient(135deg, #1a0d00, #8b3500, #ff2200)", "--color-bg-muted": "#1c0e00", "--color-surface": "#180c00", "--color-border": "#6a2800", "--color-primary": "#ff6600", "--color-primary-dark": "#cc3300", "--color-text": "#fff0e0", "--color-text-muted": "#ff9966", "--color-text-on-primary": "#1a0400", "--color-hover": "#281400", "--color-shadow": "rgba(255,102,0,0.35)" },
+  },
+  {
+    id: "viper", name: "Viper",
+    colors: ["#151613"], primary: "#bdd63f", solid: true,
+    vars: { "--color-bg": "#151613", "--color-bg-muted": "#20211d", "--color-surface": "#1b1b18", "--color-border": "#30312b", "--color-primary": "#bdd63f", "--color-primary-dark": "#a2ba28", "--color-text": "#f3f3f1", "--color-text-muted": "#aaaba0", "--color-text-on-primary": "#ffffff", "--color-hover": "#c4da54", "--color-shadow": "rgba(0, 0, 0, 0.3)" },
   },
 
   // ─── DEEP / ELEGANT DARK THEMES (8) ─────────────────────────────────────
@@ -226,6 +242,8 @@ const COLOR_THEME_EXTRA_VARS = [
   "--background", "--muted", "--border", "--primary-foreground",
   // Sidebar vars — must be cleared on reset so base theme's sidebar color is restored:
   "--sidebar-background", "--sidebar-accent", "--sidebar-border",
+  // Skeleton loading state highlight:
+  "--skeleton-highlight",
 ];
 
 function applyGradientOverrides(colors: string[], isLight: boolean) {
@@ -268,7 +286,7 @@ function removeGradientOverrides() {
   const root = document.documentElement;
   GRADIENT_OVERRIDE_VARS.forEach((v) => root.style.removeProperty(v));
   COLOR_THEME_EXTRA_VARS.forEach((v) => root.style.removeProperty(v));
-  root.classList.remove("gradient-active", "gradient-light");
+  root.classList.remove("gradient-active", "gradient-light", "solid-theme-active");
 }
 
 /** Convert CSS HSL string ("h s% l%") to a hex color */
@@ -335,6 +353,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (!isGradientActive) return false;
     return getAverageLuminance(colors) > 0.4;
   }, [colors, isGradientActive]);
+  const isSolidTheme = useMemo(() => {
+    const preset = COLOR_THEME_PRESETS.find(p => p.id === colorTheme);
+    return isGradientActive && !!preset?.solid;
+  }, [colorTheme, isGradientActive]);
 
   // Unified DOM effect — always clears all theme classes before applying one,
   // ensuring base themes and gradient themes are mutually exclusive on the DOM.
@@ -350,9 +372,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.classList.remove("dark", "light", "sado", "majls");
 
     if (isGradientActive) {
-      // Gradient themes are all dark-based; add "dark" so Tailwind dark: variants work correctly
+      // All color themes are dark-based; add "dark" so Tailwind dark: variants work correctly
       root.classList.add("dark");
-      applyGradientOverrides(colors, isGradientLight);
+      if (isSolidTheme) {
+        // Solid theme: opaque panels, no glassmorphism, no text-safety-shadow
+        root.classList.add("solid-theme-active");
+        root.classList.remove("gradient-active", "gradient-light");
+      } else {
+        // Gradient theme: frosted-glass panels, text-shadow contrast safety net
+        root.classList.remove("solid-theme-active");
+        applyGradientOverrides(colors, isGradientLight);
+      }
       const preset = COLOR_THEME_PRESETS.find(p => p.id === colorTheme);
       if (preset?.vars) {
         const pv = preset.vars;
@@ -386,6 +416,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         root.style.setProperty("--ring", hsl);
         root.style.setProperty("--sidebar-primary", hsl);
         root.style.setProperty("--sidebar-ring", hsl);
+        // Skeleton loading states pulse to the primary color for guaranteed contrast vs --muted
+        root.style.setProperty("--skeleton-highlight", hsl);
       }
       requestAnimationFrame(() => syncElectronTitleBar(colors[0]));
     } else {
@@ -393,7 +425,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       removeGradientOverrides();
       requestAnimationFrame(() => syncElectronTitleBar());
     }
-  }, [theme, colorTheme, colors, isGradientActive, isGradientLight]);
+  }, [theme, colorTheme, colors, isGradientActive, isGradientLight, isSolidTheme]);
 
   const setTheme = (t: Theme) => {
     setThemeState(t);

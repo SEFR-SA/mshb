@@ -270,6 +270,82 @@ All new UI components must be mobile-responsive by default. AI agents must follo
 
 ---
 
+## Adding a New Color Theme
+
+When the user provides a CSS variable palette and asks to add a new color theme, **execute immediately** — no planning step required.
+
+### The Only File to Edit
+
+`src/contexts/ThemeContext.tsx` — add one object to the `COLOR_THEME_PRESETS` array.
+
+- `AppearanceTab.tsx` auto-renders all presets — **no changes needed**
+- `src/index.css` is **not touched** — color themes are applied via JavaScript, not CSS classes
+- No i18n changes needed
+
+### Rule 1 — Identify the Type First
+
+| User provides | Type | `solid` flag | `colors` array |
+|---|---|---|---|
+| Solid hex codes only | Solid | `solid: true` | Single entry: `["#bg_hex"]` |
+| `linear-gradient(...)` | Gradient | omit | 2-3 gradient stop hexes |
+
+### Rule 2 — Solid Theme Protocol
+
+**Do NOT invent gradients from solid hex codes.** Set `colors` to a single hex entry:
+- `colors: ["#bg_hex"]` → `buildGradient()` returns the plain hex (solid CSS background) ✓
+- `solid: true` → ThemeContext adds `.solid-theme-active` to `<html>`, skips glassmorphism — panels become fully opaque
+
+### Rule 3 — Gradient Theme Protocol
+
+Use 2-3 hex stops that represent the palette visually. **`colors[0]` MUST equal the primary background hex** — ThemeContext maps `colors[0]` to `--background` (component surfaces).
+
+### Rule 4 — Skeleton & Loading Contrast
+
+Ensure `--color-bg-muted` is visibly distinct from `--color-bg`. The app uses `--muted` (= `--color-bg-muted`) for skeleton loading states. If they are identical or too similar, the shimmer pulse will be invisible. The `--skeleton-highlight` CSS variable is automatically set to the theme's `primary` color by ThemeContext — do **not** set it manually; it is always cleared on theme switch.
+
+### Preset Object Shape
+
+```typescript
+{
+  id: "snake_case_id",      // unique identifier
+  name: "Display Name",     // shown in Appearance Settings UI
+  colors: ["#bg_hex"],      // solid: single entry; gradient: 2-3 hex stops
+  primary: "#hex",          // accent color → --primary, --ring, sidebar highlights, --skeleton-highlight
+  solid: true,              // ONLY for solid-background themes (omit for gradients)
+  vars: {
+    "--color-bg":              "#hex",          // solid hex for solid themes; linear-gradient(...) for gradients
+    "--color-bg-muted":        "#hex",          // MUST differ from --color-bg for visible skeletons
+    "--color-surface":         "#hex",
+    "--color-border":          "#hex",
+    "--color-primary":         "#hex",
+    "--color-primary-dark":    "#hex",
+    "--color-text":            "#hex",
+    "--color-text-muted":      "#hex",
+    "--color-text-on-primary": "#hex",
+    "--color-hover":           "#hex",
+    "--color-shadow":          "rgba(...)",
+  },
+},
+```
+
+### Placement Groups
+
+| Group | When to use |
+|-------|-------------|
+| Light / Pastel | Light backgrounds, soft tones |
+| Vibrant / Synthwave | Neon + dark backgrounds |
+| Deep / Elegant Dark | Rich dark, jewel tones |
+
+### What Happens Automatically
+
+- `.solid-theme-active` on `<html>` → CSS overrides make all panels fully opaque (`index.css`)
+- `.gradient-active` on `<html>` → CSS enables glassmorphism (30% opacity + backdrop-blur)
+- `--skeleton-highlight` set to `primary` HSL → skeleton shimmer pulses to primary color
+- All non-default presets are Pro-gated automatically — no extra code needed
+- **Omit** non-standard vars (e.g. `--color-accent-gold`) — they are not in the cleanup list and leak to other themes on switch
+
+---
+
 ## Debugging Common Issues
 
 | Problem | Where to look |

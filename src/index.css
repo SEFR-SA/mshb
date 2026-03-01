@@ -309,13 +309,31 @@
   --text-safety-shadow: 0 1px 2px rgba(255,255,255,0.3);
 }
 
+/* Solid color themes: fully opaque panels, no glass blur */
+.solid-theme-active .bg-sidebar-background\/30 {
+  background-color: hsl(var(--sidebar-background)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.solid-theme-active .bg-card\/30 {
+  background-color: hsl(var(--card)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Skeleton highlight defaults for base (non-color) themes */
+:root  { --skeleton-highlight: 113 80% 35%; } /* muted green on light bg */
+.dark  { --skeleton-highlight: 113 80% 55%; } /* bright green on dark bg */
+.sado  { --skeleton-highlight:   6 53% 60%; } /* brightened terracotta */
+.majls { --skeleton-highlight:   6 53% 60%; } /* brightened terracotta on dark */
+
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--accent)) 50%, hsl(var(--muted)) 75%);
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--skeleton-highlight, var(--border))) 50%, hsl(var(--muted)) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }

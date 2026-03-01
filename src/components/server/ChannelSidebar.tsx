@@ -578,7 +578,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
   return (
     <>
-      <div className="w-[240px] max-md:w-full max-md:max-w-full h-full flex flex-col bg-sidebar-background/30 backdrop-blur-sm border-e border-sidebar-border shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
+      <div className="w-[240px] max-md:w-full max-md:max-w-full h-full flex flex-col bg-card/30 backdrop-blur-sm border-e border-sidebar-border shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
         {server?.banner_url && (
           <img
             src={server.banner_url}
@@ -856,10 +856,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                               onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private, is_announcement: ch.is_announcement })}
                               className={({ isActive }) =>
                                 `flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${isActive || ch.id === activeChannelId
-                                  ? "bg-sidebar-accent text-white font-bold"
+                                  ? "bg-primary/10 border-s-2 border-primary text-primary font-bold"
                                   : unreadSet.has(ch.id)
-                                    ? "text-white font-bold hover:bg-sidebar-accent/50"
-                                    : "font-medium text-[#949BA4] hover:text-[#DBDEE1] hover:bg-sidebar-accent/50"
+                                    ? "text-foreground font-bold hover:bg-muted/50"
+                                    : "font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50"
                                 }`
                               }
                             >
