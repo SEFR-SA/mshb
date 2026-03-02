@@ -53,8 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchPurchases = async (userId: string) => {
     const [{ data: purchases }, { data: equipped }] = await Promise.all([
-      supabase.from("user_purchases").select("item_id").eq("user_id", userId),
-      supabase.from("user_equipped").select("category, item_id").eq("user_id", userId),
+      supabase.from("user_purchases" as any).select("item_id").eq("user_id", userId),
+      supabase.from("user_equipped" as any).select("category, item_id").eq("user_id", userId),
     ]);
     if (purchases) setPurchasedItemIds((purchases as any[]).map((p) => p.item_id));
     if (equipped)  setEquippedItems(Object.fromEntries((equipped as any[]).map((e) => [e.category, e.item_id])));

@@ -344,6 +344,45 @@ export type Database = {
           },
         ]
       }
+      marketplace_items: {
+        Row: {
+          asset_url: string
+          category: string
+          created_at: string
+          creator_id: string | null
+          id: string
+          name: string
+          price_sar: number
+          status: string
+          thumbnail_url: string
+          type: string
+        }
+        Insert: {
+          asset_url: string
+          category: string
+          created_at?: string
+          creator_id?: string | null
+          id?: string
+          name: string
+          price_sar?: number
+          status?: string
+          thumbnail_url: string
+          type: string
+        }
+        Update: {
+          asset_url?: string
+          category?: string
+          created_at?: string
+          creator_id?: string | null
+          id?: string
+          name?: string
+          price_sar?: number
+          status?: string
+          thumbnail_url?: string
+          type?: string
+        }
+        Relationships: []
+      }
       member_roles: {
         Row: {
           created_at: string
@@ -947,6 +986,7 @@ export type Database = {
           owner_id: string
           server_tag_badge: string | null
           server_tag_color: string | null
+          server_tag_container_color: string | null
           server_tag_name: string | null
           system_message_channel_id: string | null
           welcome_message_enabled: boolean
@@ -965,6 +1005,7 @@ export type Database = {
           owner_id: string
           server_tag_badge?: string | null
           server_tag_color?: string | null
+          server_tag_container_color?: string | null
           server_tag_name?: string | null
           system_message_channel_id?: string | null
           welcome_message_enabled?: boolean
@@ -983,6 +1024,7 @@ export type Database = {
           owner_id?: string
           server_tag_badge?: string | null
           server_tag_color?: string | null
+          server_tag_container_color?: string | null
           server_tag_name?: string | null
           system_message_channel_id?: string | null
           welcome_message_enabled?: boolean
@@ -1042,6 +1084,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_equipped: {
+        Row: {
+          category: string
+          equipped_at: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          equipped_at?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          equipped_at?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_purchases: {
+        Row: {
+          id: string
+          item_id: string
+          purchased_at: string
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          purchased_at?: string
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          purchased_at?: string
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       voice_channel_participants: {
         Row: {

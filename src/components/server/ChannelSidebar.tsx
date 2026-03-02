@@ -54,6 +54,7 @@ interface Server {
   server_tag_name: string | null;
   server_tag_badge: string | null;
   server_tag_color: string | null;
+  server_tag_container_color: string | null;
 }
 
 interface VoiceParticipant {
@@ -592,9 +593,9 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             {server?.server_tag_name && (
               <span
                 className="inline-flex items-center gap-1 shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded leading-none whitespace-nowrap text-white"
-                style={{ backgroundColor: server.server_tag_color || "#5865f2" }}
+                style={{ backgroundColor: server.server_tag_container_color || server.server_tag_color || "#5865f2" }}
               >
-                <ServerTagBadgeIcon badgeName={server.server_tag_badge} className="h-3 w-3" />
+                <ServerTagBadgeIcon badgeName={server.server_tag_badge} color={server.server_tag_color || undefined} className="h-3 w-3" />
                 {server.server_tag_name.substring(0, 4).toUpperCase()}
               </span>
             )}
