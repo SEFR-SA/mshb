@@ -327,7 +327,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
   };
 
   return (
-    <div className={`flex flex-col h-full ${isMobileExpanded ? "flex-1" : "w-60"} border-e border-border/50 bg-muted/70 backdrop-blur-sm shrink-0`}>
+    <div className={`flex flex-col h-full ${isMobileExpanded ? "flex-1" : "w-60"} shrink-0`}>
       {/* Friends nav item */}
       <div className="p-2">
         <button

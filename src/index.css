@@ -50,6 +50,7 @@
 
     --online: 142 76% 36%;
     --theme-gradient: none;
+    --surface: 0 0% 98%;
   }
 
   .dark {
@@ -92,6 +93,7 @@
 
     --online: 142 76% 46%;
     --theme-gradient: none;
+    --surface: 225 6% 22%;
   }
 
   .sado {
@@ -134,6 +136,7 @@
 
     --online: 142 76% 36%;
     --theme-gradient: none;
+    --surface: 36 50% 97%;
   }
 
   .majls {
@@ -176,6 +179,7 @@
 
     --online: 142 76% 46%;
     --theme-gradient: none;
+    --surface: 23 47% 15%;
   }
 }
 
