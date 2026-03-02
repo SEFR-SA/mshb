@@ -1,48 +1,41 @@
 
 
-## Mobile Layered Surface Fix
+## Skeleton Loading Fix
 
-### Problem
-On desktop, `AppLayout.tsx` (line 77-78) renders `<ServerRail />` outside `<main className="bg-surface rounded-tl-[16px]">`, creating the layered illusion. On mobile, `AppLayout` skips the ServerRail (`!isMobile && <ServerRail />`), and `ServerView` renders both `<ServerRail />` and `<ChannelSidebar>` **inside** `<main>` — so they share `bg-surface` with no contrast, and the rounded corner sits above them (on the `<main>` wrapper) where it's invisible.
+### Root Cause
 
-### Solution
-Apply the layered surface pattern directly inside `ServerView`'s mobile layout (Phase 1), since that's where the Rail + Content sit side-by-side on mobile.
+The skeleton uses a custom `animate-shimmer` animation defined in `src/index.css` (line 339-342) that creates a sweeping gradient using `--skeleton-highlight` — which is set to the theme's **primary color** by `ThemeContext.tsx`. This produces a harsh, attention-grabbing shimmer in the primary accent color.
 
 ### Changes
 
-**File: `src/pages/ServerView.tsx` — Mobile Phase 1 (lines 164-179)**
+**File: `src/components/ui/skeleton.tsx`**
 
-Current:
+Replace `animate-shimmer` with `animate-pulse bg-muted/80`:
+
 ```tsx
-<div className="flex h-full w-full max-w-full overflow-x-hidden">
-  <ServerRail />
-  <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col">
-    ...
-    <ChannelSidebar ... />
-  </div>
-</div>
+function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("animate-pulse rounded-md bg-muted/80", className)} {...props} />;
+}
 ```
 
-Change to:
-```tsx
-<div className="flex h-full w-full max-w-full overflow-x-hidden bg-background">
-  <ServerRail />
-  <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col bg-surface rounded-tl-[16px]">
-    ...
-    <ChannelSidebar ... />
-  </div>
-</div>
-```
+**File: `src/index.css` — Lines 327-342**
 
-- Outer wrapper gets `bg-background` — the darker canvas color that matches the Server Rail
-- Content wrapper gets `bg-surface rounded-tl-[16px]` — the lighter card with the rounded corner, identical to desktop's `<main>`
+Remove the entire skeleton shimmer block (the `--skeleton-highlight` CSS custom properties, the `@keyframes shimmer`, and the `.animate-shimmer` class). These are now dead code.
 
-That's it. Two classes on the outer div, two classes on the inner div. The ServerRail already has no explicit background (inherits from parent), so it will sit on the darker `bg-background` canvas naturally.
+**File: `src/contexts/ThemeContext.tsx`**
 
-### What This Achieves
+- Line 246: Remove `"--skeleton-highlight"` from the cleanup array
+- Line 425: Remove the `root.style.setProperty("--skeleton-highlight", hsl)` call
+
+**File: `src/components/skeletons/SkeletonLoaders.tsx`**
+
+No changes needed — all skeleton items use structural classes only (`h-9 w-9 rounded-full`, `h-3.5 w-[70%]`, etc.) and inherit from the base `Skeleton` component. Already correct.
+
+### Result
+
 | Aspect | Before | After |
 |--------|--------|-------|
-| Rail vs Content contrast | Same color | Dark rail / light content |
-| Rounded corner | Not visible | `rounded-tl-[16px]` on content card |
-| Desktop | Unchanged | Unchanged |
+| Animation | Sweeping gradient shimmer | Soft opacity pulse |
+| Color | Theme primary (harsh) | `bg-muted/80` (subtle, neutral) |
+| Custom CSS | 15+ lines of keyframes + vars | Zero — pure Tailwind |
 
