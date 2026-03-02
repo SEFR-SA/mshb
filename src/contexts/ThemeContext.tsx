@@ -242,8 +242,6 @@ const COLOR_THEME_EXTRA_VARS = [
   "--background", "--muted", "--border", "--primary-foreground", "--surface", "--accent",
   // Sidebar vars — must be cleared on reset so base theme's sidebar color is restored:
   "--sidebar-background", "--sidebar-accent", "--sidebar-border",
-  // Skeleton loading state highlight:
-  "--skeleton-highlight",
 ];
 
 function applyGradientOverrides(colors: string[], isLight: boolean) {
@@ -421,8 +419,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         root.style.setProperty("--ring", hsl);
         root.style.setProperty("--sidebar-primary", hsl);
         root.style.setProperty("--sidebar-ring", hsl);
-        // Skeleton loading states pulse to the primary color for guaranteed contrast vs --muted
-        root.style.setProperty("--skeleton-highlight", hsl);
       }
       requestAnimationFrame(() => syncElectronTitleBar(colors[0]));
     } else {
