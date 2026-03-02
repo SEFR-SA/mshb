@@ -1,74 +1,53 @@
 
 
-## Phase 1: Architecture Audit — How Our Color System Works
+## Mobile Responsiveness Audit: Server Settings — Stickers & Emojis Tabs
 
-### CSS Variable Structure (Sound)
+### Issues Found
 
-Our `src/index.css` defines semantic HSL variables for 4 base themes (`:root`, `.dark`, `.sado`, `.majls`). These are correctly mapped in `tailwind.config.ts` to Tailwind tokens (`bg-accent`, `text-foreground`, etc.). The architecture itself is well-designed.
+1. **ESC label visible on mobile** — Line 243 of `ServerSettingsDialog.tsx`: `<span className="text-[10px] font-bold text-muted-foreground">ESC</span>` has no mobile breakpoint hide.
 
-### The Root Cause: `--accent` Is Never Updated by the Theme Engine
+2. **Upload buttons not full-width on mobile** — Both `StickersTab.tsx` (line 173) and `EmojisTab.tsx` (line 142) wrap the upload button in `flex flex-col items-end`, keeping it small on mobile.
 
-When a user selects a color theme preset (e.g., "Viper Green"), `ThemeContext.tsx` maps preset variables like this:
+3. **Table layout cramped on mobile** — Both tabs use `<Table>` with `min-w-[520px]`/`min-w-[480px]` forcing horizontal scroll. No mobile card/list view.
 
-| Preset Variable | Maps to Shadcn Variable | Status |
-|---|---|---|
-| `--color-primary` → `--primary` | Buttons, links | **Working** |
-| `--color-bg-muted` → `--muted` | Muted backgrounds | **Working** |
-| `--color-bg-muted` → `--sidebar-background` | Sidebar bg | **Working** |
-| `--color-hover` → `--sidebar-accent` | Sidebar item hover | **Working** |
-| `--color-surface` → `--card`, `--popover`, `--surface` | Cards, popovers | **Working** |
-| `--color-hover` → `--accent` | **NEVER MAPPED** | **BROKEN** |
+4. **Copy mismatch** — `StickersTab.tsx` line 168 uses `t("serverSettings.emojisUsed")` which renders "3 / 50 Emojis" instead of "Stickers". Need a separate `stickersUsed` i18n key.
 
-So `--accent` stays at its base-theme default (a neutral gray like `225 5% 26%` in dark mode). Every component using `focus:bg-accent` or `hover:bg-accent` gets a gray hover regardless of theme.
+5. **Modal height on mobile** — The content area (`bg-muted`) doesn't guarantee full viewport height on short content.
 
-### Which Components Are Affected?
+### Plan
 
-All of our Radix UI primitives use `focus:bg-accent focus:text-accent-foreground` for interactive highlights. These are the components with the gray hover bug:
+#### File 1: `src/i18n/en.ts`
+- Add `stickersUsed: "{{count}} / {{max}} Stickers"` after `noStickers` line.
 
-| Component | File | Hover Class |
-|---|---|---|
-| ContextMenuItem | `src/components/ui/context-menu.tsx` | `focus:bg-accent` |
-| DropdownMenuItem | `src/components/ui/dropdown-menu.tsx` | `focus:bg-accent` |
-| SelectItem | `src/components/ui/select.tsx` | `focus:bg-accent` |
-| MenubarItem | `src/components/ui/menubar.tsx` | `focus:bg-accent` |
-| NavigationMenuTrigger | `src/components/ui/navigation-menu.tsx` | `hover:bg-accent` |
-| Button (outline, ghost) | `src/components/ui/button.tsx` | `hover:bg-accent` |
-| Toggle | `src/components/ui/toggle.tsx` | `hover:bg-muted` / `hover:bg-accent` |
+#### File 2: `src/i18n/ar.ts`
+- Add `stickersUsed: "{{count}} / {{max}} ملصق"` after `noStickers` line.
 
-Custom components (ChatSidebar, EmojiPicker, etc.) correctly use `hover:bg-muted/50` which IS updated — those are fine.
+#### File 3: `src/components/server/ServerSettingsDialog.tsx`
+- **Line 233**: Add `min-h-[100dvh]` to the content area div so background extends full screen on mobile:
+  `"flex-1 flex flex-col overflow-hidden bg-muted relative min-h-[100dvh] sm:min-h-0"`
+- **Line 243**: Hide ESC label on mobile:
+  `<span className="text-[10px] font-bold text-muted-foreground hidden sm:block">ESC</span>`
 
-## Phase 2: The Fix
+#### File 4: `src/components/server/settings/StickersTab.tsx`
+- **Line 168**: Change `t("serverSettings.emojisUsed")` → `t("serverSettings.stickersUsed")`.
+- **Line 172**: Make upload button wrapper full-width on mobile:
+  `"flex flex-col items-stretch sm:items-end gap-1"` and add `w-full sm:w-auto` to the `<Button>`.
+- **Lines 198–241**: Replace the table section with a responsive layout:
+  - **Mobile** (`md:hidden`): Render a flex-based list. Each row is a horizontal flex container with image (left), name + format badge (center, `flex-1`), and delete button (right). Generous `py-3` padding, separated by `border-b border-border/50`.
+  - **Desktop** (`hidden md:block`): Keep the existing `<Table>` as-is.
 
-The fix is a **one-line addition** in `ThemeContext.tsx`. When `--color-hover` is mapped to `--sidebar-accent`, it must also be mapped to `--accent`:
+#### File 5: `src/components/server/settings/EmojisTab.tsx`
+- **Line 141**: Same upload button treatment — `items-stretch sm:items-end`, button gets `w-full sm:w-auto`.
+- **Lines 178–216**: Same responsive table refactor:
+  - **Mobile**: Flex rows with emoji image, `:name:` text, and delete button.
+  - **Desktop**: Existing `<Table>` unchanged.
 
-**File: `src/contexts/ThemeContext.tsx`** (around line 411)
+### Summary of Changes
 
-```typescript
-// Current:
-if (pv["--color-hover"]) root.style.setProperty("--sidebar-accent", hexToHsl(pv["--color-hover"]));
-
-// Add immediately after:
-if (pv["--color-hover"]) root.style.setProperty("--accent", hexToHsl(pv["--color-hover"]));
-```
-
-Additionally, `--accent` must be added to the `COLOR_THEME_EXTRA_VARS` cleanup array so it resets properly when switching back to a base theme.
-
-**File: `src/contexts/ThemeContext.tsx`** (around line 242)
-
-Add `"--accent"` to the existing line that already contains `"--surface"`.
-
-### What This Fixes
-
-- Context menus (right-click username, messages, threads) will use the theme's hover color
-- Dropdown menus will match the theme
-- Select item highlights will match
-- Ghost/outline button hovers will match
-- All components using `focus:bg-accent` or `hover:bg-accent` inherit the theme
-
-### What Does NOT Change
-
-- No UI component files need modification — they already use the correct semantic classes
-- No CSS variable definitions change
-- No Tailwind config changes
-- Base themes (when no color preset is active) continue to work with their defined `--accent` values
+| File | What Changes |
+|------|-------------|
+| `en.ts` / `ar.ts` | Add `stickersUsed` key |
+| `ServerSettingsDialog.tsx` | Full-height mobile content, hide ESC on mobile |
+| `StickersTab.tsx` | Fix copy key, full-width button, flex list on mobile |
+| `EmojisTab.tsx` | Full-width button, flex list on mobile |
 
