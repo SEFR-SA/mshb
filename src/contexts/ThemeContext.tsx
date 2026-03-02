@@ -239,7 +239,7 @@ const COLOR_THEME_EXTRA_VARS = [
   "--color-hover", "--color-shadow",
   "--primary", "--ring", "--sidebar-primary", "--sidebar-ring",
   // Shadcn standard vars overridden per-theme (must be cleared on reset):
-  "--background", "--muted", "--border", "--primary-foreground",
+  "--background", "--muted", "--border", "--primary-foreground", "--surface",
   // Sidebar vars — must be cleared on reset so base theme's sidebar color is restored:
   "--sidebar-background", "--sidebar-accent", "--sidebar-border",
   // Skeleton loading state highlight:
@@ -402,6 +402,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           const surf = hexToHsl(pv["--color-surface"]);
           root.style.setProperty("--card", surf);
           root.style.setProperty("--popover", surf);
+          root.style.setProperty("--surface", surf);
         }
         if (pv["--color-border"])          root.style.setProperty("--border", hexToHsl(pv["--color-border"]));
         if (pv["--color-text-on-primary"]) root.style.setProperty("--primary-foreground", hexToHsl(pv["--color-text-on-primary"]));

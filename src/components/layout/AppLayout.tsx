@@ -75,7 +75,7 @@ const AppLayout = () => {
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* ServerRail is rendered by child views (HomeView, ServerView) on mobile, not here */}
         {!isMobile && <ServerRail />}
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 flex flex-col overflow-hidden bg-surface rounded-tl-[16px]">
           <div className="flex-1 overflow-hidden">
             <Outlet />
           </div>

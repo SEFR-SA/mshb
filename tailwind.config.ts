@@ -62,6 +62,7 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
         online: "hsl(var(--online))",
+        surface: "hsl(var(--surface))",
       },
       borderRadius: {
         lg: "var(--radius)",
