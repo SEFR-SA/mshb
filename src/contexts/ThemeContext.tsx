@@ -73,6 +73,26 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
       "--color-shadow": "rgba(0, 0, 0, 0.3)",
     },
   },
+
+  // ─── LIGHT / PASTEL THEMES (continued) ──────────────────────────────────
+
+  {
+    id: "lime", name: "Lime",
+    colors: ["#fafbf9"], primary: "#8fc92d", solid: true,
+    vars: {
+      "--color-bg": "#fafbf9",
+      "--color-bg-muted": "#f0f2ee",
+      "--color-surface": "#ffffff",
+      "--color-border": "#e2e5dc",
+      "--color-primary": "#8fc92d",
+      "--color-primary-dark": "#638a1f",
+      "--color-text": "#363f27",
+      "--color-text-muted": "#778263",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#78a725",
+      "--color-shadow": "rgba(0, 0, 0, 0.06)",
+    },
+  },
 ];
 
 interface ThemeContextType {
