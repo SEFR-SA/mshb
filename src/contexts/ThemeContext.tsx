@@ -53,6 +53,26 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
       "--color-shadow": "rgba(0, 0, 0, 0.06)",
     },
   },
+
+  // ─── DEEP / ELEGANT DARK THEMES (continued) ─────────────────────────────
+
+  {
+    id: "jade", name: "Jade",
+    colors: ["#121715"], primary: "#4be29b", solid: true,
+    vars: {
+      "--color-bg": "#121715",
+      "--color-bg-muted": "#1b221f",
+      "--color-surface": "#161d1a",
+      "--color-border": "#28332e",
+      "--color-primary": "#4be29b",
+      "--color-primary-dark": "#23d683",
+      "--color-text": "#f1f4f2",
+      "--color-text-muted": "#9bb0a6",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#61e5a7",
+      "--color-shadow": "rgba(0, 0, 0, 0.3)",
+    },
+  },
 ];
 
 interface ThemeContextType {
