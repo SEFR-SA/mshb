@@ -165,6 +165,24 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
       "--color-shadow": "rgba(0, 0, 0, 0.06)",
     },
   },
+
+  {
+    id: "arctic", name: "Arctic",
+    colors: ["#111518"], primary: "#55a7dd", solid: true,
+    vars: {
+      "--color-bg": "#111518",
+      "--color-bg-muted": "#192024",
+      "--color-surface": "#151a1e",
+      "--color-border": "#263036",
+      "--color-primary": "#55a7dd",
+      "--color-primary-dark": "#2a91d5",
+      "--color-text": "#f0f3f5",
+      "--color-text-muted": "#96a9b6",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#6ab2e1",
+      "--color-shadow": "rgba(0, 0, 0, 0.3)",
+    },
+  },
 ];
 
 interface ThemeContextType {
