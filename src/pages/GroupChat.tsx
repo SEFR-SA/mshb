@@ -585,7 +585,7 @@ const GroupChat = () => {
       )}
 
       {/* Composer */}
-      <div className="p-4 glass border-t border-border/50">
+      <div className="px-4 pb-4 pt-2 bg-transparent shrink-0">
         <div className="theme-input border border-border/40 rounded-xl flex items-start gap-2 px-3 py-2.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
           <ChatInputActions
             onFileSelect={setSelectedFile}

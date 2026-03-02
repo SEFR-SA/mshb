@@ -663,7 +663,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
         </div>
       ) : isAnnouncement && canPost ? (
         /* Markdown toolbar for admins/owners in announcement channels */
-        <div className="p-4 border-t border-border/50">
+        <div className="px-4 pb-4 pt-2 bg-transparent shrink-0">
           {replyingTo && (
             <div className="pb-2">
               <ReplyInputBar authorName={replyingTo.authorName} onCancel={() => setReplyingTo(null)} />
@@ -685,7 +685,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
               <ReplyInputBar authorName={replyingTo.authorName} onCancel={() => setReplyingTo(null)} />
             </div>
           )}
-          <div className="p-4 border-t border-border/50">
+          <div className="px-4 pb-4 pt-2 bg-transparent shrink-0">
             {uploadProgress !== null && <Progress value={uploadProgress} className="mb-2 h-1" />}
             {selectedFile && (
               <div className="flex items-center gap-2 mb-2 p-2 bg-muted rounded-lg text-sm">

@@ -292,7 +292,7 @@
   }
 
   .theme-input {
-    background: var(--component-bg, hsl(var(--background) / 0.2));
+    background: var(--component-bg, hsl(var(--background) / 0.6));
     border-color: var(--component-border, hsl(var(--border)));
   }
 
