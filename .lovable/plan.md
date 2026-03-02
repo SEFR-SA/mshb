@@ -1,53 +1,61 @@
 
 
-## Mobile Responsiveness Audit: Server Settings — Stickers & Emojis Tabs
+## Root Cause Analysis
 
-### Issues Found
+The problem is **not** in `ServerSettingsDialog.tsx` itself. It's in our shared `Dialog` component (`src/components/ui/dialog.tsx`).
 
-1. **ESC label visible on mobile** — Line 243 of `ServerSettingsDialog.tsx`: `<span className="text-[10px] font-bold text-muted-foreground">ESC</span>` has no mobile breakpoint hide.
+**Lines 66-74** of `dialog.tsx` auto-switch ALL `Dialog` components to a Vaul `Drawer` (bottom sheet) on mobile:
 
-2. **Upload buttons not full-width on mobile** — Both `StickersTab.tsx` (line 173) and `EmojisTab.tsx` (line 142) wrap the upload button in `flex flex-col items-end`, keeping it small on mobile.
+```typescript
+const Dialog: React.FC<DialogProps> = ({ children, ...props }) => {
+  const isMobile = useIsMobile();
+  if (isMobile) {
+    return <Drawer {...props}>{children}</Drawer>;  // ← every Dialog becomes a bottom sheet
+  }
+  return <DialogPrimitive.Root {...props}>{children}</DialogPrimitive.Root>;
+};
+```
 
-3. **Table layout cramped on mobile** — Both tabs use `<Table>` with `min-w-[520px]`/`min-w-[480px]` forcing horizontal scroll. No mobile card/list view.
+This means `DialogContent` renders `DrawerContent` on mobile, which brings the drag handle, rounded top corners, bottom-anchored positioning, and swipe-to-dismiss behavior.
 
-4. **Copy mismatch** — `StickersTab.tsx` line 168 uses `t("serverSettings.emojisUsed")` which renders "3 / 50 Emojis" instead of "Stickers". Need a separate `stickersUsed` i18n key.
+**Why Profile Settings is unaffected:** `SettingsModal` does NOT use the `Dialog` component at all. It renders a manual `fixed inset-0` full-screen overlay, completely bypassing the Dialog→Drawer auto-switch.
 
-5. **Modal height on mobile** — The content area (`bg-muted`) doesn't guarantee full viewport height on short content.
+**Why Server Settings is affected:** `ServerSettingsDialog` uses `<Dialog>` + `<DialogContent>`, which on mobile becomes `<Drawer>` + `<DrawerContent>` — a bottom sheet with drag handle and gaps.
 
-### Plan
+### The Fix
 
-#### File 1: `src/i18n/en.ts`
-- Add `stickersUsed: "{{count}} / {{max}} Stickers"` after `noStickers` line.
+The `ServerSettingsDialog` already applies `max-w-none w-screen h-screen m-0 p-0 rounded-none border-none` to its `DialogContent`, clearly intending a full-screen takeover. The Drawer wrapper fights against these classes.
 
-#### File 2: `src/i18n/ar.ts`
-- Add `stickersUsed: "{{count}} / {{max}} ملصق"` after `noStickers` line.
+**The cleanest solution:** Convert `ServerSettingsDialog` to use the same manual full-screen overlay pattern as `SettingsModal`, completely bypassing the `Dialog` component. This avoids modifying the shared `dialog.tsx` (which would affect 18+ other files that legitimately want the Drawer behavior on mobile).
 
-#### File 3: `src/components/server/ServerSettingsDialog.tsx`
-- **Line 233**: Add `min-h-[100dvh]` to the content area div so background extends full screen on mobile:
-  `"flex-1 flex flex-col overflow-hidden bg-muted relative min-h-[100dvh] sm:min-h-0"`
-- **Line 243**: Hide ESC label on mobile:
-  `<span className="text-[10px] font-bold text-muted-foreground hidden sm:block">ESC</span>`
+### Changes
 
-#### File 4: `src/components/server/settings/StickersTab.tsx`
-- **Line 168**: Change `t("serverSettings.emojisUsed")` → `t("serverSettings.stickersUsed")`.
-- **Line 172**: Make upload button wrapper full-width on mobile:
-  `"flex flex-col items-stretch sm:items-end gap-1"` and add `w-full sm:w-auto` to the `<Button>`.
-- **Lines 198–241**: Replace the table section with a responsive layout:
-  - **Mobile** (`md:hidden`): Render a flex-based list. Each row is a horizontal flex container with image (left), name + format badge (center, `flex-1`), and delete button (right). Generous `py-3` padding, separated by `border-b border-border/50`.
-  - **Desktop** (`hidden md:block`): Keep the existing `<Table>` as-is.
+**File: `src/components/server/ServerSettingsDialog.tsx`**
 
-#### File 5: `src/components/server/settings/EmojisTab.tsx`
-- **Line 141**: Same upload button treatment — `items-stretch sm:items-end`, button gets `w-full sm:w-auto`.
-- **Lines 178–216**: Same responsive table refactor:
-  - **Mobile**: Flex rows with emoji image, `:name:` text, and delete button.
-  - **Desktop**: Existing `<Table>` unchanged.
+Replace the `Dialog`/`DialogContent` wrapper (lines 217-275) with a conditional render pattern identical to `SettingsModal`:
 
-### Summary of Changes
+- When `open` is false, render nothing
+- When `open` is true, render a `fixed inset-0 z-50` full-screen div
+- Keep the backdrop, the flex layout, the desktop sidebar, mobile header, and content area exactly as they are
+- Remove the `Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription` imports and usage
+- Keep the `Sheet` import (it's used for the mobile sidebar navigation hamburger menu, which is correct)
 
-| File | What Changes |
-|------|-------------|
-| `en.ts` / `ar.ts` | Add `stickersUsed` key |
-| `ServerSettingsDialog.tsx` | Full-height mobile content, hide ESC on mobile |
-| `StickersTab.tsx` | Fix copy key, full-width button, flex list on mobile |
-| `EmojisTab.tsx` | Full-width button, flex list on mobile |
+The result: Server Settings will render as a full-screen, edge-to-edge overlay on both desktop and mobile — identical to Profile Settings. No Drawer, no drag handle, no bottom sheet, no edge gaps.
+
+### What Changes
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Mobile wrapper | Vaul Drawer (bottom sheet) | Full-screen fixed overlay |
+| Drag handle | Visible | Gone |
+| Edge gaps | Left/right gaps from Drawer | Edge-to-edge |
+| Desktop | Full-screen Dialog | Full-screen fixed overlay (visually identical) |
+| ESC to close | Via Dialog primitive | Manual keydown listener (same as SettingsModal) |
+
+### What Does NOT Change
+
+- No changes to `dialog.tsx` — other dialogs keep their Drawer behavior
+- No changes to any other component
+- The mobile sidebar navigation (hamburger → Sheet) stays exactly the same
+- All tab content, data loading, delete confirmation remain untouched
 
