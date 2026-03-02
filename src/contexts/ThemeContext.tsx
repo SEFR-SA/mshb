@@ -252,9 +252,25 @@ function getAverageLuminance(colors: string[]): number {
   return total / colors.length;
 }
 
+/** Load a saved custom theme from localStorage, if any */
+function loadCustomPreset(): ColorThemePreset | null {
+  try {
+    const raw = localStorage.getItem("app-custom-theme");
+    if (!raw) return null;
+    const { color, mode } = JSON.parse(raw);
+    // Lazy-import to avoid circular deps — themeGenerator is a pure utility
+    const { generateThemeFromColor } = require("@/lib/themeGenerator");
+    return generateThemeFromColor(color, mode) as ColorThemePreset;
+  } catch { return null; }
+}
+
 function getColorsForTheme(themeId: string): string[] {
   if (themeId.startsWith("custom:")) {
     return themeId.replace("custom:", "").split(",");
+  }
+  if (themeId === "custom") {
+    const cp = loadCustomPreset();
+    return cp?.colors || [];
   }
   const preset = COLOR_THEME_PRESETS.find((p) => p.id === themeId);
   return preset?.colors || [];
@@ -396,7 +412,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return getAverageLuminance(colors) > 0.4;
   }, [colors, isGradientActive]);
   const isSolidTheme = useMemo(() => {
-    const preset = COLOR_THEME_PRESETS.find(p => p.id === colorTheme);
+    const preset = colorTheme === "custom" ? loadCustomPreset() : COLOR_THEME_PRESETS.find(p => p.id === colorTheme);
     return isGradientActive && !!preset?.solid;
   }, [colorTheme, isGradientActive]);
 
@@ -425,7 +441,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         root.classList.remove("solid-theme-active");
         applyGradientOverrides(colors, isGradientLight);
       }
-      const preset = COLOR_THEME_PRESETS.find(p => p.id === colorTheme);
+      const preset = colorTheme === "custom" ? loadCustomPreset() : COLOR_THEME_PRESETS.find(p => p.id === colorTheme);
       if (preset?.vars) {
         const pv = preset.vars;
         Object.entries(pv).forEach(([k, v]) => root.style.setProperty(k, v));
