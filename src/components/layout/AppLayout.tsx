@@ -8,7 +8,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { usePendingFriendRequests } from "@/hooks/usePendingFriendRequests";
-import { Users } from "lucide-react";
+import { Home } from "lucide-react";
 import CallListener from "@/components/chat/CallListener";
 import ServerRail from "@/components/server/ServerRail";
 import VoiceConnectionManager from "@/components/server/VoiceConnectionBar";
@@ -101,7 +101,7 @@ const AppLayout = () => {
                   }`
                 }
               >
-                <Users className="h-5 w-5" />
+                <Home className="h-5 w-5" fill="currentColor" />
                 <span>{t("nav.home")}</span>
                 {totalUnread > 0 && (
                   <span className="absolute -top-1 end-1/4 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">
