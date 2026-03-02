@@ -262,17 +262,6 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
 
           {/* Content area */}
           <div className="flex-1 flex flex-col overflow-hidden bg-muted relative min-h-[100dvh] sm:min-h-0">
-            {/* Discord-style Close Button */}
-            <button
-              onClick={() => onOpenChange(false)}
-              className="absolute top-4 end-4 sm:top-8 sm:end-8 z-20 flex flex-col items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
-              aria-label="Close settings"
-            >
-              <div className="h-9 w-9 rounded-full border-2 border-muted-foreground flex items-center justify-center">
-                <X className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <span className="text-[10px] font-bold text-muted-foreground hidden sm:block">ESC</span>
-            </button>
 
             {/* Mobile header */}
             {isMobile && (
