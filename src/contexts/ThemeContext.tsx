@@ -239,7 +239,7 @@ const COLOR_THEME_EXTRA_VARS = [
   "--color-hover", "--color-shadow",
   "--primary", "--ring", "--sidebar-primary", "--sidebar-ring",
   // Shadcn standard vars overridden per-theme (must be cleared on reset):
-  "--background", "--muted", "--border", "--primary-foreground", "--surface",
+  "--background", "--muted", "--border", "--primary-foreground", "--surface", "--accent",
   // Sidebar vars — must be cleared on reset so base theme's sidebar color is restored:
   "--sidebar-background", "--sidebar-accent", "--sidebar-border",
   // Skeleton loading state highlight:
@@ -408,7 +408,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         if (pv["--color-text-on-primary"]) root.style.setProperty("--primary-foreground", hexToHsl(pv["--color-text-on-primary"]));
         // Sidebar panel vars — fixes settings modal sidebars staying in base theme color
         if (pv["--color-bg-muted"])  root.style.setProperty("--sidebar-background", hexToHsl(pv["--color-bg-muted"]));
-        if (pv["--color-hover"])     root.style.setProperty("--sidebar-accent", hexToHsl(pv["--color-hover"]));
+        if (pv["--color-hover"]) {
+          const hoverHsl = hexToHsl(pv["--color-hover"]);
+          root.style.setProperty("--sidebar-accent", hoverHsl);
+          root.style.setProperty("--accent", hoverHsl);
+        }
         if (pv["--color-border"])    root.style.setProperty("--sidebar-border", hexToHsl(pv["--color-border"]));
       }
       if (preset?.primary) {
