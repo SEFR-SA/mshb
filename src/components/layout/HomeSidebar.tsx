@@ -394,7 +394,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
       )}
 
       {/* Thread List */}
-      <div className="flex-1 overflow-y-auto px-2 space-y-0.5">
+      <div className="flex-1 overflow-y-auto px-2 space-y-0.5 pb-16">
         {loading ? (
           <SidebarItemSkeleton count={8} />
         ) : (
@@ -413,47 +413,6 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
           </div>
         )}
       </div>
-
-      {/* Bottom User Panel */}
-      {!isMobileExpanded && (
-        <div className="border-t border-border/50 mt-auto">
-          <div className="flex items-center gap-2 px-3 py-2">
-            <NavLink to="/settings" className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted/50 rounded-md px-1 py-0.5">
-              <div className="relative shrink-0">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={myProfile?.avatar_url || ""} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                    {(myProfile?.display_name || myProfile?.username || "?").charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                {myProfile && (
-                  <StatusBadge
-                    status={(getUserStatus(myProfile) === "offline" ? "invisible" : getUserStatus(myProfile)) as UserStatus}
-                    className="absolute bottom-0 end-0"
-                  />
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold truncate leading-tight">{myProfile?.display_name || myProfile?.username || "User"}</p>
-                {myProfile?.username && <p className="text-[11px] text-muted-foreground truncate leading-tight">@{myProfile.username}</p>}
-              </div>
-            </NavLink>
-            <div className="flex items-center shrink-0">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleGlobalMute}>
-                {globalMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleGlobalDeafen}>
-                {globalDeafened ? <HeadphoneOff className="h-4 w-4 text-destructive" /> : <Headphones className="h-4 w-4" />}
-              </Button>
-              <NavLink to="/settings">
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </NavLink>
-            </div>
-          </div>
-        </div>
-      )}
 
       <CreateGroupDialog open={createGroupOpen} onOpenChange={setCreateGroupOpen} />
     </div>
