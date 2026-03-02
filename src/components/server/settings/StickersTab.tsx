@@ -165,12 +165,13 @@ const StickersTab = ({ serverId, canEdit }: Props) => {
         <div>
           <h2 className="text-lg font-semibold">{t("serverSettings.stickers")}</h2>
           <p className="text-sm text-muted-foreground">
-            {t("serverSettings.emojisUsed", { count: items.length, max: STICKER_LIMIT })}
+            {t("serverSettings.stickersUsed", { count: items.length, max: STICKER_LIMIT })}
           </p>
         </div>
         {canEdit && (
-          <div className="flex flex-col items-end gap-1">
+          <div className="flex flex-col items-stretch sm:items-end gap-1">
             <Button
+              className="w-full sm:w-auto"
               onClick={handleOpenDialog}
               disabled={items.length >= STICKER_LIMIT}
               size="sm"
@@ -195,49 +196,70 @@ const StickersTab = ({ serverId, canEdit }: Props) => {
           {t("serverSettings.noStickers")}
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <Table className="min-w-[520px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">{t("serverSettings.tableColImage")}</TableHead>
-                <TableHead>{t("serverSettings.tableColName")}</TableHead>
-                <TableHead className="w-24">{t("serverSettings.stickerFormat")}</TableHead>
-                <TableHead>{t("serverSettings.uploadedBy")}</TableHead>
-                {canEdit && <TableHead className="w-16">{t("serverSettings.tableColActions")}</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <img
-                      src={item.url}
-                      alt={item.name}
-                      className="h-10 w-10 object-contain rounded"
-                    />
-                  </TableCell>
-                  <TableCell className="text-sm font-medium">{item.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">{item.format}</Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{item.uploaderName}</TableCell>
-                  {canEdit && (
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  )}
+        <>
+          {/* Mobile list */}
+          <div className="md:hidden divide-y divide-border/50">
+            {items.map((item) => (
+              <div key={item.id} className="flex items-center gap-3 py-3">
+                <img src={item.url} alt={item.name} className="h-10 w-10 object-contain rounded shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{item.name}</p>
+                  <Badge variant="outline" className="text-xs mt-0.5">{item.format}</Badge>
+                </div>
+                {canEdit && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
+            <Table className="min-w-[520px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">{t("serverSettings.tableColImage")}</TableHead>
+                  <TableHead>{t("serverSettings.tableColName")}</TableHead>
+                  <TableHead className="w-24">{t("serverSettings.stickerFormat")}</TableHead>
+                  <TableHead>{t("serverSettings.uploadedBy")}</TableHead>
+                  {canEdit && <TableHead className="w-16">{t("serverSettings.tableColActions")}</TableHead>}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <img src={item.url} alt={item.name} className="h-10 w-10 object-contain rounded" />
+                    </TableCell>
+                    <TableCell className="text-sm font-medium">{item.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">{item.format}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{item.uploaderName}</TableCell>
+                    {canEdit && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       {/* Upload Dialog */}

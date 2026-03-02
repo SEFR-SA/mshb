@@ -649,6 +649,7 @@ export default {
     stickerPreviewLight: "Light",
     stickerFormat: "Format",
     noStickers: "No custom stickers yet.",
+    stickersUsed: "{{count}} / {{max}} Stickers",
     fileTooLarge: "File must be under {{size}}KB",
     uploadSound: "Upload Sound",
     soundName: "Sound Name",
