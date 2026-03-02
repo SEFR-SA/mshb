@@ -183,6 +183,24 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
       "--color-shadow": "rgba(0, 0, 0, 0.3)",
     },
   },
+
+  {
+    id: "cobalt", name: "Cobalt",
+    colors: ["#f9fafb"], primary: "#237ac7", solid: true,
+    vars: {
+      "--color-bg": "#f9fafb",
+      "--color-bg-muted": "#eef0f2",
+      "--color-surface": "#ffffff",
+      "--color-border": "#dde1e4",
+      "--color-primary": "#237ac7",
+      "--color-primary-dark": "#175286",
+      "--color-text": "#28343e",
+      "--color-text-muted": "#657480",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#1c65a4",
+      "--color-shadow": "rgba(0, 0, 0, 0.06)",
+    },
+  },
 ];
 
 interface ThemeContextType {
