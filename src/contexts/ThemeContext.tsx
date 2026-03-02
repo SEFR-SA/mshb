@@ -93,6 +93,24 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
       "--color-shadow": "rgba(0, 0, 0, 0.06)",
     },
   },
+
+  {
+    id: "violet", name: "Violet",
+    colors: ["#161316"], primary: "#d62be6", solid: true,
+    vars: {
+      "--color-bg": "#161316",
+      "--color-bg-muted": "#211c21",
+      "--color-surface": "#1b171c",
+      "--color-border": "#312a32",
+      "--color-primary": "#d62be6",
+      "--color-primary-dark": "#b817c7",
+      "--color-text": "#f3f1f3",
+      "--color-text-muted": "#ac9ead",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#db42e9",
+      "--color-shadow": "rgba(0, 0, 0, 0.3)",
+    },
+  },
 ];
 
 interface ThemeContextType {
