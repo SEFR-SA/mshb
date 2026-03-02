@@ -129,6 +129,24 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
       "--color-shadow": "rgba(0, 0, 0, 0.06)",
     },
   },
+
+  {
+    id: "chartreuse", name: "Chartreuse",
+    colors: ["#fafbf9"], primary: "#a5e720", solid: true,
+    vars: {
+      "--color-bg": "#fafbf9",
+      "--color-bg-muted": "#f1f3ed",
+      "--color-surface": "#ffffff",
+      "--color-border": "#e2e6da",
+      "--color-primary": "#a5e720",
+      "--color-primary-dark": "#77a912",
+      "--color-text": "#384224",
+      "--color-text-muted": "#7a895c",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#8dc916",
+      "--color-shadow": "rgba(0, 0, 0, 0.06)",
+    },
+  },
 ];
 
 interface ThemeContextType {
