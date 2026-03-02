@@ -649,6 +649,7 @@ export default {
     stickerPreviewLight: "فاتح",
     stickerFormat: "الصيغة",
     noStickers: "لا توجد ملصقات مخصصة بعد.",
+    stickersUsed: "{{count}} / {{max}} ملصق",
     fileTooLarge: "يجب أن يكون الملف أقل من {{size}} كيلوبايت",
     uploadSound: "رفع صوت",
     soundName: "اسم الصوت",

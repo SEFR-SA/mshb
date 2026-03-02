@@ -138,8 +138,9 @@ const EmojisTab = ({ serverId, canEdit }: Props) => {
           </p>
         </div>
         {canEdit && (
-          <div className="flex flex-col items-end gap-1">
+          <div className="flex flex-col items-stretch sm:items-end gap-1">
             <Button
+              className="w-full sm:w-auto"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading || items.length >= EMOJI_LIMIT}
               size="sm"
@@ -175,45 +176,63 @@ const EmojisTab = ({ serverId, canEdit }: Props) => {
           {t("serverSettings.noEmojis")}
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <Table className="min-w-[480px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">{t("serverSettings.tableColImage")}</TableHead>
-                <TableHead>{t("serverSettings.tableColName")}</TableHead>
-                <TableHead>{t("serverSettings.uploadedBy")}</TableHead>
-                {canEdit && <TableHead className="w-16">{t("serverSettings.tableColActions")}</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <img
-                      src={item.url}
-                      alt={item.name}
-                      className="h-8 w-8 object-contain rounded"
-                    />
-                  </TableCell>
-                  <TableCell className="font-mono text-sm">:{item.name}:</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{item.uploaderName}</TableCell>
-                  {canEdit && (
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  )}
+        <>
+          {/* Mobile list */}
+          <div className="md:hidden divide-y divide-border/50">
+            {items.map((item) => (
+              <div key={item.id} className="flex items-center gap-3 py-3">
+                <img src={item.url} alt={item.name} className="h-8 w-8 object-contain rounded shrink-0" />
+                <p className="flex-1 min-w-0 font-mono text-sm truncate">:{item.name}:</p>
+                {canEdit && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
+            <Table className="min-w-[480px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">{t("serverSettings.tableColImage")}</TableHead>
+                  <TableHead>{t("serverSettings.tableColName")}</TableHead>
+                  <TableHead>{t("serverSettings.uploadedBy")}</TableHead>
+                  {canEdit && <TableHead className="w-16">{t("serverSettings.tableColActions")}</TableHead>}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <img src={item.url} alt={item.name} className="h-8 w-8 object-contain rounded" />
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">:{item.name}:</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{item.uploaderName}</TableCell>
+                    {canEdit && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       {/* Name Dialog */}
