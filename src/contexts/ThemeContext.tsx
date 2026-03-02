@@ -33,6 +33,26 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
       "--color-shadow": "rgba(0, 0, 0, 0.3)",
     },
   },
+
+  // ─── LIGHT / PASTEL THEMES ──────────────────────────────────────────────
+
+  {
+    id: "orchid", name: "Orchid",
+    colors: ["#faf9fa"], primary: "#df18be", solid: true,
+    vars: {
+      "--color-bg": "#faf9fa",
+      "--color-bg-muted": "#f1eef1",
+      "--color-surface": "#ffffff",
+      "--color-border": "#e3dee2",
+      "--color-primary": "#df18be",
+      "--color-primary-dark": "#9a1083",
+      "--color-text": "#3c2a39",
+      "--color-text-muted": "#7c6a79",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#ba149e",
+      "--color-shadow": "rgba(0, 0, 0, 0.06)",
+    },
+  },
 ];
 
 interface ThemeContextType {
