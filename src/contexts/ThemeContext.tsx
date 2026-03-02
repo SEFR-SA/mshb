@@ -111,6 +111,24 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
       "--color-shadow": "rgba(0, 0, 0, 0.3)",
     },
   },
+
+  {
+    id: "rose", name: "Rose",
+    colors: ["#faf9fa"], primary: "#ea1e88", solid: true,
+    vars: {
+      "--color-bg": "#faf9fa",
+      "--color-bg-muted": "#f1eef0",
+      "--color-surface": "#ffffff",
+      "--color-border": "#e4dde1",
+      "--color-primary": "#ea1e88",
+      "--color-primary-dark": "#ac1061",
+      "--color-text": "#3e2833",
+      "--color-text-muted": "#806573",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#cd1373",
+      "--color-shadow": "rgba(0, 0, 0, 0.06)",
+    },
+  },
 ];
 
 interface ThemeContextType {
