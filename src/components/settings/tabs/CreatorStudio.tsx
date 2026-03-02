@@ -97,7 +97,7 @@ const CreatorStudio = () => {
       map[p.item_id] = (map[p.item_id] ?? 0) + 1;
     });
 
-    setItems((myItems ?? []) as CreatorItem[]);
+    setItems((myItems ?? []) as unknown as CreatorItem[]);
     setSalesMap(map);
     setLoading(false);
   };
