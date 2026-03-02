@@ -12,6 +12,7 @@ import { Home } from "lucide-react";
 import CallListener from "@/components/chat/CallListener";
 import ServerRail from "@/components/server/ServerRail";
 import VoiceConnectionManager from "@/components/server/VoiceConnectionBar";
+import UserPanel from "@/components/layout/UserPanel";
 import GlobalNotificationListener from "@/components/chat/GlobalNotificationListener";
 import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -72,9 +73,15 @@ const AppLayout = () => {
       )}
 
       {/* Main content row — fills all remaining height below the title bar */}
-      <div className="flex flex-1 overflow-hidden min-h-0">
+      <div className="flex flex-1 overflow-hidden min-h-0 relative">
         {/* ServerRail is rendered by child views (HomeView, ServerView) on mobile, not here */}
         {!isMobile && <ServerRail />}
+
+        {/* Floating user panel — spans Server Rail + Sidebar */}
+        {!isMobile && (
+          <UserPanel className="absolute bottom-0 left-0 z-50 m-2 w-[calc(72px+240px-16px)] bg-background border border-border/50 rounded-lg shadow-lg" />
+        )}
+
         <main className="flex-1 flex flex-col overflow-hidden bg-surface rounded-tl-[16px]">
           <div className="flex-1 overflow-hidden">
             <Outlet />
