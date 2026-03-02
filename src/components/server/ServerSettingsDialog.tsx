@@ -38,18 +38,19 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   serverId: string;
+  initialTab?: TabId;
 }
 
-type TabId = "profile" | "tag" | "engagement" | "emojis" | "stickers" | "soundboard" | "members" | "roles" | "auditlogs";
+export type TabId = "profile" | "tag" | "engagement" | "emojis" | "stickers" | "soundboard" | "members" | "roles" | "auditlogs";
 
-const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
+const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const isElectron = typeof window !== "undefined" && !!(window as any).electronAPI;
 
-  const [activeTab, setActiveTab] = useState<TabId>("profile");
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab ?? "profile");
   const [serverName, setServerName] = useState("");
   const [description, setDescription] = useState("");
   const [iconUrl, setIconUrl] = useState("");
@@ -86,6 +87,10 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId }: Props) => {
     };
     load();
   }, [open, serverId]);
+
+  useEffect(() => {
+    if (open) setActiveTab(initialTab ?? "profile");
+  }, [open, initialTab]);
 
   const handleDeleteServer = async () => {
     if (deleteInput !== serverName) return;

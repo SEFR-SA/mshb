@@ -1,13 +1,16 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { ServerRailSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { useTranslation } from "react-i18next";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2 } from "lucide-react";
+import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2, CheckCheck, ShieldCheck, ScrollText, User } from "lucide-react";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
-import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from "@/components/ui/context-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
+import type { TabId } from "./ServerSettingsDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import CreateServerDialog from "./CreateServerDialog";
@@ -48,18 +51,24 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [servers, setServers] = useState<Server[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<TabId | undefined>(undefined);
   const [deleteServerId, setDeleteServerId] = useState<string | null>(null);
   const [leaveServerId, setLeaveServerId] = useState<string | null>(null);
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [pendingFolderServers, setPendingFolderServers] = useState<string[] | null>(null);
   const [draggedServerId, setDraggedServerId] = useState<string | null>(null);
+  const [userRoles, setUserRoles] = useState<Map<string, string>>(new Map());
+  const [mobileSheetServerId, setMobileSheetServerId] = useState<string | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
 
   const serverIds = servers.map((s) => s.id);
   const unreadMap = useServerUnread(serverIds);
@@ -77,7 +86,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
     // Load servers
     const { data: memberships } = await supabase
       .from("server_members" as any)
-      .select("server_id")
+      .select("server_id, role")
       .eq("user_id", user.id);
     if (!memberships || memberships.length === 0) {
       setServers([]);
@@ -91,6 +100,9 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
       .select("id, name, icon_url, owner_id, invite_code")
       .in("id", ids);
     setServers((data as any) || []);
+    const rolesMap = new Map<string, string>();
+    (memberships as any[]).forEach((m) => rolesMap.set(m.server_id, m.role));
+    setUserRoles(rolesMap);
 
     // Load folders
     const { data: folderData } = await supabase
@@ -163,6 +175,47 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
     await supabase.from("server_members" as any).delete().eq("server_id", serverId).eq("user_id", user.id);
     setServers((prev) => prev.filter((s) => s.id !== serverId));
     navigate("/");
+  };
+
+  const handleMarkAsRead = async (serverId: string) => {
+    if (!user) return;
+    const { data: channels } = await supabase
+      .from("channels" as any)
+      .select("id")
+      .eq("server_id", serverId)
+      .eq("type", "text");
+    if (!channels || channels.length === 0) return;
+    const now = new Date().toISOString();
+    await supabase
+      .from("channel_read_status" as any)
+      .upsert(
+        (channels as any[]).map((c) => ({
+          user_id: user.id,
+          channel_id: c.id,
+          last_read_at: now,
+        })) as any,
+        { onConflict: "user_id,channel_id" }
+      );
+  };
+
+  const openSettings = (sId: string, tab?: TabId) => {
+    setSettingsInitialTab(tab);
+    setSettingsServerId(sId);
+  };
+
+  const handlePointerDown = (serverId: string) => {
+    longPressTriggeredRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      setMobileSheetServerId(serverId);
+    }, 500);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
   };
 
   const handleDeleteServer = async () => {
@@ -360,13 +413,23 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                             e.stopPropagation();
                           }}
                           onDrop={(e) => handleDropOnServer(e, s.id)}
+                          onPointerDown={isMobile ? () => handlePointerDown(s.id) : undefined}
+                          onPointerUp={isMobile ? cancelLongPress : undefined}
+                          onPointerLeave={isMobile ? cancelLongPress : undefined}
                         >
                           {hasUnread && (
                             <div className="absolute -start-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full z-10" />
                           )}
                           <NavLink
                             to={`/server/${s.id}`}
-                            onClick={() => onNavigate?.()}
+                            onClick={(e) => {
+                              if (longPressTriggeredRef.current) {
+                                e.preventDefault();
+                                longPressTriggeredRef.current = false;
+                                return;
+                              }
+                              onNavigate?.();
+                            }}
                             className={({ isActive }) =>
                               `flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
                                 isActive ? "bg-primary text-primary-foreground rounded-xl" : "bg-sidebar-accent/30 text-sidebar-foreground hover:bg-primary/20"
@@ -393,32 +456,54 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                       </TooltipTrigger>
                     </ContextMenuTrigger>
                   </Tooltip>
-                  <ContextMenuContent>
-                    <ContextMenuItem onClick={() => setSettingsServerId(s.id)}>
-                      <Settings className="h-4 w-4 me-2" />
-                      {t("servers.settings")}
+                  <ContextMenuContent className="w-56">
+                    <ContextMenuItem onClick={() => handleMarkAsRead(s.id)}>
+                      <CheckCheck className="h-4 w-4 me-2" />
+                      {t("servers.markAsRead")}
                     </ContextMenuItem>
+                    <ContextMenuSeparator />
                     <ContextMenuItem onClick={() => handleCopyInvite(s.id)}>
                       <Copy className="h-4 w-4 me-2" />
                       {t("servers.copyInvite")}
                     </ContextMenuItem>
-                    {user && s.owner_id !== user.id && (
-                      <>
-                        <ContextMenuSeparator />
-                        <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setLeaveServerId(s.id)}>
-                          <LogOut className="h-4 w-4 me-2" />
-                          {t("servers.leave")}
+                    <ContextMenuSub>
+                      <ContextMenuSubTrigger>
+                        <Settings className="h-4 w-4 me-2" />
+                        {t("servers.settings")}
+                      </ContextMenuSubTrigger>
+                      <ContextMenuSubContent className="w-48">
+                        <ContextMenuItem onClick={() => openSettings(s.id, "profile")}>
+                          <User className="h-4 w-4 me-2" />
+                          {t("serverSettings.serverProfile")}
                         </ContextMenuItem>
-                      </>
+                        <ContextMenuItem onClick={() => openSettings(s.id, "members")}>
+                          <Users className="h-4 w-4 me-2" />
+                          {t("serverSettings.members")}
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => openSettings(s.id, "roles")}>
+                          <ShieldCheck className="h-4 w-4 me-2" />
+                          {t("serverSettings.roles")}
+                        </ContextMenuItem>
+                        {(s.owner_id === user?.id || userRoles.get(s.id) === "admin") && (
+                          <ContextMenuItem onClick={() => openSettings(s.id, "auditlogs")}>
+                            <ScrollText className="h-4 w-4 me-2" />
+                            {t("auditLog.title")}
+                          </ContextMenuItem>
+                        )}
+                      </ContextMenuSubContent>
+                    </ContextMenuSub>
+                    <ContextMenuSeparator />
+                    {user && s.owner_id !== user.id && (
+                      <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setLeaveServerId(s.id)}>
+                        <LogOut className="h-4 w-4 me-2" />
+                        {t("servers.leave")}
+                      </ContextMenuItem>
                     )}
                     {user && s.owner_id === user.id && (
-                      <>
-                        <ContextMenuSeparator />
-                        <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteServerId(s.id)}>
-                          <Trash2 className="h-4 w-4 me-2" />
-                          {t("servers.deleteServer")}
-                        </ContextMenuItem>
-                      </>
+                      <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteServerId(s.id)}>
+                        <Trash2 className="h-4 w-4 me-2" />
+                        {t("servers.deleteServer")}
+                      </ContextMenuItem>
                     )}
                   </ContextMenuContent>
                 </ContextMenu>
@@ -461,6 +546,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
           serverId={settingsServerId}
           open={!!settingsServerId}
           onOpenChange={(open) => { if (!open) setSettingsServerId(null); }}
+          initialTab={settingsInitialTab}
         />
       )}
       <Dialog open={!!deleteServerId} onOpenChange={(open) => { if (!open) setDeleteServerId(null); }}>
@@ -494,6 +580,59 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
         initialColor={editingFolder?.color || "#5865F2"}
         onSave={saveFolderEdit}
       />
+
+      {/* Mobile long-press bottom sheet */}
+      <Sheet open={!!mobileSheetServerId} onOpenChange={(open) => { if (!open) setMobileSheetServerId(null); }}>
+        <SheetContent side="bottom" className="pb-8 rounded-t-xl">
+          {(() => {
+            const s = servers.find((srv) => srv.id === mobileSheetServerId);
+            if (!s) return null;
+            const isAdminOrOwner = s.owner_id === user?.id || userRoles.get(s.id) === "admin";
+            const close = () => setMobileSheetServerId(null);
+            const btnClass = "flex items-center gap-3 w-full px-4 py-3 text-sm text-foreground hover:bg-accent/50 rounded-md transition-colors";
+            const destructiveClass = "flex items-center gap-3 w-full px-4 py-3 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors";
+            return (
+              <>
+                <SheetHeader className="px-4 pb-3 border-b mb-2">
+                  <SheetTitle className="text-start">{s.name}</SheetTitle>
+                </SheetHeader>
+                <button className={btnClass} onClick={() => { handleMarkAsRead(s.id); close(); }}>
+                  <CheckCheck className="h-4 w-4" />{t("servers.markAsRead")}
+                </button>
+                <button className={btnClass} onClick={() => { handleCopyInvite(s.id); close(); }}>
+                  <Copy className="h-4 w-4" />{t("servers.copyInvite")}
+                </button>
+                <div className="border-t my-2" />
+                <button className={btnClass} onClick={() => { openSettings(s.id, "profile"); close(); }}>
+                  <User className="h-4 w-4" />{t("serverSettings.serverProfile")}
+                </button>
+                <button className={btnClass} onClick={() => { openSettings(s.id, "members"); close(); }}>
+                  <Users className="h-4 w-4" />{t("serverSettings.members")}
+                </button>
+                <button className={btnClass} onClick={() => { openSettings(s.id, "roles"); close(); }}>
+                  <ShieldCheck className="h-4 w-4" />{t("serverSettings.roles")}
+                </button>
+                {isAdminOrOwner && (
+                  <button className={btnClass} onClick={() => { openSettings(s.id, "auditlogs"); close(); }}>
+                    <ScrollText className="h-4 w-4" />{t("auditLog.title")}
+                  </button>
+                )}
+                <div className="border-t my-2" />
+                {s.owner_id !== user?.id && (
+                  <button className={destructiveClass} onClick={() => { setLeaveServerId(s.id); close(); }}>
+                    <LogOut className="h-4 w-4" />{t("servers.leave")}
+                  </button>
+                )}
+                {s.owner_id === user?.id && (
+                  <button className={destructiveClass} onClick={() => { setDeleteServerId(s.id); close(); }}>
+                    <Trash2 className="h-4 w-4" />{t("servers.deleteServer")}
+                  </button>
+                )}
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </>
   );
 };
