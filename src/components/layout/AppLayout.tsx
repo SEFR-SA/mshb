@@ -68,8 +68,6 @@ const AppLayout = () => {
             {/* Spacer reserves ~140 px for the native WCO minimize/maximize/close buttons */}
             <div className="ms-auto w-[140px] shrink-0" />
           </div>
-          {/* Separator: placed below the WCO overlay so it is never obscured by the native buttons background */}
-          <div className="relative z-[9999] shrink-0 h-px w-full bg-border/40" />
         </>
       )}
 

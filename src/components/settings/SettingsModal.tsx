@@ -172,19 +172,17 @@ const SettingsModal = () => {
       {/* Backdrop */}
       <div className={`absolute inset-0 ${isElectron ? "bg-transparent backdrop-blur-none" : "bg-black/70 backdrop-blur-sm"}`} onClick={close} />
 
-      {/* Separator line at the WCO boundary — mirrors the AppLayout title bar separator */}
-      {isElectron && <div className="absolute left-0 right-0 top-8 h-px bg-border/40 z-20" />}
 
       {/* Modal panel — sits on top of backdrop */}
       <div className={`relative z-10 flex w-full h-full overflow-hidden${isElectron ? " pt-8" : ""}`}>
 
         {/* ── LEFT SIDEBAR — desktop only ── */}
-        <aside className="hidden md:flex md:w-56 shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground border-e border-border/50">
+        <aside className="hidden md:flex md:w-56 shrink-0 flex-col overflow-hidden bg-background text-sidebar-foreground border-e border-border/50">
           <SidebarNav />
         </aside>
 
         {/* ── RIGHT CONTENT AREA ── */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-background relative">
+        <div className="flex-1 flex flex-col overflow-hidden bg-muted relative">
           {/* Close button */}
           <button
             onClick={close}
@@ -210,7 +208,7 @@ const SettingsModal = () => {
 
           {/* ── Mobile Sheet drawer ── */}
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-            <SheetContent side="left" className="w-64 p-0 bg-sidebar text-sidebar-foreground flex flex-col">
+            <SheetContent side="left" className="w-64 p-0 bg-background text-sidebar-foreground flex flex-col">
               <SidebarNav onSelect={() => setSheetOpen(false)} />
             </SheetContent>
           </Sheet>

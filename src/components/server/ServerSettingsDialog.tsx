@@ -224,13 +224,13 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
           <div className="flex w-full h-full overflow-hidden">
             {/* Desktop sidebar */}
             {!isMobile && (
-              <aside className="w-64 hidden md:flex shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground border-e border-border/50">
+              <aside className="w-64 hidden md:flex shrink-0 flex-col overflow-hidden bg-background text-sidebar-foreground border-e border-border/50">
                 {sidebarContent}
               </aside>
             )}
 
             {/* Content area */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-background relative">
+            <div className="flex-1 flex flex-col overflow-hidden bg-muted relative">
               {/* Discord-style Close Button */}
               <button
                 onClick={() => onOpenChange(false)}
@@ -245,14 +245,14 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
 
               {/* Mobile header */}
               {isMobile && (
-                <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 border-b bg-background shrink-0">
+                <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 border-b bg-muted shrink-0">
                   <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
                     <SheetTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
                         <Menu className="h-5 w-5" />
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="w-64 p-0 bg-sidebar text-sidebar-foreground flex flex-col">
+                    <SheetContent side="left" className="w-64 p-0 bg-background text-sidebar-foreground flex flex-col">
                       {sidebarContent}
                     </SheetContent>
                   </Sheet>
