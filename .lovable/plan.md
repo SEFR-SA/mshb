@@ -1,49 +1,65 @@
 
 
-## Clear All Color Theme Presets & Add "Ember" Theme
+## Custom Theme Generator — Phase 1 Plan
 
-### Changes
+### Goal
+Create `src/lib/themeGenerator.ts` — a pure utility that takes one hex color and returns a complete `ColorThemePreset` object matching the existing schema.
 
-**File: `src/contexts/ThemeContext.tsx` — Lines 14-160**
+### Color Math Approach
 
-Replace the entire `COLOR_THEME_PRESETS` array with just Default + the new theme:
+The input hex is converted to HSL. From there, two variant palettes are derived — one for light backgrounds, one for dark — based on the background's luminance. The function auto-detects which mode to use based on the primary color's lightness (light primaries get dark backgrounds; vivid/dark primaries get light backgrounds), but a manual override parameter is also available.
 
+**Derivation rules (light-bg variant):**
+
+| Variable | Derivation from primary HSL (H, S, L) |
+|---|---|
+| `--color-primary` | Input hex as-is |
+| `--color-primary-dark` | H, S, L−15 |
+| `--color-hover` | H, S, L−12 |
+| `--color-bg` | H, S×0.08, 98 (barely tinted white) |
+| `--color-bg-muted` | H, S×0.10, 94 |
+| `--color-surface` | `#ffffff` |
+| `--color-border` | H, S×0.12, 89 |
+| `--color-text` | H, S×0.20, 18 |
+| `--color-text-muted` | H, S×0.15, 42 |
+| `--color-text-on-primary` | `#ffffff` |
+| `--color-shadow` | `rgba(0,0,0,0.06)` |
+
+**Dark-bg variant** mirrors this with inverted lightness (bg at L=8, surface at L=10, text at L=96, etc.) and shadow opacity 0.3.
+
+**Return shape:**
 ```typescript
-export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
-  { id: "default", name: "Default", colors: [] },
-
-  // ─── DEEP / ELEGANT DARK THEMES ──────────────────────────────────────────
-
-  {
-    id: "ember", name: "Ember",
-    colors: ["#161312"], primary: "#e65e2d", solid: true,
-    vars: {
-      "--color-bg": "#161312",
-      "--color-bg-muted": "#221d1b",
-      "--color-surface": "#1c1817",
-      "--color-border": "#332c29",
-      "--color-primary": "#e65e2d",
-      "--color-primary-dark": "#c84718",
-      "--color-text": "#f4f2f1",
-      "--color-text-muted": "#afa29d",
-      "--color-text-on-primary": "#ffffff",
-      "--color-hover": "#e97044",
-      "--color-shadow": "rgba(0, 0, 0, 0.3)",
-    },
-  },
-];
+{
+  id: "custom",
+  name: "Custom",
+  colors: [bgHex],       // single entry → solid
+  primary: inputHex,
+  solid: true,
+  vars: { /* all 11 --color-* vars */ }
+}
 ```
 
-Key decisions per CLAUDE.md rules:
-- **Type = Solid** → single hex in `colors`, `solid: true` — ThemeContext adds `.solid-theme-active`, panels become fully opaque
-- **`colors[0]` = `#161312`** = primary background hex (mapped to `--background`)
-- **`--color-bg-muted` (`#221d1b`) differs from `--color-bg` (`#161312`)** — skeleton pulse will be visible
-- **No `--color-accent-gold`** — omitted per CLAUDE.md ("Omit non-standard vars… they leak to other themes on switch"). The `#5ac9f2` value from the user's CSS is intentionally excluded
-- **Group**: Deep / Elegant Dark
-- Named **"Ember"** — warm dark palette with orange primary
+### Phase 2: `generateRandomTheme()`
+Same file. Picks random H (0–360), S (65–85%), L (48–58%) → converts to hex → passes to the generator. Ensures vivid, never-muddy results.
 
-**No other files change.** `AppearanceTab.tsx` auto-renders all presets.
+### Phase 3: `ThemeBuilder.tsx`
+A full-screen overlay component with:
+- **Left**: Static mock UI (fake server rail + sidebar + chat area) styled via the generated `vars` applied as inline `style` on a wrapper div
+- **Right**: Control panel with `<input type="color" />`, "Surprise Me!" button, dark/light toggle, Save/Cancel
+- Live preview updates via React state — no persistence until Save
+- On Save: calls `setColorTheme("custom")` after injecting the custom preset into the presets array (or storing in localStorage as `custom:` format already supported by `getColorsForTheme`)
 
-### What Gets Removed
-All 26 previous color themes (cotton_candy through phantom_noir). Only "Default" + "Ember" remain. Future themes will be added incrementally to this array.
+### Phase 4: Entry Banner in `AppearanceTab.tsx`
+A styled card above the Color Themes grid with the copy from the spec and a "Create Theme" button. Pro-gated with lock icon for free users.
+
+### Files touched
+1. **New**: `src/lib/themeGenerator.ts` — color math + random generator
+2. **New**: `src/components/settings/ThemeBuilder.tsx` — preview UI
+3. **Edit**: `src/components/settings/tabs/AppearanceTab.tsx` — add banner + ThemeBuilder launch
+4. **Edit**: `src/contexts/ThemeContext.tsx` — add support for a `custom` preset stored in localStorage
+5. **Edit**: `src/i18n/en.ts` + `src/i18n/ar.ts` — translation keys
+
+### Questions before proceeding
+
+None — the schema is clear and the math is straightforward. Ready to execute Phase 1 on your approval.
 
