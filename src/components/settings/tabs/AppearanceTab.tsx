@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme, COLOR_THEME_PRESETS } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Palette, Lock } from "lucide-react";
+import { Palette, Lock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import ThemeBuilder from "@/components/settings/ThemeBuilder";
 
 // Light/Sado/Dark/Majls are meta-presets that map theme + colorTheme
 const BASE_THEMES = [
@@ -18,6 +21,7 @@ const AppearanceTab = () => {
   const { theme, setTheme, colorTheme, setColorTheme } = useTheme();
   const { profile } = useAuth();
   const isPro = (profile as any)?.is_pro ?? false;
+  const [showBuilder, setShowBuilder] = useState(false);
 
   const showUpgradeToast = () => toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
 
@@ -26,6 +30,38 @@ const AppearanceTab = () => {
       <div>
         <h2 className="text-xl font-bold text-foreground mb-1">{t("settings.appearance")}</h2>
         <p className="text-sm text-muted-foreground">Customize the look and feel of the app.</p>
+      </div>
+
+      {/* ─── Custom Theme Banner ─── */}
+      <div
+        className={cn(
+          "relative rounded-xl border border-border p-4 flex items-center justify-between gap-4 overflow-hidden",
+          !isPro && "opacity-70"
+        )}
+        style={{ background: "linear-gradient(135deg, hsl(var(--primary) / 0.08), hsl(var(--primary) / 0.02))" }}
+      >
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+            <Sparkles className="h-4 w-4 text-primary" />
+            {t("themeBuilder.bannerTitle")}
+            {!isPro && (
+              <span className="ms-1 text-[10px] font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                <Lock className="h-2.5 w-2.5" /> PRO
+              </span>
+            )}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("themeBuilder.bannerSubtitle")}</p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => {
+            if (!isPro) { showUpgradeToast(); return; }
+            setShowBuilder(true);
+          }}
+          className="flex-shrink-0"
+        >
+          {t("themeBuilder.createTheme")}
+        </Button>
       </div>
 
       {/* Default Themes */}
@@ -121,6 +157,8 @@ const AppearanceTab = () => {
         </div>
       </div>
 
+      {/* Theme Builder Overlay */}
+      {showBuilder && <ThemeBuilder onClose={() => setShowBuilder(false)} />}
     </div>
   );
 };
