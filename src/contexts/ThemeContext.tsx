@@ -147,6 +147,24 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
       "--color-shadow": "rgba(0, 0, 0, 0.06)",
     },
   },
+
+  {
+    id: "crimson", name: "Crimson",
+    colors: ["#fafafa"], primary: "#c42d4e", solid: true,
+    vars: {
+      "--color-bg": "#fafafa",
+      "--color-bg-muted": "#f1efef",
+      "--color-surface": "#ffffff",
+      "--color-border": "#e2dedf",
+      "--color-primary": "#c42d4e",
+      "--color-primary-dark": "#861f35",
+      "--color-text": "#3b2b2e",
+      "--color-text-muted": "#7a6b6e",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#a32540",
+      "--color-shadow": "rgba(0, 0, 0, 0.06)",
+    },
+  },
 ];
 
 interface ThemeContextType {
