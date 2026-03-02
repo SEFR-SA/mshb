@@ -1,103 +1,74 @@
 
 
-## Foundational Layout Overhaul: Discord "Layered Surface" Design
+## Phase 1: Architecture Audit — How Our Color System Works
 
-### Current State
+### CSS Variable Structure (Sound)
 
-The app uses a flat layout where Server Rail (`bg-background`), title bar (`bg-background`), and main content all share the same background color. Sidebars (ChannelSidebar, HomeSidebar) use `bg-muted/70 backdrop-blur-sm` with a `border-e border-border/50`. Everything feels co-planar.
+Our `src/index.css` defines semantic HSL variables for 4 base themes (`:root`, `.dark`, `.sado`, `.majls`). These are correctly mapped in `tailwind.config.ts` to Tailwind tokens (`bg-accent`, `text-foreground`, etc.). The architecture itself is well-designed.
 
-### Target State (Discord Reference)
+### The Root Cause: `--accent` Is Never Updated by the Theme Engine
 
-Two visual layers:
-1. **Base Layer** (darker): Server Rail + Electron title bar sit on this. Background shows through.
-2. **Content Card** (lighter/surface): Everything to the right of the Server Rail — ChannelSidebar, chat area, member list, HomeSidebar, etc. — wrapped in a single container with a `rounded-tl-[16px]` corner, creating the illusion of a card floating on the base.
+When a user selects a color theme preset (e.g., "Viper Green"), `ThemeContext.tsx` maps preset variables like this:
 
-### Architecture
+| Preset Variable | Maps to Shadcn Variable | Status |
+|---|---|---|
+| `--color-primary` → `--primary` | Buttons, links | **Working** |
+| `--color-bg-muted` → `--muted` | Muted backgrounds | **Working** |
+| `--color-bg-muted` → `--sidebar-background` | Sidebar bg | **Working** |
+| `--color-hover` → `--sidebar-accent` | Sidebar item hover | **Working** |
+| `--color-surface` → `--card`, `--popover`, `--surface` | Cards, popovers | **Working** |
+| `--color-hover` → `--accent` | **NEVER MAPPED** | **BROKEN** |
 
-```text
-┌──────────────────────────────────────────────┐
-│  Title Bar (bg-background, no bottom border) │
-├────┬─────────────────────────────────────────┤
-│    │ ╭──────────────────────────────────────  │
-│ S  │ │  Main Content Card (bg-card / surface)│
-│ R  │ │  rounded-tl-[16px]                    │
-│ a  │ │  ┌──────────┬──────────┬──────────┐   │
-│ i  │ │  │ Channel  │  Chat    │ Members  │   │
-│ l  │ │  │ Sidebar  │  Area    │  List    │   │
-│    │ │  └──────────┴──────────┴──────────┘   │
-│(bg-│ │                                       │
-│back│ │  stretches to bottom & right edges    │
-│grnd│ └───────────────────────────────────────┘
-└────┴─────────────────────────────────────────┘
+So `--accent` stays at its base-theme default (a neutral gray like `225 5% 26%` in dark mode). Every component using `focus:bg-accent` or `hover:bg-accent` gets a gray hover regardless of theme.
+
+### Which Components Are Affected?
+
+All of our Radix UI primitives use `focus:bg-accent focus:text-accent-foreground` for interactive highlights. These are the components with the gray hover bug:
+
+| Component | File | Hover Class |
+|---|---|---|
+| ContextMenuItem | `src/components/ui/context-menu.tsx` | `focus:bg-accent` |
+| DropdownMenuItem | `src/components/ui/dropdown-menu.tsx` | `focus:bg-accent` |
+| SelectItem | `src/components/ui/select.tsx` | `focus:bg-accent` |
+| MenubarItem | `src/components/ui/menubar.tsx` | `focus:bg-accent` |
+| NavigationMenuTrigger | `src/components/ui/navigation-menu.tsx` | `hover:bg-accent` |
+| Button (outline, ghost) | `src/components/ui/button.tsx` | `hover:bg-accent` |
+| Toggle | `src/components/ui/toggle.tsx` | `hover:bg-muted` / `hover:bg-accent` |
+
+Custom components (ChatSidebar, EmojiPicker, etc.) correctly use `hover:bg-muted/50` which IS updated — those are fine.
+
+## Phase 2: The Fix
+
+The fix is a **one-line addition** in `ThemeContext.tsx`. When `--color-hover` is mapped to `--sidebar-accent`, it must also be mapped to `--accent`:
+
+**File: `src/contexts/ThemeContext.tsx`** (around line 411)
+
+```typescript
+// Current:
+if (pv["--color-hover"]) root.style.setProperty("--sidebar-accent", hexToHsl(pv["--color-hover"]));
+
+// Add immediately after:
+if (pv["--color-hover"]) root.style.setProperty("--accent", hexToHsl(pv["--color-hover"]));
 ```
 
-### Detailed Changes
+Additionally, `--accent` must be added to the `COLOR_THEME_EXTRA_VARS` cleanup array so it resets properly when switching back to a base theme.
 
-#### 1. New CSS Variables (src/index.css)
+**File: `src/contexts/ThemeContext.tsx`** (around line 242)
 
-Add a `--surface` semantic variable to each theme block. This is the "card" color — slightly lighter than `--background` in dark themes, slightly different in light themes:
+Add `"--accent"` to the existing line that already contains `"--surface"`.
 
-| Theme | `--surface` value |
-|-------|-------------------|
-| `:root` (light) | `0 0% 98%` (near-white, slightly off from pure white bg) |
-| `.dark` | `225 6% 22%` (slightly lighter than `223 7% 20%` bg) |
-| `.sado` | `36 50% 97%` |
-| `.majls` | `23 47% 15%` (slightly lighter than `22 44% 8%` bg) |
+### What This Fixes
 
-Also add Tailwind config entry for `surface` color.
+- Context menus (right-click username, messages, threads) will use the theme's hover color
+- Dropdown menus will match the theme
+- Select item highlights will match
+- Ghost/outline button hovers will match
+- All components using `focus:bg-accent` or `hover:bg-accent` inherit the theme
 
-#### 2. AppLayout.tsx — Structural Wrapper
+### What Does NOT Change
 
-- Root div keeps `bg-background` (base layer).
-- Title bar: remove any bottom border, keep `bg-background` (transparent to base).
-- The `<main>` wrapper gets the new surface treatment:
-  - `bg-surface rounded-tl-[16px] overflow-hidden` 
-  - This wraps everything: HomeSidebar, ChannelSidebar, chat, members list.
-  - No rounding on other corners — it bleeds to bottom/right edges.
-
-#### 3. Server Rail (ServerRail.tsx)
-
-- Change `bg-background` to `bg-transparent` (inherits the darker base).
-- Remove any `border-e` or `border-r` if present (none currently, good).
-
-#### 4. ChannelSidebar.tsx (line 582)
-
-- Remove `bg-muted/70 backdrop-blur-sm border-e border-border/50` — the sidebar now lives inside the surface card, so it inherits `bg-surface` or uses a subtle `bg-muted/30` for distinction.
-- Remove the right border since separation is now handled by the card surface.
-
-#### 5. HomeSidebar.tsx (line 330)
-
-- Same treatment: remove `border-e border-border/50 bg-muted/70 backdrop-blur-sm` and let it inherit from the surface card.
-
-#### 6. ThemeContext.tsx — Color Theme Integration
-
-- For gradient/solid color themes, map `--surface` from `--color-surface` (already provided in preset vars).
-- Clear `--surface` in `COLOR_THEME_EXTRA_VARS` on theme reset.
-
-#### 7. Tailwind Config (tailwind.config.ts)
-
-- Add `surface` to `colors`:
-  ```typescript
-  surface: "hsl(var(--surface))",
-  ```
-
-### Files to Modify
-
-| File | Change Summary |
-|------|----------------|
-| `src/index.css` | Add `--surface` variable to all 4 theme blocks |
-| `tailwind.config.ts` | Add `surface` color mapping |
-| `src/components/layout/AppLayout.tsx` | Wrap `<main>` with `bg-surface rounded-tl-[16px]`, strip title bar borders |
-| `src/components/server/ServerRail.tsx` | `bg-background` stays (it IS the base layer) |
-| `src/components/server/ChannelSidebar.tsx` | Remove glass bg/border from outer container |
-| `src/components/layout/HomeSidebar.tsx` | Remove glass bg/border from outer container |
-| `src/contexts/ThemeContext.tsx` | Map `--surface` from preset vars, add to cleanup list |
-| `src/pages/ServerView.tsx` | No changes needed (layout is inherited) |
-| `src/pages/HomeView.tsx` | No changes needed |
-
-### What This Does NOT Change
-
-- Mobile layout (Server Rail is rendered inline on mobile, different flow)
-- Gradient/solid theme glassmorphism behavior (still works, surface becomes glass on gradient themes)
-- Any chat composer, message list, or member list styling
+- No UI component files need modification — they already use the correct semantic classes
+- No CSS variable definitions change
+- No Tailwind config changes
+- Base themes (when no color preset is active) continue to work with their defined `--accent` values
 
