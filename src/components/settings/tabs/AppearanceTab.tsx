@@ -116,7 +116,7 @@ const AppearanceTab = () => {
             </span>
           )}
         </h3>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
           {COLOR_THEME_PRESETS.map((preset) => {
             const locked = preset.id !== "default" && !isPro;
             return (
@@ -127,30 +127,50 @@ const AppearanceTab = () => {
                   setColorTheme(preset.id);
                 }}
                 className={cn(
-                  "rounded-lg border-2 transition-all hover:scale-105 relative overflow-hidden",
+                  "group rounded-xl border-2 transition-all hover:scale-105 relative overflow-hidden",
                   locked ? "opacity-50 cursor-not-allowed" : "",
-                  colorTheme === preset.id ? "border-primary ring-2 ring-primary/30 scale-105" : "border-border"
+                  colorTheme === preset.id ? "ring-2 ring-offset-2 ring-offset-background" : "border-border"
                 )}
+                style={colorTheme === preset.id ? {
+                  // @ts-expect-error CSS custom property
+                  "--tw-ring-color": preset.primary || "hsl(var(--primary))",
+                  borderColor: preset.primary || "hsl(var(--primary))",
+                } : {}}
                 title={preset.name}
               >
+                {/* Top Half: Background Preview + Primary Accent */}
                 <div
-                  className="h-10 w-full"
-                  style={preset.colors.length > 0 ? { background: `linear-gradient(135deg, ${preset.colors.join(", ")})` } : {}}
+                  className="h-16 w-full relative flex items-center justify-center"
+                  style={preset.colors.length > 0 ? {
+                    background: preset.colors.length === 1
+                      ? preset.colors[0]
+                      : `linear-gradient(135deg, ${preset.colors.join(", ")})`
+                  } : {}}
                 >
-                  {preset.id === "default" && (
-                    <span className="flex items-center justify-center h-full text-[10px] text-muted-foreground font-medium">
-                      {t("profile.defaultTheme")}
-                    </span>
+                  {/* Primary Accent Circle */}
+                  {(preset.primary || preset.id === "default") && (
+                    <div
+                      className="w-8 h-8 rounded-full shadow-sm border-2 border-white/20"
+                      style={{
+                        backgroundColor: preset.primary || "hsl(var(--primary))"
+                      }}
+                    />
                   )}
+
+                  {/* Lock icon overlay */}
                   {locked && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Lock className="h-3 w-3 text-white drop-shadow-md" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <Lock className="h-4 w-4 text-white drop-shadow-lg" />
                     </div>
                   )}
                 </div>
-                <p className="text-[9px] text-center py-0.5 text-muted-foreground font-medium truncate px-0.5">
-                  {preset.name}
-                </p>
+
+                {/* Bottom Half: Label */}
+                <div className="bg-muted/50 py-1.5">
+                  <p className="text-[10px] font-semibold text-center truncate px-1">
+                    {preset.id === "default" ? t("profile.defaultTheme") : preset.name}
+                  </p>
+                </div>
               </button>
             );
           })}
