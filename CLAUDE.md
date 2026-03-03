@@ -226,6 +226,12 @@ useEffect(() => { /* ... */ }, [messageIds.join(",")]);
 
 ```
 
+### SENIOR DEV MANDATE: ANTI-OVER-ENGINEERING
+- **Zero-Bloat Policy:** Never write a 50-line custom function or complex `for-loop` when a 2-line native JavaScript/React method exists.
+- **Native First:** Always prioritize built-in array methods (`.map()`, `.filter()`, `.reduce()`), standard React hooks, and modern ES6+ features over manual logic.
+- **Simplicity over Abstraction:** Do not invent "micro-frameworks", unnecessary wrapper functions, or complex architectural patterns for simple UI or data transformations.
+- **The "Senior Check":** Before proposing any code changes, audit your own logic. Ask yourself: *"Is this the absolute most concise, readable way to achieve this?"* If your diff adds 80 lines for a simple feature, delete it and rewrite the elegant, 2-line solution.
+
 ---
 
 ## Adding a New Feature

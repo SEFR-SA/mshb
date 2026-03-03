@@ -18,6 +18,24 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
   // ─── DEEP / ELEGANT DARK THEMES ──────────────────────────────────────────
 
   {
+    id: "pure-black", name: "Pure Black",
+    colors: ["#000000"], primary: "#ffffff", solid: true,
+    vars: {
+      "--color-bg": "#000000",
+      "--color-bg-muted": "#1a1a1a",
+      "--color-surface": "#0d0d0d",
+      "--color-border": "#262626",
+      "--color-primary": "#ffffff",
+      "--color-primary-dark": "#e6e6e6",
+      "--color-text": "#ffffff",
+      "--color-text-muted": "#999999",
+      "--color-text-on-primary": "#000000",
+      "--color-hover": "#f0f0f0",
+      "--color-shadow": "rgba(0, 0, 0, 0.5)",
+    },
+  },
+
+  {
     id: "ember", name: "Ember",
     colors: ["#161312"], primary: "#e65e2d", solid: true,
     vars: {
@@ -58,6 +76,24 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
   },
 
   // ─── LIGHT / PASTEL THEMES (continued) ──────────────────────────────────
+
+  {
+    id: "cream", name: "Cream",
+    colors: ["#f7f7f0"], primary: "#a86d3a", solid: true,
+    vars: {
+      "--color-bg": "#f7f7f0",
+      "--color-bg-muted": "#e8e8df",
+      "--color-surface": "#f0f0e8",
+      "--color-border": "#d8d8d0",
+      "--color-primary": "#a86d3a",
+      "--color-primary-dark": "#8a5528",
+      "--color-text": "#1a1a16",
+      "--color-text-muted": "#5c5c54",
+      "--color-text-on-primary": "#fafaf8",
+      "--color-hover": "#c07d46",
+      "--color-shadow": "rgba(0, 0, 0, 0.08)",
+    },
+  },
 
   {
     id: "lime", name: "Lime",
