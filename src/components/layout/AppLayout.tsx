@@ -77,9 +77,12 @@ const AppLayout = () => {
         {/* ServerRail is rendered by child views (HomeView, ServerView) on mobile, not here */}
         {!isMobile && <ServerRail />}
 
-        {/* Floating user panel — spans Server Rail + Sidebar */}
+        {/* Floating user panel */}
         {!isMobile && (
           <UserPanel className="absolute bottom-0 left-0 z-50 m-2 w-[calc(72px+240px-16px)] bg-background border border-border/50 rounded-lg shadow-lg" />
+        )}
+        {isMobile && (
+          <UserPanel className="fixed bottom-[52px] left-2 right-2 z-50 bg-background border border-border/50 rounded-lg shadow-lg" />
         )}
 
         <main className="flex-1 flex flex-col overflow-hidden bg-surface rounded-tl-[16px]">
@@ -99,48 +102,37 @@ const AppLayout = () => {
 
           {/* Mobile bottom nav - only show on non-full-page views */}
           {isMobile && !isFullPageView && (
-            <div className="border-t border-border/50 glass">
-              {/* UserPanel with mute/deafen/disconnect controls */}
-              <UserPanel className="border-b border-border/30" />
-
-              {/* Navigation row */}
-              <nav className="flex">
-                <NavLink
-                  to="/"
-                  end
-                  className={({ isActive }) =>
-                    `relative flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive || location.pathname === "/friends" ? "text-primary" : "text-muted-foreground"
-                    }`
-                  }
-                >
-                  <Home className="h-5 w-5" fill="currentColor" />
-                  <span>{t("nav.home")}</span>
-                  {totalUnread > 0 && (
-                    <span className="absolute -top-1 end-1/4 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">
-                      {totalUnread}
-                    </span>
-                  )}
-                </NavLink>
-                <NavLink
-                  to="/settings"
-                  className={({ isActive }) =>
-                    `flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive ? "text-primary" : "text-muted-foreground"
-                    }`
-                  }
-                >
-                  <Avatar className="h-5 w-5">
-                    <AvatarImage src={profile?.avatar_url || ""} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-[10px]">{initials}</AvatarFallback>
-                  </Avatar>
-                  <span>{t("nav.profile")}</span>
-                </NavLink>
-              </nav>
-            </div>
-          )}
-
-          {/* Mobile full-page views: show compact UserPanel for mute/deafen when in voice */}
-          {isMobile && isFullPageView && voiceChannel && (
-            <UserPanel className="border-t border-border/50 glass" />
+            <nav className="flex glass border-t border-border/50">
+              <NavLink
+                to="/"
+                end
+                className={({ isActive }) =>
+                  `relative flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive || location.pathname === "/friends" ? "text-primary" : "text-muted-foreground"
+                  }`
+                }
+              >
+                <Home className="h-5 w-5" fill="currentColor" />
+                <span>{t("nav.home")}</span>
+                {totalUnread > 0 && (
+                  <span className="absolute -top-1 end-1/4 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">
+                    {totalUnread}
+                  </span>
+                )}
+              </NavLink>
+              <NavLink
+                to="/settings"
+                className={({ isActive }) =>
+                  `flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive ? "text-primary" : "text-muted-foreground"
+                  }`
+                }
+              >
+                <Avatar className="h-5 w-5">
+                  <AvatarImage src={profile?.avatar_url || ""} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-[10px]">{initials}</AvatarFallback>
+                </Avatar>
+                <span>{t("nav.profile")}</span>
+              </NavLink>
+            </nav>
           )}
         </main>
       </div>
