@@ -10,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { Sword, Skull, FlaskConical, Star, Flame, Zap, Shield, Loader2, Lock } from "lucide-react";
 import { OrbBadge } from "@/components/ui/badges/OrbBadge";
 import { CrownBadge } from "@/components/ui/badges/CrownBadge";
+import SwordBadge from "@/components/ui/badges/SwordBadge";
 import { cn } from "@/lib/utils";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 
@@ -35,7 +36,7 @@ const HEX_REGEX = /^#[0-9a-fA-F]{6}$/;
 
 const BADGE_OPTIONS = [
   { id: "crown",  Icon: CrownBadge,   label: "Crown",  custom: true },
-  { id: "sword",  Icon: Sword,        label: "Sword"  },
+  { id: "sword",  Icon: SwordBadge,   label: "Sword",  custom: true },
   { id: "skull",  Icon: Skull,        label: "Skull"  },
   { id: "potion", Icon: FlaskConical, label: "Potion" },
   { id: "star",   Icon: Star,         label: "Star"   },
