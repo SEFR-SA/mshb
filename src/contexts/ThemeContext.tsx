@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { generateThemeFromColor } from "@/lib/themeGenerator";
 
 type Theme = "dark" | "light" | "sado" | "majls";
 
@@ -258,8 +259,6 @@ function loadCustomPreset(): ColorThemePreset | null {
     const raw = localStorage.getItem("app-custom-theme");
     if (!raw) return null;
     const { color, mode } = JSON.parse(raw);
-    // Lazy-import to avoid circular deps — themeGenerator is a pure utility
-    const { generateThemeFromColor } = require("@/lib/themeGenerator");
     return generateThemeFromColor(color, mode) as ColorThemePreset;
   } catch { return null; }
 }
