@@ -404,7 +404,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem("app-color-theme") || "default";
   });
 
-  const colors = useMemo(() => getColorsForTheme(colorTheme), [colorTheme]);
+  // Version counter — incremented when a custom theme is saved to bust useMemo cache
+  const [customVersion, setCustomVersion] = useState(0);
+
+  const colors = useMemo(() => getColorsForTheme(colorTheme), [colorTheme, customVersion]);
   const isGradientActive = colors.length > 0;
   const isGradientLight = useMemo(() => {
     if (!isGradientActive) return false;
@@ -497,8 +500,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
   const setColorTheme = (id: string) => {
     setColorThemeState(id);
+    if (id === "custom") {
+      // Bump version so useMemo re-evaluates even if colorTheme was already "custom"
+      setCustomVersion(v => v + 1);
+    }
     if (id !== "default") {
-      setThemeState("dark"); // all gradient themes are dark-based; prevents .light/.sado/.majls conflict
+      setThemeState("dark");
     }
   };
 
