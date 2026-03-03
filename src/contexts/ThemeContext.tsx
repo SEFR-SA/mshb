@@ -34,31 +34,8 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
       "--color-shadow": "rgba(0, 0, 0, 0.3)",
     },
   },
-  {
-    id: "warm_beige", name: "Warm Beige",
-    colors: ["#faf6f0"], primary: "#b86b20", solid: true,
-    vars: { "--color-bg": "#faf6f0", "--color-bg-muted": "#ebe5db", "--color-surface": "#ffffff", "--color-border": "#e5dfd6", "--color-primary": "#b86b20", "--color-primary-dark": "#8a5018", "--color-text": "#1a1715", "--color-text-muted": "#6b635a", "--color-text-on-primary": "#ffffff", "--color-hover": "#d4904a", "--color-shadow": "rgba(0, 0, 0, 0.06)" },
-  },
 
   // ─── LIGHT / PASTEL THEMES ──────────────────────────────────────────────
-
-  {
-    id: "orchid", name: "Orchid",
-    colors: ["#faf9fa"], primary: "#df18be", solid: true,
-    vars: {
-      "--color-bg": "#faf9fa",
-      "--color-bg-muted": "#f1eef1",
-      "--color-surface": "#ffffff",
-      "--color-border": "#e3dee2",
-      "--color-primary": "#df18be",
-      "--color-primary-dark": "#9a1083",
-      "--color-text": "#3c2a39",
-      "--color-text-muted": "#7c6a79",
-      "--color-text-on-primary": "#ffffff",
-      "--color-hover": "#ba149e",
-      "--color-shadow": "rgba(0, 0, 0, 0.06)",
-    },
-  },
 
   // ─── DEEP / ELEGANT DARK THEMES (continued) ─────────────────────────────
 
@@ -132,24 +109,6 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
       "--color-text-muted": "#806573",
       "--color-text-on-primary": "#ffffff",
       "--color-hover": "#cd1373",
-      "--color-shadow": "rgba(0, 0, 0, 0.06)",
-    },
-  },
-
-  {
-    id: "chartreuse", name: "Chartreuse",
-    colors: ["#fafbf9"], primary: "#a5e720", solid: true,
-    vars: {
-      "--color-bg": "#fafbf9",
-      "--color-bg-muted": "#f1f3ed",
-      "--color-surface": "#ffffff",
-      "--color-border": "#e2e6da",
-      "--color-primary": "#a5e720",
-      "--color-primary-dark": "#77a912",
-      "--color-text": "#384224",
-      "--color-text-muted": "#7a895c",
-      "--color-text-on-primary": "#ffffff",
-      "--color-hover": "#8dc916",
       "--color-shadow": "rgba(0, 0, 0, 0.06)",
     },
   },
