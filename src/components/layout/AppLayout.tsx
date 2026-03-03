@@ -99,37 +99,48 @@ const AppLayout = () => {
 
           {/* Mobile bottom nav - only show on non-full-page views */}
           {isMobile && !isFullPageView && (
-            <nav className="flex glass border-t border-border/50">
-              <NavLink
-                to="/"
-                end
-                className={({ isActive }) =>
-                  `relative flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive || location.pathname === "/friends" ? "text-primary" : "text-muted-foreground"
-                  }`
-                }
-              >
-                <Home className="h-5 w-5" fill="currentColor" />
-                <span>{t("nav.home")}</span>
-                {totalUnread > 0 && (
-                  <span className="absolute -top-1 end-1/4 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">
-                    {totalUnread}
-                  </span>
-                )}
-              </NavLink>
-              <NavLink
-                to="/settings"
-                className={({ isActive }) =>
-                  `flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive ? "text-primary" : "text-muted-foreground"
-                  }`
-                }
-              >
-                <Avatar className="h-5 w-5">
-                  <AvatarImage src={profile?.avatar_url || ""} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-[10px]">{initials}</AvatarFallback>
-                </Avatar>
-                <span>{t("nav.profile")}</span>
-              </NavLink>
-            </nav>
+            <div className="border-t border-border/50 glass">
+              {/* UserPanel with mute/deafen/disconnect controls */}
+              <UserPanel className="border-b border-border/30" />
+
+              {/* Navigation row */}
+              <nav className="flex">
+                <NavLink
+                  to="/"
+                  end
+                  className={({ isActive }) =>
+                    `relative flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive || location.pathname === "/friends" ? "text-primary" : "text-muted-foreground"
+                    }`
+                  }
+                >
+                  <Home className="h-5 w-5" fill="currentColor" />
+                  <span>{t("nav.home")}</span>
+                  {totalUnread > 0 && (
+                    <span className="absolute -top-1 end-1/4 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">
+                      {totalUnread}
+                    </span>
+                  )}
+                </NavLink>
+                <NavLink
+                  to="/settings"
+                  className={({ isActive }) =>
+                    `flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive ? "text-primary" : "text-muted-foreground"
+                    }`
+                  }
+                >
+                  <Avatar className="h-5 w-5">
+                    <AvatarImage src={profile?.avatar_url || ""} />
+                    <AvatarFallback className="bg-primary/20 text-primary text-[10px]">{initials}</AvatarFallback>
+                  </Avatar>
+                  <span>{t("nav.profile")}</span>
+                </NavLink>
+              </nav>
+            </div>
+          )}
+
+          {/* Mobile full-page views: show compact UserPanel for mute/deafen when in voice */}
+          {isMobile && isFullPageView && voiceChannel && (
+            <UserPanel className="border-t border-border/50 glass" />
           )}
         </main>
       </div>
