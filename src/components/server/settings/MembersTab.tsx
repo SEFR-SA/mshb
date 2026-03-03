@@ -434,7 +434,28 @@ const MembersTab = ({ serverId }: Props) => {
                     </TableCell>
 
                     {/* Role */}
-                    <TableCell>{roleBadge(m.role)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {roleBadge(m.role)}
+                        {(memberRolesMap.get(m.user_id) || []).map((roleId) => {
+                          const sr = serverRoles.find((r) => r.id === roleId);
+                          if (!sr) return null;
+                          return (
+                            <span
+                              key={roleId}
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border"
+                              style={{
+                                backgroundColor: `${sr.color}20`,
+                                color: sr.color,
+                                borderColor: `${sr.color}50`,
+                              }}
+                            >
+                              {sr.name}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </TableCell>
 
                     {/* Actions */}
                     <TableCell>

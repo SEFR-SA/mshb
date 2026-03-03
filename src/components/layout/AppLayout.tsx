@@ -8,10 +8,11 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { usePendingFriendRequests } from "@/hooks/usePendingFriendRequests";
-import { Users } from "lucide-react";
+import { Home } from "lucide-react";
 import CallListener from "@/components/chat/CallListener";
 import ServerRail from "@/components/server/ServerRail";
 import VoiceConnectionManager from "@/components/server/VoiceConnectionBar";
+import UserPanel from "@/components/layout/UserPanel";
 import GlobalNotificationListener from "@/components/chat/GlobalNotificationListener";
 import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -72,9 +73,18 @@ const AppLayout = () => {
       )}
 
       {/* Main content row — fills all remaining height below the title bar */}
-      <div className="flex flex-1 overflow-hidden min-h-0">
+      <div className="flex flex-1 overflow-hidden min-h-0 relative">
         {/* ServerRail is rendered by child views (HomeView, ServerView) on mobile, not here */}
         {!isMobile && <ServerRail />}
+
+        {/* Floating user panel */}
+        {!isMobile && (
+          <UserPanel className="absolute bottom-0 left-0 z-50 m-2 w-[calc(72px+240px-16px)] bg-background border border-border/50 rounded-lg shadow-lg" />
+        )}
+        {isMobile && (
+          <UserPanel className="fixed bottom-[60px] left-2 right-2 z-50 bg-background border border-border/50 rounded-lg" />
+        )}
+
         <main className="flex-1 flex flex-col overflow-hidden bg-surface rounded-tl-[16px]">
           <div className="flex-1 overflow-hidden">
             <Outlet />
@@ -101,7 +111,7 @@ const AppLayout = () => {
                   }`
                 }
               >
-                <Users className="h-5 w-5" />
+                <Home className="h-5 w-5" fill="currentColor" />
                 <span>{t("nav.home")}</span>
                 {totalUnread > 0 && (
                   <span className="absolute -top-1 end-1/4 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">

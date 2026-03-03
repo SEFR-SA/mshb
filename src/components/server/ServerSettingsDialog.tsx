@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -212,67 +212,95 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
     }
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onOpenChange(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onOpenChange]);
+
+  if (!open) return (
+    <>
+      {/* Delete Server Confirmation */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("serverSettings.deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("serverSettings.deleteConfirmDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <p className="text-sm text-muted-foreground">{t("serverSettings.typeServerName")}</p>
+            <Input value={deleteInput} onChange={(e) => setDeleteInput(e.target.value)} placeholder={serverName} />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteInput("")}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteServer}
+              disabled={deleteInput !== serverName}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("serverSettings.deleteServer")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className={`max-w-none w-screen h-screen m-0 p-0 rounded-none border-none flex bg-background overflow-hidden [&>button]:hidden${isElectron ? " pt-8" : ""}`}>
-          <DialogHeader className="sr-only">
-            <DialogTitle>{t("servers.settings")}</DialogTitle>
-            <DialogDescription>{t("servers.settingsDesc")}</DialogDescription>
-          </DialogHeader>
+      <div className={`fixed inset-0 z-50 flex bg-background animate-in fade-in duration-200${isElectron ? " pt-8" : ""}`}>
+        <div className="flex w-full h-full overflow-hidden">
+          {/* Desktop sidebar */}
+          {!isMobile && (
+            <aside className="w-64 hidden md:flex shrink-0 flex-col overflow-hidden bg-background text-sidebar-foreground border-e border-border/50">
+              {sidebarContent}
+            </aside>
+          )}
 
-          <div className="flex w-full h-full overflow-hidden">
-            {/* Desktop sidebar */}
-            {!isMobile && (
-              <aside className="w-64 hidden md:flex shrink-0 flex-col overflow-hidden bg-background text-sidebar-foreground border-e border-border/50">
-                {sidebarContent}
-              </aside>
+          {/* Content area */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-muted relative min-h-[100dvh] sm:min-h-0">
+            {/* Discord-style Close Button */}
+            <button
+              onClick={() => onOpenChange(false)}
+              className="absolute top-4 end-4 sm:top-8 sm:end-8 z-20 flex flex-col items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
+              aria-label="Close settings"
+            >
+              <X className="h-5 w-5 text-muted-foreground" />
+              <span className="text-[10px] font-bold text-muted-foreground hidden sm:block">ESC</span>
+            </button>
+
+            {/* Mobile header */}
+            {isMobile && (
+              <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 border-b bg-muted shrink-0">
+                <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-64 p-0 bg-background text-sidebar-foreground flex flex-col">
+                    {sidebarContent}
+                  </SheetContent>
+                </Sheet>
+                <h2 className="text-sm font-semibold">{t("servers.settings")}</h2>
+              </div>
             )}
 
-            {/* Content area */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-muted relative">
-              {/* Discord-style Close Button */}
-              <button
-                onClick={() => onOpenChange(false)}
-                className="absolute top-4 end-4 sm:top-8 sm:end-8 z-20 flex flex-col items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
-                aria-label="Close settings"
-              >
-                <div className="h-9 w-9 rounded-full border-2 border-muted-foreground flex items-center justify-center">
-                  <X className="h-5 w-5 text-muted-foreground" />
+            {activeTab === "roles" ? (
+              <div className="flex-1 overflow-hidden">{renderContent()}</div>
+            ) : (
+              <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                <div className="max-w-3xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
+                  {renderContent()}
                 </div>
-                <span className="text-[10px] font-bold text-muted-foreground">ESC</span>
-              </button>
-
-              {/* Mobile header */}
-              {isMobile && (
-                <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 border-b bg-muted shrink-0">
-                  <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
-                    <SheetTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Menu className="h-5 w-5" />
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-64 p-0 bg-background text-sidebar-foreground flex flex-col">
-                      {sidebarContent}
-                    </SheetContent>
-                  </Sheet>
-                  <h2 className="text-sm font-semibold">{t("servers.settings")}</h2>
-                </div>
-              )}
-
-              {activeTab === "roles" ? (
-                <div className="flex-1 overflow-hidden">{renderContent()}</div>
-              ) : (
-                <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                  <div className="max-w-3xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
-                    {renderContent()}
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
 
       {/* Delete Server Confirmation */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

@@ -1,103 +1,65 @@
 
 
-## Foundational Layout Overhaul: Discord "Layered Surface" Design
+## Custom Theme Generator — Phase 1 Plan
 
-### Current State
+### Goal
+Create `src/lib/themeGenerator.ts` — a pure utility that takes one hex color and returns a complete `ColorThemePreset` object matching the existing schema.
 
-The app uses a flat layout where Server Rail (`bg-background`), title bar (`bg-background`), and main content all share the same background color. Sidebars (ChannelSidebar, HomeSidebar) use `bg-muted/70 backdrop-blur-sm` with a `border-e border-border/50`. Everything feels co-planar.
+### Color Math Approach
 
-### Target State (Discord Reference)
+The input hex is converted to HSL. From there, two variant palettes are derived — one for light backgrounds, one for dark — based on the background's luminance. The function auto-detects which mode to use based on the primary color's lightness (light primaries get dark backgrounds; vivid/dark primaries get light backgrounds), but a manual override parameter is also available.
 
-Two visual layers:
-1. **Base Layer** (darker): Server Rail + Electron title bar sit on this. Background shows through.
-2. **Content Card** (lighter/surface): Everything to the right of the Server Rail — ChannelSidebar, chat area, member list, HomeSidebar, etc. — wrapped in a single container with a `rounded-tl-[16px]` corner, creating the illusion of a card floating on the base.
+**Derivation rules (light-bg variant):**
 
-### Architecture
+| Variable | Derivation from primary HSL (H, S, L) |
+|---|---|
+| `--color-primary` | Input hex as-is |
+| `--color-primary-dark` | H, S, L−15 |
+| `--color-hover` | H, S, L−12 |
+| `--color-bg` | H, S×0.08, 98 (barely tinted white) |
+| `--color-bg-muted` | H, S×0.10, 94 |
+| `--color-surface` | `#ffffff` |
+| `--color-border` | H, S×0.12, 89 |
+| `--color-text` | H, S×0.20, 18 |
+| `--color-text-muted` | H, S×0.15, 42 |
+| `--color-text-on-primary` | `#ffffff` |
+| `--color-shadow` | `rgba(0,0,0,0.06)` |
 
-```text
-┌──────────────────────────────────────────────┐
-│  Title Bar (bg-background, no bottom border) │
-├────┬─────────────────────────────────────────┤
-│    │ ╭──────────────────────────────────────  │
-│ S  │ │  Main Content Card (bg-card / surface)│
-│ R  │ │  rounded-tl-[16px]                    │
-│ a  │ │  ┌──────────┬──────────┬──────────┐   │
-│ i  │ │  │ Channel  │  Chat    │ Members  │   │
-│ l  │ │  │ Sidebar  │  Area    │  List    │   │
-│    │ │  └──────────┴──────────┴──────────┘   │
-│(bg-│ │                                       │
-│back│ │  stretches to bottom & right edges    │
-│grnd│ └───────────────────────────────────────┘
-└────┴─────────────────────────────────────────┘
+**Dark-bg variant** mirrors this with inverted lightness (bg at L=8, surface at L=10, text at L=96, etc.) and shadow opacity 0.3.
+
+**Return shape:**
+```typescript
+{
+  id: "custom",
+  name: "Custom",
+  colors: [bgHex],       // single entry → solid
+  primary: inputHex,
+  solid: true,
+  vars: { /* all 11 --color-* vars */ }
+}
 ```
 
-### Detailed Changes
+### Phase 2: `generateRandomTheme()`
+Same file. Picks random H (0–360), S (65–85%), L (48–58%) → converts to hex → passes to the generator. Ensures vivid, never-muddy results.
 
-#### 1. New CSS Variables (src/index.css)
+### Phase 3: `ThemeBuilder.tsx`
+A full-screen overlay component with:
+- **Left**: Static mock UI (fake server rail + sidebar + chat area) styled via the generated `vars` applied as inline `style` on a wrapper div
+- **Right**: Control panel with `<input type="color" />`, "Surprise Me!" button, dark/light toggle, Save/Cancel
+- Live preview updates via React state — no persistence until Save
+- On Save: calls `setColorTheme("custom")` after injecting the custom preset into the presets array (or storing in localStorage as `custom:` format already supported by `getColorsForTheme`)
 
-Add a `--surface` semantic variable to each theme block. This is the "card" color — slightly lighter than `--background` in dark themes, slightly different in light themes:
+### Phase 4: Entry Banner in `AppearanceTab.tsx`
+A styled card above the Color Themes grid with the copy from the spec and a "Create Theme" button. Pro-gated with lock icon for free users.
 
-| Theme | `--surface` value |
-|-------|-------------------|
-| `:root` (light) | `0 0% 98%` (near-white, slightly off from pure white bg) |
-| `.dark` | `225 6% 22%` (slightly lighter than `223 7% 20%` bg) |
-| `.sado` | `36 50% 97%` |
-| `.majls` | `23 47% 15%` (slightly lighter than `22 44% 8%` bg) |
+### Files touched
+1. **New**: `src/lib/themeGenerator.ts` — color math + random generator
+2. **New**: `src/components/settings/ThemeBuilder.tsx` — preview UI
+3. **Edit**: `src/components/settings/tabs/AppearanceTab.tsx` — add banner + ThemeBuilder launch
+4. **Edit**: `src/contexts/ThemeContext.tsx` — add support for a `custom` preset stored in localStorage
+5. **Edit**: `src/i18n/en.ts` + `src/i18n/ar.ts` — translation keys
 
-Also add Tailwind config entry for `surface` color.
+### Questions before proceeding
 
-#### 2. AppLayout.tsx — Structural Wrapper
-
-- Root div keeps `bg-background` (base layer).
-- Title bar: remove any bottom border, keep `bg-background` (transparent to base).
-- The `<main>` wrapper gets the new surface treatment:
-  - `bg-surface rounded-tl-[16px] overflow-hidden` 
-  - This wraps everything: HomeSidebar, ChannelSidebar, chat, members list.
-  - No rounding on other corners — it bleeds to bottom/right edges.
-
-#### 3. Server Rail (ServerRail.tsx)
-
-- Change `bg-background` to `bg-transparent` (inherits the darker base).
-- Remove any `border-e` or `border-r` if present (none currently, good).
-
-#### 4. ChannelSidebar.tsx (line 582)
-
-- Remove `bg-muted/70 backdrop-blur-sm border-e border-border/50` — the sidebar now lives inside the surface card, so it inherits `bg-surface` or uses a subtle `bg-muted/30` for distinction.
-- Remove the right border since separation is now handled by the card surface.
-
-#### 5. HomeSidebar.tsx (line 330)
-
-- Same treatment: remove `border-e border-border/50 bg-muted/70 backdrop-blur-sm` and let it inherit from the surface card.
-
-#### 6. ThemeContext.tsx — Color Theme Integration
-
-- For gradient/solid color themes, map `--surface` from `--color-surface` (already provided in preset vars).
-- Clear `--surface` in `COLOR_THEME_EXTRA_VARS` on theme reset.
-
-#### 7. Tailwind Config (tailwind.config.ts)
-
-- Add `surface` to `colors`:
-  ```typescript
-  surface: "hsl(var(--surface))",
-  ```
-
-### Files to Modify
-
-| File | Change Summary |
-|------|----------------|
-| `src/index.css` | Add `--surface` variable to all 4 theme blocks |
-| `tailwind.config.ts` | Add `surface` color mapping |
-| `src/components/layout/AppLayout.tsx` | Wrap `<main>` with `bg-surface rounded-tl-[16px]`, strip title bar borders |
-| `src/components/server/ServerRail.tsx` | `bg-background` stays (it IS the base layer) |
-| `src/components/server/ChannelSidebar.tsx` | Remove glass bg/border from outer container |
-| `src/components/layout/HomeSidebar.tsx` | Remove glass bg/border from outer container |
-| `src/contexts/ThemeContext.tsx` | Map `--surface` from preset vars, add to cleanup list |
-| `src/pages/ServerView.tsx` | No changes needed (layout is inherited) |
-| `src/pages/HomeView.tsx` | No changes needed |
-
-### What This Does NOT Change
-
-- Mobile layout (Server Rail is rendered inline on mobile, different flow)
-- Gradient/solid theme glassmorphism behavior (still works, surface becomes glass on gradient themes)
-- Any chat composer, message list, or member list styling
+None — the schema is clear and the math is straightforward. Ready to execute Phase 1 on your approval.
 

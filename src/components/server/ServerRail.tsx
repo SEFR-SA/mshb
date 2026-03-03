@@ -312,7 +312,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
 
   return (
     <>
-      <div className="w-[72px] flex flex-col items-center py-3 gap-2 shrink-0 overflow-y-auto">
+      <div className="w-[72px] flex flex-col items-center py-3 gap-2 shrink-0 overflow-y-auto pb-16">
         {/* Home button */}
         <Tooltip>
           <TooltipTrigger asChild>

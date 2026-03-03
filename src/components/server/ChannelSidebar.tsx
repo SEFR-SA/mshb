@@ -579,7 +579,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
   return (
     <>
-      <div className="w-[240px] max-md:w-full max-md:max-w-full h-full flex flex-col shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
+      <div className="w-[240px] max-md:w-full max-md:max-w-full h-full flex flex-col border-e border-sidebar-border shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
         {server?.banner_url && (
           <img
             src={server.banner_url}
@@ -617,7 +617,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-4">
+        <div className="flex-1 overflow-y-auto p-2 space-y-4 pb-16">
           {channelsLoading ? (
             <ChannelListSkeleton count={4} />
           ) : (
@@ -882,106 +882,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
           )}
         </div>
 
-        {/* User Panel */}
-        <div className="border-t border-sidebar-border shrink-0 bg-sidebar-background/50">
-          {/* Voice connection status */}
-          {voiceChannel && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-sidebar-accent/50">
-              <div className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
-              <span className="text-xs font-medium truncate flex-1">#{voiceChannel.name}</span>
-              {isScreenSharing && nativeResolutionLabel && (
-                <span className="text-[10px] font-bold text-green-400 shrink-0 leading-none">
-                  {nativeResolutionLabel}
-                </span>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-7 w-7 shrink-0 ${isCameraOn ? "text-green-500" : ""}`}
-                onClick={() => {
-                  const event = new CustomEvent("toggle-camera");
-                  window.dispatchEvent(event);
-                }}
-                title={isCameraOn ? t("calls.stopCamera") : t("calls.startCamera")}
-              >
-                {isCameraOn ? <VideoOff className="h-3.5 w-3.5" /> : <Video className="h-3.5 w-3.5" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-7 w-7 shrink-0 ${isScreenSharing ? "text-green-500" : ""}`}
-                onClick={() => {
-                  if (isScreenSharing) {
-                    window.dispatchEvent(new CustomEvent("stop-screen-share"));
-                  } else {
-                    setGoLiveOpen(true);
-                  }
-                }}
-                title={isScreenSharing ? t("calls.stopSharing") : t("calls.shareScreen")}
-              >
-                {isScreenSharing ? <MonitorOff className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={disconnectVoice}>
-                <PhoneOff className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
-
-          {/* Audio controls + settings + leave */}
-          <div className="flex items-center gap-1 px-2 py-1.5">
-            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={toggleGlobalMute} title={globalMuted ? t("audio.unmute") : t("audio.mute")}>
-              {globalMuted ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={toggleGlobalDeafen} title={globalDeafened ? t("audio.undeafen") : t("audio.deafen")}>
-              {globalDeafened ? <HeadphoneOff className="h-4 w-4 text-destructive" /> : <Headphones className="h-4 w-4" />}
-            </Button>
-            {voiceChannel && serverSounds.length > 0 && (
-              <Popover open={soundboardOpen} onOpenChange={setSoundboardOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title={t("voice.soundboard")}>
-                    <Music className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48 p-2" side="top">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">{t("voice.soundboard")}</p>
-                  {serverSounds.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => playSoundboardSound(s.url)}
-                      className="w-full text-start px-2 py-1.5 text-sm rounded hover:bg-accent"
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-                </PopoverContent>
-              </Popover>
-            )}
-            <RouterNavLink to="/settings">
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title={t("nav.settings")}>
-                <Settings className="h-4 w-4" />
-              </Button>
-            </RouterNavLink>
-          </div>
-
-          {/* User profile row */}
-          <RouterNavLink to="/settings" className="flex items-center gap-2 px-2 py-1.5 hover:bg-sidebar-accent/50 transition-colors">
-            <div className="relative shrink-0">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={profile?.avatar_url || ""} />
-                <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                  {(profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0" />
-            </div>
-            <div className="truncate">
-              <p className="text-sm font-medium truncate">{profile?.display_name || profile?.username || "User"}</p>
-              {profile?.username && (
-                <p className="text-[11px] text-muted-foreground truncate">@{profile.username}</p>
-              )}
-            </div>
-          </RouterNavLink>
-        </div>
       </div>
 
       {/* Go Live Modal */}

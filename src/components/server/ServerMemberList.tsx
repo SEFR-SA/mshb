@@ -64,6 +64,7 @@ const ServerMemberList = ({ serverId }: Props) => {
   const [loading, setLoading] = useState(true);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [userHighestRoleMap, setUserHighestRoleMap] = useState<Map<string, CustomRole>>(new Map());
+  const [userAllRolesMap, setUserAllRolesMap] = useState<Map<string, CustomRole[]>>(new Map());
   const [serverSounds, setServerSounds] = useState<{ id: string; name: string }[]>([]);
   const [entranceSoundId, setEntranceSoundId] = useState<string | null>(null);
 
@@ -86,6 +87,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       );
 
       const highestMap = new Map<string, CustomRole>();
+      const allMap = new Map<string, CustomRole[]>();
       ((memberRolesData as any[]) || []).forEach((mr) => {
         const role = (mr as any).server_roles;
         if (!role) return;
@@ -93,8 +95,14 @@ const ServerMemberList = ({ serverId }: Props) => {
         if (!existing || role.position < existing.position) {
           highestMap.set(mr.user_id, role);
         }
+        const arr = allMap.get(mr.user_id) || [];
+        arr.push(role);
+        allMap.set(mr.user_id, arr);
       });
+      // Sort each user's roles by position
+      allMap.forEach((roles, uid) => allMap.set(uid, roles.sort((a, b) => a.position - b.position)));
       setUserHighestRoleMap(highestMap);
+      setUserAllRolesMap(allMap);
 
       // Fetch soundboard + own entrance sound
       const [{ data: sounds }, { data: meData }] = await Promise.all([
@@ -236,9 +244,24 @@ const ServerMemberList = ({ serverId }: Props) => {
                           <div className="font-bold text-foreground text-base">{name}</div>
                           <div className="text-xs text-muted-foreground">@{username}</div>
 
-                          <Badge className={`mt-2 text-[10px] px-2 py-0.5 ${roleBadgeColors[m.role] || roleBadgeColors.member}`}>
-                            {t(`servers.${m.role}`)}
-                          </Badge>
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            <Badge className={`text-[10px] px-2 py-0.5 ${roleBadgeColors[m.role] || roleBadgeColors.member}`}>
+                              {t(`servers.${m.role}`)}
+                            </Badge>
+                            {(userAllRolesMap.get(m.user_id) || []).map((cr) => (
+                              <Badge
+                                key={cr.id}
+                                className="text-[10px] px-2 py-0.5 border"
+                                style={{
+                                  backgroundColor: `${cr.color}20`,
+                                  color: cr.color,
+                                  borderColor: `${cr.color}50`,
+                                }}
+                              >
+                                {cr.name}
+                              </Badge>
+                            ))}
+                          </div>
 
                           {p?.about_me && (
                             <>

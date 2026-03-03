@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { generateThemeFromColor } from "@/lib/themeGenerator";
 
 type Theme = "dark" | "light" | "sado" | "majls";
 
@@ -14,57 +15,24 @@ export interface ColorThemePreset {
 export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
   { id: "default", name: "Default", colors: [] },
 
-  // ─── LIGHT / PASTEL THEMES (8) ──────────────────────────────────────────
+  // ─── DEEP / ELEGANT DARK THEMES ──────────────────────────────────────────
 
   {
-    id: "cotton_candy", name: "Cotton Candy",
-    colors: ["#ffd6e7", "#e8d5f5", "#fff9e6"], primary: "#ff6b9d",
-    vars: { "--color-bg": "linear-gradient(135deg, #ffd6e7, #e8d5f5, #fff9e6)", "--color-bg-muted": "#feeaf2", "--color-surface": "#ffffff", "--color-border": "#f0d5e0", "--color-primary": "#ff6b9d", "--color-primary-dark": "#c2185b", "--color-text": "#2d2340", "--color-text-muted": "#6b5b7b", "--color-text-on-primary": "#ffffff", "--color-hover": "#fce4f0", "--color-shadow": "rgba(255,107,157,0.2)" },
-  },
-  {
-    id: "ocean_breeze", name: "Ocean Breeze",
-    colors: ["#b8e8f8", "#c8f0e4", "#f0f8ff"], primary: "#0099b8",
-    vars: { "--color-bg": "linear-gradient(135deg, #b8e8f8, #c8f0e4, #f0f8ff)", "--color-bg-muted": "#e4f5fc", "--color-surface": "#f8fbff", "--color-border": "#b8d8ec", "--color-primary": "#0099b8", "--color-primary-dark": "#006580", "--color-text": "#1a3040", "--color-text-muted": "#3a6080", "--color-text-on-primary": "#ffffff", "--color-hover": "#daf0f8", "--color-shadow": "rgba(0,153,184,0.2)" },
-  },
-  {
-    id: "sunset_peach", name: "Sunset Peach",
-    colors: ["#ffd0a8", "#ffe0b0", "#fff5e0"], primary: "#e87040",
-    vars: { "--color-bg": "linear-gradient(135deg, #ffd0a8, #ffe0b0, #fff5e0)", "--color-bg-muted": "#ffecd4", "--color-surface": "#fffaf5", "--color-border": "#f0d0a8", "--color-primary": "#e87040", "--color-primary-dark": "#bf4010", "--color-text": "#3d2010", "--color-text-muted": "#7a4820", "--color-text-on-primary": "#ffffff", "--color-hover": "#fde8d0", "--color-shadow": "rgba(232,112,64,0.2)" },
-  },
-  {
-    id: "lavender_dream", name: "Lavender Dream",
-    colors: ["#dcc8f8", "#f8c8e0", "#fef0fa"], primary: "#9c27b0",
-    vars: { "--color-bg": "linear-gradient(135deg, #dcc8f8, #f8c8e0, #fef0fa)", "--color-bg-muted": "#f5e8fd", "--color-surface": "#fdfaff", "--color-border": "#e0c8f0", "--color-primary": "#9c27b0", "--color-primary-dark": "#6a0f7e", "--color-text": "#2d1040", "--color-text-muted": "#6b4080", "--color-text-on-primary": "#ffffff", "--color-hover": "#f0dffe", "--color-shadow": "rgba(156,39,176,0.2)" },
-  },
-  {
-    id: "spring_meadow", name: "Spring Meadow",
-    colors: ["#b8f0c8", "#c8eef8", "#fffce8"], primary: "#2e9c5a",
-    vars: { "--color-bg": "linear-gradient(135deg, #b8f0c8, #c8eef8, #fffce8)", "--color-bg-muted": "#e0f8ec", "--color-surface": "#f8fff9", "--color-border": "#b0e8c0", "--color-primary": "#2e9c5a", "--color-primary-dark": "#1b6840", "--color-text": "#1a3020", "--color-text-muted": "#3d6848", "--color-text-on-primary": "#ffffff", "--color-hover": "#d8f5e4", "--color-shadow": "rgba(46,156,90,0.2)" },
-  },
-  {
-    id: "golden_hour", name: "Golden Hour",
-    colors: ["#ffe082", "#ffd0a0", "#fff8e8"], primary: "#e68a10",
-    vars: { "--color-bg": "linear-gradient(135deg, #ffe082, #ffd0a0, #fff8e8)", "--color-bg-muted": "#fff3c8", "--color-surface": "#fffdf5", "--color-border": "#f0d870", "--color-primary": "#e68a10", "--color-primary-dark": "#a05800", "--color-text": "#2d1f00", "--color-text-muted": "#6b4800", "--color-text-on-primary": "#ffffff", "--color-hover": "#fdedb8", "--color-shadow": "rgba(230,138,16,0.2)" },
-  },
-  {
-    id: "cherry_blossom", name: "Cherry Blossom",
-    colors: ["#ffc8d8", "#ffd0c8", "#fff8f5"], primary: "#e91e8c",
-    vars: { "--color-bg": "linear-gradient(135deg, #ffc8d8, #ffd0c8, #fff8f5)", "--color-bg-muted": "#feeaf2", "--color-surface": "#ffffff", "--color-border": "#f0c0d4", "--color-primary": "#e91e8c", "--color-primary-dark": "#9c0060", "--color-text": "#2d0f1a", "--color-text-muted": "#7a3050", "--color-text-on-primary": "#ffffff", "--color-hover": "#fde0ea", "--color-shadow": "rgba(233,30,140,0.2)" },
-  },
-  {
-    id: "arctic_mist", name: "Arctic Mist",
-    colors: ["#c0d8f0", "#d8e8f8", "#eef6ff"], primary: "#0066aa",
-    vars: { "--color-bg": "linear-gradient(135deg, #c0d8f0, #d8e8f8, #eef6ff)", "--color-bg-muted": "#dde8f5", "--color-surface": "#f5f9ff", "--color-border": "#b8d0e8", "--color-primary": "#0066aa", "--color-primary-dark": "#004480", "--color-text": "#1a2840", "--color-text-muted": "#3d5880", "--color-text-on-primary": "#ffffff", "--color-hover": "#d5e5f5", "--color-shadow": "rgba(0,102,170,0.2)" },
-  },
-  {
-    id: "jade_blossom", name: "Jade Blossom",
-    colors: ["#f9fbfa", "#d4f0e5", "#f0faf5"], primary: "#18e47e", solid: true,
-    vars: { "--color-bg": "#f9fbfa", "--color-bg-muted": "#edf2f0", "--color-surface": "#ffffff", "--color-border": "#dce5e0", "--color-primary": "#18e47e", "--color-primary-dark": "#119e58", "--color-text": "#264033", "--color-text-muted": "#618473", "--color-text-on-primary": "#ffffff", "--color-hover": "#15bf6a", "--color-shadow": "rgba(0, 0, 0, 0.06)" },
-  },
-  {
-    id: "amber_glow", name: "Amber Glow",
-    colors: ["#fbfaf9"], primary: "#f0a22e", solid: true,
-    vars: { "--color-bg": "#fbfaf9", "--color-bg-muted": "#f3f0ed", "--color-surface": "#ffffff", "--color-border": "#e6e2da", "--color-primary": "#f0a22e", "--color-primary-dark": "#c27a0e", "--color-text": "#423624", "--color-text-muted": "#8a775c", "--color-text-on-primary": "#ffffff", "--color-hover": "#e48f11", "--color-shadow": "rgba(0, 0, 0, 0.06)" },
+    id: "ember", name: "Ember",
+    colors: ["#161312"], primary: "#e65e2d", solid: true,
+    vars: {
+      "--color-bg": "#161312",
+      "--color-bg-muted": "#221d1b",
+      "--color-surface": "#1c1817",
+      "--color-border": "#332c29",
+      "--color-primary": "#e65e2d",
+      "--color-primary-dark": "#c84718",
+      "--color-text": "#f4f2f1",
+      "--color-text-muted": "#afa29d",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#e97044",
+      "--color-shadow": "rgba(0, 0, 0, 0.3)",
+    },
   },
   {
     id: "warm_beige", name: "Warm Beige",
@@ -72,95 +40,172 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
     vars: { "--color-bg": "#faf6f0", "--color-bg-muted": "#ebe5db", "--color-surface": "#ffffff", "--color-border": "#e5dfd6", "--color-primary": "#b86b20", "--color-primary-dark": "#8a5018", "--color-text": "#1a1715", "--color-text-muted": "#6b635a", "--color-text-on-primary": "#ffffff", "--color-hover": "#d4904a", "--color-shadow": "rgba(0, 0, 0, 0.06)" },
   },
 
-  // ─── VIBRANT / SYNTHWAVE THEMES (8) ─────────────────────────────────────
+  // ─── LIGHT / PASTEL THEMES ──────────────────────────────────────────────
 
   {
-    id: "synthwave", name: "Synthwave",
-    colors: ["#2b0f4c", "#8a2387", "#e94057"], primary: "#ff6b9d",
-    vars: { "--color-bg": "linear-gradient(135deg, #2b0f4c, #8a2387, #e94057)", "--color-bg-muted": "#220a3a", "--color-surface": "#1f0838", "--color-border": "#5a1880", "--color-primary": "#ff6b9d", "--color-primary-dark": "#cc2070", "--color-text": "#ffe0f0", "--color-text-muted": "#c090d0", "--color-text-on-primary": "#1a0020", "--color-hover": "#38104e", "--color-shadow": "rgba(255,107,157,0.35)" },
-  },
-  {
-    id: "cyber_city", name: "Cyber City",
-    colors: ["#0a0e33", "#1a2590", "#00c8ff"], primary: "#00e5ff",
-    vars: { "--color-bg": "linear-gradient(135deg, #0a0e33, #1a2590, #00c8ff)", "--color-bg-muted": "#0c1040", "--color-surface": "#0e1238", "--color-border": "#2030a0", "--color-primary": "#00e5ff", "--color-primary-dark": "#0080cc", "--color-text": "#e0f8ff", "--color-text-muted": "#70c0f0", "--color-text-on-primary": "#001a22", "--color-hover": "#14185a", "--color-shadow": "rgba(0,229,255,0.35)" },
-  },
-  {
-    id: "acid_green", name: "Acid Green",
-    colors: ["#0a2018", "#0d5a3a", "#39ff14"], primary: "#39ff14",
-    vars: { "--color-bg": "linear-gradient(135deg, #0a2018, #0d5a3a, #39ff14)", "--color-bg-muted": "#0c2215", "--color-surface": "#0c1e14", "--color-border": "#1a5030", "--color-primary": "#39ff14", "--color-primary-dark": "#20c000", "--color-text": "#e0ffe8", "--color-text-muted": "#70d898", "--color-text-on-primary": "#001a08", "--color-hover": "#102818", "--color-shadow": "rgba(57,255,20,0.35)" },
-  },
-  {
-    id: "magma", name: "Magma",
-    colors: ["#3d0010", "#c62828", "#ff6f00"], primary: "#ff9800",
-    vars: { "--color-bg": "linear-gradient(135deg, #3d0010, #c62828, #ff6f00)", "--color-bg-muted": "#35000e", "--color-surface": "#2e0010", "--color-border": "#8a1010", "--color-primary": "#ff9800", "--color-primary-dark": "#e65100", "--color-text": "#fff3e0", "--color-text-muted": "#ff8a65", "--color-text-on-primary": "#1a0800", "--color-hover": "#4a001a", "--color-shadow": "rgba(255,152,0,0.35)" },
-  },
-  {
-    id: "galactic", name: "Galactic",
-    colors: ["#08042a", "#3d0090", "#9c27b0"], primary: "#e040fb",
-    vars: { "--color-bg": "linear-gradient(135deg, #08042a, #3d0090, #9c27b0)", "--color-bg-muted": "#0c0535", "--color-surface": "#0a0430", "--color-border": "#5a0090", "--color-primary": "#e040fb", "--color-primary-dark": "#aa00c8", "--color-text": "#f3e5f5", "--color-text-muted": "#ce93d8", "--color-text-on-primary": "#1a0020", "--color-hover": "#140650", "--color-shadow": "rgba(224,64,251,0.35)" },
-  },
-  {
-    id: "tropical_storm", name: "Tropical Storm",
-    colors: ["#003d5b", "#00838f", "#ff6b6b"], primary: "#ff6b6b",
-    vars: { "--color-bg": "linear-gradient(135deg, #003d5b, #00838f, #ff6b6b)", "--color-bg-muted": "#003050", "--color-surface": "#002e48", "--color-border": "#006888", "--color-primary": "#ff6b6b", "--color-primary-dark": "#cc2020", "--color-text": "#fff9f8", "--color-text-muted": "#ffa8a8", "--color-text-on-primary": "#1a0000", "--color-hover": "#004868", "--color-shadow": "rgba(255,107,107,0.35)" },
-  },
-  {
-    id: "miami_vice", name: "Miami Vice",
-    colors: ["#001a2a", "#0080c0", "#ff0090"], primary: "#ff40b0",
-    vars: { "--color-bg": "linear-gradient(135deg, #001a2a, #0080c0, #ff0090)", "--color-bg-muted": "#001520", "--color-surface": "#001220", "--color-border": "#004870", "--color-primary": "#ff40b0", "--color-primary-dark": "#cc0080", "--color-text": "#ffc8f0", "--color-text-muted": "#cc80d8", "--color-text-on-primary": "#1a001a", "--color-hover": "#002038", "--color-shadow": "rgba(255,64,176,0.35)" },
-  },
-  {
-    id: "dragon_fire", name: "Dragon Fire",
-    colors: ["#1a0d00", "#8b3500", "#ff2200"], primary: "#ff6600",
-    vars: { "--color-bg": "linear-gradient(135deg, #1a0d00, #8b3500, #ff2200)", "--color-bg-muted": "#1c0e00", "--color-surface": "#180c00", "--color-border": "#6a2800", "--color-primary": "#ff6600", "--color-primary-dark": "#cc3300", "--color-text": "#fff0e0", "--color-text-muted": "#ff9966", "--color-text-on-primary": "#1a0400", "--color-hover": "#281400", "--color-shadow": "rgba(255,102,0,0.35)" },
-  },
-  {
-    id: "viper", name: "Viper",
-    colors: ["#151613"], primary: "#bdd63f", solid: true,
-    vars: { "--color-bg": "#151613", "--color-bg-muted": "#20211d", "--color-surface": "#1b1b18", "--color-border": "#30312b", "--color-primary": "#bdd63f", "--color-primary-dark": "#a2ba28", "--color-text": "#f3f3f1", "--color-text-muted": "#aaaba0", "--color-text-on-primary": "#ffffff", "--color-hover": "#c4da54", "--color-shadow": "rgba(0, 0, 0, 0.3)" },
+    id: "orchid", name: "Orchid",
+    colors: ["#faf9fa"], primary: "#df18be", solid: true,
+    vars: {
+      "--color-bg": "#faf9fa",
+      "--color-bg-muted": "#f1eef1",
+      "--color-surface": "#ffffff",
+      "--color-border": "#e3dee2",
+      "--color-primary": "#df18be",
+      "--color-primary-dark": "#9a1083",
+      "--color-text": "#3c2a39",
+      "--color-text-muted": "#7c6a79",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#ba149e",
+      "--color-shadow": "rgba(0, 0, 0, 0.06)",
+    },
   },
 
-  // ─── DEEP / ELEGANT DARK THEMES (8) ─────────────────────────────────────
+  // ─── DEEP / ELEGANT DARK THEMES (continued) ─────────────────────────────
 
   {
-    id: "midnight_navy", name: "Midnight Navy",
-    colors: ["#0a0e2e", "#1c2680", "#2d1b69"], primary: "#7986cb",
-    vars: { "--color-bg": "linear-gradient(135deg, #0a0e2e, #1c2680, #2d1b69)", "--color-bg-muted": "#0d1238", "--color-surface": "#0f1435", "--color-border": "#2a3080", "--color-primary": "#7986cb", "--color-primary-dark": "#4a58a8", "--color-text": "#e8eaf6", "--color-text-muted": "#9fa8da", "--color-text-on-primary": "#0a0e2e", "--color-hover": "#141a50", "--color-shadow": "rgba(121,134,203,0.3)" },
+    id: "jade", name: "Jade",
+    colors: ["#121715"], primary: "#4be29b", solid: true,
+    vars: {
+      "--color-bg": "#121715",
+      "--color-bg-muted": "#1b221f",
+      "--color-surface": "#161d1a",
+      "--color-border": "#28332e",
+      "--color-primary": "#4be29b",
+      "--color-primary-dark": "#23d683",
+      "--color-text": "#f1f4f2",
+      "--color-text-muted": "#9bb0a6",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#61e5a7",
+      "--color-shadow": "rgba(0, 0, 0, 0.3)",
+    },
   },
+
+  // ─── LIGHT / PASTEL THEMES (continued) ──────────────────────────────────
+
   {
-    id: "forest_royal", name: "Forest Royal",
-    colors: ["#0a1a0a", "#1a3d1a", "#2d5a1f"], primary: "#81c784",
-    vars: { "--color-bg": "linear-gradient(135deg, #0a1a0a, #1a3d1a, #2d5a1f)", "--color-bg-muted": "#0d2010", "--color-surface": "#0f2210", "--color-border": "#1a4020", "--color-primary": "#81c784", "--color-primary-dark": "#388e3c", "--color-text": "#e8f5e9", "--color-text-muted": "#a5d6a7", "--color-text-on-primary": "#0a1a0a", "--color-hover": "#142814", "--color-shadow": "rgba(129,199,132,0.3)" },
+    id: "lime", name: "Lime",
+    colors: ["#fafbf9"], primary: "#8fc92d", solid: true,
+    vars: {
+      "--color-bg": "#fafbf9",
+      "--color-bg-muted": "#f0f2ee",
+      "--color-surface": "#ffffff",
+      "--color-border": "#e2e5dc",
+      "--color-primary": "#8fc92d",
+      "--color-primary-dark": "#638a1f",
+      "--color-text": "#363f27",
+      "--color-text-muted": "#778263",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#78a725",
+      "--color-shadow": "rgba(0, 0, 0, 0.06)",
+    },
   },
+
   {
-    id: "imperial_crimson", name: "Imperial Crimson",
-    colors: ["#1c0008", "#5c0018", "#6b0a4a"], primary: "#f48fb1",
-    vars: { "--color-bg": "linear-gradient(135deg, #1c0008, #5c0018, #6b0a4a)", "--color-bg-muted": "#200010", "--color-surface": "#1c000e", "--color-border": "#4a0030", "--color-primary": "#f48fb1", "--color-primary-dark": "#c2185b", "--color-text": "#fce4ec", "--color-text-muted": "#f48fb1", "--color-text-on-primary": "#1a0010", "--color-hover": "#2c0018", "--color-shadow": "rgba(244,143,177,0.3)" },
+    id: "violet", name: "Violet",
+    colors: ["#161316"], primary: "#d62be6", solid: true,
+    vars: {
+      "--color-bg": "#161316",
+      "--color-bg-muted": "#211c21",
+      "--color-surface": "#1b171c",
+      "--color-border": "#312a32",
+      "--color-primary": "#d62be6",
+      "--color-primary-dark": "#b817c7",
+      "--color-text": "#f3f1f3",
+      "--color-text-muted": "#ac9ead",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#db42e9",
+      "--color-shadow": "rgba(0, 0, 0, 0.3)",
+    },
   },
+
   {
-    id: "obsidian", name: "Obsidian",
-    colors: ["#0e1218", "#18202e", "#1e2d40"], primary: "#4fc3f7",
-    vars: { "--color-bg": "linear-gradient(135deg, #0e1218, #18202e, #1e2d40)", "--color-bg-muted": "#131a24", "--color-surface": "#141c2a", "--color-border": "#263040", "--color-primary": "#4fc3f7", "--color-primary-dark": "#0286c8", "--color-text": "#eceff1", "--color-text-muted": "#90a4ae", "--color-text-on-primary": "#0a1520", "--color-hover": "#1c2840", "--color-shadow": "rgba(79,195,247,0.3)" },
+    id: "rose", name: "Rose",
+    colors: ["#faf9fa"], primary: "#ea1e88", solid: true,
+    vars: {
+      "--color-bg": "#faf9fa",
+      "--color-bg-muted": "#f1eef0",
+      "--color-surface": "#ffffff",
+      "--color-border": "#e4dde1",
+      "--color-primary": "#ea1e88",
+      "--color-primary-dark": "#ac1061",
+      "--color-text": "#3e2833",
+      "--color-text-muted": "#806573",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#cd1373",
+      "--color-shadow": "rgba(0, 0, 0, 0.06)",
+    },
   },
+
   {
-    id: "amethyst", name: "Amethyst",
-    colors: ["#18003a", "#3d0088", "#5c2d91"], primary: "#ce93d8",
-    vars: { "--color-bg": "linear-gradient(135deg, #18003a, #3d0088, #5c2d91)", "--color-bg-muted": "#1e0048", "--color-surface": "#1c0042", "--color-border": "#4a1080", "--color-primary": "#ce93d8", "--color-primary-dark": "#9c27b0", "--color-text": "#f3e5f5", "--color-text-muted": "#ce93d8", "--color-text-on-primary": "#1a0030", "--color-hover": "#280060", "--color-shadow": "rgba(206,147,216,0.3)" },
+    id: "chartreuse", name: "Chartreuse",
+    colors: ["#fafbf9"], primary: "#a5e720", solid: true,
+    vars: {
+      "--color-bg": "#fafbf9",
+      "--color-bg-muted": "#f1f3ed",
+      "--color-surface": "#ffffff",
+      "--color-border": "#e2e6da",
+      "--color-primary": "#a5e720",
+      "--color-primary-dark": "#77a912",
+      "--color-text": "#384224",
+      "--color-text-muted": "#7a895c",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#8dc916",
+      "--color-shadow": "rgba(0, 0, 0, 0.06)",
+    },
   },
+
   {
-    id: "copper_age", name: "Copper Age",
-    colors: ["#1a0800", "#4a1c00", "#6b3500"], primary: "#ffa04a",
-    vars: { "--color-bg": "linear-gradient(135deg, #1a0800, #4a1c00, #6b3500)", "--color-bg-muted": "#200c00", "--color-surface": "#1e0e00", "--color-border": "#502000", "--color-primary": "#ffa04a", "--color-primary-dark": "#cc6600", "--color-text": "#fff0d8", "--color-text-muted": "#ffb870", "--color-text-on-primary": "#1a0800", "--color-hover": "#2a1000", "--color-shadow": "rgba(255,160,74,0.3)" },
+    id: "crimson", name: "Crimson",
+    colors: ["#fafafa"], primary: "#c42d4e", solid: true,
+    vars: {
+      "--color-bg": "#fafafa",
+      "--color-bg-muted": "#f1efef",
+      "--color-surface": "#ffffff",
+      "--color-border": "#e2dedf",
+      "--color-primary": "#c42d4e",
+      "--color-primary-dark": "#861f35",
+      "--color-text": "#3b2b2e",
+      "--color-text-muted": "#7a6b6e",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#a32540",
+      "--color-shadow": "rgba(0, 0, 0, 0.06)",
+    },
   },
+
   {
-    id: "deep_teal", name: "Deep Teal",
-    colors: ["#001820", "#003040", "#00506a"], primary: "#4dd0e1",
-    vars: { "--color-bg": "linear-gradient(135deg, #001820, #003040, #00506a)", "--color-bg-muted": "#001c28", "--color-surface": "#001e2a", "--color-border": "#004060", "--color-primary": "#4dd0e1", "--color-primary-dark": "#00838f", "--color-text": "#e0f7fa", "--color-text-muted": "#80deea", "--color-text-on-primary": "#001a20", "--color-hover": "#002838", "--color-shadow": "rgba(77,208,225,0.3)" },
+    id: "arctic", name: "Arctic",
+    colors: ["#111518"], primary: "#55a7dd", solid: true,
+    vars: {
+      "--color-bg": "#111518",
+      "--color-bg-muted": "#192024",
+      "--color-surface": "#151a1e",
+      "--color-border": "#263036",
+      "--color-primary": "#55a7dd",
+      "--color-primary-dark": "#2a91d5",
+      "--color-text": "#f0f3f5",
+      "--color-text-muted": "#96a9b6",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#6ab2e1",
+      "--color-shadow": "rgba(0, 0, 0, 0.3)",
+    },
   },
+
   {
-    id: "phantom_noir", name: "Phantom Noir",
-    colors: ["#07070f", "#0f0f1e", "#17152e"], primary: "#9575cd",
-    vars: { "--color-bg": "linear-gradient(135deg, #07070f, #0f0f1e, #17152e)", "--color-bg-muted": "#0c0c1a", "--color-surface": "#0f0f20", "--color-border": "#252045", "--color-primary": "#9575cd", "--color-primary-dark": "#6200ea", "--color-text": "#f5f5ff", "--color-text-muted": "#9575cd", "--color-text-on-primary": "#0a0a18", "--color-hover": "#141228", "--color-shadow": "rgba(149,117,205,0.3)" },
+    id: "cobalt", name: "Cobalt",
+    colors: ["#f9fafb"], primary: "#237ac7", solid: true,
+    vars: {
+      "--color-bg": "#f9fafb",
+      "--color-bg-muted": "#eef0f2",
+      "--color-surface": "#ffffff",
+      "--color-border": "#dde1e4",
+      "--color-primary": "#237ac7",
+      "--color-primary-dark": "#175286",
+      "--color-text": "#28343e",
+      "--color-text-muted": "#657480",
+      "--color-text-on-primary": "#ffffff",
+      "--color-hover": "#1c65a4",
+      "--color-shadow": "rgba(0, 0, 0, 0.06)",
+    },
   },
 ];
 
@@ -213,9 +258,23 @@ function getAverageLuminance(colors: string[]): number {
   return total / colors.length;
 }
 
+/** Load a saved custom theme from localStorage, if any */
+function loadCustomPreset(): ColorThemePreset | null {
+  try {
+    const raw = localStorage.getItem("app-custom-theme");
+    if (!raw) return null;
+    const { color, mode } = JSON.parse(raw);
+    return generateThemeFromColor(color, mode) as ColorThemePreset;
+  } catch { return null; }
+}
+
 function getColorsForTheme(themeId: string): string[] {
   if (themeId.startsWith("custom:")) {
     return themeId.replace("custom:", "").split(",");
+  }
+  if (themeId === "custom") {
+    const cp = loadCustomPreset();
+    return cp?.colors || [];
   }
   const preset = COLOR_THEME_PRESETS.find((p) => p.id === themeId);
   return preset?.colors || [];
@@ -244,11 +303,9 @@ const COLOR_THEME_EXTRA_VARS = [
   "--color-hover", "--color-shadow",
   "--primary", "--ring", "--sidebar-primary", "--sidebar-ring",
   // Shadcn standard vars overridden per-theme (must be cleared on reset):
-  "--background", "--muted", "--border", "--primary-foreground", "--surface",
+  "--background", "--muted", "--border", "--primary-foreground", "--surface", "--accent",
   // Sidebar vars — must be cleared on reset so base theme's sidebar color is restored:
   "--sidebar-background", "--sidebar-accent", "--sidebar-border",
-  // Skeleton loading state highlight:
-  "--skeleton-highlight",
 ];
 
 function applyGradientOverrides(colors: string[], isLight: boolean) {
@@ -352,14 +409,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem("app-color-theme") || "default";
   });
 
-  const colors = useMemo(() => getColorsForTheme(colorTheme), [colorTheme]);
+  // Version counter — incremented when a custom theme is saved to bust useMemo cache
+  const [customVersion, setCustomVersion] = useState(0);
+
+  const colors = useMemo(() => getColorsForTheme(colorTheme), [colorTheme, customVersion]);
   const isGradientActive = colors.length > 0;
   const isGradientLight = useMemo(() => {
     if (!isGradientActive) return false;
     return getAverageLuminance(colors) > 0.4;
   }, [colors, isGradientActive]);
   const isSolidTheme = useMemo(() => {
-    const preset = COLOR_THEME_PRESETS.find(p => p.id === colorTheme);
+    const preset = colorTheme === "custom" ? loadCustomPreset() : COLOR_THEME_PRESETS.find(p => p.id === colorTheme);
     return isGradientActive && !!preset?.solid;
   }, [colorTheme, isGradientActive]);
 
@@ -388,7 +448,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         root.classList.remove("solid-theme-active");
         applyGradientOverrides(colors, isGradientLight);
       }
-      const preset = COLOR_THEME_PRESETS.find(p => p.id === colorTheme);
+      const preset = colorTheme === "custom" ? loadCustomPreset() : COLOR_THEME_PRESETS.find(p => p.id === colorTheme);
       if (preset?.vars) {
         const pv = preset.vars;
         Object.entries(pv).forEach(([k, v]) => root.style.setProperty(k, v));
@@ -413,7 +473,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         if (pv["--color-text-on-primary"]) root.style.setProperty("--primary-foreground", hexToHsl(pv["--color-text-on-primary"]));
         // Sidebar panel vars — fixes settings modal sidebars staying in base theme color
         if (pv["--color-bg-muted"])  root.style.setProperty("--sidebar-background", hexToHsl(pv["--color-bg-muted"]));
-        if (pv["--color-hover"])     root.style.setProperty("--sidebar-accent", hexToHsl(pv["--color-hover"]));
+        if (pv["--color-hover"]) {
+          const hoverHsl = hexToHsl(pv["--color-hover"]);
+          root.style.setProperty("--sidebar-accent", hoverHsl);
+          root.style.setProperty("--accent", hoverHsl);
+        }
         if (pv["--color-border"])    root.style.setProperty("--sidebar-border", hexToHsl(pv["--color-border"]));
       }
       if (preset?.primary) {
@@ -422,8 +486,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         root.style.setProperty("--ring", hsl);
         root.style.setProperty("--sidebar-primary", hsl);
         root.style.setProperty("--sidebar-ring", hsl);
-        // Skeleton loading states pulse to the primary color for guaranteed contrast vs --muted
-        root.style.setProperty("--skeleton-highlight", hsl);
       }
       requestAnimationFrame(() => syncElectronTitleBar(colors[0]));
     } else {
@@ -443,8 +505,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
   const setColorTheme = (id: string) => {
     setColorThemeState(id);
+    if (id === "custom") {
+      // Bump version so useMemo re-evaluates even if colorTheme was already "custom"
+      setCustomVersion(v => v + 1);
+    }
     if (id !== "default") {
-      setThemeState("dark"); // all gradient themes are dark-based; prevents .light/.sado/.majls conflict
+      setThemeState("dark");
     }
   };
 
