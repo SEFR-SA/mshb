@@ -66,6 +66,11 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
     colors: ["#fbfaf9"], primary: "#f0a22e", solid: true,
     vars: { "--color-bg": "#fbfaf9", "--color-bg-muted": "#f3f0ed", "--color-surface": "#ffffff", "--color-border": "#e6e2da", "--color-primary": "#f0a22e", "--color-primary-dark": "#c27a0e", "--color-text": "#423624", "--color-text-muted": "#8a775c", "--color-text-on-primary": "#ffffff", "--color-hover": "#e48f11", "--color-shadow": "rgba(0, 0, 0, 0.06)" },
   },
+  {
+    id: "warm_beige", name: "Warm Beige",
+    colors: ["#faf6f0"], primary: "#b86b20", solid: true,
+    vars: { "--color-bg": "#faf6f0", "--color-bg-muted": "#ebe5db", "--color-surface": "#ffffff", "--color-border": "#e5dfd6", "--color-primary": "#b86b20", "--color-primary-dark": "#8a5018", "--color-text": "#1a1715", "--color-text-muted": "#6b635a", "--color-text-on-primary": "#ffffff", "--color-hover": "#d4904a", "--color-shadow": "rgba(0, 0, 0, 0.06)" },
+  },
 
   // ─── VIBRANT / SYNTHWAVE THEMES (8) ─────────────────────────────────────
 
