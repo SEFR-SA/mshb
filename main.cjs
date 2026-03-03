@@ -253,6 +253,14 @@ function createWindow() {
   mainWindow.on('leave-full-screen', () => {
     mainWindow.webContents.send('fullscreen-changed', false);
   });
+
+  // --- Check for updates on restore/focus (user brings window back from taskbar) ---
+  mainWindow.on('restore', () => {
+    if (app.isPackaged) autoUpdater.checkForUpdates();
+  });
+  mainWindow.on('focus', () => {
+    if (app.isPackaged) autoUpdater.checkForUpdates();
+  });
 }
 
 // --- IPC Communication for Updates ---
@@ -393,7 +401,11 @@ app.whenReady().then(() => {
     const feed = `${server}/${repo}/${process.platform}-${process.arch}/${app.getVersion()}`;
     try {
       autoUpdater.setFeedURL({ url: feed });
-      setInterval(() => autoUpdater.checkForUpdates(), 60 * 60 * 1000);
+      setInterval(() => {
+        if (mainWindow && !mainWindow.isMinimized()) {
+          autoUpdater.checkForUpdates();
+        }
+      }, 60 * 60 * 1000);
       autoUpdater.checkForUpdates();
     } catch (err) {
       console.error('Update initialization error:', err);
