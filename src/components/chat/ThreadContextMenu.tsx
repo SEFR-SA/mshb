@@ -17,6 +17,8 @@ interface ThreadContextMenuProps {
   onMarkAsRead: () => void;
   onDelete?: () => void;
   isDM?: boolean;
+  onCloseDM?: () => void;
+  onBlock?: () => void;
 }
 
 const ThreadContextMenu = ({
@@ -26,6 +28,8 @@ const ThreadContextMenu = ({
   onMarkAsRead,
   onDelete,
   isDM,
+  onCloseDM,
+  onBlock,
 }: ThreadContextMenuProps) => {
   const { t } = useTranslation();
 
@@ -60,7 +64,7 @@ const ThreadContextMenu = ({
         {isDM && (
           <>
             <ContextMenuSeparator />
-            <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+            <ContextMenuItem onClick={() => onCloseDM ? onCloseDM() : toast({ title: "Feature coming soon" })}>
               <X className="h-4 w-4 me-2" />
               {t("common.closeDM")}
             </ContextMenuItem>
@@ -78,7 +82,7 @@ const ThreadContextMenu = ({
         {isDM && (
           <>
             <ContextMenuSeparator />
-            <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })} className="text-destructive focus:text-destructive">
+            <ContextMenuItem onClick={() => onBlock ? onBlock() : toast({ title: "Feature coming soon" })} className="text-destructive focus:text-destructive">
               <Ban className="h-4 w-4 me-2" />
               {t("common.block")}
             </ContextMenuItem>

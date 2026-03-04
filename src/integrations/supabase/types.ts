@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocked_users: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       call_sessions: {
         Row: {
           callee_id: string
@@ -183,6 +204,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      dm_thread_visibility: {
+        Row: {
+          closed_at: string | null
+          id: string
+          is_visible: boolean
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          id?: string
+          is_visible?: boolean
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          id?: string
+          is_visible?: boolean
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_thread_visibility_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "dm_threads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dm_threads: {
         Row: {

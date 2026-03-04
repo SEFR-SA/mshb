@@ -17,6 +17,8 @@ import type { Tables } from "@/integrations/supabase/types";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
 import ThreadContextMenu from "@/components/chat/ThreadContextMenu";
+import { useBlockUser } from "@/hooks/useBlockUser";
+import { useCloseDM } from "@/hooks/useCloseDM";
 
 type Profile = Tables<"profiles">;
 
@@ -42,6 +44,8 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
   const { getUserStatus } = usePresence();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
   const { pendingCount } = usePendingFriendRequests();
+  const { blockUser } = useBlockUser();
+  const { closeDM } = useCloseDM();
   const navigate = useNavigate();
   const location = useLocation();
   const [myProfile, setMyProfile] = useState<Profile | null>(null);
@@ -69,10 +73,23 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
     });
     setPinnedIds(pinSet);
 
-    const { data: rawThreads } = await supabase
+    // Step 1: Get closed thread IDs
+    const { data: closedRows } = await supabase
+      .from("dm_thread_visibility")
+      .select("thread_id")
+      .eq("user_id", user.id)
+      .eq("is_visible", false);
+    const closedThreadIds = (closedRows || []).map((r: any) => r.thread_id);
+
+    // Step 2: Query dm_threads, excluding closed ones
+    let dmQuery = supabase
       .from("dm_threads")
       .select("*")
       .order("last_message_at", { ascending: false });
+    if (closedThreadIds.length > 0) {
+      dmQuery = dmQuery.not("id", "in", `(${closedThreadIds.join(",")})`);
+    }
+    const { data: rawThreads } = await dmQuery;
 
     const dmItems: InboxItem[] = [];
 
@@ -208,6 +225,8 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
       .on("postgres_changes", { event: "*", schema: "public", table: "dm_threads" }, () => loadInbox())
       .on("postgres_changes", { event: "*", schema: "public", table: "group_threads" }, () => loadInbox())
       .on("postgres_changes", { event: "*", schema: "public", table: "group_members" }, () => loadInbox())
+      .on("postgres_changes", { event: "*", schema: "public", table: "dm_thread_visibility" }, () => loadInbox())
+      .on("postgres_changes", { event: "*", schema: "public", table: "blocked_users" }, () => loadInbox())
       .subscribe();
 
     return () => { channel.unsubscribe(); };
@@ -303,6 +322,8 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
         onTogglePin={() => togglePinItem(item.id, item.type)}
         onMarkAsRead={() => markAsRead(item.id, item.type)}
         isDM={item.type === "dm"}
+        onCloseDM={item.type === "dm" ? async () => { await closeDM(item.id); loadInbox(); } : undefined}
+        onBlock={item.type === "dm" && item.otherProfile ? () => blockUser(item.otherProfile!.user_id) : undefined}
       >
         <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
           className={`flex items-center gap-2 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/60"}`}>
