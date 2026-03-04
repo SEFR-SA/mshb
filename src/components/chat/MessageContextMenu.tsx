@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, Reply, Pencil, EyeOff, Trash2, BookmarkMinus } from "lucide-react";
+import { Copy, Reply, Pencil, EyeOff, Trash2, BookmarkMinus, Smile, Forward, Pin, Flag } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   ContextMenu,
@@ -66,6 +66,22 @@ const MessageContextMenu = ({
             {t("actions.edit")}
           </ContextMenuItem>
         )}
+        {!isDeleted && (
+          <>
+            <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+              <Smile className="h-4 w-4 me-2" />
+              {t("actions.addReaction")}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+              <Forward className="h-4 w-4 me-2" />
+              {t("actions.forward")}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+              <Pin className="h-4 w-4 me-2" />
+              {t("actions.pinMessage")}
+            </ContextMenuItem>
+          </>
+        )}
         {onMarkUnread && (
           <ContextMenuItem onClick={() => onMarkUnread(messageId)}>
             <BookmarkMinus className="h-4 w-4 me-2" />
@@ -83,6 +99,12 @@ const MessageContextMenu = ({
           <ContextMenuItem onClick={() => onDeleteForEveryone(messageId)} className="text-destructive">
             <Trash2 className="h-4 w-4 me-2" />
             {t("actions.deleteForEveryone")}
+          </ContextMenuItem>
+        )}
+        {!isMine && !isDeleted && (
+          <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })} className="text-destructive focus:text-destructive">
+            <Flag className="h-4 w-4 me-2" />
+            {t("actions.reportMessage")}
           </ContextMenuItem>
         )}
       </ContextMenuContent>

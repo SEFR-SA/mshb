@@ -302,6 +302,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
         isPinned={pinnedIds.has(item.id)}
         onTogglePin={() => togglePinItem(item.id, item.type)}
         onMarkAsRead={() => markAsRead(item.id, item.type)}
+        isDM={item.type === "dm"}
       >
         <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
           className={`flex items-center gap-2 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/60"}`}>

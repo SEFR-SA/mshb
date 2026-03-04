@@ -349,6 +349,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                       isPinned={true}
                       onTogglePin={() => togglePinItem(item.id, item.type)}
                       onMarkAsRead={() => markAsRead(item.id, item.type)}
+                      isDM={item.type === "dm"}
                     >
                     <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
                       className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
@@ -378,6 +379,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                   isPinned={false}
                   onTogglePin={() => togglePinItem(item.id, item.type)}
                   onMarkAsRead={() => markAsRead(item.id, item.type)}
+                  isDM={item.type === "dm"}
                 >
                 <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
                   className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
