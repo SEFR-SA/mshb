@@ -1,65 +1,78 @@
 
 
-## Custom Theme Generator — Phase 1 Plan
+## Context Menu UI Expansion — Technical Plan
 
-### Goal
-Create `src/lib/themeGenerator.ts` — a pure utility that takes one hex color and returns a complete `ColorThemePreset` object matching the existing schema.
+### Phase 1: Friends & DM Sidebar Menus
 
-### Color Math Approach
+**1A. Friends Page Context Menu (`UserContextMenu.tsx`)**
+- Currently used in `FriendsDashboard.tsx`, wrapping each friend row
+- Existing items: Message, Call, Add/Remove Friend, Copy Username
+- **Add** before the Copy Username separator:
+  - "Profile" (`User` icon) — `toast("Feature coming soon")`
+  - "Invite to Server" (`UserPlus` icon) — `toast("Feature coming soon")`
+  - "Block" (`Ban` icon, `className="text-destructive"`) — `toast("Feature coming soon")`
 
-The input hex is converted to HSL. From there, two variant palettes are derived — one for light backgrounds, one for dark — based on the background's luminance. The function auto-detects which mode to use based on the primary color's lightness (light primaries get dark backgrounds; vivid/dark primaries get light backgrounds), but a manual override parameter is also available.
+**1B. DM Sidebar Context Menu (`ThreadContextMenu.tsx`)**
+- Currently used in `ChatSidebar.tsx` for each DM/group thread
+- Existing items: Pin/Unpin, Mark as Read, Mute Notifications, Delete Conversation
+- **Add** new props to the component interface (all optional callbacks defaulting to toast):
+  - "Profile" (`User` icon) — `toast("Feature coming soon")`
+  - "Call" (`Phone` icon) — `toast("Feature coming soon")`
+  - "Close DM" (`X` icon) — `toast("Feature coming soon")`
+  - Separator, then "Block" (`Ban` icon, `text-destructive`) — `toast("Feature coming soon")`
+- These items render conditionally when appropriate (e.g., only for DM threads, not groups)
 
-**Derivation rules (light-bg variant):**
+---
 
-| Variable | Derivation from primary HSL (H, S, L) |
-|---|---|
-| `--color-primary` | Input hex as-is |
-| `--color-primary-dark` | H, S, L−15 |
-| `--color-hover` | H, S, L−12 |
-| `--color-bg` | H, S×0.08, 98 (barely tinted white) |
-| `--color-bg-muted` | H, S×0.10, 94 |
-| `--color-surface` | `#ffffff` |
-| `--color-border` | H, S×0.12, 89 |
-| `--color-text` | H, S×0.20, 18 |
-| `--color-text-muted` | H, S×0.15, 42 |
-| `--color-text-on-primary` | `#ffffff` |
-| `--color-shadow` | `rgba(0,0,0,0.06)` |
+### Phase 2: Server & Folder Menus
 
-**Dark-bg variant** mirrors this with inverted lightness (bg at L=8, surface at L=10, text at L=96, etc.) and shadow opacity 0.3.
+**2A. Server Avatar Context Menu (`ServerRail.tsx`, lines 459-508)**
+- **Add** before the Copy Invite item:
+  - "Create Channel" (`Plus` icon) — `toast("Feature coming soon")`
+  - "Create Category" (`FolderPlus` icon) — `toast("Feature coming soon")`
+- **Modify** Server Settings submenu (lines 474-493): Add missing tab entries:
+  - "Server Tag" (`Tag` icon) → `openSettings(s.id, "tag")`
+  - "Engagement" (`TrendingUp` icon) → `openSettings(s.id, "engagement")`
+  - "Emojis" (`Smile` icon) → `openSettings(s.id, "emojis")`
+  - "Stickers" (`Sticker` icon) → `openSettings(s.id, "stickers")`
+  - "Soundboard" (`Volume2` icon) → `openSettings(s.id, "soundboard")`
+- **BUG FIX**: `t("servers.markAsRead")` key does not exist in either `src/i18n/en.ts` or `src/i18n/ar.ts`. Will add the missing key to both i18n files, OR fallback to hardcoded "Mark as Read" text.
 
-**Return shape:**
-```typescript
-{
-  id: "custom",
-  name: "Custom",
-  colors: [bgHex],       // single entry → solid
-  primary: inputHex,
-  solid: true,
-  vars: { /* all 11 --color-* vars */ }
-}
-```
+**2B. Server Folder Context Menu (`ServerFolder.tsx`, lines 148-158)**
+- Existing: Rename Folder, Ungroup
+- **Add** before Rename:
+  - "Mark Folder as Read" (`CheckCheck` icon) — `toast("Feature coming soon")`
 
-### Phase 2: `generateRandomTheme()`
-Same file. Picks random H (0–360), S (65–85%), L (48–58%) → converts to hex → passes to the generator. Ensures vivid, never-muddy results.
+---
 
-### Phase 3: `ThemeBuilder.tsx`
-A full-screen overlay component with:
-- **Left**: Static mock UI (fake server rail + sidebar + chat area) styled via the generated `vars` applied as inline `style` on a wrapper div
-- **Right**: Control panel with `<input type="color" />`, "Surprise Me!" button, dark/light toggle, Save/Cancel
-- Live preview updates via React state — no persistence until Save
-- On Save: calls `setColorTheme("custom")` after injecting the custom preset into the presets array (or storing in localStorage as `custom:` format already supported by `getColorsForTheme`)
+### Phase 3: Message Context Menus
 
-### Phase 4: Entry Banner in `AppearanceTab.tsx`
-A styled card above the Color Themes grid with the copy from the spec and a "Create Theme" button. Pro-gated with lock icon for free users.
+**Message Context Menu (`MessageContextMenu.tsx`)**
 
-### Files touched
-1. **New**: `src/lib/themeGenerator.ts` — color math + random generator
-2. **New**: `src/components/settings/ThemeBuilder.tsx` — preview UI
-3. **Edit**: `src/components/settings/tabs/AppearanceTab.tsx` — add banner + ThemeBuilder launch
-4. **Edit**: `src/contexts/ThemeContext.tsx` — add support for a `custom` preset stored in localStorage
-5. **Edit**: `src/i18n/en.ts` + `src/i18n/ar.ts` — translation keys
+Currently: Copy, Reply, Edit (mine only), Mark Unread, Delete for Me, Delete for Everyone (mine only).
 
-### Questions before proceeding
+- **Add for ALL messages** (after Reply, before Mark Unread):
+  - "Add Reaction" (`Smile` icon) — `toast("Feature coming soon")`
+  - "Forward" (`Forward` icon) — `toast("Feature coming soon")`
+  - "Pin Message" (`Pin` icon) — `toast("Feature coming soon")`
 
-None — the schema is clear and the math is straightforward. Ready to execute Phase 1 on your approval.
+- **Add for OTHER people's messages only** (after separator, `!isMine`):
+  - "Report Message" (`Flag` icon, `text-destructive`) — `toast("Feature coming soon")`
+
+---
+
+### Files to modify
+
+| File | Changes |
+|------|---------|
+| `src/components/chat/UserContextMenu.tsx` | Add Profile, Invite to Server, Block items |
+| `src/components/chat/ThreadContextMenu.tsx` | Add Profile, Call, Close DM, Block items |
+| `src/components/chat/ChatSidebar.tsx` | Pass new thread type info to ThreadContextMenu |
+| `src/components/server/ServerRail.tsx` | Add Create Channel, Create Category; expand Settings submenu; fix markAsRead i18n |
+| `src/components/server/ServerFolder.tsx` | Add Mark Folder as Read item + prop |
+| `src/components/chat/MessageContextMenu.tsx` | Add Reaction, Forward, Pin, Report items |
+| `src/i18n/en.ts` | Add `servers.markAsRead` key |
+| `src/i18n/ar.ts` | Add `servers.markAsRead` key |
+
+All new items use `toast({ title: "Feature coming soon" })` or equivalent — no backend logic.
 
