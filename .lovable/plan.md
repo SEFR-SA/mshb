@@ -1,78 +1,92 @@
 
 
-## Context Menu UI Expansion — Technical Plan
+## Block User & Close DM — Implementation Plan
 
-### Phase 1: Friends & DM Sidebar Menus
+### Phase 1: Database Migration
 
-**1A. Friends Page Context Menu (`UserContextMenu.tsx`)**
-- Currently used in `FriendsDashboard.tsx`, wrapping each friend row
-- Existing items: Message, Call, Add/Remove Friend, Copy Username
-- **Add** before the Copy Username separator:
-  - "Profile" (`User` icon) — `toast("Feature coming soon")`
-  - "Invite to Server" (`UserPlus` icon) — `toast("Feature coming soon")`
-  - "Block" (`Ban` icon, `className="text-destructive"`) — `toast("Feature coming soon")`
+Single migration with both tables, using the corrected FK references with `ON DELETE CASCADE`. Per the memory note on database conventions, we avoid FK refs to `auth.users` — but the user explicitly requested them, so we'll include them as specified.
 
-**1B. DM Sidebar Context Menu (`ThreadContextMenu.tsx`)**
-- Currently used in `ChatSidebar.tsx` for each DM/group thread
-- Existing items: Pin/Unpin, Mark as Read, Mute Notifications, Delete Conversation
-- **Add** new props to the component interface (all optional callbacks defaulting to toast):
-  - "Profile" (`User` icon) — `toast("Feature coming soon")`
-  - "Call" (`Phone` icon) — `toast("Feature coming soon")`
-  - "Close DM" (`X` icon) — `toast("Feature coming soon")`
-  - Separator, then "Block" (`Ban` icon, `text-destructive`) — `toast("Feature coming soon")`
-- These items render conditionally when appropriate (e.g., only for DM threads, not groups)
+```sql
+-- blocked_users
+CREATE TABLE public.blocked_users (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  blocker_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  blocked_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (blocker_id, blocked_id)
+);
+ALTER TABLE public.blocked_users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own blocks" ON public.blocked_users FOR SELECT USING (auth.uid() = blocker_id);
+CREATE POLICY "Users can block others" ON public.blocked_users FOR INSERT WITH CHECK (auth.uid() = blocker_id);
+CREATE POLICY "Users can unblock" ON public.blocked_users FOR DELETE USING (auth.uid() = blocker_id);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.blocked_users;
 
----
+-- dm_thread_visibility
+CREATE TABLE public.dm_thread_visibility (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  thread_id uuid NOT NULL REFERENCES public.dm_threads(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  is_visible boolean NOT NULL DEFAULT true,
+  closed_at timestamptz,
+  UNIQUE (thread_id, user_id)
+);
+ALTER TABLE public.dm_thread_visibility ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own visibility" ON public.dm_thread_visibility FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own visibility" ON public.dm_thread_visibility FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own visibility" ON public.dm_thread_visibility FOR UPDATE USING (auth.uid() = user_id);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.dm_thread_visibility;
+```
 
-### Phase 2: Server & Folder Menus
+### Phase 2: Frontend Hooks
 
-**2A. Server Avatar Context Menu (`ServerRail.tsx`, lines 459-508)**
-- **Add** before the Copy Invite item:
-  - "Create Channel" (`Plus` icon) — `toast("Feature coming soon")`
-  - "Create Category" (`FolderPlus` icon) — `toast("Feature coming soon")`
-- **Modify** Server Settings submenu (lines 474-493): Add missing tab entries:
-  - "Server Tag" (`Tag` icon) → `openSettings(s.id, "tag")`
-  - "Engagement" (`TrendingUp` icon) → `openSettings(s.id, "engagement")`
-  - "Emojis" (`Smile` icon) → `openSettings(s.id, "emojis")`
-  - "Stickers" (`Sticker` icon) → `openSettings(s.id, "stickers")`
-  - "Soundboard" (`Volume2` icon) → `openSettings(s.id, "soundboard")`
-- **BUG FIX**: `t("servers.markAsRead")` key does not exist in either `src/i18n/en.ts` or `src/i18n/ar.ts`. Will add the missing key to both i18n files, OR fallback to hardcoded "Mark as Read" text.
+**`src/hooks/useBlockUser.ts`** — New file
+- Fetches `blocked_users` where `blocker_id = user.id` on mount
+- Subscribes to realtime changes on `blocked_users`
+- Exposes: `blockedUserIds: Set<string>`, `blockUser(id)`, `unblockUser(id)`, `isBlocked(id)`
+- `blockUser` inserts row + shows toast; `unblockUser` deletes row + shows toast
 
-**2B. Server Folder Context Menu (`ServerFolder.tsx`, lines 148-158)**
-- Existing: Rename Folder, Ungroup
-- **Add** before Rename:
-  - "Mark Folder as Read" (`CheckCheck` icon) — `toast("Feature coming soon")`
+**`src/hooks/useCloseDM.ts`** — New file
+- Single function: `closeDM(threadId)` that calls `.upsert({ thread_id, user_id, is_visible: false, closed_at: new Date().toISOString() }, { onConflict: 'thread_id,user_id' })`
+- Shows success toast
 
----
+### Phase 3: Update HomeSidebar DM Fetching
 
-### Phase 3: Message Context Menus
+In `HomeSidebar.tsx` `loadInbox()`, before the `dm_threads` query:
+1. Query `dm_thread_visibility` for `user_id = auth.uid()` where `is_visible = false` → get array of closed `thread_id`s
+2. If any closed IDs exist, filter `dm_threads` query with `.not('id', 'in', '(${closedIds.join(",")})')`
+3. Add `dm_thread_visibility` to the realtime subscription channel
 
-**Message Context Menu (`MessageContextMenu.tsx`)**
+### Phase 4: Wire Context Menus
 
-Currently: Copy, Reply, Edit (mine only), Mark Unread, Delete for Me, Delete for Everyone (mine only).
+**`ThreadContextMenu.tsx`**:
+- Add `onCloseDM` and `onBlock` callback props (optional)
+- Replace "Close DM" toast with `onCloseDM?.()` call
+- Replace "Block" toast with `onBlock?.()` call
 
-- **Add for ALL messages** (after Reply, before Mark Unread):
-  - "Add Reaction" (`Smile` icon) — `toast("Feature coming soon")`
-  - "Forward" (`Forward` icon) — `toast("Feature coming soon")`
-  - "Pin Message" (`Pin` icon) — `toast("Feature coming soon")`
+**`HomeSidebar.tsx`**:
+- Import `useBlockUser` and `useCloseDM` hooks
+- Pass `onCloseDM` (calls `closeDM(thread.id)` then triggers reload) to `ThreadContextMenu`
+- Pass `onBlock` (calls `blockUser(otherUserId)`) to `ThreadContextMenu`
+- Need to thread `otherUserId` through to the context menu — add it as a prop on `ThreadContextMenu`
 
-- **Add for OTHER people's messages only** (after separator, `!isMine`):
-  - "Report Message" (`Flag` icon, `text-destructive`) — `toast("Feature coming soon")`
+**`UserContextMenu.tsx`**:
+- Import `useBlockUser`, replace "Block" toast with actual `blockUser(targetUserId)` call
+- Show "Unblock" instead when already blocked
 
----
+**`FriendsDashboard.tsx`** (Blocked tab):
+- Import `useBlockUser` hook
+- Replace the empty "No blocked users" placeholder with a list of blocked users (query `profiles` by `blockedUserIds`)
+- Each blocked user row has an "Unblock" button calling `unblockUser`
 
-### Files to modify
+### Files to Create/Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/chat/UserContextMenu.tsx` | Add Profile, Invite to Server, Block items |
-| `src/components/chat/ThreadContextMenu.tsx` | Add Profile, Call, Close DM, Block items |
-| `src/components/chat/ChatSidebar.tsx` | Pass new thread type info to ThreadContextMenu |
-| `src/components/server/ServerRail.tsx` | Add Create Channel, Create Category; expand Settings submenu; fix markAsRead i18n |
-| `src/components/server/ServerFolder.tsx` | Add Mark Folder as Read item + prop |
-| `src/components/chat/MessageContextMenu.tsx` | Add Reaction, Forward, Pin, Report items |
-| `src/i18n/en.ts` | Add `servers.markAsRead` key |
-| `src/i18n/ar.ts` | Add `servers.markAsRead` key |
-
-All new items use `toast({ title: "Feature coming soon" })` or equivalent — no backend logic.
+| File | Action |
+|------|--------|
+| DB Migration | Create `blocked_users` + `dm_thread_visibility` |
+| `src/hooks/useBlockUser.ts` | **New** |
+| `src/hooks/useCloseDM.ts` | **New** |
+| `src/components/chat/ThreadContextMenu.tsx` | Add callback props, wire them |
+| `src/components/chat/UserContextMenu.tsx` | Wire block/unblock |
+| `src/components/layout/HomeSidebar.tsx` | Filter closed DMs, pass callbacks |
+| `src/pages/FriendsDashboard.tsx` | Wire Blocked tab |
 
