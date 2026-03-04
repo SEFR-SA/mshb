@@ -127,6 +127,10 @@ export default {
     call: "اتصال",
     copyUsername: "نسخ اسم المستخدم",
     copied: "تم النسخ",
+    addReaction: "إضافة تفاعل",
+    forward: "إعادة توجيه",
+    pinMessage: "تثبيت الرسالة",
+    reportMessage: "الإبلاغ عن الرسالة",
   },
   profile: {
     title: "إعدادات الملف الشخصي",
@@ -206,6 +210,8 @@ export default {
     confirm: "تأكيد",
     cancel: "إلغاء",
     optional: "اختياري",
+    block: "حظر",
+    closeDM: "إغلاق المحادثة",
   },
   notifications: {
     newMessage: "لديك رسالة جديدة",
@@ -260,6 +266,8 @@ export default {
   servers: {
     create: "إنشاء سيرفر",
     createDesc: "أعطِ سيرفرك الجديد اسمًا للبدء.",
+    createChannel: "إنشاء قناة",
+    createCategory: "إنشاء فئة",
     namePlaceholder: "سيرفري الرائع",
     joinServer: "الانضمام لسيرفر",
     joinDesc: "أدخل رمز الدعوة للانضمام.",

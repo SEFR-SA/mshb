@@ -5,7 +5,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2, CheckCheck, ShieldCheck, ScrollText, User } from "lucide-react";
+import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2, CheckCheck, ShieldCheck, ScrollText, User, FolderPlus, Tag, TrendingUp, Smile, Sticker } from "lucide-react";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from "@/components/ui/context-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -459,7 +459,16 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                   <ContextMenuContent className="w-56">
                     <ContextMenuItem onClick={() => handleMarkAsRead(s.id)}>
                       <CheckCheck className="h-4 w-4 me-2" />
-                      {t("servers.markAsRead")}
+                      {t("actions.markAsRead")}
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+                      <Plus className="h-4 w-4 me-2" />
+                      {t("servers.createChannel")}
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+                      <FolderPlus className="h-4 w-4 me-2" />
+                      {t("servers.createCategory")}
                     </ContextMenuItem>
                     <ContextMenuSeparator />
                     <ContextMenuItem onClick={() => handleCopyInvite(s.id)}>
@@ -483,6 +492,26 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                         <ContextMenuItem onClick={() => openSettings(s.id, "roles")}>
                           <ShieldCheck className="h-4 w-4 me-2" />
                           {t("serverSettings.roles")}
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => openSettings(s.id, "tag" as TabId)}>
+                          <Tag className="h-4 w-4 me-2" />
+                          {t("serverSettings.serverTag")}
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => openSettings(s.id, "engagement" as TabId)}>
+                          <TrendingUp className="h-4 w-4 me-2" />
+                          {t("serverSettings.engagement")}
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => openSettings(s.id, "emojis" as TabId)}>
+                          <Smile className="h-4 w-4 me-2" />
+                          {t("serverSettings.emojis")}
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => openSettings(s.id, "stickers" as TabId)}>
+                          <Sticker className="h-4 w-4 me-2" />
+                          {t("serverSettings.stickers")}
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => openSettings(s.id, "soundboard" as TabId)}>
+                          <Volume2 className="h-4 w-4 me-2" />
+                          {t("serverSettings.soundboard")}
                         </ContextMenuItem>
                         {(s.owner_id === user?.id || userRoles.get(s.id) === "admin") && (
                           <ContextMenuItem onClick={() => openSettings(s.id, "auditlogs")}>
@@ -597,7 +626,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                   <SheetTitle className="text-start">{s.name}</SheetTitle>
                 </SheetHeader>
                 <button className={btnClass} onClick={() => { handleMarkAsRead(s.id); close(); }}>
-                  <CheckCheck className="h-4 w-4" />{t("servers.markAsRead")}
+                  <CheckCheck className="h-4 w-4" />{t("actions.markAsRead")}
                 </button>
                 <button className={btnClass} onClick={() => { handleCopyInvite(s.id); close(); }}>
                   <Copy className="h-4 w-4" />{t("servers.copyInvite")}

@@ -127,6 +127,10 @@ export default {
     call: "Call",
     copyUsername: "Copy Username",
     copied: "Copied to clipboard",
+    addReaction: "Add Reaction",
+    forward: "Forward",
+    pinMessage: "Pin Message",
+    reportMessage: "Report Message",
   },
   profile: {
     title: "Profile Settings",
@@ -206,6 +210,8 @@ export default {
     confirm: "Confirm",
     cancel: "Cancel",
     optional: "optional",
+    block: "Block",
+    closeDM: "Close DM",
   },
   notifications: {
     newMessage: "You have a new message",
@@ -260,6 +266,8 @@ export default {
   servers: {
     create: "Create Server",
     createDesc: "Give your new server a name to get started.",
+    createChannel: "Create Channel",
+    createCategory: "Create Category",
     namePlaceholder: "My Awesome Server",
     joinServer: "Join Server",
     joinDesc: "Enter an invite code to join a server.",

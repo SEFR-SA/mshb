@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { MessageSquare, UserPlus, UserMinus, Phone, ClipboardCopy } from "lucide-react";
+import { MessageSquare, UserPlus, UserMinus, Phone, ClipboardCopy, User, Ban } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   ContextMenu,
@@ -135,6 +135,14 @@ const UserContextMenu = ({ children, targetUserId, targetUsername }: UserContext
           <Phone className="h-4 w-4 me-2" />
           {t("actions.call")}
         </ContextMenuItem>
+        <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+          <User className="h-4 w-4 me-2" />
+          {t("profile.title")}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+          <UserPlus className="h-4 w-4 me-2" />
+          {t("servers.inviteFriendsTo", { name: "Server" })}
+        </ContextMenuItem>
         <ContextMenuSeparator />
         {friendStatus === "accepted" ? (
           <ContextMenuItem onClick={handleRemoveFriend} className="text-destructive">
@@ -161,6 +169,11 @@ const UserContextMenu = ({ children, targetUserId, targetUsername }: UserContext
             </ContextMenuItem>
           </>
         )}
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })} className="text-destructive focus:text-destructive">
+          <Ban className="h-4 w-4 me-2" />
+          {t("common.block")}
+        </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   );

@@ -4,7 +4,8 @@ import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
-import { Pencil, Palette, FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { Pencil, Palette, FolderOpen, ChevronDown, ChevronRight, CheckCheck } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface FolderServer {
   id: string;
@@ -146,6 +147,11 @@ const ServerFolder: React.FC<ServerFolderProps> = ({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
+        <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+          <CheckCheck className="h-4 w-4 me-2" />
+          {t("actions.markAsRead")}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
         <ContextMenuItem onClick={onRename}>
           <Pencil className="h-4 w-4 me-2" />
           {t("folders.rename")}
