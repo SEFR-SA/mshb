@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBlockUser } from "@/hooks/useBlockUser";
 import { MessageSquare, UserPlus, UserMinus, Phone, ClipboardCopy, User, Ban } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -23,6 +24,7 @@ const UserContextMenu = ({ children, targetUserId, targetUsername }: UserContext
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { blockUser, unblockUser, isBlocked } = useBlockUser();
   const [friendshipId, setFriendshipId] = useState<string | null>(null);
   const [friendStatus, setFriendStatus] = useState<string | null>(null);
 
@@ -170,10 +172,17 @@ const UserContextMenu = ({ children, targetUserId, targetUsername }: UserContext
           </>
         )}
         <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })} className="text-destructive focus:text-destructive">
-          <Ban className="h-4 w-4 me-2" />
-          {t("common.block")}
-        </ContextMenuItem>
+        {isBlocked(targetUserId) ? (
+          <ContextMenuItem onClick={() => unblockUser(targetUserId)}>
+            <Ban className="h-4 w-4 me-2" />
+            {t("common.unblock", "Unblock")}
+          </ContextMenuItem>
+        ) : (
+          <ContextMenuItem onClick={() => blockUser(targetUserId)} className="text-destructive focus:text-destructive">
+            <Ban className="h-4 w-4 me-2" />
+            {t("common.block")}
+          </ContextMenuItem>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );

@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import UserContextMenu from "@/components/chat/UserContextMenu";
 import { revertToPlain } from "@/lib/unicodeFonts";
+import { useBlockUser } from "@/hooks/useBlockUser";
 
 type Profile = Tables<"profiles">;
 
@@ -27,10 +28,53 @@ interface FriendshipWithProfile {
   profile: Profile | null;
 }
 
+const BlockedUsersTab = ({ blockedUserIds, onUnblock }: { blockedUserIds: Set<string>; onUnblock: (id: string) => void }) => {
+  const { t } = useTranslation();
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const ids = Array.from(blockedUserIds);
+
+  useEffect(() => {
+    if (ids.length === 0) { setProfiles([]); return; }
+    supabase.from("profiles").select("*").in("user_id", ids).then(({ data }) => {
+      if (data) setProfiles(data);
+    });
+  }, [ids.join(",")]);
+
+  if (ids.length === 0) {
+    return <p className="text-center text-muted-foreground py-16 text-sm">{t("friends.noBlocked", "No blocked users")}</p>;
+  }
+
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+        {t("friends.blocked", "Blocked")} — {ids.length}
+      </p>
+      {profiles.map((p) => (
+        <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={p.avatar_url || ""} />
+            <AvatarFallback className="bg-primary/20 text-primary">
+              {(p.display_name || p.username || "?").charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium truncate">{p.display_name || p.username || "User"}</p>
+            {p.username && <p className="text-xs text-muted-foreground">@{p.username}</p>}
+          </div>
+          <Button variant="outline" size="sm" onClick={() => onUnblock(p.user_id)}>
+            {t("common.unblock", "Unblock")}
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const FriendsDashboard = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { getUserStatus } = usePresence();
+  const { blockedUserIds, unblockUser } = useBlockUser();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
@@ -42,6 +86,7 @@ const FriendsDashboard = () => {
   const [searching, setSearching] = useState(false);
   const [activeTab, setActiveTab] = useState<"online" | "all" | "pending" | "blocked" | "add">("online");
   const [friendFilter, setFriendFilter] = useState("");
+  const [blockedProfiles, setBlockedProfiles] = useState<Profile[]>([]);
 
   const loadFriendships = async () => {
     if (!user) return;
@@ -427,9 +472,7 @@ const FriendsDashboard = () => {
 
         {/* Blocked tab */}
         {activeTab === "blocked" && (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <p className="text-sm">No blocked users</p>
-          </div>
+          <BlockedUsersTab blockedUserIds={blockedUserIds} onUnblock={unblockUser} />
         )}
       </div>
 
