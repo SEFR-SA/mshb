@@ -6,6 +6,7 @@ import { PhoneOff, Mic, MicOff, Volume2, HeadphoneOff, Monitor, MonitorOff, Vide
 import type { CallState } from "@/hooks/useWebRTC";
 import GoLiveModal, { type GoLiveSettings } from "@/components/GoLiveModal";
 import ScreenShareViewer from "@/components/server/ScreenShareViewer";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 interface VoiceCallUIProps {
   callState: CallState;
