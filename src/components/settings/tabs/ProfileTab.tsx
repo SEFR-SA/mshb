@@ -14,6 +14,7 @@ import { FONT_STYLES, convertToFont, revertToPlain, type FontStyle } from "@/lib
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
+import DecorationSelector from "@/components/settings/DecorationSelector";
 
 const STATUSES: UserStatus[] = ["online", "busy", "dnd", "idle", "invisible"];
 const DURATIONS = ["15m", "1h", "8h", "24h", "3d", "forever"] as const;
@@ -223,6 +224,11 @@ const ProfileTab = () => {
           />
           {username && <p className="text-sm text-muted-foreground">@{username}</p>}
         </div>
+      </div>
+
+      {/* Avatar Decoration */}
+      <div className="border-t border-border/50 pt-6">
+        <DecorationSelector />
       </div>
 
       {/* Fields */}

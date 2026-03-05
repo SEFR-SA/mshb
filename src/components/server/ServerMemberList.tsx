@@ -19,6 +19,7 @@ import ServerMemberContextMenu from "@/components/server/ServerMemberContextMenu
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { usePresence } from "@/hooks/usePresence";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 interface Member {
   user_id: string;
@@ -35,6 +36,7 @@ interface Member {
     name_gradient_start?: string | null;
     name_gradient_end?: string | null;
     nameplate_url?: string | null;
+    avatar_decoration_url?: string | null;
     is_pro?: boolean;
   };
 }
@@ -81,7 +83,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       const userIds = (data as any[]).map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, created_at, name_gradient_start, name_gradient_end, nameplate_url, is_pro, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
+        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, created_at, name_gradient_start, name_gradient_end, nameplate_url, avatar_decoration_url, is_pro, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
         .in("user_id", userIds);
 
       const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
@@ -237,11 +239,13 @@ const ServerMemberList = ({ serverId }: Props) => {
                         {/* Avatar + Info */}
                         <div className="px-4 pb-3">
                           <div className="relative -mt-8 mb-2">
+                            <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={64}>
                             <Avatar className="h-16 w-16 border-4 border-popover">
                               <AvatarImage src={p?.avatar_url || ""} />
                               <AvatarFallback className="bg-primary/20 text-primary text-lg">{name.charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
-                            <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="md" className="absolute bottom-1 start-12" />
+                            </AvatarDecorationWrapper>
+                            <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="md" className="absolute bottom-1 start-12 z-20" />
                           </div>
 
                           <div className="font-bold text-foreground text-base">{name}</div>
@@ -335,13 +339,13 @@ const ServerMemberList = ({ serverId }: Props) => {
                         className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-sidebar-accent/50 transition-colors w-full text-start"
                         onClick={isMobile ? () => setSelectedMemberId(m.user_id) : undefined}
                       >
-                        <div className="relative">
+                        <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={32}>
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={p?.avatar_url || ""} />
                             <AvatarFallback className="bg-primary/20 text-primary text-xs">{name.charAt(0).toUpperCase()}</AvatarFallback>
                           </Avatar>
-                          <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="sm" className="absolute bottom-0 end-0" />
-                        </div>
+                          <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="sm" className="absolute bottom-0 end-0 z-20" />
+                        </AvatarDecorationWrapper>
                         <StyledDisplayName
                           displayName={name}
                           gradientStart={p?.name_gradient_start}

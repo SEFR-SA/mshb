@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN avatar_decoration_url text DEFAULT NULL;

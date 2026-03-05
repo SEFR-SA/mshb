@@ -17,6 +17,7 @@ import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
 import ThreadContextMenu from "@/components/chat/ThreadContextMenu";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 type Profile = Tables<"profiles">;
 
@@ -355,10 +356,10 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                     <NameplateWrapper nameplateUrl={item.type === "dm" ? (item.otherProfile as any)?.nameplate_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} className="rounded-md">
                     <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
                       className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
-                      <div className="relative shrink-0">
+                      <AvatarDecorationWrapper decorationUrl={item.type === "dm" ? (item.otherProfile as any)?.avatar_decoration_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} size={36} className="shrink-0">
                         <Avatar className="h-9 w-9"><AvatarImage src={item.avatarUrl} /><AvatarFallback className="bg-primary/20 text-primary text-sm">{item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
-                        {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />}
-                      </div>
+                        {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0 z-20" />}
+                      </AvatarDecorationWrapper>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium truncate">{item.name}</p>
@@ -387,10 +388,10 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                 <NameplateWrapper nameplateUrl={item.type === "dm" ? (item.otherProfile as any)?.nameplate_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} className="rounded-md">
                 <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
                   className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
-                  <div className="relative shrink-0">
+                  <AvatarDecorationWrapper decorationUrl={item.type === "dm" ? (item.otherProfile as any)?.avatar_decoration_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} size={36} className="shrink-0">
                     <Avatar className="h-9 w-9"><AvatarImage src={item.avatarUrl} /><AvatarFallback className="bg-primary/20 text-primary text-sm">{item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
-                    {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />}
-                  </div>
+                    {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0 z-20" />}
+                  </AvatarDecorationWrapper>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium truncate">{item.name}</p>

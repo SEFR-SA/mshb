@@ -43,6 +43,7 @@ import { startLoop, stopAllLoops, playSound } from "@/lib/soundManager";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
@@ -425,15 +426,15 @@ const Chat = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
         )}
-        <div className="relative">
+        <AvatarDecorationWrapper decorationUrl={(otherProfile as any)?.avatar_decoration_url} isPro={(otherProfile as any)?.is_pro} size={36}>
           <Avatar className="h-9 w-9">
             <AvatarImage src={otherProfile?.avatar_url || ""} />
             <AvatarFallback className="bg-primary/20 text-primary text-sm">
               {(otherProfile?.display_name || "?").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <StatusBadge status={(otherStatus === "offline" ? "invisible" : otherStatus) as UserStatus} size="sm" className="absolute bottom-0 end-0" />
-        </div>
+          <StatusBadge status={(otherStatus === "offline" ? "invisible" : otherStatus) as UserStatus} size="sm" className="absolute bottom-0 end-0 z-20" />
+        </AvatarDecorationWrapper>
         <div className="min-w-0 flex-1">
           <StyledDisplayName
             displayName={otherProfile?.display_name || otherProfile?.username || "User"}

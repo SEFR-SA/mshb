@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
 import type { Tables } from "@/integrations/supabase/types";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
 import ThreadContextMenu from "@/components/chat/ThreadContextMenu";
 import { useBlockUser } from "@/hooks/useBlockUser";
@@ -333,15 +334,15 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
       >
         <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
           className={`flex items-center gap-2 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/60"}`}>
-          <div className="relative shrink-0">
+          <AvatarDecorationWrapper decorationUrl={item.type === "dm" ? (item.otherProfile as any)?.avatar_decoration_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} size={isMobileExpanded ? 40 : 32} className="shrink-0">
             <Avatar className={isMobileExpanded ? "h-10 w-10" : "h-8 w-8"}>
               <AvatarImage src={item.avatarUrl} />
               <AvatarFallback className="bg-primary/20 text-primary text-xs">
                 {item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0" />}
-          </div>
+            {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0 z-20" />}
+          </AvatarDecorationWrapper>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <p className={`font-semibold truncate ${isMobileExpanded ? "text-base" : "text-sm"}`}>{item.name}</p>

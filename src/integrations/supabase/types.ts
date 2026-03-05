@@ -750,6 +750,7 @@ export type Database = {
         Row: {
           about_me: string | null
           active_server_tag_id: string | null
+          avatar_decoration_url: string | null
           avatar_url: string | null
           banner_url: string | null
           color_theme: string | null
@@ -775,6 +776,7 @@ export type Database = {
         Insert: {
           about_me?: string | null
           active_server_tag_id?: string | null
+          avatar_decoration_url?: string | null
           avatar_url?: string | null
           banner_url?: string | null
           color_theme?: string | null
@@ -800,6 +802,7 @@ export type Database = {
         Update: {
           about_me?: string | null
           active_server_tag_id?: string | null
+          avatar_decoration_url?: string | null
           avatar_url?: string | null
           banner_url?: string | null
           color_theme?: string | null

@@ -11,6 +11,7 @@ import { Mic, MicOff, Headphones, HeadphoneOff, Settings, PhoneOff, Monitor, Mon
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 interface UserPanelProps {
   className?: string;
@@ -73,15 +74,15 @@ const UserPanel = ({ className }: UserPanelProps) => {
       <NameplateWrapper nameplateUrl={profile?.nameplate_url} isPro={profile?.is_pro} className="rounded-md">
       <div className="flex items-center gap-2 p-2">
         <NavLink to="/settings" className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity">
-          <div className="relative shrink-0">
+          <AvatarDecorationWrapper decorationUrl={(profile as any)?.avatar_decoration_url} isPro={profile?.is_pro} size={32} className="shrink-0">
             <Avatar className="h-8 w-8">
               <AvatarImage src={profile?.avatar_url || ""} />
               <AvatarFallback className="bg-primary/20 text-primary text-xs">
                 {(profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0" />
-          </div>
+            <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0 z-20" />
+          </AvatarDecorationWrapper>
           <div className="min-w-0">
             <p className="text-xs font-bold truncate leading-tight">{profile?.display_name || profile?.username || "User"}</p>
             {profile?.username && <p className="text-[10px] text-muted-foreground truncate leading-tight">@{profile.username}</p>}
