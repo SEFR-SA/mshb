@@ -25,6 +25,7 @@ import { toast } from "@/hooks/use-toast";
 import { useServerUnread } from "@/hooks/useServerUnread";
 import { useServerVoiceActivity } from "@/hooks/useServerVoiceActivity";
 import { useUnreadDMs } from "@/hooks/useUnreadDMs";
+import { useCreateChannel } from "@/contexts/CreateChannelContext";
 
 interface Server {
   id: string;
@@ -52,6 +53,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
+  const { requestCreateChannel, requestCreateSection } = useCreateChannel();
   const [servers, setServers] = useState<Server[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -462,11 +464,11 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                       {t("actions.markAsRead")}
                     </ContextMenuItem>
                     <ContextMenuSeparator />
-                    <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+                    <ContextMenuItem onClick={() => { navigate(`/server/${s.id}`); requestCreateChannel(); }}>
                       <Plus className="h-4 w-4 me-2" />
                       {t("servers.createChannel")}
                     </ContextMenuItem>
-                    <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+                    <ContextMenuItem onClick={() => { navigate(`/server/${s.id}`); requestCreateSection(); }}>
                       <FolderPlus className="h-4 w-4 me-2" />
                       {t("servers.createCategory")}
                     </ContextMenuItem>

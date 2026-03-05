@@ -10,6 +10,7 @@ import { VoiceChannelProvider } from "@/contexts/VoiceChannelContext";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import { ReportModalProvider } from "@/contexts/ReportModalContext";
 import { ForwardMessageProvider } from "@/contexts/ForwardMessageContext";
+import { CreateChannelProvider } from "@/contexts/CreateChannelContext";
 import UserProfileModal from "@/components/UserProfileModal";
 import ReportMessageModal from "@/components/chat/ReportMessageModal";
 import ForwardMessageModal from "@/components/chat/ForwardMessageModal";
@@ -168,6 +169,7 @@ const App = () => (
             <UserProfileProvider>
             <ReportModalProvider>
             <ForwardMessageProvider>
+            <CreateChannelProvider>
             <TooltipProvider>
               <DeepLinkHandler />
               <AuthCallback />
@@ -198,6 +200,7 @@ const App = () => (
                 </Routes>
               </HashRouter>
             </TooltipProvider>
+            </CreateChannelProvider>
             </ForwardMessageProvider>
             </ReportModalProvider>
             </UserProfileProvider>

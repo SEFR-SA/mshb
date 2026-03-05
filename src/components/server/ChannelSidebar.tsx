@@ -31,6 +31,7 @@ import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { usePresence } from "@/hooks/usePresence";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
+import { useCreateChannel } from "@/contexts/CreateChannelContext";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { NavLink as RouterNavLink } from "react-router-dom";
 
@@ -98,6 +99,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const { voiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsWatchingStream, nativeResolutionLabel } = useVoiceChannel();
   const { getUserStatus } = usePresence();
   const isMobile = useIsMobile();
+  const { pendingMode, consumeRequest } = useCreateChannel();
   const status = (getUserStatus(profile) || "online") as UserStatus;
   const [server, setServer] = useState<Server | null>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -140,6 +142,21 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   // Soundboard
   const [serverSounds, setServerSounds] = useState<{ id: string; name: string; url: string }[]>([]);
   const [soundboardOpen, setSoundboardOpen] = useState(false);
+
+  // React to external create channel/section requests from context (e.g. ServerRail context menu)
+  useEffect(() => {
+    if (!pendingMode) return;
+    const mode = consumeRequest();
+    if (mode === "section") {
+      setUseCustomCategory(true);
+      setCustomCategory("");
+      setNewCategory("");
+      setCreateOpen(true);
+    } else if (mode === "channel") {
+      setUseCustomCategory(false);
+      setCreateOpen(true);
+    }
+  }, [pendingMode, consumeRequest]);
 
   useEffect(() => {
     if (!voiceChannel?.serverId) { setServerSounds([]); return; }
