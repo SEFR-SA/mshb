@@ -34,6 +34,8 @@ interface Member {
     created_at: string;
     name_gradient_start?: string | null;
     name_gradient_end?: string | null;
+    nameplate_url?: string | null;
+    is_pro?: boolean;
   };
 }
 
