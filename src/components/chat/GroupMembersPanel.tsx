@@ -7,6 +7,7 @@ import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { usePresence } from "@/hooks/usePresence";
 import { Users } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 type Profile = Tables<"profiles">;
 
