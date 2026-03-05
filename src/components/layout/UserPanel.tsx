@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Mic, MicOff, Headphones, HeadphoneOff, Settings, PhoneOff, Monitor, MonitorOff, Video, VideoOff } from "lucide-react";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
+import NameplateWrapper from "@/components/shared/NameplateWrapper";
 
 interface UserPanelProps {
   className?: string;
