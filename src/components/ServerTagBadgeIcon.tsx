@@ -5,6 +5,7 @@ import { CrownBadge } from "@/components/ui/badges/CrownBadge";
 import SwordBadge from "@/components/ui/badges/SwordBadge";
 import TwistedMindsBadge from "@/components/ui/badges/TwistedMindsBadge";
 import FalconsBadge from "@/components/ui/badges/FalconsBadge";
+import PeaksBadge from "@/components/ui/badges/PeaksBadge";
 
 interface Props {
     badgeName?: string | null;
@@ -30,6 +31,7 @@ const CUSTOM_BADGE_COMPONENTS: Record<string, CustomBadgeComponent> = {
     sword: SwordBadge,
     twistedminds: TwistedMindsBadge,
     falcons: FalconsBadge,
+    peaks: PeaksBadge,
 };
 
 const ServerTagBadgeIcon = ({ badgeName, color, className = "h-4 w-4" }: Props) => {
