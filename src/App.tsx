@@ -9,8 +9,10 @@ import { AudioSettingsProvider } from "@/contexts/AudioSettingsContext";
 import { VoiceChannelProvider } from "@/contexts/VoiceChannelContext";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import { ReportModalProvider } from "@/contexts/ReportModalContext";
+import { ForwardMessageProvider } from "@/contexts/ForwardMessageContext";
 import UserProfileModal from "@/components/UserProfileModal";
 import ReportMessageModal from "@/components/chat/ReportMessageModal";
+import ForwardMessageModal from "@/components/chat/ForwardMessageModal";
 import AppLayout from "@/components/layout/AppLayout";
 import Auth from "@/pages/Auth";
 import HomeView from "@/pages/HomeView";
@@ -165,6 +167,7 @@ const App = () => (
           <AuthProvider>
             <UserProfileProvider>
             <ReportModalProvider>
+            <ForwardMessageProvider>
             <TooltipProvider>
               <DeepLinkHandler />
               <AuthCallback />
@@ -175,6 +178,7 @@ const App = () => (
               <HashRouter>
                 <UserProfileModal />
                 <ReportMessageModal />
+                <ForwardMessageModal />
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   
@@ -194,6 +198,7 @@ const App = () => (
                 </Routes>
               </HashRouter>
             </TooltipProvider>
+            </ForwardMessageProvider>
             </ReportModalProvider>
             </UserProfileProvider>
           </AuthProvider>

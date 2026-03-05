@@ -14,10 +14,20 @@ interface Props {
   isMine?: boolean;
   serverId?: string;
   serverEmojis?: Array<{ name: string; url: string }>;
+  forceOpen?: boolean;
+  onForceOpenHandled?: () => void;
 }
 
-const MessageReactions = ({ messageId, reactions, currentUserId, onToggle, isMine, serverId, serverEmojis }: Props) => {
+const MessageReactions = ({ messageId, reactions, currentUserId, onToggle, isMine, serverId, serverEmojis, forceOpen, onForceOpenHandled }: Props) => {
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  // When forceOpen becomes true, open the picker and notify parent
+  React.useEffect(() => {
+    if (forceOpen) {
+      setPickerOpen(true);
+      onForceOpenHandled?.();
+    }
+  }, [forceOpen]);
 
   const renderEmoji = (emoji: string) => {
     const m = emoji.match(/^:([a-zA-Z0-9_]+):$/);

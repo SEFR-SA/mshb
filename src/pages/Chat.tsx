@@ -5,12 +5,13 @@ import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useForwardMessage } from "@/contexts/ForwardMessageContext";
 import { usePresence } from "@/hooks/usePresence";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Upload, Pin, PinOff, UserRound, UserRoundX, Phone, PhoneOff, PhoneMissed } from "lucide-react";
+import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Upload, Pin, PinOff, UserRound, UserRoundX, Phone, PhoneOff, PhoneMissed, Forward } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
@@ -76,6 +77,7 @@ const Chat = () => {
   const [isCallerState, setIsCallerState] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string; content: string } | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+  const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
 
   const callStartRef = useRef<number | null>(null);
 
@@ -407,6 +409,7 @@ const Chat = () => {
   const { reactions, toggleReaction } = useMessageReactions(visibleMessages.map((m) => m.id));
   const otherStatus = getUserStatus(otherProfile);
   const { togglePin: toggleMessagePin } = useTogglePinMessage();
+  const { openForwardModal } = useForwardMessage();
 
   const handleToggleMessagePin = async (msgId: string) => {
     const newVal = await toggleMessagePin(msgId);
@@ -565,11 +568,20 @@ const Chat = () => {
                   isMine={isMine}
                   isDeleted={!!isDeleted}
                   isPinned={!!(msg as any).is_pinned}
+                  fileUrl={msgAny.file_url}
+                  fileName={msgAny.file_name}
+                  fileType={msgAny.file_type}
+                  fileSize={msgAny.file_size}
                   onReply={(id, authorName, content) => setReplyingTo({ id, authorName, content })}
                   onEdit={(id, content) => { setEditingId(id); setEditContent(content); }}
                   onDeleteForMe={deleteForMe}
                   onDeleteForEveryone={isMine ? deleteForEveryone : undefined}
                   onTogglePin={handleToggleMessagePin}
+                  onAddReaction={(id) => setReactionPickerMsgId(id)}
+                  onForward={(id) => {
+                    const m = visibleMessages.find(v => v.id === id);
+                    if (m) openForwardModal({ content: m.content, fileUrl: (m as any).file_url, fileName: (m as any).file_name, fileType: (m as any).file_type, fileSize: (m as any).file_size });
+                  }}
                   onMarkUnread={(id) => {
                     const msg = visibleMessages.find(m => m.id === id);
                     if (msg && user && threadId) {
@@ -609,6 +621,13 @@ const Chat = () => {
                           ? "bg-primary text-primary-foreground"
                           : "bg-card border border-border/50"
                         }`}>
+                        {/* Forwarded indicator */}
+                        {!isDeleted && (msg as any).is_forwarded && (
+                          <div className={`flex items-center gap-1 text-[10px] mb-1 ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                            <Forward className="h-3 w-3" />
+                            <span className="italic">{t("actions.forwarded")}</span>
+                          </div>
+                        )}
                         {editingId === msg.id ? (
                           <div className="flex items-center gap-2">
                             <Input
@@ -687,6 +706,8 @@ const Chat = () => {
                           currentUserId={user?.id || ""}
                           onToggle={(mid, emoji) => user && toggleReaction(mid, emoji, user.id)}
                           isMine={isMine}
+                          forceOpen={reactionPickerMsgId === msg.id}
+                          onForceOpenHandled={() => setReactionPickerMsgId(null)}
                         />
                       )}
                     </div>

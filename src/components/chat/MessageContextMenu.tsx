@@ -19,12 +19,18 @@ interface MessageContextMenuProps {
   isMine: boolean;
   isDeleted: boolean;
   isPinned?: boolean;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileType?: string | null;
+  fileSize?: number | null;
   onReply?: (messageId: string, authorName: string, content: string) => void;
   onEdit?: (messageId: string, content: string) => void;
   onDeleteForMe?: (messageId: string) => void;
   onDeleteForEveryone?: (messageId: string) => void;
   onMarkUnread?: (messageId: string) => void;
   onTogglePin?: (messageId: string) => void;
+  onAddReaction?: (messageId: string) => void;
+  onForward?: (messageId: string) => void;
 }
 
 const MessageContextMenu = ({
@@ -35,12 +41,18 @@ const MessageContextMenu = ({
   isMine,
   isDeleted,
   isPinned,
+  fileUrl,
+  fileName,
+  fileType,
+  fileSize,
   onReply,
   onEdit,
   onDeleteForMe,
   onDeleteForEveryone,
   onMarkUnread,
   onTogglePin,
+  onAddReaction,
+  onForward,
 }: MessageContextMenuProps) => {
   const { t } = useTranslation();
   const { openReportModal } = useReportModal();
@@ -74,11 +86,11 @@ const MessageContextMenu = ({
         )}
         {!isDeleted && (
           <>
-            <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+            <ContextMenuItem onClick={() => onAddReaction?.(messageId)}>
               <Smile className="h-4 w-4 me-2" />
               {t("actions.addReaction")}
             </ContextMenuItem>
-            <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+            <ContextMenuItem onClick={() => onForward?.(messageId)}>
               <Forward className="h-4 w-4 me-2" />
               {t("actions.forward")}
             </ContextMenuItem>

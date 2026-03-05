@@ -131,6 +131,7 @@ export default {
     copied: "Copied to clipboard",
     addReaction: "Add Reaction",
     forward: "Forward",
+    forwarded: "Forwarded",
     pinMessage: "Pin Message",
     unpinMessage: "Unpin Message",
     messagePinned: "Message pinned",
@@ -889,5 +890,13 @@ export default {
     subStolenAccounts: "Distributing stolen accounts or credit cards",
     subIllegalGoods: "Selling drugs or other illegal goods",
     subHacksPhishing: "Hacks, cheats, phishing or malicious links",
+  },
+  forward: {
+    title: "Forward Message",
+    search: "Search conversations...",
+    success: "Message forwarded!",
+    dms: "Direct Messages",
+    groups: "Groups",
+    servers: "Server Channels",
   },
 };
