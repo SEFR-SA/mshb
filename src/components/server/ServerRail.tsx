@@ -366,7 +366,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                     >
                       <Avatar className="h-12 w-12 rounded-[inherit]">
                         <AvatarImage src={dm.avatarUrl || ""} />
-                        <AvatarFallback className="bg-destructive/20 text-destructive-foreground text-sm font-bold rounded-[inherit]">
+                        <AvatarFallback className="bg-primary/20 text-primary text-sm font-bold rounded-[inherit]">
                           {dm.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
