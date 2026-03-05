@@ -16,6 +16,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
 import ThreadContextMenu from "@/components/chat/ThreadContextMenu";
+import NameplateWrapper from "@/components/shared/NameplateWrapper";
 
 type Profile = Tables<"profiles">;
 
