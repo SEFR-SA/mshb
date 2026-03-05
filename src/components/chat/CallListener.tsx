@@ -174,6 +174,15 @@ const CallListener = () => {
                 `Missed call from ${callerName}`
               );
             }
+            // Insert missed_call notification for the callee
+            if (user) {
+              await supabase.from("notifications" as any).insert({
+                user_id: user.id,
+                actor_id: session.caller_id,
+                type: "missed_call",
+                entity_id: session.thread_id || null,
+              } as any);
+            }
             await supabase
               .from("call_sessions")
               .update({ status: "missed", ended_at: new Date().toISOString() } as any)

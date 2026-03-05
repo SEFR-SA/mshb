@@ -232,6 +232,8 @@ export default {
     invitedYou: "دعاك {{name}} إلى سيرفر",
     missedCall: "فاتتك مكالمة من {{name}}",
     friendRequest: "أرسل لك {{name}} طلب صداقة",
+    serverKick: "تم طردك من سيرفر",
+    streamStart: "بدأ {{name}} بثًا مباشرًا",
     genericNotification: "أرسل لك {{name}} إشعارًا",
   },
   friends: {

@@ -169,6 +169,15 @@ const ServerMemberContextMenu = ({
       target_id: targetUserId,
       changes: { target_username: targetUsername || targetUserId },
     } as any);
+    // Insert server_kick notification for the kicked user
+    if (user) {
+      await supabase.from("notifications" as any).insert({
+        user_id: targetUserId,
+        actor_id: user.id,
+        type: "server_kick",
+        entity_id: serverId,
+      } as any);
+    }
     toast({ title: t("servers.kicked") });
   };
 
