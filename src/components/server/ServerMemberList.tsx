@@ -330,6 +330,7 @@ const ServerMemberList = ({ serverId }: Props) => {
 
                     const highestRole = userHighestRoleMap.get(m.user_id);
                     const memberButton = (
+                      <NameplateWrapper nameplateUrl={p?.nameplate_url} isPro={p?.is_pro} className="rounded-md">
                       <button
                         className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-sidebar-accent/50 transition-colors w-full text-start"
                         onClick={isMobile ? () => setSelectedMemberId(m.user_id) : undefined}
