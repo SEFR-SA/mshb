@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Copy, Reply, Pencil, EyeOff, Trash2, BookmarkMinus, Smile, Forward, Pin, Flag } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useReportModal } from "@/contexts/ReportModalContext";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -38,6 +39,7 @@ const MessageContextMenu = ({
   onMarkUnread,
 }: MessageContextMenuProps) => {
   const { t } = useTranslation();
+  const { openReportModal } = useReportModal();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
@@ -102,7 +104,7 @@ const MessageContextMenu = ({
           </ContextMenuItem>
         )}
         {!isMine && !isDeleted && (
-          <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })} className="text-destructive focus:text-destructive">
+          <ContextMenuItem onClick={() => openReportModal(messageId, authorName || "User")} className="text-destructive focus:text-destructive">
             <Flag className="h-4 w-4 me-2" />
             {t("actions.reportMessage")}
           </ContextMenuItem>
