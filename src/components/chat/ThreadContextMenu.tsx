@@ -19,6 +19,8 @@ interface ThreadContextMenuProps {
   isDM?: boolean;
   onCloseDM?: () => void;
   onBlock?: () => void;
+  onViewProfile?: () => void;
+  onCall?: () => void;
 }
 
 const ThreadContextMenu = ({
@@ -30,6 +32,8 @@ const ThreadContextMenu = ({
   isDM,
   onCloseDM,
   onBlock,
+  onViewProfile,
+  onCall,
 }: ThreadContextMenuProps) => {
   const { t } = useTranslation();
 
@@ -38,13 +42,13 @@ const ThreadContextMenu = ({
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-48">
         {isDM && (
-          <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+          <ContextMenuItem onClick={() => onViewProfile ? onViewProfile() : toast({ title: "Feature coming soon" })}>
             <User className="h-4 w-4 me-2" />
             {t("profile.title")}
           </ContextMenuItem>
         )}
         {isDM && (
-          <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+          <ContextMenuItem onClick={() => onCall ? onCall() : toast({ title: "Feature coming soon" })}>
             <Phone className="h-4 w-4 me-2" />
             {t("actions.call")}
           </ContextMenuItem>

@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBlockUser } from "@/hooks/useBlockUser";
+import { useDirectCall } from "@/hooks/useDirectCall";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import { MessageSquare, UserPlus, UserMinus, Phone, ClipboardCopy, User, Ban } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -25,10 +27,11 @@ const UserContextMenu = ({ children, targetUserId, targetUsername }: UserContext
   const { user } = useAuth();
   const navigate = useNavigate();
   const { blockUser, unblockUser, isBlocked } = useBlockUser();
+  const { directCall } = useDirectCall();
+  const { openProfile } = useUserProfile();
   const [friendshipId, setFriendshipId] = useState<string | null>(null);
   const [friendStatus, setFriendStatus] = useState<string | null>(null);
 
-  // Don't show for self
   const isSelf = user?.id === targetUserId;
 
   useEffect(() => {
@@ -70,31 +73,6 @@ const UserContextMenu = ({ children, targetUserId, targetUsername }: UserContext
     }
   };
 
-  const handleCall = async () => {
-    if (!user) return;
-    const [u1, u2] = [user.id, targetUserId].sort();
-    const { data: existing } = await supabase
-      .from("dm_threads")
-      .select("id")
-      .eq("user1_id", u1)
-      .eq("user2_id", u2)
-      .maybeSingle();
-    let threadId: string;
-    if (existing) {
-      threadId = existing.id;
-    } else {
-      const { data: newThread } = await supabase
-        .from("dm_threads")
-        .insert({ user1_id: u1, user2_id: u2 })
-        .select("id")
-        .single();
-      if (!newThread) return;
-      threadId = newThread.id;
-    }
-    // Navigate to chat - call will be initiated from there
-    navigate(`/chat/${threadId}`);
-  };
-
   const handleAddFriend = async () => {
     if (!user) return;
     const { error } = await supabase
@@ -133,11 +111,11 @@ const UserContextMenu = ({ children, targetUserId, targetUsername }: UserContext
           <MessageSquare className="h-4 w-4 me-2" />
           {t("actions.message")}
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleCall}>
+        <ContextMenuItem onClick={() => directCall(targetUserId)}>
           <Phone className="h-4 w-4 me-2" />
           {t("actions.call")}
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+        <ContextMenuItem onClick={() => openProfile(targetUserId)}>
           <User className="h-4 w-4 me-2" />
           {t("profile.title")}
         </ContextMenuItem>

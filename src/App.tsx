@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AudioSettingsProvider } from "@/contexts/AudioSettingsContext";
 import { VoiceChannelProvider } from "@/contexts/VoiceChannelContext";
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
+import UserProfileModal from "@/components/UserProfileModal";
 import AppLayout from "@/components/layout/AppLayout";
 import Auth from "@/pages/Auth";
 import HomeView from "@/pages/HomeView";
@@ -159,10 +161,12 @@ const App = () => (
       <AudioSettingsProvider>
         <VoiceChannelProvider>
           <AuthProvider>
+            <UserProfileProvider>
             <TooltipProvider>
               <DeepLinkHandler />
               <AuthCallback />
               <UpdateBanner />
+              <UserProfileModal />
 
               <Toaster />
               <Sonner />
@@ -186,6 +190,7 @@ const App = () => (
                 </Routes>
               </HashRouter>
             </TooltipProvider>
+            </UserProfileProvider>
           </AuthProvider>
         </VoiceChannelProvider>
       </AudioSettingsProvider>
