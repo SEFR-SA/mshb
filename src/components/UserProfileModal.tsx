@@ -14,6 +14,7 @@ import { MessageSquare, Phone } from "lucide-react";
 import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 import StyledDisplayName from "@/components/StyledDisplayName";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 type Profile = Tables<"profiles">;
 
