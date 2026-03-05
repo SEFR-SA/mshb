@@ -232,8 +232,12 @@ export default {
     invitedYou: "دعاك {{name}} إلى سيرفر",
     missedCall: "فاتتك مكالمة من {{name}}",
     friendRequest: "أرسل لك {{name}} طلب صداقة",
+    friendAccepted: "قبل {{name}} طلب صداقتك",
     serverKick: "تم طردك من سيرفر",
     streamStart: "بدأ {{name}} بثًا مباشرًا",
+    serverJoin: "انضم {{name}} إلى سيرفرك",
+    groupInvite: "أضافك {{name}} إلى مجموعة",
+    dmMessage: "أرسل لك {{name}} رسالة",
     genericNotification: "أرسل لك {{name}} إشعارًا",
   },
   friends: {

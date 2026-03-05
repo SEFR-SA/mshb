@@ -84,6 +84,11 @@ const CreateGroupDialog = ({ open, onOpenChange }: CreateGroupDialogProps) => {
     const otherMembers = Array.from(selectedIds).map((uid) => ({ group_id: group.id, user_id: uid, role: "member" }));
     if (otherMembers.length > 0) {
       await supabase.from("group_members").insert(otherMembers as any);
+      // Notify each added member about the group invite
+      const notifs = Array.from(selectedIds).map((uid) => ({
+        user_id: uid, actor_id: user.id, type: "group_invite", entity_id: group.id,
+      }));
+      await supabase.from("notifications" as any).insert(notifs as any);
     }
 
     toast({ title: t("groups.created") });

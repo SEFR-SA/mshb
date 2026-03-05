@@ -232,8 +232,12 @@ export default {
     invitedYou: "{{name}} invited you to a server",
     missedCall: "You missed a call from {{name}}",
     friendRequest: "{{name}} sent you a friend request",
+    friendAccepted: "{{name}} accepted your friend request",
     serverKick: "You were kicked from a server",
     streamStart: "{{name}} started a stream",
+    serverJoin: "{{name}} joined your server",
+    groupInvite: "{{name}} added you to a group",
+    dmMessage: "{{name}} sent you a message",
     genericNotification: "{{name}} sent you a notification",
   },
   friends: {

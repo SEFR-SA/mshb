@@ -142,6 +142,12 @@ const GroupSettingsDialog = ({ open, onOpenChange, groupId, isAdmin, onLeave }: 
 
   const addMember = async (userId: string) => {
     await supabase.from("group_members").insert({ group_id: groupId, user_id: userId } as any);
+    // Notify the added user about being invited to the group
+    if (user) {
+      await supabase.from("notifications" as any).insert({
+        user_id: userId, actor_id: user.id, type: "group_invite", entity_id: groupId,
+      } as any);
+    }
     loadData();
     setFriends((prev) => prev.filter((f) => f.user_id !== userId));
   };

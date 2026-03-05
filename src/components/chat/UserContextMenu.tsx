@@ -85,6 +85,9 @@ const UserContextMenu = ({ children, targetUserId, targetUsername }: UserContext
     } else {
       toast({ title: t("friends.requestSent") });
       setFriendStatus("pending");
+      await supabase.from("notifications" as any).insert({
+        user_id: targetUserId, actor_id: user.id, type: "friend_request",
+      } as any);
     }
   };
 
