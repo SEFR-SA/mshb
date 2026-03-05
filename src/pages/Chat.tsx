@@ -43,6 +43,7 @@ import { startLoop, stopAllLoops, playSound } from "@/lib/soundManager";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
