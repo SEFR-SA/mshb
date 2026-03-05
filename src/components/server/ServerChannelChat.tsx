@@ -11,7 +11,7 @@ import { useForwardMessage } from "@/contexts/ForwardMessageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload, Lock, Megaphone, Pin, Forward } from "lucide-react";
+import { Send, Hash, Upload, Lock, Megaphone, Pin, Forward, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import MarkdownToolbar from "@/components/chat/MarkdownToolbar";
@@ -37,8 +37,8 @@ import { detectInviteInMessage } from "@/lib/inviteUtils";
 import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
+import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 
-const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
 // Stable empty array reference — avoids creating new [] on every render for reactions-free messages
 const EMPTY_REACTIONS: any[] = [];
@@ -80,9 +80,6 @@ const renderMessageContent = (
 };
 
 // ─── MessageItem ────────────────────────────────────────────────────────────
-// Memoized so that typing in the input (parent state) or other unrelated parent
-// state changes don't cause the entire message list to re-render.
-
 interface MessageItemProps {
   msg: any;
   prevMsg: any | null;
@@ -291,9 +288,6 @@ const MessageItem = React.memo(({
     </MessageContextMenu>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparator: only re-render when this message's own data changed.
-  // This prevents the whole list from re-rendering when the user types, drags
-  // a file, or triggers any other parent-level state change.
   return (
     prevProps.msg === nextProps.msg &&
     prevProps.prevMsg === nextProps.prevMsg &&
@@ -314,12 +308,9 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const { user } = useAuth();
   const { serverId: serverIdParam } = useParams<{ serverId: string }>();
   const serverId = serverIdProp || serverIdParam;
-  const [messages, setMessages] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<Map<string, any>>(new Map());
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [messagesLoading, setMessagesLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -335,14 +326,46 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const isLocked = isPrivate && hasAccess === false;
   const [userRole, setUserRole] = useState<string>("member");
   const [userRoleColorMap, setUserRoleColorMap] = useState<Map<string, { color: string; iconUrl: string | null }>>(new Map());
+
+  // Infinite scrolling messages
+  const {
+    messages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: messagesLoading,
+    scrollRef,
+    appendRealtimeMessage,
+    updateRealtimeMessage,
+  } = useInfiniteMessages({ channelId, enabled: !isLocked });
+
   const { reactions, toggleReaction } = useMessageReactions(messages.map((m: any) => m.id));
   const { togglePin: toggleMessagePin } = useTogglePinMessage();
   const { openForwardModal } = useForwardMessage();
 
+  // Intersection observer for loading older messages
+  const topSentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const sentinel = topSentinelRef.current;
+    const container = scrollRef.current;
+    if (!sentinel || !container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { root: container, threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   const handleToggleMessagePin = async (msgId: string) => {
     const newVal = await toggleMessagePin(msgId);
     if (newVal !== null) {
-      setMessages((prev: any[]) => prev.map((m) => m.id === msgId ? { ...m, is_pinned: newVal } : m));
+      updateRealtimeMessage({ ...messages.find((m: any) => m.id === msgId), is_pinned: newVal });
     }
   };
 
@@ -432,27 +455,12 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     }
   }, [profiles]);
 
-  const loadMessages = useCallback(async (before?: string) => {
-    if (isLocked) return;
-    let query = (supabase.from("messages") as any)
-      .select("*")
-      .eq("channel_id", channelId)
-      .order("created_at", { ascending: false })
-      .limit(PAGE_SIZE);
-    if (before) query = query.lt("created_at", before);
-    const { data } = await query;
-    if (!data) return;
-    if (data.length < PAGE_SIZE) setHasMore(false);
-    const reversed = data.reverse();
-    loadProfiles(reversed.map((m: any) => m.author_id));
-    if (before) {
-      setMessages((prev) => [...reversed, ...prev]);
-    } else {
-      setMessages(reversed);
-      setMessagesLoading(false);
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  // Load profiles for current messages
+  useEffect(() => {
+    if (messages.length > 0) {
+      loadProfiles(messages.map((m: any) => m.author_id));
     }
-  }, [channelId, loadProfiles, isLocked]);
+  }, [messages.length]);
 
   // Mark channel as read
   useEffect(() => {
@@ -466,30 +474,19 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       .then();
   }, [channelId, user, isLocked]);
 
-  useEffect(() => {
-    if (isLocked) return;
-    setMessages([]);
-    setHasMore(true);
-    setMessagesLoading(true);
-    loadMessages();
-  }, [channelId, isLocked]);
-
+  // Realtime messages
   useEffect(() => {
     if (isLocked) return;
     const channel = supabase
       .channel(`channel-chat-${channelId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `channel_id=eq.${channelId}` }, (payload) => {
         const msg = payload.new as any;
-        setMessages((prev) => {
-          if (prev.find((m) => m.id === msg.id)) return prev;
-          return [...prev, msg];
-        });
+        appendRealtimeMessage(msg);
         loadProfiles([msg.author_id]);
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
       })
       .subscribe();
     return () => { channel.unsubscribe(); };
-  }, [channelId, loadProfiles, isLocked]);
+  }, [channelId, loadProfiles, isLocked, appendRealtimeMessage]);
 
   // ── Stable action callbacks for MessageItem (prevent memo from busting) ──
 
@@ -645,16 +642,16 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
         {messagesLoading ? (
           <MessageSkeleton count={6} />
         ) : (
           <div className="animate-fade-in">
-            {hasMore && messages.length > 0 && (
-              <div className="text-center mb-2">
-                <Button variant="ghost" size="sm" onClick={() => loadMessages(messages[0]?.created_at)} className="text-xs text-muted-foreground">
-                  {t("chat.loadMore")}
-                </Button>
+            {/* Top sentinel for infinite scroll */}
+            <div ref={topSentinelRef} className="h-1" />
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-2">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             )}
             {messages.map((msg, idx) => {

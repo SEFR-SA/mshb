@@ -10,7 +10,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Settings2, Users, Upload, Pin, PinOff, UserRound, UserRoundX, Forward } from "lucide-react";
+import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Settings2, Users, Upload, Pin, PinOff, UserRound, UserRoundX, Forward, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
@@ -38,11 +38,11 @@ import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
+import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
-const PAGE_SIZE = 30;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
 
 const GroupChat = () => {
@@ -52,7 +52,6 @@ const GroupChat = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const [messages, setMessages] = useState<Message[]>([]);
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [groupName, setGroupName] = useState("");
   const [groupAvatarUrl, setGroupAvatarUrl] = useState("");
@@ -64,7 +63,6 @@ const GroupChat = () => {
   const [sending, setSending] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
-  const [hasMore, setHasMore] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -72,10 +70,40 @@ const GroupChat = () => {
   const [dragOver, setDragOver] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
-  const [messagesLoading, setMessagesLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string; content: string } | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
+
+  // Infinite scrolling messages
+  const {
+    messages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: messagesLoading,
+    scrollRef,
+    appendRealtimeMessage,
+    updateRealtimeMessage,
+  } = useInfiniteMessages({ groupThreadId: groupId });
+
+  // Intersection observer for loading older messages
+  const topSentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const sentinel = topSentinelRef.current;
+    const container = scrollRef.current;
+    if (!sentinel || !container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { root: container, threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -144,30 +172,6 @@ const GroupChat = () => {
     })();
   }, [user]);
 
-  // Load messages
-  const loadMessages = useCallback(async (before?: string) => {
-    if (!groupId) return;
-    let query = supabase
-      .from("messages")
-      .select("*")
-      .eq("group_thread_id", groupId)
-      .order("created_at", { ascending: false })
-      .limit(PAGE_SIZE);
-    if (before) query = query.lt("created_at", before);
-    const { data } = await query;
-    if (!data) return;
-    if (data.length < PAGE_SIZE) setHasMore(false);
-    if (before) {
-      setMessages((prev) => [...prev, ...data.reverse()].sort((a, b) => a.created_at.localeCompare(b.created_at)));
-    } else {
-      setMessages(data.reverse());
-      setMessagesLoading(false);
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-    }
-  }, [groupId]);
-
-  useEffect(() => { setMessagesLoading(true); setHasMore(true); loadMessages(); }, [loadMessages]);
-
   // Mark as read
   useEffect(() => {
     if (!groupId || !user) return;
@@ -184,22 +188,20 @@ const GroupChat = () => {
       .channel(`group-chat-${groupId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `group_thread_id=eq.${groupId}` }, (payload) => {
         const msg = payload.new as Message;
-        setMessages((prev) => prev.find((m) => m.id === msg.id) ? prev : [...prev, msg]);
+        appendRealtimeMessage(msg);
         if (user && msg.author_id !== user.id) {
           supabase.from("thread_read_status").upsert(
             { user_id: user.id, group_thread_id: groupId, last_read_at: new Date().toISOString() } as any,
             { onConflict: "user_id,thread_id" }
           ).then();
         }
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `group_thread_id=eq.${groupId}` }, (payload) => {
-        const updated = payload.new as Message;
-        setMessages((prev) => prev.map((m) => m.id === updated.id ? updated : m));
+        updateRealtimeMessage(payload.new as Message);
       })
       .subscribe();
     return () => { channel.unsubscribe(); };
-  }, [groupId]);
+  }, [groupId, appendRealtimeMessage, updateRealtimeMessage]);
 
   // Typing indicator
   useEffect(() => {
@@ -247,7 +249,6 @@ const GroupChat = () => {
       const replyId = replyingTo?.id || null;
       setReplyingTo(null);
 
-      // Detect invite URL (only for text-only messages)
       if (!file && content) {
         const invite = await detectInviteInMessage(content);
         if (invite.isInvite) {
@@ -319,7 +320,7 @@ const GroupChat = () => {
   const handleToggleMessagePin = async (msgId: string) => {
     const newVal = await toggleMessagePin(msgId);
     if (newVal !== null) {
-      setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, is_pinned: newVal } : m));
+      updateRealtimeMessage({ ...messages.find(m => m.id === msgId), is_pinned: newVal });
     }
   };
 
@@ -373,14 +374,14 @@ const GroupChat = () => {
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
         {messagesLoading ? <MessageSkeleton count={6} /> : (
           <div className="animate-fade-in">
-            {hasMore && (
-              <div className="text-center mb-2">
-                <Button variant="ghost" size="sm" onClick={() => messages.length > 0 && loadMessages(messages[0].created_at)} className="text-xs text-muted-foreground">
-                  {t("chat.loadMore")}
-                </Button>
+            {/* Top sentinel for infinite scroll */}
+            <div ref={topSentinelRef} className="h-1" />
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-2">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             )}
             {visibleMessages.map((msg, idx) => {
