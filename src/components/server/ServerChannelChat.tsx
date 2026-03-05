@@ -35,6 +35,7 @@ import ServerInviteCard from "@/components/chat/ServerInviteCard";
 import { detectInviteInMessage } from "@/lib/inviteUtils";
 import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
+import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
@@ -617,6 +618,9 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
         {isPrivate ? <Lock className="h-5 w-5 text-muted-foreground" /> : isAnnouncement ? <Megaphone className="h-5 w-5 text-muted-foreground" /> : <Hash className="h-5 w-5 text-muted-foreground" />}
         <h2 className="font-semibold">{channelName}</h2>
         {isAnnouncement && <span className="ms-1 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("channels.announcementBadge")}</span>}
+        <div className="ms-auto">
+          <PinnedMessagesDrawer channelId={channelId} />
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto p-4">

@@ -82,6 +82,8 @@ export default {
     pinChat: "تثبيت المحادثة",
     unpinChat: "إلغاء التثبيت",
     pinned: "مثبّت",
+    pinnedMessages: "الرسائل المثبتة",
+    noPinnedMessages: "لا توجد رسائل مثبتة بعد",
     showProfile: "إظهار الملف الشخصي",
     hideProfile: "إخفاء الملف الشخصي",
     startCall: "بدء مكالمة صوتية",

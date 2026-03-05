@@ -36,6 +36,7 @@ import { detectInviteInMessage } from "@/lib/inviteUtils";
 import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
+import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -355,6 +356,7 @@ const GroupChat = () => {
           </p>
         </div>
         <div className="flex items-center gap-1">
+          <PinnedMessagesDrawer groupThreadId={groupId} />
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={togglePin} title={isPinned ? t("chat.unpinChat") : t("chat.pinChat")}>
             {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
           </Button>

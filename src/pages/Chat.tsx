@@ -40,6 +40,7 @@ import { detectInviteInMessage } from "@/lib/inviteUtils";
 import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import { startLoop, stopAllLoops, playSound } from "@/lib/soundManager";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
+import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
@@ -467,6 +468,7 @@ const Chat = () => {
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={initiateCall} disabled={!!callSessionId} title={t("chat.startCall")}>
             <Phone className="h-4 w-4" />
           </Button>
+          <PinnedMessagesDrawer threadId={threadId} />
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={togglePin} title={isPinned ? t("chat.unpinChat") : t("chat.pinChat")}>
             {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
           </Button>
