@@ -591,6 +591,7 @@ export type Database = {
           file_url: string | null
           group_thread_id: string | null
           id: string
+          is_forwarded: boolean
           is_pinned: boolean
           metadata: Json | null
           reply_to_id: string | null
@@ -610,6 +611,7 @@ export type Database = {
           file_url?: string | null
           group_thread_id?: string | null
           id?: string
+          is_forwarded?: boolean
           is_pinned?: boolean
           metadata?: Json | null
           reply_to_id?: string | null
@@ -629,6 +631,7 @@ export type Database = {
           file_url?: string | null
           group_thread_id?: string | null
           id?: string
+          is_forwarded?: boolean
           is_pinned?: boolean
           metadata?: Json | null
           reply_to_id?: string | null

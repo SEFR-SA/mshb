@@ -131,6 +131,7 @@ export default {
     copied: "تم النسخ",
     addReaction: "إضافة تفاعل",
     forward: "إعادة توجيه",
+    forwarded: "مُعاد توجيهها",
     pinMessage: "تثبيت الرسالة",
     unpinMessage: "إلغاء تثبيت الرسالة",
     messagePinned: "تم تثبيت الرسالة",
@@ -889,5 +890,13 @@ export default {
     subStolenAccounts: "توزيع حسابات أو بطاقات ائتمان مسروقة",
     subIllegalGoods: "بيع مخدرات أو سلع غير قانونية أخرى",
     subHacksPhishing: "اختراقات أو غش أو تصيّد أو روابط ضارة",
+  },
+  forward: {
+    title: "إعادة توجيه الرسالة",
+    search: "ابحث في المحادثات...",
+    success: "تم إعادة توجيه الرسالة!",
+    dms: "الرسائل المباشرة",
+    groups: "المجموعات",
+    servers: "قنوات السيرفر",
   },
 };

@@ -7,10 +7,11 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useForwardMessage } from "@/contexts/ForwardMessageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload, Lock, Megaphone, Pin } from "lucide-react";
+import { Send, Hash, Upload, Lock, Megaphone, Pin, Forward } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import MarkdownToolbar from "@/components/chat/MarkdownToolbar";
@@ -104,6 +105,10 @@ interface MessageItemProps {
   onTogglePin: (id: string) => void;
   onHighlight: React.Dispatch<React.SetStateAction<string | null>>;
   toggleReaction: (mid: string, emoji: string, uid: string) => void;
+  onAddReaction: (id: string) => void;
+  onForward: (id: string) => void;
+  reactionPickerMsgId: string | null;
+  onReactionPickerHandled: () => void;
 }
 
 const MessageItem = React.memo(({
@@ -111,7 +116,7 @@ const MessageItem = React.memo(({
   currentUserId, serverEmojis, serverId, channelId, isAnnouncement,
   isFirstMessage, isHighlighted, reactions, user,
   onReply, onDeleteForMe, onDeleteForEveryone, onMarkUnread, onTogglePin, onHighlight,
-  toggleReaction,
+  toggleReaction, onAddReaction, onForward, reactionPickerMsgId, onReactionPickerHandled,
 }: MessageItemProps) => {
   const { t } = useTranslation();
   const p = profiles.get(msg.author_id);
@@ -157,11 +162,17 @@ const MessageItem = React.memo(({
       isMine={isMine}
       isDeleted={false}
       isPinned={!!msg.is_pinned}
+      fileUrl={msg.file_url}
+      fileName={msg.file_name}
+      fileType={msg.file_type}
+      fileSize={msg.file_size}
       onReply={(id, authorName, content) => onReply(id, authorName, content)}
       onDeleteForMe={(id) => onDeleteForMe(id)}
       onDeleteForEveryone={onDeleteForEveryone}
       onTogglePin={onTogglePin}
       onMarkUnread={(id) => onMarkUnread(id, msg.created_at)}
+      onAddReaction={onAddReaction}
+      onForward={onForward}
     >
       <div
         id={`msg-${msg.id}`}
@@ -257,6 +268,13 @@ const MessageItem = React.memo(({
                 </p>
               )
             )}
+            {/* Forwarded indicator */}
+            {(msg as any).is_forwarded && (
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-0.5">
+                <Forward className="h-3 w-3" />
+                <span className="italic">{t("actions.forwarded")}</span>
+              </div>
+            )}
             <MessageReactions
               messageId={msg.id}
               reactions={reactions}
@@ -264,6 +282,8 @@ const MessageItem = React.memo(({
               onToggle={(mid, emoji) => user && toggleReaction(mid, emoji, user.id)}
               serverId={serverId}
               serverEmojis={serverEmojis}
+              forceOpen={reactionPickerMsgId === msg.id}
+              onForceOpenHandled={onReactionPickerHandled}
             />
           </div>
         </div>
@@ -310,12 +330,14 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const [mentionStart, setMentionStart] = useState<number | null>(null);
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string; content: string } | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+  const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
 
   const isLocked = isPrivate && hasAccess === false;
   const [userRole, setUserRole] = useState<string>("member");
   const [userRoleColorMap, setUserRoleColorMap] = useState<Map<string, { color: string; iconUrl: string | null }>>(new Map());
   const { reactions, toggleReaction } = useMessageReactions(messages.map((m: any) => m.id));
   const { togglePin: toggleMessagePin } = useTogglePinMessage();
+  const { openForwardModal } = useForwardMessage();
 
   const handleToggleMessagePin = async (msgId: string) => {
     const newVal = await toggleMessagePin(msgId);
@@ -665,6 +687,13 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                   onTogglePin={handleToggleMessagePin}
                   onHighlight={setHighlightedMsgId}
                   toggleReaction={toggleReaction}
+                  onAddReaction={(id) => setReactionPickerMsgId(id)}
+                  onForward={(id) => {
+                    const m = messages.find(v => v.id === id);
+                    if (m) openForwardModal({ content: m.content, fileUrl: m.file_url, fileName: m.file_name, fileType: m.file_type, fileSize: m.file_size });
+                  }}
+                  reactionPickerMsgId={reactionPickerMsgId}
+                  onReactionPickerHandled={() => setReactionPickerMsgId(null)}
                 />
               );
             })}
