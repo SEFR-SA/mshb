@@ -16,6 +16,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import UserContextMenu from "@/components/chat/UserContextMenu";
 import { revertToPlain } from "@/lib/unicodeFonts";
 import { useBlockUser } from "@/hooks/useBlockUser";
+import NameplateWrapper from "@/components/shared/NameplateWrapper";
 
 type Profile = Tables<"profiles">;
 
