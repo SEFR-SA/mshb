@@ -359,6 +359,7 @@ const ServerMemberList = ({ serverId }: Props) => {
                           <img src={highestRole.icon_url} className="h-4 w-4 rounded shrink-0" alt={highestRole.name} />
                         )}
                       </button>
+                      </NameplateWrapper>
                     );
 
                     if (isMobile) {
