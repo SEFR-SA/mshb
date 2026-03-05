@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Volume2 } from "lucide-react";
+import NameplateWrapper from "@/components/shared/NameplateWrapper";
 
 interface ActiveFriend {
   userId: string;
