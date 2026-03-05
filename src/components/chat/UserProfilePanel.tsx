@@ -6,6 +6,7 @@ import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import type { Tables } from "@/integrations/supabase/types";
 import { format, differenceInYears } from "date-fns";
 import StyledDisplayName from "@/components/StyledDisplayName";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 type Profile = Tables<"profiles">;
 
