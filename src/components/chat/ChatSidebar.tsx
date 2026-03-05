@@ -352,6 +352,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                       onMarkAsRead={() => markAsRead(item.id, item.type)}
                       isDM={item.type === "dm"}
                     >
+                    <NameplateWrapper nameplateUrl={item.type === "dm" ? (item.otherProfile as any)?.nameplate_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} className="rounded-md">
                     <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
                       className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
                       <div className="relative shrink-0">
