@@ -5,7 +5,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2, CheckCheck, ShieldCheck, ScrollText, User, FolderPlus, Tag, TrendingUp, Smile, Sticker } from "lucide-react";
+import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2, CheckCheck, ShieldCheck, ScrollText, User, FolderPlus, Tag, TrendingUp, Smile, Sticker, Bell } from "lucide-react";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from "@/components/ui/context-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -26,6 +26,8 @@ import { useServerUnread } from "@/hooks/useServerUnread";
 import { useServerVoiceActivity } from "@/hooks/useServerVoiceActivity";
 import { useUnreadDMs } from "@/hooks/useUnreadDMs";
 import { useCreateChannel } from "@/contexts/CreateChannelContext";
+import { useNotifications } from "@/hooks/useNotifications";
+import { NotificationCenter } from "@/components/NotificationCenter";
 
 interface Server {
   id: string;
@@ -46,6 +48,28 @@ interface Folder {
 interface ServerRailProps {
   onNavigate?: () => void;
 }
+
+const NotificationBell = () => {
+  const { t } = useTranslation();
+  const { unreadCount } = useNotifications();
+
+  return (
+    <NotificationCenter>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-sidebar-accent/30 text-sidebar-foreground hover:bg-primary/20 hover:text-primary hover:rounded-xl transition-all">
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 leading-none ring-2 ring-sidebar-background select-none">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
+        </TooltipTrigger>
+      </Tooltip>
+    </NotificationCenter>
+  );
+};
 
 const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const { t } = useTranslation();
@@ -569,6 +593,9 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
             </button>
           </TooltipTrigger>
         </Tooltip>
+
+        {/* Notification Bell */}
+        <NotificationBell />
       </div>
 
       <CreateServerDialog open={createOpen} onOpenChange={setCreateOpen} />
