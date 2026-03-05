@@ -34,7 +34,6 @@ import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { useCreateChannel } from "@/contexts/CreateChannelContext";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { NavLink as RouterNavLink } from "react-router-dom";
-import UserPanel from "@/components/layout/UserPanel";
 
 interface Channel {
   id: string;
@@ -900,7 +899,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
           )}
         </div>
 
-        <UserPanel className="mt-auto border-t border-border/30 bg-background" />
       </div>
 
       {/* Go Live Modal */}

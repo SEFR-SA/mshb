@@ -16,7 +16,6 @@ import { NavLink } from "@/components/NavLink";
 import type { Tables } from "@/integrations/supabase/types";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
-import UserPanel from "@/components/layout/UserPanel";
 import ThreadContextMenu from "@/components/chat/ThreadContextMenu";
 import { useBlockUser } from "@/hooks/useBlockUser";
 import { useCloseDM } from "@/hooks/useCloseDM";
@@ -442,8 +441,6 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
           </div>
         )}
       </div>
-
-      <UserPanel className="mt-auto border-t border-border/30 bg-background" />
 
       <CreateGroupDialog open={createGroupOpen} onOpenChange={setCreateGroupOpen} />
     </div>
