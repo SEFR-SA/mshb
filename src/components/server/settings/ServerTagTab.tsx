@@ -11,6 +11,7 @@ import { Sword, Skull, FlaskConical, Star, Flame, Zap, Shield, Loader2, Lock } f
 import { OrbBadge } from "@/components/ui/badges/OrbBadge";
 import { CrownBadge } from "@/components/ui/badges/CrownBadge";
 import SwordBadge from "@/components/ui/badges/SwordBadge";
+import TwistedMindsBadge from "@/components/ui/badges/TwistedMindsBadge";
 import { cn } from "@/lib/utils";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 
@@ -44,6 +45,7 @@ const BADGE_OPTIONS = [
   { id: "zap",    Icon: Zap,          label: "Zap"    },
   { id: "shield", Icon: Shield,       label: "Shield" },
   { id: "orb",    Icon: OrbBadge,     label: "Orb",   custom: true },
+  { id: "twistedminds", Icon: TwistedMindsBadge, label: "Twisted Minds", custom: true },
 ];
 
 const ServerTagTab = ({ serverId, canEdit }: Props) => {
