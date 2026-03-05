@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBlockUser } from "@/hooks/useBlockUser";
 import { useDirectCall } from "@/hooks/useDirectCall";
 import { useUserProfile } from "@/contexts/UserProfileContext";
+import { useInviteToServer } from "@/contexts/InviteToServerContext";
 import { MessageSquare, UserPlus, UserMinus, Phone, ClipboardCopy, User, Ban } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -29,6 +30,7 @@ const UserContextMenu = ({ children, targetUserId, targetUsername }: UserContext
   const { blockUser, unblockUser, isBlocked } = useBlockUser();
   const { directCall } = useDirectCall();
   const { openProfile } = useUserProfile();
+  const { openInviteToServer } = useInviteToServer();
   const [friendshipId, setFriendshipId] = useState<string | null>(null);
   const [friendStatus, setFriendStatus] = useState<string | null>(null);
 
@@ -119,9 +121,9 @@ const UserContextMenu = ({ children, targetUserId, targetUsername }: UserContext
           <User className="h-4 w-4 me-2" />
           {t("profile.title")}
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+        <ContextMenuItem onClick={() => openInviteToServer(targetUserId)}>
           <UserPlus className="h-4 w-4 me-2" />
-          {t("servers.inviteFriendsTo", { name: "Server" })}
+          {t("inviteToServer.title")}
         </ContextMenuItem>
         <ContextMenuSeparator />
         {friendStatus === "accepted" ? (

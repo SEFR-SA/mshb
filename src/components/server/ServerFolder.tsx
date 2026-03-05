@@ -23,6 +23,7 @@ interface ServerFolderProps {
   onNavigate?: () => void;
   onDropServer: (serverId: string) => void;
   unreadMap: Map<string, boolean>;
+  onMarkFolderAsRead?: () => void;
 }
 
 const ServerFolder: React.FC<ServerFolderProps> = ({
@@ -35,6 +36,7 @@ const ServerFolder: React.FC<ServerFolderProps> = ({
   onNavigate,
   onDropServer,
   unreadMap,
+  onMarkFolderAsRead,
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -147,7 +149,7 @@ const ServerFolder: React.FC<ServerFolderProps> = ({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+        <ContextMenuItem onClick={() => onMarkFolderAsRead?.()}>
           <CheckCheck className="h-4 w-4 me-2" />
           {t("actions.markAsRead")}
         </ContextMenuItem>
