@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bell, BellDot, CheckCheck } from "lucide-react";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 
 function getNotificationText(n: Notification, t: (key: string, opts?: any) => string): string {
   const actorName = n.actor_profile?.display_name || n.actor_profile?.username || t("notificationCenter.someone");
@@ -21,6 +21,10 @@ function getNotificationText(n: Notification, t: (key: string, opts?: any) => st
       return t("notificationCenter.missedCall", { name: actorName });
     case "friend_request":
       return t("notificationCenter.friendRequest", { name: actorName });
+    case "server_kick":
+      return t("notificationCenter.serverKick");
+    case "stream_start":
+      return t("notificationCenter.streamStart", { name: actorName });
     default:
       return t("notificationCenter.genericNotification", { name: actorName });
   }
@@ -28,7 +32,7 @@ function getNotificationText(n: Notification, t: (key: string, opts?: any) => st
 
 function NotificationItem({ notification, onRead }: { notification: Notification; onRead: (id: string) => void }) {
   const { t } = useTranslation();
-  const timeAgo = formatDistanceToNow(new Date(notification.created_at), { addSuffix: true });
+  const timeAgo = format(new Date(notification.created_at), "MMM d, yyyy 'at' h:mm a");
 
   return (
     <button

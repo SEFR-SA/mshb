@@ -434,6 +434,24 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           .eq("channel_id", channelId)
           .eq("user_id", user.id)
           .then();
+
+        // Insert stream_start notifications for all server members (excluding self)
+        supabase
+          .from("server_members" as any)
+          .select("user_id")
+          .eq("server_id", serverId)
+          .neq("user_id", user.id)
+          .then(({ data: members }) => {
+            if (members && members.length > 0) {
+              const notifications = (members as any[]).map((m: any) => ({
+                user_id: m.user_id,
+                actor_id: user.id,
+                type: "stream_start",
+                entity_id: serverId,
+              }));
+              supabase.from("notifications" as any).insert(notifications as any).then();
+            }
+          });
       }
 
       // Broadcast that we started sharing
