@@ -12,6 +12,7 @@ import { OrbBadge } from "@/components/ui/badges/OrbBadge";
 import { CrownBadge } from "@/components/ui/badges/CrownBadge";
 import SwordBadge from "@/components/ui/badges/SwordBadge";
 import TwistedMindsBadge from "@/components/ui/badges/TwistedMindsBadge";
+import FalconsBadge from "@/components/ui/badges/FalconsBadge";
 import { cn } from "@/lib/utils";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 
@@ -46,6 +47,7 @@ const BADGE_OPTIONS = [
   { id: "shield", Icon: Shield,       label: "Shield" },
   { id: "orb",    Icon: OrbBadge,     label: "Orb",   custom: true },
   { id: "twistedminds", Icon: TwistedMindsBadge, label: "Twisted Minds", custom: true },
+  { id: "falcons", Icon: FalconsBadge, label: "Falcons", custom: true },
 ];
 
 const ServerTagTab = ({ serverId, canEdit }: Props) => {
