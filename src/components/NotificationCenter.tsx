@@ -21,10 +21,18 @@ function getNotificationText(n: Notification, t: (key: string, opts?: any) => st
       return t("notificationCenter.missedCall", { name: actorName });
     case "friend_request":
       return t("notificationCenter.friendRequest", { name: actorName });
+    case "friend_accepted":
+      return t("notificationCenter.friendAccepted", { name: actorName });
     case "server_kick":
       return t("notificationCenter.serverKick");
     case "stream_start":
       return t("notificationCenter.streamStart", { name: actorName });
+    case "server_join":
+      return t("notificationCenter.serverJoin", { name: actorName });
+    case "group_invite":
+      return t("notificationCenter.groupInvite", { name: actorName });
+    case "dm_message":
+      return t("notificationCenter.dmMessage", { name: actorName });
     default:
       return t("notificationCenter.genericNotification", { name: actorName });
   }

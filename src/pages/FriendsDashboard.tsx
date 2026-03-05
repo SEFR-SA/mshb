@@ -163,12 +163,22 @@ const FriendsDashboard = () => {
     } else {
       toast({ title: t("friends.requestSent") });
       setSearch("");
+      // Notify the addressee about the friend request
+      await supabase.from("notifications" as any).insert({
+        user_id: addresseeId, actor_id: user.id, type: "friend_request",
+      } as any);
     }
   };
 
-  const acceptRequest = async (friendshipId: string) => {
+  const acceptRequest = async (friendshipId: string, requesterId: string) => {
     await supabase.from("friendships").update({ status: "accepted" } as any).eq("id", friendshipId);
     toast({ title: t("friends.requestAccepted") });
+    // Notify the original requester that their request was accepted
+    if (user) {
+      await supabase.from("notifications" as any).insert({
+        user_id: requesterId, actor_id: user.id, type: "friend_accepted",
+      } as any);
+    }
   };
 
   const rejectOrCancel = async (friendshipId: string) => {
@@ -452,7 +462,7 @@ const FriendsDashboard = () => {
                   </div>
                   {isIncoming ? (
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => acceptRequest(f.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => acceptRequest(f.id, f.requester_id)}>
                         <Check className="h-4 w-4 text-green-500" />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => rejectOrCancel(f.id)}>
