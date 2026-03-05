@@ -21,6 +21,14 @@ interface ThemePreviewCardProps {
   onClick: () => void;
 }
 
+/** Calculate perceived brightness from hex color (0-255) */
+const hexToBrightness = (hex: string): number => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000;
+};
+
 const ThemePreviewCard = ({
   sidebarBg,
   mainBg,
@@ -178,8 +186,8 @@ const AppearanceTab = () => {
               : "hsl(var(--background))";
             const sidebarBg = preset.vars?.["--color-bg-muted"] || "hsl(var(--muted))";
             const primary = preset.primary ? preset.primary : "hsl(var(--primary))";
-            // Calculate text/muted colors based on background luminance (simple heuristic)
-            const isLight = preset.colors.length > 0 && preset.colors[0] && !preset.colors[0].startsWith("#1");
+            // Calculate text/muted colors based on background luminance
+            const isLight = preset.colors.length > 0 && preset.colors[0] && hexToBrightness(preset.colors[0]) > 128;
             const textColor = isLight ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.6)";
             const mutedColor = isLight ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.25)";
 

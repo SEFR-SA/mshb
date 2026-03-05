@@ -30,7 +30,7 @@ export const COLOR_THEME_PRESETS: ColorThemePreset[] = [
       "--color-text": "#ffffff",
       "--color-text-muted": "#999999",
       "--color-text-on-primary": "#000000",
-      "--color-hover": "#f0f0f0",
+      "--color-hover": "#353535",
       "--color-shadow": "rgba(0, 0, 0, 0.5)",
     },
   },
