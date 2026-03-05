@@ -166,11 +166,11 @@ const App = () => (
               <DeepLinkHandler />
               <AuthCallback />
               <UpdateBanner />
-              <UserProfileModal />
 
               <Toaster />
               <Sonner />
               <HashRouter>
+                <UserProfileModal />
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   
