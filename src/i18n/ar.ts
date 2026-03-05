@@ -130,6 +130,9 @@ export default {
     addReaction: "إضافة تفاعل",
     forward: "إعادة توجيه",
     pinMessage: "تثبيت الرسالة",
+    unpinMessage: "إلغاء تثبيت الرسالة",
+    messagePinned: "تم تثبيت الرسالة",
+    messageUnpinned: "تم إلغاء تثبيت الرسالة",
     reportMessage: "الإبلاغ عن الرسالة",
   },
   profile: {
@@ -852,6 +855,8 @@ export default {
     notesPlaceholder: "قدّم أي تفاصيل إضافية قد تساعدنا في مراجعة هذا البلاغ...",
     submitReport: "إرسال البلاغ",
     submitPlaceholder: "منطق البلاغ قادم قريبًا!",
+    submitSuccess: "تم إرسال البلاغ بنجاح",
+    submitError: "فشل إرسال البلاغ",
     continue: "متابعة",
     catDislike: "لا يعجبني",
     catSpam: "رسالة مزعجة",

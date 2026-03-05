@@ -35,6 +35,7 @@ import ServerInviteCard from "@/components/chat/ServerInviteCard";
 import { detectInviteInMessage } from "@/lib/inviteUtils";
 import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import StyledDisplayName from "@/components/StyledDisplayName";
+import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
@@ -309,6 +310,14 @@ const GroupChat = () => {
 
   const visibleMessages = messages.filter((m) => !hiddenIds.has(m.id));
   const { reactions, toggleReaction } = useMessageReactions(visibleMessages.map((m) => m.id));
+  const { togglePin: toggleMessagePin } = useTogglePinMessage();
+
+  const handleToggleMessagePin = async (msgId: string) => {
+    const newVal = await toggleMessagePin(msgId);
+    if (newVal !== null) {
+      setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, is_pinned: newVal } : m));
+    }
+  };
 
   const typingNames = Array.from(typingUsers)
     .map((uid) => profiles.get(uid)?.display_name || profiles.get(uid)?.username || "Someone")
@@ -396,10 +405,12 @@ const GroupChat = () => {
                   authorName={authorProfile?.display_name || authorProfile?.username || "User"}
                   isMine={isMine}
                   isDeleted={!!isDeleted}
+                  isPinned={!!(msg as any).is_pinned}
                   onReply={(id, authorName, content) => setReplyingTo({ id, authorName, content })}
                   onEdit={(id, content) => { setEditingId(id); setEditContent(content); }}
                   onDeleteForMe={deleteForMe}
                   onDeleteForEveryone={isMine ? deleteForEveryone : undefined}
+                  onTogglePin={handleToggleMessagePin}
                   onMarkUnread={(id) => {
                     const msg = visibleMessages.find(m => m.id === id);
                     if (msg && user && groupId) {
@@ -498,6 +509,7 @@ const GroupChat = () => {
                                 {isDeleted ? t("chat.deleted") : renderLinkedText(msg.content)}
                               </p>
                               <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                                {(msg as any).is_pinned && <Pin className="h-3 w-3" />}
                                 <span>{formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}</span>
                                 {msg.edited_at && !isDeleted && <span>· {t("chat.edited")}</span>}
                               </div>

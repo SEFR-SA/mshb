@@ -39,6 +39,7 @@ import ServerInviteCard from "@/components/chat/ServerInviteCard";
 import { detectInviteInMessage } from "@/lib/inviteUtils";
 import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import { startLoop, stopAllLoops, playSound } from "@/lib/soundManager";
+import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
@@ -404,6 +405,14 @@ const Chat = () => {
   const visibleMessages = messages.filter((m) => !hiddenIds.has(m.id));
   const { reactions, toggleReaction } = useMessageReactions(visibleMessages.map((m) => m.id));
   const otherStatus = getUserStatus(otherProfile);
+  const { togglePin: toggleMessagePin } = useTogglePinMessage();
+
+  const handleToggleMessagePin = async (msgId: string) => {
+    const newVal = await toggleMessagePin(msgId);
+    if (newVal !== null) {
+      setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, is_pinned: newVal } : m));
+    }
+  };
 
   // Center chat panel content
   const chatPanel = (
@@ -553,10 +562,12 @@ const Chat = () => {
                   authorName={isMine ? (user?.email?.split("@")[0] || "You") : (otherProfile?.display_name || otherProfile?.username || "User")}
                   isMine={isMine}
                   isDeleted={!!isDeleted}
+                  isPinned={!!(msg as any).is_pinned}
                   onReply={(id, authorName, content) => setReplyingTo({ id, authorName, content })}
                   onEdit={(id, content) => { setEditingId(id); setEditContent(content); }}
                   onDeleteForMe={deleteForMe}
                   onDeleteForEveryone={isMine ? deleteForEveryone : undefined}
+                  onTogglePin={handleToggleMessagePin}
                   onMarkUnread={(id) => {
                     const msg = visibleMessages.find(m => m.id === id);
                     if (msg && user && threadId) {
@@ -633,6 +644,7 @@ const Chat = () => {
                               {isDeleted ? t("chat.deleted") : renderLinkedText(msg.content)}
                             </p>
                             <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                              {(msg as any).is_pinned && <Pin className="h-3 w-3" />}
                               <span>{formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}</span>
                               {msg.edited_at && !isDeleted && <span>· {t("chat.edited")}</span>}
                             </div>

@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, Reply, Pencil, EyeOff, Trash2, BookmarkMinus, Smile, Forward, Pin, Flag } from "lucide-react";
+import { Copy, Reply, Pencil, EyeOff, Trash2, BookmarkMinus, Smile, Forward, Pin, PinOff, Flag } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useReportModal } from "@/contexts/ReportModalContext";
 import {
@@ -18,11 +18,13 @@ interface MessageContextMenuProps {
   authorName?: string;
   isMine: boolean;
   isDeleted: boolean;
+  isPinned?: boolean;
   onReply?: (messageId: string, authorName: string, content: string) => void;
   onEdit?: (messageId: string, content: string) => void;
   onDeleteForMe?: (messageId: string) => void;
   onDeleteForEveryone?: (messageId: string) => void;
   onMarkUnread?: (messageId: string) => void;
+  onTogglePin?: (messageId: string) => void;
 }
 
 const MessageContextMenu = ({
@@ -32,11 +34,13 @@ const MessageContextMenu = ({
   authorName,
   isMine,
   isDeleted,
+  isPinned,
   onReply,
   onEdit,
   onDeleteForMe,
   onDeleteForEveryone,
   onMarkUnread,
+  onTogglePin,
 }: MessageContextMenuProps) => {
   const { t } = useTranslation();
   const { openReportModal } = useReportModal();
@@ -78,10 +82,17 @@ const MessageContextMenu = ({
               <Forward className="h-4 w-4 me-2" />
               {t("actions.forward")}
             </ContextMenuItem>
-            <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
-              <Pin className="h-4 w-4 me-2" />
-              {t("actions.pinMessage")}
-            </ContextMenuItem>
+            {onTogglePin ? (
+              <ContextMenuItem onClick={() => onTogglePin(messageId)}>
+                {isPinned ? <PinOff className="h-4 w-4 me-2" /> : <Pin className="h-4 w-4 me-2" />}
+                {isPinned ? t("actions.unpinMessage") : t("actions.pinMessage")}
+              </ContextMenuItem>
+            ) : (
+              <ContextMenuItem onClick={() => toast({ title: "Feature coming soon" })}>
+                <Pin className="h-4 w-4 me-2" />
+                {t("actions.pinMessage")}
+              </ContextMenuItem>
+            )}
           </>
         )}
         {onMarkUnread && (

@@ -536,6 +536,47 @@ export type Database = {
           },
         ]
       }
+      message_reports: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          message_id: string
+          notes: string | null
+          reporter_id: string
+          status: string
+          subcategories: string[] | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          message_id: string
+          notes?: string | null
+          reporter_id: string
+          status?: string
+          subcategories?: string[] | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          message_id?: string
+          notes?: string | null
+          reporter_id?: string
+          status?: string
+          subcategories?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reports_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           author_id: string
@@ -550,6 +591,7 @@ export type Database = {
           file_url: string | null
           group_thread_id: string | null
           id: string
+          is_pinned: boolean
           metadata: Json | null
           reply_to_id: string | null
           thread_id: string | null
@@ -568,6 +610,7 @@ export type Database = {
           file_url?: string | null
           group_thread_id?: string | null
           id?: string
+          is_pinned?: boolean
           metadata?: Json | null
           reply_to_id?: string | null
           thread_id?: string | null
@@ -586,6 +629,7 @@ export type Database = {
           file_url?: string | null
           group_thread_id?: string | null
           id?: string
+          is_pinned?: boolean
           metadata?: Json | null
           reply_to_id?: string | null
           thread_id?: string | null
@@ -1272,6 +1316,7 @@ export type Database = {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean
       }
+      toggle_message_pin: { Args: { p_message_id: string }; Returns: boolean }
       use_invite: { Args: { p_code: string }; Returns: string }
     }
     Enums: {

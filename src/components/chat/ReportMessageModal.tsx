@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ChevronRight, ShieldAlert } from "lucide-react";
 import { useReportModal } from "@/contexts/ReportModalContext";
-import { toast } from "@/hooks/use-toast";
+import { useReportMessage } from "@/hooks/useReportMessage";
 import {
   Dialog,
   DialogContent,
@@ -81,7 +81,8 @@ const REPORT_CATEGORIES: ReportCategory[] = [
 
 const ReportMessageModal = () => {
   const { t } = useTranslation();
-  const { isOpen, reportSenderName, closeReportModal } = useReportModal();
+  const { isOpen, reportMessageId, reportSenderName, closeReportModal } = useReportModal();
+  const { submitReport, isSubmitting } = useReportMessage();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedCategory, setSelectedCategory] = useState<ReportCategory | null>(null);
@@ -130,8 +131,13 @@ const ReportMessageModal = () => {
   };
 
   const handleSubmit = () => {
-    toast({ title: t("report.submitPlaceholder") });
-    closeReportModal();
+    if (!reportMessageId || !selectedCategory) return;
+    submitReport({
+      messageId: reportMessageId,
+      category: selectedCategory.id,
+      subcategories: selectedSubcategories,
+      notes,
+    });
   };
 
   const getSelectedLabels = (): string[] => {
@@ -260,8 +266,8 @@ const ReportMessageModal = () => {
                 />
               </div>
 
-              <Button className="w-full" variant="destructive" onClick={handleSubmit}>
-                {t("report.submitReport")}
+              <Button className="w-full" variant="destructive" onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? t("common.loading") : t("report.submitReport")}
               </Button>
             </div>
           )}
