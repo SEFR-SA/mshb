@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import ServerMemberContextMenu from "@/components/server/ServerMemberContextMenu";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { usePresence } from "@/hooks/usePresence";
+import NameplateWrapper from "@/components/shared/NameplateWrapper";
 
 interface Member {
   user_id: string;
