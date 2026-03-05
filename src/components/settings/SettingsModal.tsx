@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import {
   User, Shield, Users, Bell, Star, CreditCard,
   Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag,
