@@ -19,6 +19,7 @@ import ServerMemberContextMenu from "@/components/server/ServerMemberContextMenu
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { usePresence } from "@/hooks/usePresence";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 interface Member {
   user_id: string;
@@ -35,6 +36,7 @@ interface Member {
     name_gradient_start?: string | null;
     name_gradient_end?: string | null;
     nameplate_url?: string | null;
+    avatar_decoration_url?: string | null;
     is_pro?: boolean;
   };
 }
