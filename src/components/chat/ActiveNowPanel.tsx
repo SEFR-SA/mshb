@@ -16,6 +16,8 @@ interface ActiveFriend {
   serverId: string;
   serverName: string;
   serverIcon: string | null;
+  nameplateUrl: string | null;
+  isPro: boolean;
 }
 
 interface ActiveNowPanelProps {
