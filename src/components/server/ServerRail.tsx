@@ -50,23 +50,18 @@ interface ServerRailProps {
 }
 
 const NotificationBell = () => {
-  const { t } = useTranslation();
   const { unreadCount } = useNotifications();
 
   return (
     <NotificationCenter>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-sidebar-accent/30 text-sidebar-foreground hover:bg-primary/20 hover:text-primary hover:rounded-xl transition-all">
-            <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 leading-none ring-2 ring-sidebar-background select-none">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </button>
-        </TooltipTrigger>
-      </Tooltip>
+      <button className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-sidebar-accent/30 text-sidebar-foreground hover:bg-primary/20 hover:text-primary hover:rounded-xl transition-all">
+        <Bell className="h-5 w-5" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 leading-none ring-2 ring-sidebar-background select-none">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </button>
     </NotificationCenter>
   );
 };
@@ -578,18 +573,6 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
               className="flex items-center justify-center w-12 h-12 rounded-2xl bg-sidebar-accent/30 text-sidebar-foreground hover:bg-primary/20 hover:text-primary hover:rounded-xl transition-all"
             >
               <Plus className="h-5 w-5" />
-            </button>
-          </TooltipTrigger>
-        </Tooltip>
-
-        {/* Join server */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => setJoinOpen(true)}
-              className="flex items-center justify-center w-12 h-12 rounded-2xl bg-sidebar-accent/30 text-sidebar-foreground hover:bg-primary/20 hover:text-primary hover:rounded-xl transition-all"
-            >
-              <LogIn className="h-5 w-5" />
             </button>
           </TooltipTrigger>
         </Tooltip>
