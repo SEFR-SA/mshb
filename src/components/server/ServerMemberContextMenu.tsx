@@ -107,7 +107,7 @@ const ServerMemberContextMenu = ({
       if (!newThread) return;
       threadId = newThread.id;
     }
-    navigate(`/chat/${threadId}`);
+    navigate(`/chat/${threadId}?call=true`);
   };
 
   const handleAddFriend = async () => {
