@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Volume2 } from "lucide-react";
+import NameplateWrapper from "@/components/shared/NameplateWrapper";
 
 interface ActiveFriend {
   userId: string;
@@ -15,6 +16,8 @@ interface ActiveFriend {
   serverId: string;
   serverName: string;
   serverIcon: string | null;
+  nameplateUrl: string | null;
+  isPro: boolean;
 }
 
 interface ActiveNowPanelProps {
@@ -47,7 +50,7 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
 
     const [{ data: channels }, { data: profiles }] = await Promise.all([
       supabase.from("channels").select("id, name, server_id").in("id", channelIds),
-      supabase.from("profiles").select("user_id, display_name, username, avatar_url").in("user_id", userIds),
+      supabase.from("profiles").select("user_id, display_name, username, avatar_url, nameplate_url, is_pro").in("user_id", userIds),
     ]);
 
     const serverIds = [...new Set((channels || []).map((c) => c.server_id))];
@@ -73,6 +76,8 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
         serverId: channel?.server_id || "",
         serverName: server?.name || "Server",
         serverIcon: server?.icon_url || null,
+        nameplateUrl: profile?.nameplate_url || null,
+        isPro: profile?.is_pro || false,
       };
     });
 
@@ -111,7 +116,8 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
       ) : (
         <div className="space-y-3">
           {activeFriends.map((friend) => (
-            <div key={friend.userId} className="rounded-lg p-3 bg-muted/30">
+            <NameplateWrapper key={friend.userId} nameplateUrl={friend.nameplateUrl} isPro={friend.isPro} className="rounded-lg">
+            <div className="rounded-lg p-3 bg-muted/30">
               <div className="flex items-center gap-2 mb-2">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={friend.avatarUrl || ""} />
@@ -143,6 +149,7 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
                 </button>
               </div>
             </div>
+            </NameplateWrapper>
           ))}
         </div>
       )}

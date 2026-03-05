@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN nameplate_url text DEFAULT NULL;

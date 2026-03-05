@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import {
   User, Shield, Users, Bell, Star, CreditCard,
   Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag,
@@ -111,6 +112,7 @@ const SettingsModal = () => {
     <>
       {/* User mini-card */}
       <div className="px-3 pt-4 pb-2">
+        <NameplateWrapper nameplateUrl={profile?.nameplate_url} isPro={profile?.is_pro} className="rounded-lg">
         <div className="flex items-center gap-2.5 p-2 rounded-lg bg-muted/20">
           <Avatar className="h-8 w-8 shrink-0" alwaysPlayGif>
             <AvatarImage src={profile?.avatar_url || ""} />
@@ -121,6 +123,7 @@ const SettingsModal = () => {
             {profile?.username && <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>}
           </div>
         </div>
+        </NameplateWrapper>
       </div>
 
       {/* Nav groups */}

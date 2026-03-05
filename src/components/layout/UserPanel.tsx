@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Mic, MicOff, Headphones, HeadphoneOff, Settings, PhoneOff, Monitor, MonitorOff, Video, VideoOff } from "lucide-react";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
+import NameplateWrapper from "@/components/shared/NameplateWrapper";
 
 interface UserPanelProps {
   className?: string;
@@ -69,6 +70,7 @@ const UserPanel = ({ className }: UserPanelProps) => {
       )}
 
       {/* User profile row + audio controls */}
+      <NameplateWrapper nameplateUrl={profile?.nameplate_url} isPro={profile?.is_pro} className="rounded-md">
       <div className="flex items-center gap-2 p-2">
         <NavLink to="/settings" className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity">
           <div className="relative shrink-0">
@@ -100,6 +102,7 @@ const UserPanel = ({ className }: UserPanelProps) => {
           </NavLink>
         </div>
       </div>
+      </NameplateWrapper>
     </div>
   );
 };

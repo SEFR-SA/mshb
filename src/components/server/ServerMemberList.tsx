@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import ServerMemberContextMenu from "@/components/server/ServerMemberContextMenu";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { usePresence } from "@/hooks/usePresence";
+import NameplateWrapper from "@/components/shared/NameplateWrapper";
 
 interface Member {
   user_id: string;
@@ -33,6 +34,8 @@ interface Member {
     created_at: string;
     name_gradient_start?: string | null;
     name_gradient_end?: string | null;
+    nameplate_url?: string | null;
+    is_pro?: boolean;
   };
 }
 
@@ -78,7 +81,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       const userIds = (data as any[]).map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, created_at, name_gradient_start, name_gradient_end, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
+        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, created_at, name_gradient_start, name_gradient_end, nameplate_url, is_pro, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
         .in("user_id", userIds);
 
       const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
@@ -327,6 +330,7 @@ const ServerMemberList = ({ serverId }: Props) => {
 
                     const highestRole = userHighestRoleMap.get(m.user_id);
                     const memberButton = (
+                      <NameplateWrapper nameplateUrl={p?.nameplate_url} isPro={p?.is_pro} className="rounded-md">
                       <button
                         className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-sidebar-accent/50 transition-colors w-full text-start"
                         onClick={isMobile ? () => setSelectedMemberId(m.user_id) : undefined}
@@ -355,6 +359,7 @@ const ServerMemberList = ({ serverId }: Props) => {
                           <img src={highestRole.icon_url} className="h-4 w-4 rounded shrink-0" alt={highestRole.name} />
                         )}
                       </button>
+                      </NameplateWrapper>
                     );
 
                     if (isMobile) {
