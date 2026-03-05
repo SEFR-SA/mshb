@@ -11,9 +11,11 @@ import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import { ReportModalProvider } from "@/contexts/ReportModalContext";
 import { ForwardMessageProvider } from "@/contexts/ForwardMessageContext";
 import { CreateChannelProvider } from "@/contexts/CreateChannelContext";
+import { InviteToServerProvider } from "@/contexts/InviteToServerContext";
 import UserProfileModal from "@/components/UserProfileModal";
 import ReportMessageModal from "@/components/chat/ReportMessageModal";
 import ForwardMessageModal from "@/components/chat/ForwardMessageModal";
+import InviteToServerModal from "@/components/chat/InviteToServerModal";
 import AppLayout from "@/components/layout/AppLayout";
 import Auth from "@/pages/Auth";
 import HomeView from "@/pages/HomeView";
@@ -170,6 +172,7 @@ const App = () => (
             <ReportModalProvider>
             <ForwardMessageProvider>
             <CreateChannelProvider>
+            <InviteToServerProvider>
             <TooltipProvider>
               <DeepLinkHandler />
               <AuthCallback />
@@ -181,6 +184,7 @@ const App = () => (
                 <UserProfileModal />
                 <ReportMessageModal />
                 <ForwardMessageModal />
+                <InviteToServerModal />
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   
@@ -200,6 +204,7 @@ const App = () => (
                 </Routes>
               </HashRouter>
             </TooltipProvider>
+            </InviteToServerProvider>
             </CreateChannelProvider>
             </ForwardMessageProvider>
             </ReportModalProvider>

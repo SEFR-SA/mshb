@@ -899,4 +899,11 @@ export default {
     groups: "المجموعات",
     servers: "قنوات السيرفر",
   },
+  inviteToServer: {
+    title: "دعوة إلى سيرفر",
+    description: "اختر سيرفر لإرسال دعوة",
+    search: "ابحث في السيرفرات...",
+    noServers: "أنت لست في أي سيرفر",
+    sent: "تم إرسال الدعوة!",
+  },
 };

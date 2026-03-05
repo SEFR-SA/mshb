@@ -899,4 +899,11 @@ export default {
     groups: "Groups",
     servers: "Server Channels",
   },
+  inviteToServer: {
+    title: "Invite to Server",
+    description: "Choose a server to send an invite",
+    search: "Search servers...",
+    noServers: "You're not in any servers",
+    sent: "Invite sent!",
+  },
 };
