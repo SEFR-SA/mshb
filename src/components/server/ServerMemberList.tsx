@@ -239,11 +239,13 @@ const ServerMemberList = ({ serverId }: Props) => {
                         {/* Avatar + Info */}
                         <div className="px-4 pb-3">
                           <div className="relative -mt-8 mb-2">
+                            <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={64}>
                             <Avatar className="h-16 w-16 border-4 border-popover">
                               <AvatarImage src={p?.avatar_url || ""} />
                               <AvatarFallback className="bg-primary/20 text-primary text-lg">{name.charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
-                            <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="md" className="absolute bottom-1 start-12" />
+                            </AvatarDecorationWrapper>
+                            <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="md" className="absolute bottom-1 start-12 z-20" />
                           </div>
 
                           <div className="font-bold text-foreground text-base">{name}</div>
