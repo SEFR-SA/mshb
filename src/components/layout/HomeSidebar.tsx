@@ -19,6 +19,8 @@ import CreateGroupDialog from "@/components/CreateGroupDialog";
 import ThreadContextMenu from "@/components/chat/ThreadContextMenu";
 import { useBlockUser } from "@/hooks/useBlockUser";
 import { useCloseDM } from "@/hooks/useCloseDM";
+import { useDirectCall } from "@/hooks/useDirectCall";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 
 type Profile = Tables<"profiles">;
 
@@ -46,6 +48,8 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
   const { pendingCount } = usePendingFriendRequests();
   const { blockUser } = useBlockUser();
   const { closeDM } = useCloseDM();
+  const { directCall } = useDirectCall();
+  const { openProfile } = useUserProfile();
   const navigate = useNavigate();
   const location = useLocation();
   const [myProfile, setMyProfile] = useState<Profile | null>(null);
@@ -324,6 +328,8 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
         isDM={item.type === "dm"}
         onCloseDM={item.type === "dm" ? async () => { await closeDM(item.id); loadInbox(); } : undefined}
         onBlock={item.type === "dm" && item.otherProfile ? () => blockUser(item.otherProfile!.user_id) : undefined}
+        onViewProfile={item.type === "dm" && item.otherProfile ? () => openProfile(item.otherProfile!.user_id) : undefined}
+        onCall={item.type === "dm" && item.otherProfile ? () => directCall(item.otherProfile!.user_id) : undefined}
       >
         <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
           className={`flex items-center gap-2 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/60"}`}>
