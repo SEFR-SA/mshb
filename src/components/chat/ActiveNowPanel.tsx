@@ -76,6 +76,8 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
         serverId: channel?.server_id || "",
         serverName: server?.name || "Server",
         serverIcon: server?.icon_url || null,
+        nameplateUrl: profile?.nameplate_url || null,
+        isPro: profile?.is_pro || false,
       };
     });
 
