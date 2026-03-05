@@ -31,8 +31,6 @@ function getNotificationText(n: Notification, t: (key: string, opts?: any) => st
       return t("notificationCenter.serverJoin", { name: actorName });
     case "group_invite":
       return t("notificationCenter.groupInvite", { name: actorName });
-    case "dm_message":
-      return t("notificationCenter.dmMessage", { name: actorName });
     default:
       return t("notificationCenter.genericNotification", { name: actorName });
   }
