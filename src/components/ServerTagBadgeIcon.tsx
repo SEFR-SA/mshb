@@ -30,7 +30,7 @@ const CUSTOM_BADGE_COMPONENTS: Record<string, CustomBadgeComponent> = {
     twistedminds: TwistedMindsBadge,
 };
 
-const ServerTagBadgeIcon = ({ badgeName, color, className = "h-3 w-3" }: Props) => {
+const ServerTagBadgeIcon = ({ badgeName, color, className = "h-4 w-4" }: Props) => {
     if (!badgeName) return null;
 
     const CustomComp = CUSTOM_BADGE_COMPONENTS[badgeName];
