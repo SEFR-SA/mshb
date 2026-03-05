@@ -371,7 +371,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                         </AvatarFallback>
                       </Avatar>
                       {/* Unread badge */}
-                      <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 leading-none ring-2 ring-sidebar-background select-none">
+                      <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1 leading-none select-none">
                         {dm.unreadCount > 99 ? "99+" : dm.unreadCount}
                       </span>
                     </button>
