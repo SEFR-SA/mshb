@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
 import type { Tables } from "@/integrations/supabase/types";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
 import ThreadContextMenu from "@/components/chat/ThreadContextMenu";
 import { useBlockUser } from "@/hooks/useBlockUser";
