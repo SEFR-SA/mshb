@@ -116,8 +116,8 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
       ) : (
         <div className="space-y-3">
           {activeFriends.map((friend) => (
-            <NameplateWrapper nameplateUrl={friend.nameplateUrl} isPro={friend.isPro} className="rounded-lg">
-            <div key={friend.userId} className="rounded-lg p-3 bg-muted/30">
+            <NameplateWrapper key={friend.userId} nameplateUrl={friend.nameplateUrl} isPro={friend.isPro} className="rounded-lg">
+            <div className="rounded-lg p-3 bg-muted/30">
               <div className="flex items-center gap-2 mb-2">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={friend.avatarUrl || ""} />
