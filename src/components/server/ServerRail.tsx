@@ -57,7 +57,7 @@ const NotificationBell = () => {
       <button className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-sidebar-accent/30 text-sidebar-foreground hover:bg-primary/20 hover:text-primary hover:rounded-xl transition-all">
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 leading-none ring-2 ring-sidebar-background select-none">
+          <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1 leading-none select-none">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -366,12 +366,12 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                     >
                       <Avatar className="h-12 w-12 rounded-[inherit]">
                         <AvatarImage src={dm.avatarUrl || ""} />
-                        <AvatarFallback className="bg-destructive/20 text-destructive-foreground text-sm font-bold rounded-[inherit]">
+                        <AvatarFallback className="bg-primary/20 text-primary text-sm font-bold rounded-[inherit]">
                           {dm.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       {/* Unread badge */}
-                      <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 leading-none ring-2 ring-sidebar-background select-none">
+                      <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1 leading-none select-none">
                         {dm.unreadCount > 99 ? "99+" : dm.unreadCount}
                       </span>
                     </button>
