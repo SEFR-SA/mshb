@@ -70,6 +70,7 @@ const UserPanel = ({ className }: UserPanelProps) => {
       )}
 
       {/* User profile row + audio controls */}
+      <NameplateWrapper nameplateUrl={profile?.nameplate_url} isPro={profile?.is_pro} className="rounded-md">
       <div className="flex items-center gap-2 p-2">
         <NavLink to="/settings" className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity">
           <div className="relative shrink-0">
