@@ -3,6 +3,7 @@ import { Skull, FlaskConical, Star, Flame, Zap, Shield, LucideIcon } from "lucid
 import { OrbBadge } from "@/components/ui/badges/OrbBadge";
 import { CrownBadge } from "@/components/ui/badges/CrownBadge";
 import SwordBadge from "@/components/ui/badges/SwordBadge";
+import TwistedMindsBadge from "@/components/ui/badges/TwistedMindsBadge";
 
 interface Props {
     badgeName?: string | null;
@@ -26,6 +27,7 @@ const CUSTOM_BADGE_COMPONENTS: Record<string, CustomBadgeComponent> = {
     crown: CrownBadge,
     orb:   OrbBadge,
     sword: SwordBadge,
+    twistedminds: TwistedMindsBadge,
 };
 
 const ServerTagBadgeIcon = ({ badgeName, color, className = "h-3 w-3" }: Props) => {
