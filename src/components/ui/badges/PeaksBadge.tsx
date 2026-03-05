@@ -8,7 +8,7 @@ interface Props {
 const PeaksBadge: React.FC<Props> = ({ color, className = "h-4 w-4" }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 100 100"
+    viewBox="20 24 60 52"
     className={className}
     style={{ color }}
     shapeRendering="crispEdges"
