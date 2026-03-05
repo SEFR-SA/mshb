@@ -11,6 +11,7 @@ import { Mic, MicOff, Headphones, HeadphoneOff, Settings, PhoneOff, Monitor, Mon
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 interface UserPanelProps {
   className?: string;
