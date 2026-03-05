@@ -11,7 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Upload, Pin, PinOff, UserRound, UserRoundX, Phone, PhoneOff, PhoneMissed, Forward } from "lucide-react";
+import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Upload, Pin, PinOff, UserRound, UserRoundX, Phone, PhoneOff, PhoneMissed, Forward, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
@@ -42,10 +42,10 @@ import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import { startLoop, stopAllLoops, playSound } from "@/lib/soundManager";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
+import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
-const PAGE_SIZE = 30;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
 
 const Chat = () => {
@@ -57,7 +57,6 @@ const Chat = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const [messages, setMessages] = useState<Message[]>([]);
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [otherProfile, setOtherProfile] = useState<Profile | null>(null);
   const [otherId, setOtherId] = useState<string>("");
@@ -66,18 +65,47 @@ const Chat = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [typingUser, setTypingUser] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [showProfile, setShowProfile] = useState(true);
   const [callSessionId, setCallSessionId] = useState<string | null>(null);
-  const [messagesLoading, setMessagesLoading] = useState(true);
   const [isCallerState, setIsCallerState] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string; content: string } | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
+
+  // Infinite scrolling messages
+  const {
+    messages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: messagesLoading,
+    scrollRef,
+    appendRealtimeMessage,
+    updateRealtimeMessage,
+  } = useInfiniteMessages({ threadId });
+
+  // Intersection observer for loading older messages
+  const topSentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const sentinel = topSentinelRef.current;
+    const container = scrollRef.current;
+    if (!sentinel || !container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { root: container, threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const callStartRef = useRef<number | null>(null);
 
@@ -108,7 +136,6 @@ const Chat = () => {
   }, [callState]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   // Load thread info + pin status
@@ -158,7 +185,6 @@ const Chat = () => {
     if (data) {
       setCallSessionId(data.id);
       setIsCallerState(true);
-      // Start outgoing ring
       startLoop("outgoing_ring");
       startCall(data.id);
     }
@@ -180,7 +206,6 @@ const Chat = () => {
     endCall();
   };
 
-  // Wrapped toggles with sound feedback
   const handleToggleMute = useCallback(() => {
     playSound(isMuted ? "unmute" : "mute");
     toggleMute();
@@ -227,34 +252,6 @@ const Chat = () => {
     })();
   }, [user]);
 
-  // Load messages
-  const loadMessages = useCallback(async (before?: string) => {
-    if (!threadId) return;
-    let query = supabase
-      .from("messages")
-      .select("*")
-      .eq("thread_id", threadId)
-      .order("created_at", { ascending: false })
-      .limit(PAGE_SIZE);
-
-    if (before) query = query.lt("created_at", before);
-
-    const { data } = await query;
-    if (!data) return;
-
-    if (data.length < PAGE_SIZE) setHasMore(false);
-
-    if (before) {
-      setMessages((prev) => [...prev, ...data.reverse()].sort((a, b) => a.created_at.localeCompare(b.created_at)));
-    } else {
-      setMessages(data.reverse());
-      setMessagesLoading(false);
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-    }
-  }, [threadId]);
-
-  useEffect(() => { setMessagesLoading(true); setHasMore(true); loadMessages(); }, [loadMessages]);
-
   // Mark thread as read on open
   useEffect(() => {
     if (!threadId || !user) return;
@@ -271,26 +268,21 @@ const Chat = () => {
       .channel(`chat-${threadId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `thread_id=eq.${threadId}` }, (payload) => {
         const msg = payload.new as Message;
-        setMessages((prev) => {
-          if (prev.find((m) => m.id === msg.id)) return prev;
-          return [...prev, msg];
-        });
+        appendRealtimeMessage(msg);
         if (user && msg.author_id !== user.id) {
           supabase.from("thread_read_status").upsert(
             { user_id: user.id, thread_id: threadId, last_read_at: new Date().toISOString() },
             { onConflict: "user_id,thread_id" }
           ).then();
         }
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `thread_id=eq.${threadId}` }, (payload) => {
-        const updated = payload.new as Message;
-        setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+        updateRealtimeMessage(payload.new as Message);
       })
       .subscribe();
 
     return () => { channel.unsubscribe(); };
-  }, [threadId]);
+  }, [threadId, appendRealtimeMessage, updateRealtimeMessage]);
 
   // Typing indicator
   useEffect(() => {
@@ -401,10 +393,6 @@ const Chat = () => {
     setHiddenIds((prev) => new Set(prev).add(msgId));
   };
 
-  const loadOlder = () => {
-    if (messages.length > 0) loadMessages(messages[0].created_at);
-  };
-
   const visibleMessages = messages.filter((m) => !hiddenIds.has(m.id));
   const { reactions, toggleReaction } = useMessageReactions(visibleMessages.map((m) => m.id));
   const otherStatus = getUserStatus(otherProfile);
@@ -414,7 +402,7 @@ const Chat = () => {
   const handleToggleMessagePin = async (msgId: string) => {
     const newVal = await toggleMessagePin(msgId);
     if (newVal !== null) {
-      setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, is_pinned: newVal } : m));
+      updateRealtimeMessage({ ...messages.find(m => m.id === msgId), is_pinned: newVal });
     }
   };
 
@@ -505,14 +493,14 @@ const Chat = () => {
       />
 
       {/* Messages */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
         {messagesLoading ? <MessageSkeleton count={6} /> : (
           <div className="animate-fade-in">
-            {hasMore && (
-              <div className="text-center mb-2">
-                <Button variant="ghost" size="sm" onClick={loadOlder} className="text-xs text-muted-foreground">
-                  {t("chat.loadMore")}
-                </Button>
+            {/* Top sentinel for infinite scroll */}
+            <div ref={topSentinelRef} className="h-1" />
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-2">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             )}
             {visibleMessages.map((msg, idx) => {
@@ -537,7 +525,6 @@ const Chat = () => {
                     ? <Phone className="h-3 w-3 text-primary shrink-0" />
                     : <PhoneOff className="h-3 w-3 text-muted-foreground shrink-0" />;
 
-                // Strip leading emoji for cleaner display if present
                 const displayContent = msg.content.replace(/^[📞📵]\s*/, "").trim();
 
                 return (
