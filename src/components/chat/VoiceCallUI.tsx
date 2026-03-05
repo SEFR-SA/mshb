@@ -189,7 +189,7 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
               <AvatarImage src={otherAvatar || ""} />
               <AvatarFallback className="bg-primary/20 text-primary text-xl">{initial}</AvatarFallback>
             </Avatar>
-            <span className="absolute bottom-1 end-1 h-3.5 w-3.5 rounded-full bg-green-500 ring-2 ring-card" />
+            <span className="absolute bottom-1 end-1 h-3.5 w-3.5 rounded-full bg-green-500 ring-2 ring-card z-20" />
           </div>
           <div className="text-center">
             <p className="text-sm font-medium">{otherName}</p>

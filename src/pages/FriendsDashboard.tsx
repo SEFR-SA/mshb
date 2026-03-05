@@ -278,13 +278,13 @@ const FriendsDashboard = () => {
       <UserContextMenu key={f.id} targetUserId={friendUserId} targetUsername={f.profile?.username || undefined}>
           <NameplateWrapper nameplateUrl={(f.profile as any)?.nameplate_url} isPro={(f.profile as any)?.is_pro} className="rounded-lg">
           <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group">
-          <div className="relative">
+          <AvatarDecorationWrapper decorationUrl={(f.profile as any)?.avatar_decoration_url} isPro={(f.profile as any)?.is_pro} size={40}>
             <Avatar className="h-10 w-10">
               <AvatarImage src={f.profile?.avatar_url || ""} />
               <AvatarFallback className="bg-primary/20 text-primary">{initials(f.profile)}</AvatarFallback>
             </Avatar>
-            <StatusBadge status={(getUserStatus(f.profile) === "offline" ? "invisible" : getUserStatus(f.profile)) as UserStatus} className="absolute bottom-0 end-0" />
-          </div>
+            <StatusBadge status={(getUserStatus(f.profile) === "offline" ? "invisible" : getUserStatus(f.profile)) as UserStatus} className="absolute bottom-0 end-0 z-20" />
+          </AvatarDecorationWrapper>
           <div className="flex-1 min-w-0">
             <p className="font-medium truncate">{f.profile?.display_name || f.profile?.username || "User"}</p>
             {f.profile?.username && <p className="text-xs text-muted-foreground">@{f.profile.username}</p>}

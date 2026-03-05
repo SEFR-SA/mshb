@@ -339,13 +339,13 @@ const ServerMemberList = ({ serverId }: Props) => {
                         className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-sidebar-accent/50 transition-colors w-full text-start"
                         onClick={isMobile ? () => setSelectedMemberId(m.user_id) : undefined}
                       >
-                        <div className="relative">
+                        <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={32}>
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={p?.avatar_url || ""} />
                             <AvatarFallback className="bg-primary/20 text-primary text-xs">{name.charAt(0).toUpperCase()}</AvatarFallback>
                           </Avatar>
-                          <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="sm" className="absolute bottom-0 end-0" />
-                        </div>
+                          <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="sm" className="absolute bottom-0 end-0 z-20" />
+                        </AvatarDecorationWrapper>
                         <StyledDisplayName
                           displayName={name}
                           gradientStart={p?.name_gradient_start}

@@ -68,15 +68,15 @@ const GroupMembersPanel = ({ profiles, memberRoles, groupName, memberCount, grou
 
               return (
                 <div key={userId} className="flex items-center gap-2.5">
-                  <div className="relative shrink-0">
+                  <AvatarDecorationWrapper decorationUrl={(profile as any)?.avatar_decoration_url} isPro={(profile as any)?.is_pro} size={32} className="shrink-0">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={profile.avatar_url || ""} />
                       <AvatarFallback className="bg-primary/20 text-primary text-xs">
                         {(profile.display_name || profile.username || "?").charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <StatusBadge status={displayStatus} className="absolute bottom-0 end-0" />
-                  </div>
+                    <StatusBadge status={displayStatus} className="absolute bottom-0 end-0 z-20" />
+                  </AvatarDecorationWrapper>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-medium truncate">

@@ -87,12 +87,14 @@ const UserProfileModal = () => {
 
       {/* Avatar overlapping banner */}
       <div className="px-4 -mt-10 relative z-10">
+        <AvatarDecorationWrapper decorationUrl={(profile as any)?.avatar_decoration_url} isPro={(profile as any)?.is_pro} size={80}>
         <Avatar className="h-20 w-20 border-4 border-popover">
           <AvatarImage src={profile?.avatar_url || ""} />
           <AvatarFallback className="bg-primary/20 text-primary text-2xl">
             {(profile?.display_name || profile?.username || "?").charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
+        </AvatarDecorationWrapper>
       </div>
 
       {/* Info */}

@@ -34,15 +34,15 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
 
       {/* Avatar overlapping banner */}
       <div className="px-4 -mt-10">
-        <div className="relative inline-block">
+        <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={80}>
           <Avatar className="h-20 w-20 border-4 border-background">
             <AvatarImage src={profile.avatar_url || ""} />
             <AvatarFallback className="bg-primary/20 text-primary text-2xl">
               {(profile.display_name || profile.username || "?").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <StatusBadge status={status} size="md" className="absolute bottom-1 end-1" />
-        </div>
+          <StatusBadge status={status} size="md" className="absolute bottom-1 end-1 z-20" />
+        </AvatarDecorationWrapper>
       </div>
 
       {/* Profile card */}

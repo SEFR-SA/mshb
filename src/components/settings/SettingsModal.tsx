@@ -115,10 +115,12 @@ const SettingsModal = () => {
       <div className="px-3 pt-4 pb-2">
         <NameplateWrapper nameplateUrl={profile?.nameplate_url} isPro={profile?.is_pro} className="rounded-lg">
         <div className="flex items-center gap-2.5 p-2 rounded-lg bg-muted/20">
-          <Avatar className="h-8 w-8 shrink-0" alwaysPlayGif>
+          <AvatarDecorationWrapper decorationUrl={(profile as any)?.avatar_decoration_url} isPro={profile?.is_pro} size={32} className="shrink-0">
+          <Avatar className="h-8 w-8" alwaysPlayGif>
             <AvatarImage src={profile?.avatar_url || ""} />
             <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
           </Avatar>
+          </AvatarDecorationWrapper>
           <div className="min-w-0">
             <p className="text-sm font-medium truncate">{profile?.display_name || profile?.username || "User"}</p>
             {profile?.username && <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>}

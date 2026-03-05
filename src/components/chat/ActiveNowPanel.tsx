@@ -122,12 +122,14 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
             <NameplateWrapper key={friend.userId} nameplateUrl={friend.nameplateUrl} isPro={friend.isPro} className="rounded-lg">
             <div className="rounded-lg p-3 bg-muted/30">
               <div className="flex items-center gap-2 mb-2">
+                <AvatarDecorationWrapper decorationUrl={friend.avatarDecorationUrl} isPro={friend.isPro} size={32}>
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={friend.avatarUrl || ""} />
                   <AvatarFallback className="bg-primary/20 text-primary text-xs">
                     {initials(friend.displayName)}
                   </AvatarFallback>
                 </Avatar>
+                </AvatarDecorationWrapper>
                 <span className="font-medium text-sm truncate">{friend.displayName}</span>
               </div>
 
