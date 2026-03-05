@@ -237,7 +237,7 @@ export default {
     streamStart: "{{name}} started a stream",
     serverJoin: "{{name}} joined your server",
     groupInvite: "{{name}} added you to a group",
-    dmMessage: "{{name}} sent you a message",
+    
     genericNotification: "{{name}} sent you a notification",
   },
   friends: {

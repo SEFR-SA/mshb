@@ -237,7 +237,7 @@ export default {
     streamStart: "بدأ {{name}} بثًا مباشرًا",
     serverJoin: "انضم {{name}} إلى سيرفرك",
     groupInvite: "أضافك {{name}} إلى مجموعة",
-    dmMessage: "أرسل لك {{name}} رسالة",
+    
     genericNotification: "أرسل لك {{name}} إشعارًا",
   },
   friends: {
