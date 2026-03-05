@@ -1,92 +1,83 @@
 
 
-## Block User & Close DM — Implementation Plan
+## Add Reaction & Forward Message — Implementation Plan
 
 ### Phase 1: Database Migration
 
-Single migration with both tables, using the corrected FK references with `ON DELETE CASCADE`. Per the memory note on database conventions, we avoid FK refs to `auth.users` — but the user explicitly requested them, so we'll include them as specified.
+Add `is_forwarded` boolean column to `messages` table:
 
 ```sql
--- blocked_users
-CREATE TABLE public.blocked_users (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  blocker_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  blocked_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (blocker_id, blocked_id)
-);
-ALTER TABLE public.blocked_users ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view own blocks" ON public.blocked_users FOR SELECT USING (auth.uid() = blocker_id);
-CREATE POLICY "Users can block others" ON public.blocked_users FOR INSERT WITH CHECK (auth.uid() = blocker_id);
-CREATE POLICY "Users can unblock" ON public.blocked_users FOR DELETE USING (auth.uid() = blocker_id);
-ALTER PUBLICATION supabase_realtime ADD TABLE public.blocked_users;
-
--- dm_thread_visibility
-CREATE TABLE public.dm_thread_visibility (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  thread_id uuid NOT NULL REFERENCES public.dm_threads(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  is_visible boolean NOT NULL DEFAULT true,
-  closed_at timestamptz,
-  UNIQUE (thread_id, user_id)
-);
-ALTER TABLE public.dm_thread_visibility ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view own visibility" ON public.dm_thread_visibility FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own visibility" ON public.dm_thread_visibility FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own visibility" ON public.dm_thread_visibility FOR UPDATE USING (auth.uid() = user_id);
-ALTER PUBLICATION supabase_realtime ADD TABLE public.dm_thread_visibility;
+ALTER TABLE public.messages ADD COLUMN is_forwarded boolean NOT NULL DEFAULT false;
 ```
 
-### Phase 2: Frontend Hooks
+Single column addition, no RLS changes needed (existing INSERT/UPDATE policies cover it).
 
-**`src/hooks/useBlockUser.ts`** — New file
-- Fetches `blocked_users` where `blocker_id = user.id` on mount
-- Subscribes to realtime changes on `blocked_users`
-- Exposes: `blockedUserIds: Set<string>`, `blockUser(id)`, `unblockUser(id)`, `isBlocked(id)`
-- `blockUser` inserts row + shows toast; `unblockUser` deletes row + shows toast
+---
 
-**`src/hooks/useCloseDM.ts`** — New file
-- Single function: `closeDM(threadId)` that calls `.upsert({ thread_id, user_id, is_visible: false, closed_at: new Date().toISOString() }, { onConflict: 'thread_id,user_id' })`
-- Shows success toast
+### Phase 2: Wire "Add Reaction" from Context Menu
 
-### Phase 3: Update HomeSidebar DM Fetching
+**Problem:** The context menu closes when clicked, so we can't open a picker inside it. We need to pass a callback that opens the reaction picker on the message bubble *after* the menu closes.
 
-In `HomeSidebar.tsx` `loadInbox()`, before the `dm_threads` query:
-1. Query `dm_thread_visibility` for `user_id = auth.uid()` where `is_visible = false` → get array of closed `thread_id`s
-2. If any closed IDs exist, filter `dm_threads` query with `.not('id', 'in', '(${closedIds.join(",")})')`
-3. Add `dm_thread_visibility` to the realtime subscription channel
+**Approach:**
+- Add `onAddReaction?: (messageId: string) => void` prop to `MessageContextMenu`
+- Replace the placeholder toast with `onAddReaction(messageId)`
+- In each chat component (`Chat.tsx`, `GroupChat.tsx`, `ServerChannelChat.tsx`):
+  - Add state: `reactionPickerMsgId: string | null`
+  - Pass `onAddReaction={(id) => setReactionPickerMsgId(id)}` to `MessageContextMenu`
+  - In `MessageReactions`, add a `forceOpen` prop that auto-opens the popover when the message ID matches
+  - When the picker closes, reset `reactionPickerMsgId` to null
 
-### Phase 4: Wire Context Menus
+This reuses the existing `MessageReactions` emoji picker — no new picker components.
 
-**`ThreadContextMenu.tsx`**:
-- Add `onCloseDM` and `onBlock` callback props (optional)
-- Replace "Close DM" toast with `onCloseDM?.()` call
-- Replace "Block" toast with `onBlock?.()` call
+**Files modified:** `MessageContextMenu.tsx`, `MessageReactions.tsx`, `Chat.tsx`, `GroupChat.tsx`, `ServerChannelChat.tsx`
 
-**`HomeSidebar.tsx`**:
-- Import `useBlockUser` and `useCloseDM` hooks
-- Pass `onCloseDM` (calls `closeDM(thread.id)` then triggers reload) to `ThreadContextMenu`
-- Pass `onBlock` (calls `blockUser(otherUserId)`) to `ThreadContextMenu`
-- Need to thread `otherUserId` through to the context menu — add it as a prop on `ThreadContextMenu`
+---
 
-**`UserContextMenu.tsx`**:
-- Import `useBlockUser`, replace "Block" toast with actual `blockUser(targetUserId)` call
-- Show "Unblock" instead when already blocked
+### Phase 3: Forward Message — Global Modal
 
-**`FriendsDashboard.tsx`** (Blocked tab):
-- Import `useBlockUser` hook
-- Replace the empty "No blocked users" placeholder with a list of blocked users (query `profiles` by `blockedUserIds`)
-- Each blocked user row has an "Unblock" button calling `unblockUser`
+**Follow existing patterns** (`ReportModalContext` / `UserProfileContext`):
 
-### Files to Create/Modify
+1. **Create `src/contexts/ForwardMessageContext.tsx`** — holds `isOpen`, `messageContent`, `fileUrl`, `fileName`, `fileType`, `fileSize`, `openForwardModal(...)`, `closeForwardModal()`
+
+2. **Create `src/components/chat/ForwardMessageModal.tsx`** — responsive Dialog/Drawer:
+   - Search bar at top
+   - Fetches DM threads + group threads (reuse the exact pattern from `ForwardImageDialog.tsx`)
+   - Also fetches server channels the user belongs to
+   - Click a row → inserts a new message with `is_forwarded: true` into that thread/channel
+   - Shows success toast + closes
+
+3. **Register in `App.tsx`** — wrap with `ForwardMessageProvider`, render `<ForwardMessageModal />`
+
+**Files created:** `ForwardMessageContext.tsx`, `ForwardMessageModal.tsx`
+**Files modified:** `App.tsx`
+
+---
+
+### Phase 4: Wire Forward & Forwarded Indicator
+
+1. **`MessageContextMenu.tsx`** — add `onForward` prop, replace forward placeholder with it
+
+2. **Chat components** (`Chat.tsx`, `GroupChat.tsx`, `ServerChannelChat.tsx`):
+   - Import `useForwardMessage` context
+   - Pass `onForward` to `MessageContextMenu` that calls `openForwardModal(content, fileUrl, ...)`
+   - In message bubble rendering: if `(msg as any).is_forwarded`, render a small muted line above the content: `↪ Forwarded` with the Forward lucide icon
+
+3. **i18n** — add keys for `actions.forwarded`, `forward.title`, `forward.search`, `forward.success`, `forward.servers`, `forward.dms`, `forward.groups` to `en.ts` and `ar.ts`
+
+---
+
+### Files Summary
 
 | File | Action |
 |------|--------|
-| DB Migration | Create `blocked_users` + `dm_thread_visibility` |
-| `src/hooks/useBlockUser.ts` | **New** |
-| `src/hooks/useCloseDM.ts` | **New** |
-| `src/components/chat/ThreadContextMenu.tsx` | Add callback props, wire them |
-| `src/components/chat/UserContextMenu.tsx` | Wire block/unblock |
-| `src/components/layout/HomeSidebar.tsx` | Filter closed DMs, pass callbacks |
-| `src/pages/FriendsDashboard.tsx` | Wire Blocked tab |
+| Migration SQL | `ALTER TABLE messages ADD COLUMN is_forwarded` |
+| `src/components/chat/MessageContextMenu.tsx` | Add `onAddReaction` + `onForward` props |
+| `src/components/chat/MessageReactions.tsx` | Add `forceOpen` prop |
+| `src/contexts/ForwardMessageContext.tsx` | **New** |
+| `src/components/chat/ForwardMessageModal.tsx` | **New** |
+| `src/pages/Chat.tsx` | Wire reaction picker state + forward |
+| `src/pages/GroupChat.tsx` | Same wiring |
+| `src/components/server/ServerChannelChat.tsx` | Same wiring |
+| `src/App.tsx` | Add ForwardMessage provider + modal |
+| `src/i18n/en.ts` + `ar.ts` | New translation keys |
 
