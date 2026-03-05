@@ -226,6 +226,11 @@ const ProfileTab = () => {
         </div>
       </div>
 
+      {/* Avatar Decoration */}
+      <div className="border-t border-border/50 pt-6">
+        <DecorationSelector />
+      </div>
+
       {/* Fields */}
       <div className="space-y-4">
         <div className="space-y-1.5">
