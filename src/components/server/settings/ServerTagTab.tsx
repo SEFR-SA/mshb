@@ -177,7 +177,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold leading-none text-white shrink-0"
             style={{ backgroundColor: tagContainerColor }}
           >
-            <ServerTagBadgeIcon badgeName={tagBadge} color={tagColor} className="h-3 w-3" />
+            <ServerTagBadgeIcon badgeName={tagBadge} color={tagColor} className="h-4 w-4" />
             {(tagName || t("serverSettings.serverTag")).substring(0, 4).toUpperCase()}
           </span>
         </div>
