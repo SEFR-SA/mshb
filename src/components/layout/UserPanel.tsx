@@ -102,6 +102,7 @@ const UserPanel = ({ className }: UserPanelProps) => {
           </NavLink>
         </div>
       </div>
+      </NameplateWrapper>
     </div>
   );
 };

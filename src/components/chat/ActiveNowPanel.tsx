@@ -149,6 +149,7 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
                 </button>
               </div>
             </div>
+            </NameplateWrapper>
           ))}
         </div>
       )}

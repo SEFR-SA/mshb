@@ -123,6 +123,7 @@ const SettingsModal = () => {
             {profile?.username && <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>}
           </div>
         </div>
+        </NameplateWrapper>
       </div>
 
       {/* Nav groups */}

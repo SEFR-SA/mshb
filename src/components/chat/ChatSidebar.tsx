@@ -399,6 +399,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                     <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
                   </div>
                 </button>
+                </NameplateWrapper>
                 </ThreadContextMenu>
               );
             })}
