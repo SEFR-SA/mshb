@@ -17,6 +17,7 @@ import UserContextMenu from "@/components/chat/UserContextMenu";
 import { revertToPlain } from "@/lib/unicodeFonts";
 import { useBlockUser } from "@/hooks/useBlockUser";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 type Profile = Tables<"profiles">;
 
