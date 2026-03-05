@@ -8,7 +8,9 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AudioSettingsProvider } from "@/contexts/AudioSettingsContext";
 import { VoiceChannelProvider } from "@/contexts/VoiceChannelContext";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
+import { ReportModalProvider } from "@/contexts/ReportModalContext";
 import UserProfileModal from "@/components/UserProfileModal";
+import ReportMessageModal from "@/components/chat/ReportMessageModal";
 import AppLayout from "@/components/layout/AppLayout";
 import Auth from "@/pages/Auth";
 import HomeView from "@/pages/HomeView";
@@ -162,6 +164,7 @@ const App = () => (
         <VoiceChannelProvider>
           <AuthProvider>
             <UserProfileProvider>
+            <ReportModalProvider>
             <TooltipProvider>
               <DeepLinkHandler />
               <AuthCallback />
@@ -171,6 +174,7 @@ const App = () => (
               <Sonner />
               <HashRouter>
                 <UserProfileModal />
+                <ReportMessageModal />
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   
@@ -190,6 +194,7 @@ const App = () => (
                 </Routes>
               </HashRouter>
             </TooltipProvider>
+            </ReportModalProvider>
             </UserProfileProvider>
           </AuthProvider>
         </VoiceChannelProvider>
