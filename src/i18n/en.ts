@@ -82,6 +82,8 @@ export default {
     pinChat: "Pin Chat",
     unpinChat: "Unpin Chat",
     pinned: "Pinned",
+    pinnedMessages: "Pinned Messages",
+    noPinnedMessages: "No pinned messages yet",
     showProfile: "Show Profile",
     hideProfile: "Hide Profile",
     startCall: "Start Voice Call",
