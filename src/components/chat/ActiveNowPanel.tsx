@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Volume2 } from "lucide-react";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 interface ActiveFriend {
   userId: string;
@@ -17,6 +18,7 @@ interface ActiveFriend {
   serverName: string;
   serverIcon: string | null;
   nameplateUrl: string | null;
+  avatarDecorationUrl: string | null;
   isPro: boolean;
 }
 
