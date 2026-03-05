@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload, Lock, Megaphone } from "lucide-react";
+import { Send, Hash, Upload, Lock, Megaphone, Pin } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import MarkdownToolbar from "@/components/chat/MarkdownToolbar";
@@ -34,6 +34,7 @@ import { useMessageReactions } from "@/hooks/useMessageReactions";
 import ServerInviteCard from "@/components/chat/ServerInviteCard";
 import { detectInviteInMessage } from "@/lib/inviteUtils";
 import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
+import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 
 const PAGE_SIZE = 50;
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
@@ -99,6 +100,7 @@ interface MessageItemProps {
   onDeleteForMe: (id: string) => void;
   onDeleteForEveryone: ((id: string) => void) | undefined;
   onMarkUnread: (id: string, createdAt: string) => void;
+  onTogglePin: (id: string) => void;
   onHighlight: React.Dispatch<React.SetStateAction<string | null>>;
   toggleReaction: (mid: string, emoji: string, uid: string) => void;
 }
@@ -107,7 +109,7 @@ const MessageItem = React.memo(({
   msg, prevMsg, replyToMsg, profiles, roleInfo,
   currentUserId, serverEmojis, serverId, channelId, isAnnouncement,
   isFirstMessage, isHighlighted, reactions, user,
-  onReply, onDeleteForMe, onDeleteForEveryone, onMarkUnread, onHighlight,
+  onReply, onDeleteForMe, onDeleteForEveryone, onMarkUnread, onTogglePin, onHighlight,
   toggleReaction,
 }: MessageItemProps) => {
   const { t } = useTranslation();
@@ -153,9 +155,11 @@ const MessageItem = React.memo(({
       authorName={name}
       isMine={isMine}
       isDeleted={false}
+      isPinned={!!msg.is_pinned}
       onReply={(id, authorName, content) => onReply(id, authorName, content)}
       onDeleteForMe={(id) => onDeleteForMe(id)}
       onDeleteForEveryone={onDeleteForEveryone}
+      onTogglePin={onTogglePin}
       onMarkUnread={(id) => onMarkUnread(id, msg.created_at)}
     >
       <div
@@ -208,6 +212,7 @@ const MessageItem = React.memo(({
                   )}
                 </span>
               </UserContextMenu>
+              {msg.is_pinned && <Pin className="h-3 w-3 text-muted-foreground" />}
               <span className="text-[10px] text-muted-foreground">
                 {formatTime(msg.created_at)}
               </span>
@@ -309,6 +314,14 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const [userRole, setUserRole] = useState<string>("member");
   const [userRoleColorMap, setUserRoleColorMap] = useState<Map<string, { color: string; iconUrl: string | null }>>(new Map());
   const { reactions, toggleReaction } = useMessageReactions(messages.map((m: any) => m.id));
+  const { togglePin: toggleMessagePin } = useTogglePinMessage();
+
+  const handleToggleMessagePin = async (msgId: string) => {
+    const newVal = await toggleMessagePin(msgId);
+    if (newVal !== null) {
+      setMessages((prev: any[]) => prev.map((m) => m.id === msgId ? { ...m, is_pinned: newVal } : m));
+    }
+  };
 
   // Fetch user's role in this server for announcement channel access control
   useEffect(() => {
@@ -645,6 +658,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                   onDeleteForMe={handleDeleteForMe}
                   onDeleteForEveryone={msg.author_id === user?.id ? handleDeleteForEveryone : undefined}
                   onMarkUnread={handleMarkUnread}
+                  onTogglePin={handleToggleMessagePin}
                   onHighlight={setHighlightedMsgId}
                   toggleReaction={toggleReaction}
                 />

@@ -130,6 +130,9 @@ export default {
     addReaction: "Add Reaction",
     forward: "Forward",
     pinMessage: "Pin Message",
+    unpinMessage: "Unpin Message",
+    messagePinned: "Message pinned",
+    messageUnpinned: "Message unpinned",
     reportMessage: "Report Message",
   },
   profile: {
@@ -852,6 +855,8 @@ export default {
     notesPlaceholder: "Provide any extra details that might help us review this report...",
     submitReport: "Submit Report",
     submitPlaceholder: "Report logic coming soon!",
+    submitSuccess: "Report submitted successfully",
+    submitError: "Failed to submit report",
     continue: "Continue",
     catDislike: "I don't like it",
     catSpam: "Spam",
