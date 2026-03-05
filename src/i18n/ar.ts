@@ -223,6 +223,17 @@ export default {
     newMessage: "لديك رسالة جديدة",
     newFriendRequest: "لديك طلب صداقة جديد!",
   },
+  notificationCenter: {
+    title: "الإشعارات",
+    markAllRead: "تحديد الكل كمقروء",
+    empty: "لا توجد إشعارات جديدة!",
+    someone: "شخص ما",
+    mentionedYou: "أشار إليك {{name}}",
+    invitedYou: "دعاك {{name}} إلى سيرفر",
+    missedCall: "فاتتك مكالمة من {{name}}",
+    friendRequest: "أرسل لك {{name}} طلب صداقة",
+    genericNotification: "أرسل لك {{name}} إشعارًا",
+  },
   friends: {
     title: "الأصدقاء",
     all: "جميع الأصدقاء",

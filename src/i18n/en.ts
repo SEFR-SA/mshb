@@ -223,6 +223,17 @@ export default {
     newMessage: "You have a new message",
     newFriendRequest: "You have a new friend request!",
   },
+  notificationCenter: {
+    title: "Notifications",
+    markAllRead: "Mark all as read",
+    empty: "You're all caught up!",
+    someone: "Someone",
+    mentionedYou: "{{name}} mentioned you",
+    invitedYou: "{{name}} invited you to a server",
+    missedCall: "You missed a call from {{name}}",
+    friendRequest: "{{name}} sent you a friend request",
+    genericNotification: "{{name}} sent you a notification",
+  },
   friends: {
     title: "Friends",
     all: "All Friends",
