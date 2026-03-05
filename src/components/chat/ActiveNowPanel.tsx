@@ -50,7 +50,7 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
 
     const [{ data: channels }, { data: profiles }] = await Promise.all([
       supabase.from("channels").select("id, name, server_id").in("id", channelIds),
-      supabase.from("profiles").select("user_id, display_name, username, avatar_url").in("user_id", userIds),
+      supabase.from("profiles").select("user_id, display_name, username, avatar_url, nameplate_url, is_pro").in("user_id", userIds),
     ]);
 
     const serverIds = [...new Set((channels || []).map((c) => c.server_id))];
