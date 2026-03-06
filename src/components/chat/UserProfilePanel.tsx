@@ -103,7 +103,7 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
           <p className="text-sm">{format(new Date(profile.created_at), "MMM d, yyyy")}</p>
         </div>
       </div>
-    </div>
+    </ProfileEffectWrapper>
   );
 };
 

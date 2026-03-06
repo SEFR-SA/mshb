@@ -148,7 +148,7 @@ const UserProfileModal = () => {
           </div>
         )}
       </div>
-    </div>
+    </ProfileEffectWrapper>
   );
 
   if (loading && isOpen) {
