@@ -7,6 +7,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { format, differenceInYears } from "date-fns";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 
 type Profile = Tables<"profiles">;
 
