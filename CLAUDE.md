@@ -431,6 +431,42 @@ xmlns="http://www.w3.org/2000/svg"  ← CORRECT
 | [src/hooks/useWebRTC.ts](https://www.google.com/search?q=src/hooks/useWebRTC.ts) | Voice/video call management |
 | [supabase/migrations/](https://www.google.com/search?q=supabase/migrations/) | All database schema changes |
 
+---
+
+## Premium Assets (Curated — No User Uploads)
+
+All premium cosmetic assets are **curated by the admin** and stored as hardcoded arrays in config files. Users select from the library — they **cannot** upload their own. All three asset types are **Pro-gated** automatically.
+
+### How to Add New Assets
+
+| Asset Type | Config File | Object Shape | Recommended Dimensions |
+|---|---|---|---|
+| Avatar Decorations | `src/lib/decorations.ts` | `{ id, name, url, animated? }` | **128 × 128 px** (or 256 × 256 px @2×). Square, transparent PNG/APNG/WebP. The frame is rendered ~25% larger than the avatar it wraps. |
+| Nameplates | `src/lib/nameplates.ts` | `{ id, name, url, animated? }` | **600 × 80 px** (or 1200 × 160 px @2×). Wide banner, used as identity-row backgrounds. |
+| Profile Effects | `src/lib/profileEffects.ts` | `{ id, name, url, animated? }` | **440 × 580 px** (or 880 × 1160 px @2×). Portrait orientation, transparent APNG/WebP, overlays the full profile card. |
+
+### Steps to Add a New Asset
+
+1. Export your design as **APNG or WebP** (never GIF). Use transparent backgrounds for Decorations and Effects.
+2. Host the file (e.g., Supabase Storage, CDN) and copy the public URL.
+3. Open the corresponding config file (see table above).
+4. Add a new `{ id: "snake_case_id", name: "Display Name", url: "https://...", animated: true }` entry to the exported array.
+5. Save — the UI selectors will pick it up automatically. No component code changes needed.
+
+### Wrapper Components
+
+| Component | Purpose | Used In |
+|---|---|---|
+| `AvatarDecorationWrapper` | Frames avatars at z-10 (25% oversized) | 14 locations (member lists, sidebars, panels, calls) |
+| `NameplateWrapper` | Background image behind identity rows | Member lists, DM sidebar, friends, settings |
+| `ProfileEffectWrapper` | Full-card animated overlay at z-50 | `UserProfileModal`, `UserProfilePanel` |
+
+### Database Columns (profiles table)
+
+- `avatar_decoration_url` — selected decoration URL
+- `nameplate_url` — selected nameplate URL
+- `profile_effect_url` — selected profile effect URL
+
 ```
 
 ```
