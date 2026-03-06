@@ -765,6 +765,7 @@ export type Database = {
           name_gradient_end: string | null
           name_gradient_start: string | null
           nameplate_url: string | null
+          profile_effect_url: string | null
           status: string
           status_text: string | null
           status_until: string | null
@@ -791,6 +792,7 @@ export type Database = {
           name_gradient_end?: string | null
           name_gradient_start?: string | null
           nameplate_url?: string | null
+          profile_effect_url?: string | null
           status?: string
           status_text?: string | null
           status_until?: string | null
@@ -817,6 +819,7 @@ export type Database = {
           name_gradient_end?: string | null
           name_gradient_start?: string | null
           nameplate_url?: string | null
+          profile_effect_url?: string | null
           status?: string
           status_text?: string | null
           status_until?: string | null

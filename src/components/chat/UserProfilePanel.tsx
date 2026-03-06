@@ -7,6 +7,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { format, differenceInYears } from "date-fns";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 
 type Profile = Tables<"profiles">;
 
@@ -24,7 +25,7 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
   const p = profile as any;
 
   return (
-    <div className="w-72 border-s border-border/50 glass h-full overflow-y-auto">
+    <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={p?.is_pro} className="w-72 border-s border-border/50 glass h-full overflow-y-auto">
       {/* Banner area */}
       {p.banner_url ? (
         <img src={p.banner_url} alt="" className="h-24 w-full object-cover rounded-b-lg" />
@@ -102,7 +103,7 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
           <p className="text-sm">{format(new Date(profile.created_at), "MMM d, yyyy")}</p>
         </div>
       </div>
-    </div>
+    </ProfileEffectWrapper>
   );
 };
 

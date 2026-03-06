@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 
 type Profile = Tables<"profiles">;
 
@@ -74,7 +75,7 @@ const UserProfileModal = () => {
   };
 
   const content = (
-    <div className="flex flex-col">
+    <ProfileEffectWrapper effectUrl={(profile as any)?.profile_effect_url} isPro={(profile as any)?.is_pro} className="flex flex-col">
       {/* Banner */}
       <div
         className="h-24 md:h-32 rounded-t-lg relative"
@@ -147,7 +148,7 @@ const UserProfileModal = () => {
           </div>
         )}
       </div>
-    </div>
+    </ProfileEffectWrapper>
   );
 
   if (loading && isOpen) {
