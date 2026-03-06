@@ -15,6 +15,8 @@ import StyledDisplayName from "@/components/StyledDisplayName";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 import DecorationSelector from "@/components/settings/DecorationSelector";
+import NameplateSelector from "@/components/settings/NameplateSelector";
+import EffectSelector from "@/components/settings/EffectSelector";
 
 const STATUSES: UserStatus[] = ["online", "busy", "dnd", "idle", "invisible"];
 const DURATIONS = ["15m", "1h", "8h", "24h", "3d", "forever"] as const;
