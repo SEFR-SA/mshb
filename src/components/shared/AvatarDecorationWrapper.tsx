@@ -35,13 +35,8 @@ const AvatarDecorationWrapper = ({
       <img
         src={decorationUrl}
         alt=""
-        className="absolute pointer-events-none z-10"
-        style={{
-          width: decorationSize,
-          height: decorationSize,
-          top: -offset,
-          left: -offset,
-        }}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 max-w-none"
+        style={{ width: decorationSize, height: decorationSize }}
       />
     </div>
   );
