@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,8 @@ import type { Tables } from "@/integrations/supabase/types";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
+import StatusBubble from "@/components/shared/StatusBubble";
+import SetStatusModal from "@/components/settings/SetStatusModal";
 
 type Profile = Tables<"profiles">;
 
@@ -28,11 +30,12 @@ const UserProfileModal = () => {
   const isMobile = useIsMobile();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
 
   const isOpen = !!profileUserId;
   const isSelf = profileUserId === user?.id;
 
-  useEffect(() => {
+  const fetchProfile = useCallback(() => {
     if (!profileUserId) { setProfile(null); return; }
     setLoading(true);
     supabase
@@ -45,6 +48,8 @@ const UserProfileModal = () => {
         setLoading(false);
       });
   }, [profileUserId]);
+
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
   const handleMessage = async () => {
     if (!user || !profileUserId || isSelf) return;
@@ -74,6 +79,11 @@ const UserProfileModal = () => {
     closeProfile();
   };
 
+  const p = profile as any;
+  const effectiveStatusText = (p?.status_until && new Date(p.status_until) < new Date())
+    ? null
+    : p?.status_text ?? null;
+
   const content = (
     <ProfileEffectWrapper effectUrl={(profile as any)?.profile_effect_url} isPro={(profile as any)?.is_pro} className="flex flex-col">
       {/* Banner */}
@@ -86,16 +96,21 @@ const UserProfileModal = () => {
         }}
       />
 
-      {/* Avatar overlapping banner */}
-      <div className="px-4 -mt-10 relative z-10">
-        <AvatarDecorationWrapper decorationUrl={(profile as any)?.avatar_decoration_url} isPro={(profile as any)?.is_pro} size={80}>
-        <Avatar className="h-20 w-20 border-4 border-popover">
-          <AvatarImage src={profile?.avatar_url || ""} />
-          <AvatarFallback className="bg-primary/20 text-primary text-2xl">
-            {(profile?.display_name || profile?.username || "?").charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+      {/* Avatar + Status Bubble row */}
+      <div className="px-4 -mt-10 relative z-10 flex items-end gap-2">
+        <AvatarDecorationWrapper decorationUrl={(profile as any)?.avatar_decoration_url} isPro={(profile as any)?.is_pro} size={80} className="shrink-0">
+          <Avatar className="h-20 w-20 border-4 border-popover">
+            <AvatarImage src={profile?.avatar_url || ""} />
+            <AvatarFallback className="bg-primary/20 text-primary text-2xl">
+              {(profile?.display_name || profile?.username || "?").charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
         </AvatarDecorationWrapper>
+        <StatusBubble
+          statusText={effectiveStatusText}
+          isEditable={isSelf}
+          onClick={isSelf ? () => setStatusModalOpen(true) : undefined}
+        />
       </div>
 
       {/* Info */}
@@ -148,6 +163,14 @@ const UserProfileModal = () => {
           </div>
         )}
       </div>
+
+      {/* Set Status Modal (self only) */}
+      {statusModalOpen && isSelf && (
+        <SetStatusModal
+          onClose={() => setStatusModalOpen(false)}
+          onSaved={async () => { await fetchProfile(); setStatusModalOpen(false); }}
+        />
+      )}
     </ProfileEffectWrapper>
   );
 

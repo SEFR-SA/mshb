@@ -476,6 +476,16 @@ export default {
     rename: "Rename Folder",
     ungroup: "Ungroup Servers",
   },
+  setStatus: {
+    title:           "Set your status",
+    addStatus:       "Add Status",
+    label:           "Status",
+    placeholder:     "What's on your mind?",
+    neverClear:      "This won't clear",
+    clearTodayAt:    "Clear today at {{time}}",
+    clearTomorrowAt: "Clear tomorrow at {{time}}",
+    save:            "Save",
+  },
   nameStyle: {
     title: "Display Name Style",
     changeStyle: "Change Style",

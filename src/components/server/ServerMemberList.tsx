@@ -20,6 +20,7 @@ import StyledDisplayName from "@/components/StyledDisplayName";
 import { usePresence } from "@/hooks/usePresence";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import StatusBubble from "@/components/shared/StatusBubble";
 
 interface Member {
   user_id: string;
@@ -32,6 +33,8 @@ interface Member {
     banner_url: string | null;
     about_me: string | null;
     status: string;
+    status_text?: string | null;
+    status_until?: string | null;
     created_at: string;
     name_gradient_start?: string | null;
     name_gradient_end?: string | null;
@@ -83,7 +86,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       const userIds = (data as any[]).map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, created_at, name_gradient_start, name_gradient_end, nameplate_url, avatar_decoration_url, is_pro, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
+        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, status_text, status_until, created_at, name_gradient_start, name_gradient_end, nameplate_url, avatar_decoration_url, is_pro, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
         .in("user_id", userIds);
 
       const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
@@ -238,14 +241,19 @@ const ServerMemberList = ({ serverId }: Props) => {
                         />
                         {/* Avatar + Info */}
                         <div className="px-4 pb-3">
-                          <div className="relative -mt-8 mb-2">
-                            <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={64}>
-                            <Avatar className="h-16 w-16 border-4 border-popover">
-                              <AvatarImage src={p?.avatar_url || ""} />
-                              <AvatarFallback className="bg-primary/20 text-primary text-lg">{name.charAt(0).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            </AvatarDecorationWrapper>
-                            <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="md" className="absolute bottom-1 start-12 z-20" />
+                          <div className="-mt-8 mb-2 flex items-end gap-2">
+                            <div className="relative shrink-0">
+                              <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={64}>
+                                <Avatar className="h-16 w-16 border-4 border-popover">
+                                  <AvatarImage src={p?.avatar_url || ""} />
+                                  <AvatarFallback className="bg-primary/20 text-primary text-lg">{name.charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                              </AvatarDecorationWrapper>
+                              <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="md" className="absolute bottom-1 start-12 z-20" />
+                            </div>
+                            <StatusBubble
+                              statusText={(p?.status_until && new Date(p.status_until) < new Date()) ? null : (p?.status_text ?? null)}
+                            />
                           </div>
 
                           <div className="font-bold text-foreground text-base">{name}</div>

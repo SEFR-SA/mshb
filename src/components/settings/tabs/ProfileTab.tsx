@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Camera, ImagePlus, Palette } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import DisplayNameStyleModal from "@/components/settings/DisplayNameStyleModal";
-import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
+import SetStatusModal from "@/components/settings/SetStatusModal";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
+import StatusBubble from "@/components/shared/StatusBubble";
 import DecorationSelector from "@/components/settings/DecorationSelector";
 import NameplateSelector from "@/components/settings/NameplateSelector";
 import EffectSelector from "@/components/settings/EffectSelector";
@@ -21,25 +22,17 @@ import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
-const STATUSES: UserStatus[] = ["online", "busy", "dnd", "idle", "invisible"];
-const DURATIONS = ["15m", "1h", "8h", "24h", "3d", "forever"] as const;
-const DURATION_MINUTES: Record<string, number | null> = {
-  "15m": 15, "1h": 60, "8h": 480, "24h": 1440, "3d": 4320, forever: null,
-};
-
 const ProfileTab = () => {
   const { t } = useTranslation();
   const { user, profile, refreshProfile } = useAuth();
 
   const [username, setUsername]           = useState("");
   const [displayName, setDisplayName]     = useState("");
-  const [statusText, setStatusText]       = useState("");
   const [aboutMe, setAboutMe]             = useState("");
-  const [status, setStatus]               = useState<UserStatus>("online");
-  const [statusDuration, setStatusDuration] = useState<string>("forever");
   const [saving, setSaving]               = useState(false);
   const [uploading, setUploading]         = useState(false);
   const [styleModalOpen, setStyleModalOpen] = useState(false);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [eligibleTags, setEligibleTags]   = useState<any[]>([]);
   const [activeServerTagId, setActiveServerTagId] = useState<string>("none");
 
@@ -50,9 +43,7 @@ const ProfileTab = () => {
     if (profile) {
       setUsername(profile.username || "");
       setDisplayName(profile.display_name || "");
-      setStatusText(profile.status_text || "");
       setAboutMe(p?.about_me || "");
-      setStatus((profile as any).status as UserStatus || "online");
       setActiveServerTagId(p?.active_server_tag_id || "none");
     }
   }, [profile]);
@@ -75,22 +66,12 @@ const ProfileTab = () => {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    let statusUntil: string | null = null;
-    if (status !== "online") {
-      const mins = DURATION_MINUTES[statusDuration];
-      if (mins !== null && mins !== undefined) {
-        statusUntil = new Date(Date.now() + mins * 60000).toISOString();
-      }
-    }
     const { error } = await supabase
       .from("profiles")
       .update({
-        username:          username.trim() || null,
-        display_name:      displayName.trim() || null,
-        status_text:       statusText.trim(),
-        about_me:          aboutMe.trim(),
-        status,
-        status_until:      status === "online" ? null : statusUntil,
+        username:             username.trim() || null,
+        display_name:         displayName.trim() || null,
+        about_me:             aboutMe.trim(),
         active_server_tag_id: activeServerTagId === "none" ? null : activeServerTagId,
       } as any)
       .eq("user_id", user.id);
@@ -227,6 +208,12 @@ const ProfileTab = () => {
                 }}
               />
             )}
+            {statusModalOpen && (
+              <SetStatusModal
+                onClose={() => setStatusModalOpen(false)}
+                onSaved={async () => { await refreshProfile(); setStatusModalOpen(false); }}
+              />
+            )}
           </div>
 
           {/* Avatar Decoration */}
@@ -255,45 +242,6 @@ const ProfileTab = () => {
               className="bg-muted/40 resize-none"
             />
             <p className="text-xs text-muted-foreground text-end">{aboutMe.length}/500</p>
-          </div>
-
-          {/* Status */}
-          <div className="border-t border-border/50 pt-4 space-y-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.statusText")}</Label>
-              <Input value={statusText} onChange={(e) => setStatusText(e.target.value)} placeholder="What's on your mind?" className="bg-muted/40" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("status.label")}</Label>
-                <Select value={status} onValueChange={(v) => { setStatus(v as UserStatus); if (v === "online") setStatusDuration("forever"); }}>
-                  <SelectTrigger className="bg-muted/40"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-popover">
-                    {STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        <span className="flex items-center gap-2">
-                          <StatusBadge status={s} />
-                          {t(`status.${s}`)}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {status !== "online" && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("status.duration")}</Label>
-                  <Select value={statusDuration} onValueChange={setStatusDuration}>
-                    <SelectTrigger className="bg-muted/40"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-popover">
-                      {DURATIONS.map((d) => (
-                        <SelectItem key={d} value={d}>{t(`duration.${d}`)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Server Tags */}
@@ -358,9 +306,9 @@ const ProfileTab = () => {
 
               {/* Body */}
               <div className="px-4 pb-4 pt-0 relative">
-                {/* Avatar overlapping banner — click to upload */}
-                <div className="-mt-7 mb-2 inline-block">
-                  <label className="cursor-pointer relative inline-block group">
+                {/* Avatar + Status Bubble row */}
+                <div className="-mt-7 mb-2 flex items-end gap-2">
+                  <label className="cursor-pointer relative inline-block group shrink-0">
                     <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={isPro} size={48}>
                       <Avatar className="h-12 w-12 border-4 border-background" alwaysPlayGif>
                         <AvatarImage src={profile?.avatar_url || ""} />
@@ -372,6 +320,11 @@ const ProfileTab = () => {
                     </span>
                     <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
                   </label>
+                  <StatusBubble
+                    statusText={p?.status_text || null}
+                    isEditable
+                    onClick={() => setStatusModalOpen(true)}
+                  />
                 </div>
                 <StyledDisplayName {...nameStyleProps} className="font-bold text-base" />
                 {username && <p className="text-xs text-muted-foreground mt-0.5">@{username}</p>}

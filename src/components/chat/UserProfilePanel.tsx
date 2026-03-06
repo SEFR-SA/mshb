@@ -8,6 +8,7 @@ import { format, differenceInYears } from "date-fns";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
+import StatusBubble from "@/components/shared/StatusBubble";
 
 type Profile = Tables<"profiles">;
 
@@ -23,6 +24,9 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
 
   const status = (statusLabel === "offline" ? "invisible" : statusLabel) as UserStatus;
   const p = profile as any;
+  const effectiveStatusText = (p?.status_until && new Date(p.status_until) < new Date())
+    ? null
+    : p?.status_text ?? null;
 
   return (
     <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={p?.is_pro} className="w-72 border-s border-border/50 glass h-full overflow-y-auto">
@@ -33,9 +37,9 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
         <div className="h-24 bg-primary/20 rounded-b-lg" />
       )}
 
-      {/* Avatar overlapping banner */}
-      <div className="px-4 -mt-10">
-        <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={80}>
+      {/* Avatar + Status Bubble row */}
+      <div className="px-4 -mt-10 flex items-end gap-2">
+        <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={80} className="shrink-0">
           <Avatar className="h-20 w-20 border-4 border-background">
             <AvatarImage src={profile.avatar_url || ""} />
             <AvatarFallback className="bg-primary/20 text-primary text-2xl">
@@ -44,6 +48,7 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
           </Avatar>
           <StatusBadge status={status} size="md" className="absolute bottom-1 end-1 z-20" />
         </AvatarDecorationWrapper>
+        <StatusBubble statusText={effectiveStatusText} />
       </div>
 
       {/* Profile card */}
@@ -72,17 +77,6 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
           <span className="text-sm capitalize">{t(`status.${statusLabel !== "offline" ? statusLabel : "invisible"}`)}</span>
         </div>
 
-
-        {/* Custom Status */}
-        {profile.status_text && (
-          <>
-            <Separator />
-            <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">{t("profile.statusText")}</h4>
-              <p className="text-sm">{profile.status_text}</p>
-            </div>
-          </>
-        )}
 
         {/* About Me */}
         {p.about_me && (

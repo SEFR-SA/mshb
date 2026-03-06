@@ -476,6 +476,16 @@ export default {
     rename: "إعادة تسمية المجلد",
     ungroup: "فك تجميع السيرفرات",
   },
+  setStatus: {
+    title:           "تعيين حالتك",
+    addStatus:       "إضافة حالة",
+    label:           "الحالة",
+    placeholder:     "ما الذي يشغل بالك؟",
+    neverClear:      "لن يتم المسح",
+    clearTodayAt:    "مسح اليوم في {{time}}",
+    clearTomorrowAt: "مسح غداً في {{time}}",
+    save:            "حفظ",
+  },
   nameStyle: {
     title: "نمط اسم العرض",
     changeStyle: "تغيير النمط",
