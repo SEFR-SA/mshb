@@ -1,8 +1,11 @@
 import React from "react";
 import ServerTagBadgeIcon from "./ServerTagBadgeIcon";
+import { convertToFont, type FontStyle } from "@/lib/unicodeFonts";
 
 interface StyledDisplayNameProps {
   displayName: string;
+  fontStyle?: string | null;
+  effect?: string | null;
   gradientStart?: string | null;
   gradientEnd?: string | null;
   color?: string | null;
@@ -17,6 +20,8 @@ interface StyledDisplayNameProps {
 
 const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
   displayName,
+  fontStyle,
+  effect,
   gradientStart,
   gradientEnd,
   color,
@@ -33,7 +38,44 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
     </span>
   ) : null;
 
-  if (gradientStart && gradientEnd) {
+  const rendered = fontStyle && fontStyle !== "Normal"
+    ? convertToFont(displayName, fontStyle as FontStyle)
+    : displayName;
+
+  const activeColor = color || gradientStart || "#FFFFFF";
+
+  const neonShadow = `0 0 8px ${activeColor}, 0 0 20px ${activeColor}, 0 0 40px ${activeColor}`;
+  const toonShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000`;
+  const popShadow  = `2px 2px 0 rgba(0,0,0,0.4), 4px 4px 0 rgba(0,0,0,0.15)`;
+
+  if (effect === "Neon") {
+    return (
+      <span className={className}>
+        <span style={{ color: activeColor, textShadow: neonShadow }}>{rendered}</span>
+        {tagEl}
+      </span>
+    );
+  }
+
+  if (effect === "Toon") {
+    return (
+      <span className={className}>
+        <span style={{ color: activeColor, textShadow: toonShadow }}>{rendered}</span>
+        {tagEl}
+      </span>
+    );
+  }
+
+  if (effect === "Pop") {
+    return (
+      <span className={className}>
+        <span style={{ color: activeColor, textShadow: popShadow }}>{rendered}</span>
+        {tagEl}
+      </span>
+    );
+  }
+
+  if ((effect === "Gradient" || (!effect && gradientStart && gradientEnd)) && gradientStart && gradientEnd) {
     return (
       <span className={className}>
         <span
@@ -48,17 +90,17 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
             fontFamily: "inherit, 'Inter', system-ui, sans-serif",
           }}
         >
-          {displayName}
+          {rendered}
         </span>
         {tagEl}
       </span>
     );
   }
 
-  if (color) {
+  if (color || (effect === "Solid" && gradientStart)) {
     return (
       <span className={className}>
-        <span style={{ color }}>{displayName}</span>
+        <span style={{ color: color || gradientStart || undefined }}>{rendered}</span>
         {tagEl}
       </span>
     );
@@ -66,7 +108,7 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
 
   return (
     <span className={className}>
-      {displayName}
+      {rendered}
       {tagEl}
     </span>
   );

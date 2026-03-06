@@ -9,57 +9,42 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, ImagePlus } from "lucide-react";
-import { FONT_STYLES, convertToFont, revertToPlain, type FontStyle } from "@/lib/unicodeFonts";
+import { Camera, ImagePlus, Palette } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
+import DisplayNameStyleModal from "@/components/settings/DisplayNameStyleModal";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 import DecorationSelector from "@/components/settings/DecorationSelector";
 import NameplateSelector from "@/components/settings/NameplateSelector";
 import EffectSelector from "@/components/settings/EffectSelector";
+import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
+import NameplateWrapper from "@/components/shared/NameplateWrapper";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 const STATUSES: UserStatus[] = ["online", "busy", "dnd", "idle", "invisible"];
 const DURATIONS = ["15m", "1h", "8h", "24h", "3d", "forever"] as const;
 const DURATION_MINUTES: Record<string, number | null> = {
   "15m": 15, "1h": 60, "8h": 480, "24h": 1440, "3d": 4320, forever: null,
 };
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-const MONTH_KEYS = [
-  "january", "february", "march", "april", "may", "june",
-  "july", "august", "september", "october", "november", "december",
-] as const;
-const currentYear = new Date().getFullYear();
-const YEARS = Array.from({ length: 100 }, (_, i) => currentYear - i);
 
 const ProfileTab = () => {
   const { t } = useTranslation();
   const { user, profile, refreshProfile } = useAuth();
 
-  const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [statusText, setStatusText] = useState("");
-  const [aboutMe, setAboutMe] = useState("");
-  const [status, setStatus] = useState<UserStatus>("online");
+  const [username, setUsername]           = useState("");
+  const [displayName, setDisplayName]     = useState("");
+  const [statusText, setStatusText]       = useState("");
+  const [aboutMe, setAboutMe]             = useState("");
+  const [status, setStatus]               = useState<UserStatus>("online");
   const [statusDuration, setStatusDuration] = useState<string>("forever");
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [gradientStart, setGradientStart] = useState("");
-  const [gradientEnd, setGradientEnd] = useState("");
-  const [selectedFont, setSelectedFont] = useState<FontStyle>("Normal");
-  const [dobMonth, setDobMonth] = useState("");
-  const [dobDay, setDobDay] = useState("");
-  const [dobYear, setDobYear] = useState("");
-  const [gender, setGender] = useState("");
-
-  // Server Tags
-  const [eligibleTags, setEligibleTags] = useState<any[]>([]);
+  const [saving, setSaving]               = useState(false);
+  const [uploading, setUploading]         = useState(false);
+  const [styleModalOpen, setStyleModalOpen] = useState(false);
+  const [eligibleTags, setEligibleTags]   = useState<any[]>([]);
   const [activeServerTagId, setActiveServerTagId] = useState<string>("none");
 
   const isPro = (profile as any)?.is_pro ?? false;
-  const p = profile as any;
+  const p     = profile as any;
 
   useEffect(() => {
     if (profile) {
@@ -68,34 +53,23 @@ const ProfileTab = () => {
       setStatusText(profile.status_text || "");
       setAboutMe(p?.about_me || "");
       setStatus((profile as any).status as UserStatus || "online");
-      setGradientStart(p?.name_gradient_start || "");
-      setGradientEnd(p?.name_gradient_end || "");
-      if (p?.date_of_birth) {
-        const d = new Date(p.date_of_birth);
-        setDobMonth(MONTHS[d.getMonth()]);
-        setDobDay(String(d.getDate()));
-        setDobYear(String(d.getFullYear()));
-      }
-      setGender(p?.gender || "");
       setActiveServerTagId(p?.active_server_tag_id || "none");
     }
   }, [profile]);
 
   useEffect(() => {
     if (!user) return;
-    const fetchTags = async () => {
-      const { data } = await supabase
-        .from("server_members" as any)
-        .select("server_id, servers(id, name, server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
-        .eq("user_id", user.id);
-      if (data) {
-        const tags = data
-          .map((row: any) => row.servers)
-          .filter((s: any) => s && s.server_tag_name);
-        setEligibleTags(tags);
-      }
-    };
-    fetchTags();
+    supabase
+      .from("server_members" as any)
+      .select("server_id, servers(id, name, server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        if (data) {
+          setEligibleTags(
+            data.map((row: any) => row.servers).filter((s: any) => s && s.server_tag_name)
+          );
+        }
+      });
   }, [user]);
 
   const handleSave = async () => {
@@ -108,24 +82,15 @@ const ProfileTab = () => {
         statusUntil = new Date(Date.now() + mins * 60000).toISOString();
       }
     }
-    let dateOfBirth: string | null = null;
-    if (dobMonth && dobDay && dobYear) {
-      const monthIdx = MONTHS.indexOf(dobMonth) + 1;
-      dateOfBirth = `${dobYear}-${String(monthIdx).padStart(2, "0")}-${String(Number(dobDay)).padStart(2, "0")}`;
-    }
     const { error } = await supabase
       .from("profiles")
       .update({
-        username: username.trim() || null,
-        display_name: displayName.trim() || null,
-        status_text: statusText.trim(),
-        about_me: aboutMe.trim(),
+        username:          username.trim() || null,
+        display_name:      displayName.trim() || null,
+        status_text:       statusText.trim(),
+        about_me:          aboutMe.trim(),
         status,
-        status_until: status === "online" ? null : statusUntil,
-        name_gradient_start: gradientStart || null,
-        name_gradient_end: gradientEnd || null,
-        date_of_birth: dateOfBirth,
-        gender: gender || null,
+        status_until:      status === "online" ? null : statusUntil,
         active_server_tag_id: activeServerTagId === "none" ? null : activeServerTagId,
       } as any)
       .eq("user_id", user.id);
@@ -152,7 +117,7 @@ const ProfileTab = () => {
       return;
     }
     setUploading(true);
-    const ext = file.name.split(".").pop();
+    const ext  = file.name.split(".").pop();
     const path = `${user.id}/avatar.${ext}`;
     const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
     if (uploadError) {
@@ -169,7 +134,7 @@ const ProfileTab = () => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
     setUploading(true);
-    const ext = file.name.split(".").pop();
+    const ext  = file.name.split(".").pop();
     const path = `${user.id}/banner.${ext}`;
     const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
     if (uploadError) {
@@ -184,260 +149,260 @@ const ProfileTab = () => {
 
   const initials = (profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase();
 
+  const nameStyleProps = {
+    displayName:   displayName || "User",
+    fontStyle:     p?.name_font,
+    effect:        p?.name_effect,
+    gradientStart: p?.name_gradient_start || null,
+    gradientEnd:   p?.name_gradient_end || null,
+    color:         p?.name_effect && p.name_effect !== "Gradient" ? p.name_gradient_start : null,
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Page heading */}
       <div>
         <h2 className="text-xl font-bold text-foreground mb-1">{t("settings.myProfile")}</h2>
         <p className="text-sm text-muted-foreground">Manage your public profile information.</p>
       </div>
 
-      {/* Banner + Avatar */}
-      <div className="rounded-xl overflow-hidden border border-border/50">
-        <div className="relative">
-          {p?.banner_url ? (
-            <img src={p.banner_url} alt="" className="h-32 w-full object-cover" />
-          ) : (
-            <div className="h-32 w-full bg-gradient-to-r from-primary/30 to-primary/10" />
-          )}
-          <label className="absolute top-2 end-2 h-8 w-8 rounded-full bg-background/80 flex items-center justify-center cursor-pointer hover:bg-background transition-colors">
-            <ImagePlus className="h-4 w-4" />
-            <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
-          </label>
-          {/* Avatar overlapping banner */}
-          <div className="absolute -bottom-10 start-4">
-            <div className="relative">
-              <Avatar className="h-20 w-20 border-4 border-background" alwaysPlayGif>
-                <AvatarImage src={profile?.avatar_url || ""} />
-                <AvatarFallback className="bg-primary/20 text-primary text-2xl">{initials}</AvatarFallback>
-              </Avatar>
-              <label className="absolute bottom-0 end-0 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
-                <Camera className="h-3.5 w-3.5" />
-                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
-              </label>
+      {/* Two-column layout */}
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+
+        {/* ── LEFT COLUMN — form controls ── */}
+        <div className="flex-1 min-w-0 space-y-6">
+
+          {/* Username */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.username")}</Label>
+            <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" className="bg-muted/40" />
+          </div>
+
+          {/* Display Name + Style buttons */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.displayName")}</Label>
+            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="bg-muted/40" />
+            <div className="flex items-center gap-2 mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() => {
+                  if (!isPro) {
+                    toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
+                    return;
+                  }
+                  setStyleModalOpen(true);
+                }}
+              >
+                <Palette className="h-3.5 w-3.5 mr-1.5" />
+                {t("nameStyle.changeStyle")}
+              </Button>
+              {(p?.name_gradient_start || p?.name_font || p?.name_effect) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground"
+                  onClick={async () => {
+                    await supabase.from("profiles").update({
+                      name_font: null, name_effect: null,
+                      name_gradient_start: null, name_gradient_end: null,
+                    } as any).eq("user_id", user!.id);
+                    await refreshProfile();
+                    toast({ title: t("nameStyle.styleRemoved") });
+                  }}
+                >
+                  {t("nameStyle.removeStyle")}
+                </Button>
+              )}
+            </div>
+            {styleModalOpen && (
+              <DisplayNameStyleModal
+                onClose={() => setStyleModalOpen(false)}
+                onApplied={async () => {
+                  await refreshProfile();
+                  setStyleModalOpen(false);
+                }}
+              />
+            )}
+          </div>
+
+          {/* Avatar Decoration */}
+          <div className="border-t border-border/50 pt-4">
+            <DecorationSelector />
+          </div>
+
+          {/* Nameplate */}
+          <div className="border-t border-border/50 pt-4">
+            <NameplateSelector />
+          </div>
+
+          {/* Profile Effect */}
+          <div className="border-t border-border/50 pt-4">
+            <EffectSelector />
+          </div>
+
+          {/* About Me */}
+          <div className="border-t border-border/50 pt-4 space-y-1.5">
+            <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.aboutMeLabel")}</Label>
+            <Textarea
+              value={aboutMe}
+              onChange={(e) => setAboutMe(e.target.value.slice(0, 500))}
+              placeholder={t("profile.aboutMePlaceholder")}
+              rows={4}
+              className="bg-muted/40 resize-none"
+            />
+            <p className="text-xs text-muted-foreground text-end">{aboutMe.length}/500</p>
+          </div>
+
+          {/* Status */}
+          <div className="border-t border-border/50 pt-4 space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.statusText")}</Label>
+              <Input value={statusText} onChange={(e) => setStatusText(e.target.value)} placeholder="What's on your mind?" className="bg-muted/40" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("status.label")}</Label>
+                <Select value={status} onValueChange={(v) => { setStatus(v as UserStatus); if (v === "online") setStatusDuration("forever"); }}>
+                  <SelectTrigger className="bg-muted/40"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    {STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        <span className="flex items-center gap-2">
+                          <StatusBadge status={s} />
+                          {t(`status.${s}`)}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {status !== "online" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("status.duration")}</Label>
+                  <Select value={statusDuration} onValueChange={setStatusDuration}>
+                    <SelectTrigger className="bg-muted/40"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-popover">
+                      {DURATIONS.map((d) => (
+                        <SelectItem key={d} value={d}>{t(`duration.${d}`)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-        <div className="pt-12 pb-4 px-4">
-          <StyledDisplayName
-            displayName={displayName || profile?.display_name || "User"}
-            gradientStart={gradientStart || null}
-            gradientEnd={gradientEnd || null}
-            className="font-bold text-lg"
-          />
-          {username && <p className="text-sm text-muted-foreground">@{username}</p>}
-        </div>
-      </div>
 
-      {/* Avatar Decoration */}
-      <div className="border-t border-border/50 pt-6">
-        <DecorationSelector />
-      </div>
-
-      {/* Nameplate Banner */}
-      <div className="border-t border-border/50 pt-6">
-        <NameplateSelector />
-      </div>
-
-      {/* Profile Effect */}
-      <div className="border-t border-border/50 pt-6">
-        <EffectSelector />
-      </div>
-
-      {/* Fields */}
-      <div className="space-y-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.username")}</Label>
-          <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" className="bg-muted/40" />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.displayName")}</Label>
-          <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="bg-muted/40" />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.statusText")}</Label>
-          <Input value={statusText} onChange={(e) => setStatusText(e.target.value)} placeholder="What's on your mind?" className="bg-muted/40" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("status.label")}</Label>
-            <Select value={status} onValueChange={(v) => { setStatus(v as UserStatus); if (v === "online") setStatusDuration("forever"); }}>
-              <SelectTrigger className="bg-muted/40"><SelectValue /></SelectTrigger>
+          {/* Server Tags */}
+          <div className="border-t border-border/50 pt-4 space-y-3">
+            <div>
+              <h3 className="font-extrabold text-xs uppercase tracking-wider text-muted-foreground">{t("serverTags.title", "Server Tags")}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("serverTags.description", "Select a server tag to display next to your name globally.")}</p>
+            </div>
+            <Select value={activeServerTagId} onValueChange={setActiveServerTagId}>
+              <SelectTrigger className="bg-muted/40"><SelectValue placeholder="Select a tag" /></SelectTrigger>
               <SelectContent className="bg-popover">
-                {STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    <span className="flex items-center gap-2">
-                      <StatusBadge status={s} />
-                      {t(`status.${s}`)}
-                    </span>
+                <SelectItem value="none">
+                  <span className="text-muted-foreground">{t("serverTags.none", "None")}</span>
+                </SelectItem>
+                {eligibleTags.map((tag) => (
+                  <SelectItem key={tag.id} value={tag.id}>
+                    <div className="flex items-center gap-2">
+                      <span>{tag.name}</span>
+                      <span
+                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white inline-flex items-center gap-1"
+                        style={{ backgroundColor: tag.server_tag_container_color || tag.server_tag_color || "#6b7280" }}
+                      >
+                        <ServerTagBadgeIcon badgeName={tag.server_tag_badge} color={tag.server_tag_color} className="w-3 h-3 shrink-0" />
+                        <span>{tag.server_tag_name}</span>
+                      </span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          {status !== "online" && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("status.duration")}</Label>
-              <Select value={statusDuration} onValueChange={setStatusDuration}>
-                <SelectTrigger className="bg-muted/40"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-popover">
-                  {DURATIONS.map((d) => (
-                    <SelectItem key={d} value={d}>{t(`duration.${d}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
 
-        <div className="space-y-1.5">
-          <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.aboutMeLabel")}</Label>
-          <Textarea
-            value={aboutMe}
-            onChange={(e) => setAboutMe(e.target.value.slice(0, 500))}
-            placeholder={t("profile.aboutMePlaceholder")}
-            rows={4}
-            className="bg-muted/40 resize-none"
-          />
-          <p className="text-xs text-muted-foreground text-end">{aboutMe.length}/500</p>
-        </div>
-
-        {/* Date of Birth */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.dateOfBirth")}</Label>
-          <div className="grid grid-cols-3 gap-2">
-            <Select value={dobMonth} onValueChange={setDobMonth}>
-              <SelectTrigger className="bg-muted/40"><SelectValue placeholder={t("profile.monthPlaceholder")} /></SelectTrigger>
-              <SelectContent className="bg-popover">
-                {MONTHS.map((m, i) => (
-                  <SelectItem key={m} value={m}>{t(`profile.months.${MONTH_KEYS[i]}`)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={dobDay} onValueChange={setDobDay}>
-              <SelectTrigger className="bg-muted/40"><SelectValue placeholder={t("profile.dayPlaceholder")} /></SelectTrigger>
-              <SelectContent className="bg-popover">
-                {Array.from(
-                  { length: dobMonth && dobYear ? new Date(Number(dobYear), MONTHS.indexOf(dobMonth) + 1, 0).getDate() : 31 },
-                  (_, i) => i + 1
-                ).map((d) => (
-                  <SelectItem key={d} value={String(d)}>{d}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={dobYear} onValueChange={setDobYear}>
-              <SelectTrigger className="bg-muted/40"><SelectValue placeholder={t("profile.yearPlaceholder")} /></SelectTrigger>
-              <SelectContent className="bg-popover">
-                {YEARS.map((y) => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Save */}
+          <div className="pt-2">
+            <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
+              {saving ? t("common.loading") : t("profile.save")}
+            </Button>
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.gender")}</Label>
-          <Select value={gender} onValueChange={setGender}>
-            <SelectTrigger className="bg-muted/40"><SelectValue placeholder={t("profile.selectGender")} /></SelectTrigger>
-            <SelectContent className="bg-popover">
-              <SelectItem value="Male">{t("profile.male")}</SelectItem>
-              <SelectItem value="Female">{t("profile.female")}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+        {/* ── RIGHT COLUMN — sticky live preview ── */}
+        <div className="w-full lg:w-[300px] shrink-0 sticky top-6 self-start space-y-4">
 
-      {/* Server Tags */}
-      <div className="border-t border-border/50 pt-6 space-y-4">
-        <h3 className="font-extrabold text-xs uppercase tracking-wider text-muted-foreground">{t("serverTags.title", "Server Tags")}</h3>
-        <p className="text-xs text-muted-foreground">{t("serverTags.description", "Select a server tag to display next to your name globally.")}</p>
-        <Select value={activeServerTagId} onValueChange={setActiveServerTagId}>
-          <SelectTrigger className="bg-muted/40"><SelectValue placeholder="Select a tag" /></SelectTrigger>
-          <SelectContent className="bg-popover">
-            <SelectItem value="none">
-              <span className="text-muted-foreground">{t("serverTags.none", "None")}</span>
-            </SelectItem>
-            {eligibleTags.map((tag) => (
-              <SelectItem key={tag.id} value={tag.id}>
-                <div className="flex items-center gap-2">
-                  <span>{tag.name}</span>
-                  <span
-                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white inline-flex items-center gap-1"
-                    style={{ backgroundColor: tag.server_tag_container_color || tag.server_tag_color || "#6b7280" }}
-                  >
-                    <ServerTagBadgeIcon badgeName={tag.server_tag_badge} color={tag.server_tag_color} className="w-3 h-3 shrink-0" />
-                    <span>{tag.server_tag_name}</span>
-                  </span>
+          {/* Preview 1: Profile Card */}
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground/70 mb-2">
+              {t("nameStyle.previewTitle")}
+            </p>
+            <div className="rounded-xl overflow-hidden border border-border/50">
+              {/* Banner — click to upload */}
+              <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={isPro}>
+                <label className="block relative cursor-pointer group">
+                  {p?.banner_url
+                    ? <img src={p.banner_url} alt="" className="h-24 w-full object-cover" />
+                    : <div className="h-24 w-full bg-gradient-to-r from-primary/30 to-primary/10" />}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <ImagePlus className="h-5 w-5 text-white" />
+                  </div>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
+                </label>
+              </ProfileEffectWrapper>
+
+              {/* Body */}
+              <div className="px-4 pb-4 pt-0 relative">
+                {/* Avatar overlapping banner — click to upload */}
+                <div className="-mt-7 mb-2 inline-block">
+                  <label className="cursor-pointer relative inline-block group">
+                    <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={isPro} size={48}>
+                      <Avatar className="h-12 w-12 border-4 border-background" alwaysPlayGif>
+                        <AvatarImage src={profile?.avatar_url || ""} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-lg">{initials}</AvatarFallback>
+                      </Avatar>
+                    </AvatarDecorationWrapper>
+                    <span className="absolute bottom-0 end-0 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow pointer-events-none">
+                      <Camera className="h-3 w-3" />
+                    </span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
+                  </label>
                 </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Name Style */}
-      <div className="border-t border-border/50 pt-6 space-y-4">
-        <h3 className="font-extrabold text-xs uppercase tracking-wider text-muted-foreground">{t("nameStyle.title")}</h3>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">{t("nameStyle.fontStyle")}</Label>
-          <div className="flex flex-wrap gap-2">
-            {FONT_STYLES.map((font) => (
-              <button
-                key={font.id}
-                onClick={() => {
-                  setSelectedFont(font.id);
-                  const plain = revertToPlain(displayName);
-                  setDisplayName(convertToFont(plain, font.id));
-                }}
-                className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${selectedFont === font.id
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border hover:border-primary/50"
-                  }`}
-              >
-                {font.preview}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">{t("nameStyle.gradientColors")}</Label>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{t("nameStyle.startColor")}</span>
-              <label className="h-8 w-8 rounded-full border border-border cursor-pointer overflow-hidden relative">
-                <div className="h-full w-full" style={{ backgroundColor: gradientStart || "#ffffff" }} />
-                <input type="color" value={gradientStart || "#ffffff"} onChange={(e) => setGradientStart(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
-              </label>
+                <StyledDisplayName {...nameStyleProps} className="font-bold text-base" />
+                {username && <p className="text-xs text-muted-foreground mt-0.5">@{username}</p>}
+                {aboutMe && (
+                  <p className="text-xs text-muted-foreground mt-2 line-clamp-3 whitespace-pre-wrap">{aboutMe}</p>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{t("nameStyle.endColor")}</span>
-              <label className="h-8 w-8 rounded-full border border-border cursor-pointer overflow-hidden relative">
-                <div className="h-full w-full" style={{ backgroundColor: gradientEnd || "#ffffff" }} />
-                <input type="color" value={gradientEnd || "#ffffff"} onChange={(e) => setGradientEnd(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
-              </label>
-            </div>
-            {(gradientStart || gradientEnd) && (
-              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setGradientStart(""); setGradientEnd(""); }}>
-                {t("nameStyle.clearGradient")}
-              </Button>
-            )}
           </div>
-          <div className="p-3 rounded-lg bg-muted/40 border border-border/50 mt-2">
-            <StyledDisplayName
-              displayName={displayName || "Your Name"}
-              gradientStart={gradientStart || null}
-              gradientEnd={gradientEnd || null}
-              className="text-lg font-bold"
-            />
-          </div>
-        </div>
-      </div>
 
-      <div className="pt-2">
-        <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
-          {saving ? t("common.loading") : t("profile.save")}
-        </Button>
+          {/* Preview 2: Nameplate Row */}
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground/70 mb-2">
+              Nameplate
+            </p>
+            <div className="rounded-xl overflow-hidden border border-border/50 p-1">
+              <NameplateWrapper nameplateUrl={p?.nameplate_url} isPro={isPro} className="rounded-lg">
+                <div className="flex items-center gap-2.5 p-2.5">
+                  <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={isPro} size={32} className="shrink-0">
+                    <Avatar className="h-8 w-8" alwaysPlayGif>
+                      <AvatarImage src={profile?.avatar_url || ""} />
+                      <AvatarFallback className="bg-primary/20 text-primary text-sm">{initials}</AvatarFallback>
+                    </Avatar>
+                  </AvatarDecorationWrapper>
+                  <StyledDisplayName {...nameStyleProps} className="text-sm font-medium truncate" />
+                </div>
+              </NameplateWrapper>
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   );

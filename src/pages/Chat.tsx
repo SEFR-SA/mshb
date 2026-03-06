@@ -438,6 +438,8 @@ const Chat = () => {
         <div className="min-w-0 flex-1">
           <StyledDisplayName
             displayName={otherProfile?.display_name || otherProfile?.username || "User"}
+            fontStyle={(otherProfile as any)?.name_font}
+            effect={(otherProfile as any)?.name_effect}
             gradientStart={(otherProfile as any)?.name_gradient_start}
             gradientEnd={(otherProfile as any)?.name_gradient_end}
             className="font-medium truncate"

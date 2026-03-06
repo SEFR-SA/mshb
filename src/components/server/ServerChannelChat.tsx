@@ -205,6 +205,8 @@ const MessageItem = React.memo(({
                 <span className="inline-flex items-center">
                   <StyledDisplayName
                     displayName={name}
+                    fontStyle={p?.name_font}
+                    effect={p?.name_effect}
                     gradientStart={p?.name_gradient_start}
                     gradientEnd={p?.name_gradient_end}
                     color={isMine ? undefined : roleInfo?.color}

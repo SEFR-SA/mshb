@@ -486,6 +486,8 @@ const GroupChat = () => {
                             <UserContextMenu targetUserId={msg.author_id} targetUsername={authorProfile?.username || undefined}>
                               <StyledDisplayName
                                 displayName={authorProfile?.display_name || authorProfile?.username || "User"}
+                                fontStyle={(authorProfile as any)?.name_font}
+                                effect={(authorProfile as any)?.name_effect}
                                 gradientStart={(authorProfile as any)?.name_gradient_start}
                                 gradientEnd={(authorProfile as any)?.name_gradient_end}
                                 className="text-[11px] font-bold text-primary mb-0.5 cursor-pointer hover:underline"
