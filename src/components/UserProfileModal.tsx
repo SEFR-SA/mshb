@@ -75,7 +75,7 @@ const UserProfileModal = () => {
   };
 
   const content = (
-    <div className="flex flex-col">
+    <ProfileEffectWrapper effectUrl={(profile as any)?.profile_effect_url} isPro={(profile as any)?.is_pro} className="flex flex-col">
       {/* Banner */}
       <div
         className="h-24 md:h-32 rounded-t-lg relative"
