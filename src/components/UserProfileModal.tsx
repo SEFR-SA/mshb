@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 
 type Profile = Tables<"profiles">;
 
