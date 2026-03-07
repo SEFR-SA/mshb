@@ -32,6 +32,12 @@ import {
 
 type ItemStatus = "pending" | "approved" | "rejected";
 
+const DIMENSION_HINTS: Partial<Record<ItemType, string>> = {
+  avatar_decoration: "144×144px",
+  profile_effect:    "480×880px",
+  nameplate:         "448×84px",
+};
+
 interface CreatorItem {
   id: string;
   title: string;
@@ -516,7 +522,7 @@ const CreatorStudio = () => {
                 >
                   <input
                     type="file"
-                    accept=".webp,.apng,.svg"
+                    accept=".webp,.apng,.png,.svg"
                     className="sr-only"
                     onChange={(e) => {
                       const f = e.target.files?.[0] ?? null;
@@ -534,6 +540,7 @@ const CreatorStudio = () => {
                 </label>
                 <p className="text-[10px] text-muted-foreground/60 mt-1">
                   {t("marketplace.allowedFormats")}
+                  {DIMENSION_HINTS[formType] && ` · ${t("marketplace.recommendedSize")}: ${DIMENSION_HINTS[formType]}`}
                 </p>
               </div>
             )}

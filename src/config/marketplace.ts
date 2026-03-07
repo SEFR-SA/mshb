@@ -12,7 +12,7 @@ export type ItemType = typeof ITEM_TYPES[number];
 
 // ─── File Validation ──────────────────────────────────────────────────────────
 
-export const ALLOWED_ASSET_EXTENSIONS = [".webp", ".apng", ".svg"] as const;
+export const ALLOWED_ASSET_EXTENSIONS = [".webp", ".apng", ".svg", ".png"] as const;
 
 // APNG files are PNG-compatible and share the image/png MIME type
 export const ALLOWED_MIME_TYPES = [

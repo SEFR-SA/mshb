@@ -79,7 +79,7 @@ const MarketplaceCard = ({
                 draggable={false}
                 onContextMenu={(e) => e.preventDefault()}
                 onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none z-[1]"
+                className="absolute inset-0 w-full h-full object-cover object-top pointer-events-none select-none z-[1]"
               />
             )}
             {/* Mock profile card bottom section */}
