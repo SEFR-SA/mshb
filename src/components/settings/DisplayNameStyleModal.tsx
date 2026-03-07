@@ -8,9 +8,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dices, Lock, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FONT_STYLES, type FontStyle } from "@/lib/unicodeFonts";
-import { revertToPlain } from "@/lib/unicodeFonts";
-import { EFFECT_OPTIONS, COLOR_SWATCHES, type NameEffect } from "@/config/nameStyles";
+import { FONT_STYLES, EFFECT_OPTIONS, COLOR_SWATCHES, type FontStyle, type NameEffect } from "@/config/nameStyles";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
@@ -64,7 +62,7 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
       name_effect:         localEffect === "Solid" ? null : localEffect,
       name_gradient_start: localColorA,
       name_gradient_end:   gradientEnd,
-      display_name:        revertToPlain(profile?.display_name || ""),
+      display_name:        profile?.display_name || "",
     } as any).eq("user_id", user.id);
     setSaving(false);
     await onApplied();
@@ -159,7 +157,7 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
                     )}
                     title={font.label}
                   >
-                    {font.preview}
+                    <span style={{ fontFamily: font.family }}>{font.label}</span>
                   </button>
                 ))}
               </div>

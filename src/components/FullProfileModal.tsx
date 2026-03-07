@@ -346,11 +346,11 @@ const FullProfileModal = () => {
   const desktopContent = (
     <div className="flex w-full h-full">
       {/* ── Left column — profile card ──────────────────────────────────── */}
-      <div className="p-6 shrink-0">
+      <div className="p-6 shrink-0 h-full">
         <ProfileEffectWrapper
           effectUrl={p?.profile_effect_url}
           isPro={p?.is_pro}
-          className="w-[400px] h-[752px] rounded-xl overflow-hidden bg-card relative"
+          className="w-[400px] h-full rounded-xl overflow-hidden bg-card relative"
         >
           {/* Banner */}
           <div
@@ -525,7 +525,7 @@ const FullProfileModal = () => {
     }
     return (
       <Dialog open={isOpen} onOpenChange={(o) => !o && closeProfile()}>
-        <DialogContent className="p-0 max-w-none w-[960px] h-[800px] overflow-hidden rounded-2xl">
+        <DialogContent className="p-0 w-full max-w-[960px] h-[800px] max-h-[95vh] overflow-hidden rounded-2xl">
           {skeleton}
         </DialogContent>
       </Dialog>
@@ -548,7 +548,7 @@ const FullProfileModal = () => {
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && closeProfile()}>
-      <DialogContent className="p-0 max-w-none w-[960px] h-[800px] overflow-hidden rounded-2xl border-0 flex">
+      <DialogContent className="p-0 w-full max-w-[960px] h-[800px] max-h-[95vh] overflow-hidden rounded-2xl border-0 flex">
         {desktopContent}
       </DialogContent>
     </Dialog>

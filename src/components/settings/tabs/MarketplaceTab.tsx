@@ -173,7 +173,7 @@ const MarketplaceTab = () => {
       {view === "creator" ? <CreatorStudio /> : (
         <>
           {/* ── Sticky search + type filter ──────────────────────────── */}
-          <div className="sticky top-0 z-10 -mx-4 sm:-mx-8 px-4 sm:px-8 bg-background/90 backdrop-blur-sm pb-3 space-y-2 pt-1">
+          <div className="sticky top-0 z-10 -mx-4 sm:-mx-8 px-4 sm:px-8 bg-transparent pb-3 space-y-2 pt-1">
             <div className="relative">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <input
@@ -215,6 +215,8 @@ const MarketplaceTab = () => {
                   equipping={equipping === item.id}
                   onBuy={() => handleBuy(item)}
                   onEquip={() => handleEquip(item)}
+                  userAvatarUrl={profile?.avatar_url ?? null}
+                  userName={profile?.display_name || profile?.username || ""}
                 />
               ))}
             </div>

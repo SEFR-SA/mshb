@@ -2,8 +2,10 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Heart, Gift, User, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ITEM_TYPE_GRADIENTS, type ItemType } from "@/config/marketplace";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
+import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 
 export interface MarketplaceItem {
   id: string;
@@ -22,7 +24,18 @@ interface MarketplaceCardProps {
   equipping: boolean;
   onBuy: () => void;
   onEquip: () => void;
+  userAvatarUrl?: string | null;
+  userName?: string | null;
 }
+
+const AvatarImg = ({ src, size }: { src?: string | null; size: number }) => (
+  <Avatar className="shrink-0 bg-[#5865F2]" style={{ width: size, height: size }}>
+    <AvatarImage src={src || ""} className="object-cover" />
+    <AvatarFallback className="bg-[#5865F2] rounded-full">
+      <User className="text-white/80" style={{ width: size * 0.5, height: size * 0.5 }} />
+    </AvatarFallback>
+  </Avatar>
+);
 
 const MarketplaceCard = ({
   item,
@@ -32,8 +45,11 @@ const MarketplaceCard = ({
   equipping,
   onBuy,
   onEquip,
+  userAvatarUrl,
+  userName,
 }: MarketplaceCardProps) => {
   const { t } = useTranslation();
+  const displayName = userName || "";
 
   const renderPreview = () => {
     switch (item.type) {
@@ -48,10 +64,8 @@ const MarketplaceCard = ({
             <span className="absolute top-16 left-20 text-yellow-100/30 text-sm">✦</span>
             {/* Centered mock avatar with decoration overlay */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative" style={{ width: 80, height: 80 }}>
-                <div className="w-full h-full rounded-full bg-[#5865F2] flex items-center justify-center overflow-hidden">
-                  <User className="h-10 w-10 text-white/80" />
-                </div>
+              <div className="relative" style={{ width: 96, height: 96 }}>
+                <AvatarImg src={userAvatarUrl} size={96} />
                 {item.thumbnail_url && (
                   <img
                     src={item.thumbnail_url}
@@ -60,7 +74,7 @@ const MarketplaceCard = ({
                     onContextMenu={(e) => e.preventDefault()}
                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                     className="absolute pointer-events-none select-none"
-                    style={{ width: "125%", height: "125%", top: "-12.5%", left: "-12.5%" }}
+                    style={{ width: "125%", height: "125%", top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
                   />
                 )}
               </div>
@@ -85,9 +99,7 @@ const MarketplaceCard = ({
             {/* Mock profile card bottom section */}
             <div className="absolute bottom-0 left-0 right-0 p-3 z-[2]">
               <div className="flex items-end gap-2.5">
-                <div className="h-12 w-12 rounded-full bg-[#5865F2]/80 border-2 border-black/40 shrink-0 flex items-center justify-center">
-                  <User className="h-6 w-6 text-white/70" />
-                </div>
+                <AvatarImg src={userAvatarUrl} size={48} />
                 <div className="pb-1 space-y-1.5">
                   <div className="h-2.5 w-24 bg-white/30 rounded-full" />
                   <div className="h-2 w-16 bg-white/15 rounded-full" />
@@ -111,11 +123,9 @@ const MarketplaceCard = ({
             {/* Active middle row with nameplate background */}
             <NameplateWrapper nameplateUrl={item.thumbnail_url} isPro={true} className="rounded-lg overflow-hidden">
               <div className="flex items-center gap-2 px-2 py-2">
-                <div className="h-7 w-7 rounded-full bg-[#5865F2]/80 shrink-0 flex items-center justify-center">
-                  <User className="h-3.5 w-3.5 text-white/90" />
-                </div>
+                <AvatarImg src={userAvatarUrl} size={28} />
                 <div className="space-y-1 flex-1">
-                  <p className="text-[11px] font-bold text-white leading-none drop-shadow">rlmezo</p>
+                  <p className="text-[11px] font-bold text-white leading-none drop-shadow">{displayName}</p>
                   <div className="h-1.5 w-10 bg-white/40 rounded-full" />
                 </div>
               </div>
@@ -135,14 +145,16 @@ const MarketplaceCard = ({
         return (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="flex items-center gap-3 bg-black/40 rounded-xl px-4 py-3 border border-white/10">
-              <div className="h-9 w-9 rounded-full bg-[#5865F2]/80 shrink-0 flex items-center justify-center">
-                <User className="h-5 w-5 text-white/80" />
-              </div>
+              <AvatarImg src={userAvatarUrl} size={36} />
               <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-white text-xs font-bold">rlmezo</span>
-                  <span className="text-[9px] font-bold bg-primary/80 text-primary-foreground px-1.5 py-0.5 rounded uppercase tracking-wide max-w-[64px] truncate inline-block">
-                    {item.title.slice(0, 10)}
+                  <span className="text-white text-xs font-bold">{displayName}</span>
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded leading-none text-white whitespace-nowrap"
+                    style={{ backgroundColor: "#5865F2" }}
+                  >
+                    <ServerTagBadgeIcon badgeName="crown" color="#ffffff" className="h-3.5 w-3.5" />
+                    {item.title.slice(0, 4).toUpperCase()}
                   </span>
                 </div>
                 <div className="h-1.5 w-14 bg-white/20 rounded-full" />

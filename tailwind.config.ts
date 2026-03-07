@@ -14,8 +14,16 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
-        arabic: ["Noto Naskh Arabic", "serif"],
+        sans:         ["Inter", "sans-serif"],
+        arabic:       ["Noto Naskh Arabic", "serif"],
+        dalek:        ['"DalekPinpoint"', "sans-serif"],
+        ethnocentric: ['"Ethnocentric"', "sans-serif"],
+        fatkat:       ['"FatKat"', "sans-serif"],
+        grimeslime:   ['"GrimeSlime"', "sans-serif"],
+        midnight:     ['"MidnightAngel"', "sans-serif"],
+        sakuna:       ['"Sakuna"', "sans-serif"],
+        mario:        ['"SuperMario"', "sans-serif"],
+        upheaval:     ['"Upheaval"', "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

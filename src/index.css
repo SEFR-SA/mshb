@@ -1,5 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
 
+@font-face { font-family: "DalekPinpoint";  font-weight: normal; font-style: normal;
+  src: url("https://wqgotyhepamnwsjcydpy.supabase.co/storage/v1/object/public/display-name-fonts//DalekPinpointBold.woff2") format("woff2"); }
+
+@font-face { font-family: "Ethnocentric";   font-weight: normal; font-style: normal;
+  src: url("https://wqgotyhepamnwsjcydpy.supabase.co/storage/v1/object/public/display-name-fonts//Ethnocentric-Regular.woff2") format("woff2"); }
+
+@font-face { font-family: "FatKat";         font-weight: normal; font-style: normal;
+  src: url("https://wqgotyhepamnwsjcydpy.supabase.co/storage/v1/object/public/display-name-fonts//Fat%20Kat%20-%20(Demo)%20hanscostudio.com.woff2") format("woff2"); }
+
+@font-face { font-family: "GrimeSlime";     font-weight: normal; font-style: normal;
+  src: url("https://wqgotyhepamnwsjcydpy.supabase.co/storage/v1/object/public/display-name-fonts//GrimeSlime-Regular.woff2") format("woff2"); }
+
+@font-face { font-family: "MidnightAngel";  font-weight: normal; font-style: normal;
+  src: url("https://wqgotyhepamnwsjcydpy.supabase.co/storage/v1/object/public/display-name-fonts//Midnight%20Angel.woff2") format("woff2"); }
+
+@font-face { font-family: "Sakuna";         font-weight: normal; font-style: normal;
+  src: url("https://wqgotyhepamnwsjcydpy.supabase.co/storage/v1/object/public/display-name-fonts//SAKUNA.woff2") format("woff2"); }
+
+@font-face { font-family: "SuperMario";     font-weight: normal; font-style: normal;
+  src: url("https://wqgotyhepamnwsjcydpy.supabase.co/storage/v1/object/public/display-name-fonts//SuperMario256.woff2") format("woff2"); }
+
+@font-face { font-family: "Upheaval";       font-weight: normal; font-style: normal;
+  src: url("https://wqgotyhepamnwsjcydpy.supabase.co/storage/v1/object/public/display-name-fonts//upheavtt.woff2") format("woff2"); }
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
