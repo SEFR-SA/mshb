@@ -223,38 +223,40 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
               <div className={cn("rounded-xl overflow-hidden border shadow-lg mx-auto w-full max-w-[260px]", isDark ? "border-white/10 bg-zinc-800" : "border-gray-300 bg-white")}>
                 <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={isPro}>
                   <NameplateWrapper nameplateUrl={p?.nameplate_url} isPro={isPro} className="rounded-t-xl">
-                    {/* Banner */}
+                    {/* Banner — hide gradient placeholder when nameplate is providing the background */}
                     {p?.banner_url ? (
                       <img src={p.banner_url} alt="" className="h-20 w-full object-cover" />
-                    ) : (
+                    ) : !(p?.nameplate_url && isPro) ? (
                       <div className="h-20 w-full bg-gradient-to-r from-primary/40 to-primary/20" />
+                    ) : (
+                      <div className="h-20 w-full" />
                     )}
                   </NameplateWrapper>
-                </ProfileEffectWrapper>
 
-                <div className="px-4 pb-4 pt-0 relative">
-                  {/* Avatar overlapping banner */}
-                  <div className="-mt-8 mb-2">
-                    <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={isPro} size={56} className="inline-block">
-                      <Avatar className="h-14 w-14 border-4" style={{ borderColor: isDark ? "#27272a" : "#ffffff" }}>
-                        <AvatarImage src={profile?.avatar_url || ""} />
-                        <AvatarFallback className="bg-primary/20 text-primary text-lg">{initials}</AvatarFallback>
-                      </Avatar>
-                    </AvatarDecorationWrapper>
+                  <div className="px-4 pb-4 pt-0 relative">
+                    {/* Avatar overlapping banner */}
+                    <div className="-mt-8 mb-2">
+                      <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={isPro} size={56} className="inline-block">
+                        <Avatar className="h-14 w-14 border-4" style={{ borderColor: isDark ? "#27272a" : "#ffffff" }}>
+                          <AvatarImage src={profile?.avatar_url || ""} />
+                          <AvatarFallback className="bg-primary/20 text-primary text-lg">{initials}</AvatarFallback>
+                        </Avatar>
+                      </AvatarDecorationWrapper>
+                    </div>
+                    <StyledDisplayName
+                      displayName={displayName}
+                      fontStyle={localFont}
+                      effect={localEffect}
+                      gradientStart={localColorA}
+                      gradientEnd={localEffect === "Gradient" ? localColorB : null}
+                      color={localEffect !== "Gradient" ? localColorA : null}
+                      className="font-bold text-base"
+                    />
+                    {profile?.username && (
+                      <p className="text-xs opacity-60 mt-0.5">@{profile.username}</p>
+                    )}
                   </div>
-                  <StyledDisplayName
-                    displayName={displayName}
-                    fontStyle={localFont}
-                    effect={localEffect}
-                    gradientStart={localColorA}
-                    gradientEnd={localEffect === "Gradient" ? localColorB : null}
-                    color={localEffect !== "Gradient" ? localColorA : null}
-                    className="font-bold text-base"
-                  />
-                  {profile?.username && (
-                    <p className="text-xs opacity-60 mt-0.5">@{profile.username}</p>
-                  )}
-                </div>
+                </ProfileEffectWrapper>
               </div>
 
               {/* DM Message Mock */}

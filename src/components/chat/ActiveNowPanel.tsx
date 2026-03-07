@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Volume2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import StyledDisplayName from "@/components/StyledDisplayName";
@@ -129,7 +130,7 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
         <div className="space-y-3">
           {activeFriends.map((friend) => (
             <NameplateWrapper key={friend.userId} nameplateUrl={friend.nameplateUrl} isPro={friend.isPro} className="rounded-lg">
-            <div className="rounded-lg p-3 bg-muted/30">
+            <div className={cn("rounded-lg p-3", friend.nameplateUrl && friend.isPro ? "bg-transparent" : "bg-muted/30")}>
               <div className="flex items-center gap-2 mb-2">
                 <AvatarDecorationWrapper decorationUrl={friend.avatarDecorationUrl} isPro={friend.isPro} size={32}>
                 <Avatar className="h-8 w-8">
