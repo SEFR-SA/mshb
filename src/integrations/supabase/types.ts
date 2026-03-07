@@ -35,6 +35,36 @@ export type Database = {
         }
         Relationships: []
       }
+      bundle_items: {
+        Row: {
+          bundle_id: string
+          item_id: string
+        }
+        Insert: {
+          bundle_id: string
+          item_id: string
+        }
+        Update: {
+          bundle_id?: string
+          item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bundle_items_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bundle_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       call_sessions: {
         Row: {
           callee_id: string
@@ -399,39 +429,39 @@ export type Database = {
       }
       marketplace_items: {
         Row: {
-          asset_url: string
-          category: string
+          asset_url: string | null
           created_at: string
           creator_id: string | null
+          description: string | null
           id: string
-          name: string
           price_sar: number
           status: string
-          thumbnail_url: string
+          thumbnail_url: string | null
+          title: string
           type: string
         }
         Insert: {
-          asset_url: string
-          category: string
+          asset_url?: string | null
           created_at?: string
           creator_id?: string | null
+          description?: string | null
           id?: string
-          name: string
           price_sar?: number
           status?: string
-          thumbnail_url: string
+          thumbnail_url?: string | null
+          title: string
           type: string
         }
         Update: {
-          asset_url?: string
-          category?: string
+          asset_url?: string | null
           created_at?: string
           creator_id?: string | null
+          description?: string | null
           id?: string
-          name?: string
           price_sar?: number
           status?: string
-          thumbnail_url?: string
+          thumbnail_url?: string | null
+          title?: string
           type?: string
         }
         Relationships: []

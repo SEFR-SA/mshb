@@ -22,41 +22,31 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  ITEM_TYPES,
+  ITEM_TYPE_LABELS,
+  ITEM_TYPE_GRADIENTS,
+  isAllowedAssetFile,
+  type ItemType,
+} from "@/config/marketplace";
 
-type ItemStatus   = "pending" | "approved" | "rejected";
-type ItemCategory = "banner" | "avatar" | "soundboard" | "sticker" | "emoji" | "tag";
-type ItemType     = "static" | "gif";
+type ItemStatus = "pending" | "approved" | "rejected";
 
 interface CreatorItem {
   id: string;
-  name: string;
-  category: ItemCategory;
+  title: string;
   type: ItemType;
   price_sar: number;
   status: ItemStatus;
   created_at: string;
-  asset_url: string;
+  asset_url: string | null;
 }
 
-const CATEGORY_GRADIENTS: Record<ItemCategory, string> = {
-  banner:     "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
-  avatar:     "linear-gradient(135deg, #2d1b69 0%, #11998e 100%)",
-  soundboard: "linear-gradient(135deg, #1a1a2e 0%, #4a0080 100%)",
-  sticker:    "linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)",
-  emoji:      "linear-gradient(135deg, #f7971e 0%, #ffd200 100%)",
-  tag:        "linear-gradient(135deg, #c94b4b 0%, #4b134f 100%)",
-};
-
-const CATEGORY_LABELS: Record<ItemCategory, string> = {
-  banner:     "marketplace.banners",
-  avatar:     "marketplace.avatars",
-  soundboard: "marketplace.soundboard",
-  sticker:    "marketplace.stickers",
-  emoji:      "marketplace.emojis",
-  tag:        "marketplace.tags",
-};
-
-const CATEGORIES: ItemCategory[] = ["banner", "avatar", "soundboard", "sticker", "emoji", "tag"];
+interface BundleSourceItem {
+  id: string;
+  title: string;
+  type: ItemType;
+}
 
 const CreatorStudio = () => {
   const { t } = useTranslation();
@@ -69,12 +59,20 @@ const CreatorStudio = () => {
   const [uploadOpen, setUploadOpen] = useState(false);
 
   // Upload form state
-  const [file, setFile]             = useState<File | null>(null);
-  const [formName, setFormName]     = useState("");
-  const [formCategory, setFormCategory] = useState<ItemCategory>("banner");
-  const [formType, setFormType]     = useState<ItemType>("static");
-  const [formPrice, setFormPrice]   = useState<number>(0);
-  const [uploading, setUploading]   = useState(false);
+  const [file, setFile]                       = useState<File | null>(null);
+  const [formTitle, setFormTitle]             = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formType, setFormType]               = useState<ItemType>("avatar_decoration");
+  const [formPrice, setFormPrice]             = useState<number>(0);
+  const [uploading, setUploading]             = useState(false);
+
+  // Bundle picker state
+  const [bundleSourceItems, setBundleSourceItems] = useState<BundleSourceItem[]>([]);
+  const [bundleSelectedIds, setBundleSelectedIds] = useState<string[]>([]);
+  const [bundleLoading, setBundleLoading]         = useState(false);
+  const [bundleSearch, setBundleSearch]           = useState("");
+
+  const isBundle = formType === "bundle";
 
   const loadItems = async () => {
     if (!user) return;
@@ -82,7 +80,7 @@ const CreatorStudio = () => {
 
     const { data: myItems } = await supabase
       .from("marketplace_items" as any)
-      .select("id, name, category, type, price_sar, status, created_at, asset_url")
+      .select("id, title, type, price_sar, status, created_at, asset_url")
       .eq("creator_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -102,9 +100,26 @@ const CreatorStudio = () => {
     setLoading(false);
   };
 
+  useEffect(() => { loadItems(); }, [user?.id]);
+
+  // Load approved non-bundle items owned by this creator for the bundle picker
+  const loadBundleSourceItems = async () => {
+    if (!user || bundleSourceItems.length > 0) return;
+    setBundleLoading(true);
+    const { data } = await supabase
+      .from("marketplace_items" as any)
+      .select("id, title, type")
+      .eq("creator_id", user.id)
+      .eq("status", "approved")
+      .neq("type", "bundle")
+      .order("created_at", { ascending: false });
+    setBundleSourceItems((data ?? []) as unknown as BundleSourceItem[]);
+    setBundleLoading(false);
+  };
+
   useEffect(() => {
-    loadItems();
-  }, [user?.id]);
+    if (isBundle && uploadOpen) loadBundleSourceItems();
+  }, [isBundle, uploadOpen]);
 
   const totalListed = items.length;
   const totalSales  = Object.values(salesMap).reduce((a, b) => a + b, 0);
@@ -115,48 +130,82 @@ const CreatorStudio = () => {
 
   const resetForm = () => {
     setFile(null);
-    setFormName("");
-    setFormCategory("banner");
-    setFormType("static");
+    setFormTitle("");
+    setFormDescription("");
+    setFormType("avatar_decoration");
     setFormPrice(0);
+    setBundleSourceItems([]);
+    setBundleSelectedIds([]);
+    setBundleSearch("");
   };
 
   const handleUpload = async () => {
-    if (!user || !file || !formName.trim()) return;
+    if (!user || !formTitle.trim()) return;
     setUploading(true);
 
-    const ext      = file.name.split(".").pop() ?? "bin";
-    const safeName = formName.trim().replace(/[^a-z0-9]/gi, "_");
-    const path     = `${user.id}/${Date.now()}_${safeName}.${ext}`;
+    if (isBundle) {
+      const { data: inserted, error: dbError } = await supabase
+        .from("marketplace_items" as any)
+        .insert({
+          creator_id:  user.id,
+          title:       formTitle.trim(),
+          description: formDescription.trim() || null,
+          type:        "bundle",
+          price_sar:   formPrice,
+          status:      "pending",
+        })
+        .select("id")
+        .single();
 
-    const { error: uploadError } = await supabase.storage
-      .from("pending_assets")
-      .upload(path, file, { upsert: false });
+      if (dbError || !inserted) {
+        setUploading(false);
+        toast({ title: t("marketplace.uploadFailed"), variant: "destructive" });
+        return;
+      }
 
-    if (uploadError) {
+      const { error: bundleError } = await supabase
+        .from("bundle_items" as any)
+        .insert(bundleSelectedIds.map((item_id) => ({ bundle_id: (inserted as any).id, item_id })));
+
       setUploading(false);
-      toast({ title: t("marketplace.uploadFailed"), variant: "destructive" });
-      return;
-    }
 
-    const resolvedType = formCategory === "soundboard" ? "static" : formType;
+      if (bundleError) {
+        toast({ title: t("marketplace.uploadFailed"), variant: "destructive" });
+        return;
+      }
+    } else {
+      if (!file) { setUploading(false); return; }
 
-    const { error: dbError } = await supabase.from("marketplace_items" as any).insert({
-      creator_id:    user.id,
-      name:          formName.trim(),
-      category:      formCategory,
-      type:          resolvedType,
-      price_sar:     formPrice,
-      thumbnail_url: "",   // filled by admin on approval
-      asset_url:     path,
-      status:        "pending",
-    });
+      const ext      = file.name.split(".").pop() ?? "bin";
+      const safeName = formTitle.trim().replace(/[^a-z0-9]/gi, "_");
+      const path     = `${user.id}/${Date.now()}_${safeName}.${ext}`;
 
-    setUploading(false);
+      const { error: uploadError } = await supabase.storage
+        .from("pending_assets")
+        .upload(path, file, { upsert: false });
 
-    if (dbError) {
-      toast({ title: t("marketplace.uploadFailed"), variant: "destructive" });
-      return;
+      if (uploadError) {
+        setUploading(false);
+        toast({ title: t("marketplace.uploadFailed"), variant: "destructive" });
+        return;
+      }
+
+      const { error: dbError } = await supabase.from("marketplace_items" as any).insert({
+        creator_id:  user.id,
+        title:       formTitle.trim(),
+        description: formDescription.trim() || null,
+        type:        formType,
+        price_sar:   formPrice,
+        asset_url:   path,
+        status:      "pending",
+      });
+
+      setUploading(false);
+
+      if (dbError) {
+        toast({ title: t("marketplace.uploadFailed"), variant: "destructive" });
+        return;
+      }
     }
 
     toast({ title: t("marketplace.uploadSuccess") });
@@ -169,8 +218,9 @@ const CreatorStudio = () => {
     if (!user || item.status === "approved") return;
     setDeleting(item.id);
 
-    // Remove the raw file from storage
-    await supabase.storage.from("pending_assets").remove([item.asset_url]);
+    if (item.asset_url) {
+      await supabase.storage.from("pending_assets").remove([item.asset_url]);
+    }
 
     const { error } = await supabase
       .from("marketplace_items" as any)
@@ -187,6 +237,15 @@ const CreatorStudio = () => {
     toast({ title: t("marketplace.deleteSuccess") });
     loadItems();
   };
+
+  const toggleBundleItem = (id: string) =>
+    setBundleSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+  const filteredBundleItems = bundleSourceItems.filter((i) =>
+    i.title.toLowerCase().includes(bundleSearch.toLowerCase())
+  );
 
   const statusBadge = (status: ItemStatus) => {
     if (status === "approved")
@@ -210,6 +269,11 @@ const CreatorStudio = () => {
 
   const platformFee = (formPrice * 0.3).toFixed(2);
   const youEarn     = (formPrice * 0.7).toFixed(2);
+
+  const submitDisabled =
+    uploading ||
+    !formTitle.trim() ||
+    (isBundle ? bundleSelectedIds.length < 2 : !file || !isAllowedAssetFile(file));
 
   return (
     <div className="space-y-5">
@@ -274,16 +338,21 @@ const CreatorStudio = () => {
 
                 return (
                   <TableRow key={item.id} className="border-border/30 hover:bg-muted/10">
-                    {/* Asset thumbnail + name */}
+                    {/* Asset swatch + title + type label */}
                     <TableCell>
                       <div className="flex items-center gap-2.5">
                         <div
                           className="h-9 w-9 rounded-lg shrink-0"
-                          style={{ background: CATEGORY_GRADIENTS[item.category] }}
+                          style={{ background: ITEM_TYPE_GRADIENTS[item.type] }}
                         />
-                        <p className="text-xs font-medium text-foreground truncate max-w-[90px]">
-                          {item.name}
-                        </p>
+                        <div>
+                          <p className="text-xs font-medium text-foreground truncate max-w-[90px]">
+                            {item.title}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {ITEM_TYPE_LABELS[item.type]}
+                          </p>
+                        </div>
                       </div>
                     </TableCell>
 
@@ -349,79 +418,153 @@ const CreatorStudio = () => {
           </DialogHeader>
 
           <div className="space-y-3 py-1">
-            {/* File upload area */}
+            {/* Type selector */}
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                File <span className="text-red-500">*</span>
+                {t("marketplace.uploadCategory")}
               </label>
-              <label
-                className={cn(
-                  "flex flex-col items-center justify-center h-24 rounded-lg border-2 border-dashed cursor-pointer transition-colors",
-                  file
-                    ? "border-primary/50 bg-primary/5"
-                    : "border-border/50 bg-muted/20 hover:bg-muted/30 hover:border-primary/30"
-                )}
+              <select
+                value={formType}
+                onChange={(e) => {
+                  setFormType(e.target.value as ItemType);
+                  setFile(null);
+                  setBundleSelectedIds([]);
+                }}
+                className="w-full h-9 bg-muted/40 border border-border/50 rounded-lg px-3 text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
               >
-                <input
-                  type="file"
-                  accept="image/*,audio/*"
-                  className="sr-only"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                />
-                <Upload className="h-5 w-5 text-muted-foreground mb-1.5" />
-                <p className="text-xs text-muted-foreground text-center px-3 truncate max-w-full">
-                  {file ? file.name : "Click to upload (image or audio)"}
-                </p>
-              </label>
+                {ITEM_TYPES.map((type) => (
+                  <option key={type} value={type} className="bg-background">
+                    {ITEM_TYPE_LABELS[type]}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Name */}
+            {/* File upload OR bundle picker */}
+            {isBundle ? (
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  {t("marketplace.bundleItems")}{" "}
+                  <span className="text-red-500">*</span>
+                  <span className="text-muted-foreground/60 font-normal ms-1">
+                    ({bundleSelectedIds.length} {t("marketplace.bundleSelected")}, min. 2)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={bundleSearch}
+                  onChange={(e) => setBundleSearch(e.target.value)}
+                  placeholder={t("marketplace.bundleSearch")}
+                  className="w-full h-9 bg-muted/40 border border-border/50 rounded-lg px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50 transition-colors mb-2"
+                />
+                <div className="rounded-lg border border-border/50 bg-muted/20 max-h-48 overflow-y-auto">
+                  {bundleLoading ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : filteredBundleItems.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-6 px-4">
+                      {bundleSourceItems.length === 0
+                        ? t("marketplace.bundleNoItems")
+                        : t("marketplace.bundleNoMatch")}
+                    </p>
+                  ) : (
+                    filteredBundleItems.map((item) => {
+                      const selected = bundleSelectedIds.includes(item.id);
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => toggleBundleItem(item.id)}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-3 py-2 text-start transition-colors border-b border-border/30 last:border-0",
+                            selected ? "bg-primary/10" : "hover:bg-muted/40"
+                          )}
+                        >
+                          <div
+                            className="h-7 w-7 rounded-md shrink-0"
+                            style={{ background: ITEM_TYPE_GRADIENTS[item.type] }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-foreground truncate">{item.title}</p>
+                            <p className="text-[10px] text-muted-foreground">{ITEM_TYPE_LABELS[item.type]}</p>
+                          </div>
+                          <div className={cn(
+                            "h-4 w-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                            selected ? "bg-primary border-primary" : "border-border/60"
+                          )}>
+                            {selected && <span className="text-primary-foreground text-[10px] font-bold leading-none">✓</span>}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  File <span className="text-red-500">*</span>
+                </label>
+                <label
+                  className={cn(
+                    "flex flex-col items-center justify-center h-24 rounded-lg border-2 border-dashed cursor-pointer transition-colors",
+                    file
+                      ? "border-primary/50 bg-primary/5"
+                      : "border-border/50 bg-muted/20 hover:bg-muted/30 hover:border-primary/30"
+                  )}
+                >
+                  <input
+                    type="file"
+                    accept=".webp,.apng,.svg"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null;
+                      if (f && !isAllowedAssetFile(f)) {
+                        toast({ title: t("marketplace.invalidFileType"), variant: "destructive" });
+                        return;
+                      }
+                      setFile(f);
+                    }}
+                  />
+                  <Upload className="h-5 w-5 text-muted-foreground mb-1.5" />
+                  <p className="text-xs text-muted-foreground text-center px-3 truncate max-w-full">
+                    {file ? file.name : t("marketplace.fileHint")}
+                  </p>
+                </label>
+                <p className="text-[10px] text-muted-foreground/60 mt-1">
+                  {t("marketplace.allowedFormats")}
+                </p>
+              </div>
+            )}
+
+            {/* Title */}
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">
                 {t("marketplace.uploadName")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g. Desert Sunset"
+                value={formTitle}
+                onChange={(e) => setFormTitle(e.target.value)}
+                placeholder="e.g. Neon Glow Frame"
                 className="w-full h-9 bg-muted/40 border border-border/50 rounded-lg px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50 transition-colors"
               />
             </div>
 
-            {/* Category + Type */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  {t("marketplace.uploadCategory")}
-                </label>
-                <select
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value as ItemCategory)}
-                  className="w-full h-9 bg-muted/40 border border-border/50 rounded-lg px-3 text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
-                >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat} className="bg-background">
-                      {t(CATEGORY_LABELS[cat])}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  {t("marketplace.uploadType")}
-                </label>
-                <select
-                  value={formCategory === "soundboard" ? "static" : formType}
-                  onChange={(e) => setFormType(e.target.value as ItemType)}
-                  disabled={formCategory === "soundboard"}
-                  className="w-full h-9 bg-muted/40 border border-border/50 rounded-lg px-3 text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50"
-                >
-                  <option value="static" className="bg-background">{t("marketplace.static")}</option>
-                  <option value="gif"    className="bg-background">{t("marketplace.gif")}</option>
-                </select>
-              </div>
+            {/* Description */}
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                {t("marketplace.uploadDescription")}
+              </label>
+              <textarea
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value.slice(0, 250))}
+                placeholder={t("marketplace.uploadDescriptionPlaceholder")}
+                rows={2}
+                className="w-full bg-muted/40 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50 transition-colors resize-none"
+              />
+              <p className="text-[10px] text-muted-foreground/60 text-end">{formDescription.length}/250</p>
             </div>
 
             {/* Price */}
@@ -467,7 +610,7 @@ const CreatorStudio = () => {
             <Button
               size="sm"
               onClick={handleUpload}
-              disabled={uploading || !file || !formName.trim()}
+              disabled={submitDisabled}
             >
               {uploading ? (
                 <><Loader2 className="h-3.5 w-3.5 animate-spin me-1.5" />{t("marketplace.uploading")}</>

@@ -18,4 +18,6 @@ export const PROFILE_EFFECTS: ProfileEffect[] = [
   { id: "snowfall", name: "Snowfall", url: "https://placehold.co/440x580/transparent/b0e0e6?text=❄️", animated: true },
   { id: "galaxy-swirl", name: "Galaxy Swirl", url: "https://placehold.co/440x580/transparent/9b59b6?text=🌌", animated: true },
   { id: "cherry-blossoms", name: "Cherry Blossoms", url: "https://placehold.co/440x580/transparent/ffb7c5?text=🌸", animated: true },
+  { id: "black-birds", name: "Black Birds", url: "https://wqgotyhepamnwsjcydpy.supabase.co/storage/v1/object/public/profile-effect//d.webp", animated: true },
+
 ];
