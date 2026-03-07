@@ -16,6 +16,7 @@ import { NavLink } from "@/components/NavLink";
 import type { Tables } from "@/integrations/supabase/types";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
 import ThreadContextMenu from "@/components/chat/ThreadContextMenu";
 import { useBlockUser } from "@/hooks/useBlockUser";
@@ -332,6 +333,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
         onViewProfile={item.type === "dm" && item.otherProfile ? () => openProfile(item.otherProfile!.user_id) : undefined}
         onCall={item.type === "dm" && item.otherProfile ? () => directCall(item.otherProfile!.user_id) : undefined}
       >
+        <NameplateWrapper nameplateUrl={item.type === "dm" ? (item.otherProfile as any)?.nameplate_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} className="rounded-md">
         <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
           className={`flex items-center gap-2 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/60"}`}>
           <AvatarDecorationWrapper decorationUrl={item.type === "dm" ? (item.otherProfile as any)?.avatar_decoration_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} size={isMobileExpanded ? 40 : 32} className="shrink-0">
@@ -351,6 +353,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
             <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
           </div>
         </button>
+        </NameplateWrapper>
       </ThreadContextMenu>
     );
   };

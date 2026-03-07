@@ -16,7 +16,6 @@ import type { Tables } from "@/integrations/supabase/types";
 import UserContextMenu from "@/components/chat/UserContextMenu";
 import { revertToPlain } from "@/lib/unicodeFonts";
 import { useBlockUser } from "@/hooks/useBlockUser";
-import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
 type Profile = Tables<"profiles">;
@@ -276,7 +275,6 @@ const FriendsDashboard = () => {
     const friendUserId = f.requester_id === user?.id ? f.addressee_id : f.requester_id;
     return (
       <UserContextMenu key={f.id} targetUserId={friendUserId} targetUsername={f.profile?.username || undefined}>
-          <NameplateWrapper nameplateUrl={(f.profile as any)?.nameplate_url} isPro={(f.profile as any)?.is_pro} className="rounded-lg">
           <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer" onClick={() => startDM(friendUserId)}>
           <AvatarDecorationWrapper decorationUrl={(f.profile as any)?.avatar_decoration_url} isPro={(f.profile as any)?.is_pro} size={40}>
             <Avatar className="h-10 w-10">
@@ -298,7 +296,6 @@ const FriendsDashboard = () => {
             </Button>
           </div>
           </div>
-          </NameplateWrapper>
       </UserContextMenu>
     );
   };
