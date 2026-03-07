@@ -4,24 +4,35 @@ import { cn } from "@/lib/utils";
 interface NameplateWrapperProps extends React.HTMLAttributes<HTMLDivElement> {
   nameplateUrl?: string | null;
   isPro?: boolean;
+  imageClassName?: string;
+  fadeOnHover?: boolean;
+  isActive?: boolean;
 }
 
 const NameplateWrapper = React.forwardRef<HTMLDivElement, NameplateWrapperProps>(
-  ({ nameplateUrl, isPro, className, children, ...rest }, ref) => {
+  ({ nameplateUrl, isPro, className, imageClassName, fadeOnHover, isActive, children, ...rest }, ref) => {
     const showNameplate = !!nameplateUrl && !!isPro;
 
     if (!showNameplate) {
       return <div ref={ref} className={className} {...rest}>{children}</div>;
     }
 
+    const imgOpacity = fadeOnHover
+      ? (isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100")
+      : "";
+
     return (
-      <div ref={ref} className={cn("relative overflow-hidden rounded-md", className)} {...rest}>
+      <div ref={ref} className={cn("relative overflow-hidden rounded-md", fadeOnHover && "group", className)} {...rest}>
         <img
           src={nameplateUrl}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0"
+          className={cn(
+            imageClassName ?? "absolute inset-0 w-full h-full object-cover pointer-events-none z-0",
+            fadeOnHover && "transition-opacity duration-200",
+            imgOpacity
+          )}
         />
-        <div className="relative z-10">{children}</div>
+        <div className="relative z-10 h-full">{children}</div>
       </div>
     );
   }

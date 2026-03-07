@@ -349,10 +349,11 @@ const ServerMemberList = ({ serverId }: Props) => {
                     );
 
                     const highestRole = userHighestRoleMap.get(m.user_id);
+                    const hasNameplate = !!p?.nameplate_url && !!p?.is_pro;
                     const memberButton = (
-                      <NameplateWrapper nameplateUrl={p?.nameplate_url} isPro={p?.is_pro} className="rounded-md">
+                      <NameplateWrapper nameplateUrl={p?.nameplate_url} isPro={p?.is_pro} className="rounded-md h-[42px]" imageClassName="absolute right-0 top-0 w-[224px] h-[42px] object-cover pointer-events-none z-0" fadeOnHover>
                       <button
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-sidebar-accent/50 transition-colors w-full text-start"
+                        className={`flex items-center gap-2 px-2 h-[42px] rounded-md transition-colors w-full text-start ${!hasNameplate ? "hover:bg-sidebar-accent/50" : ""}`}
                         onClick={isMobile ? () => setSelectedMemberId(m.user_id) : undefined}
                       >
                         <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={32}>

@@ -345,6 +345,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                 </p>
                 {items.filter((item) => pinnedIds.has(item.id)).map((item) => {
                   const isActive = item.id === activeThreadId;
+                  const hasNameplate = item.type === "dm" && !!(item.otherProfile as any)?.nameplate_url && !!(item.otherProfile as any)?.is_pro;
                   return (
                     <ThreadContextMenu
                       key={item.id}
@@ -353,9 +354,9 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                       onMarkAsRead={() => markAsRead(item.id, item.type)}
                       isDM={item.type === "dm"}
                     >
-                    <NameplateWrapper nameplateUrl={item.type === "dm" ? (item.otherProfile as any)?.nameplate_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} className="rounded-md">
+                    <NameplateWrapper nameplateUrl={item.type === "dm" ? (item.otherProfile as any)?.nameplate_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} className="rounded-md h-[42px]" imageClassName="absolute right-0 top-0 w-[224px] h-[42px] object-cover pointer-events-none z-0" fadeOnHover isActive={isActive}>
                     <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
-                      className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
+                      className={`flex items-center gap-2.5 w-full px-2 h-[42px] rounded-md transition-colors text-start ${!hasNameplate && isActive ? "bg-muted" : ""} ${!hasNameplate && !isActive ? "hover:bg-muted/50" : ""}`}>
                       <AvatarDecorationWrapper decorationUrl={item.type === "dm" ? (item.otherProfile as any)?.avatar_decoration_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} size={36} className="shrink-0">
                         <Avatar className="h-9 w-9"><AvatarImage src={item.avatarUrl} /><AvatarFallback className="bg-primary/20 text-primary text-sm">{item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                         {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0 z-20" />}
@@ -377,6 +378,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
             )}
             {items.filter((item) => !pinnedIds.has(item.id)).map((item) => {
               const isActive = item.id === activeThreadId;
+              const hasNameplate = item.type === "dm" && !!(item.otherProfile as any)?.nameplate_url && !!(item.otherProfile as any)?.is_pro;
               return (
                 <ThreadContextMenu
                   key={item.id}
@@ -385,9 +387,9 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                   onMarkAsRead={() => markAsRead(item.id, item.type)}
                   isDM={item.type === "dm"}
                 >
-                <NameplateWrapper nameplateUrl={item.type === "dm" ? (item.otherProfile as any)?.nameplate_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} className="rounded-md">
+                <NameplateWrapper nameplateUrl={item.type === "dm" ? (item.otherProfile as any)?.nameplate_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} className="rounded-md h-[42px]" imageClassName="absolute right-0 top-0 w-[224px] h-[42px] object-cover pointer-events-none z-0" fadeOnHover isActive={isActive}>
                 <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
-                  className={`flex items-center gap-2.5 w-full p-2 rounded-md transition-colors text-start ${isActive ? "bg-muted" : "hover:bg-muted/50"}`}>
+                  className={`flex items-center gap-2.5 w-full px-2 h-[42px] rounded-md transition-colors text-start ${!hasNameplate && isActive ? "bg-muted" : ""} ${!hasNameplate && !isActive ? "hover:bg-muted/50" : ""}`}>
                   <AvatarDecorationWrapper decorationUrl={item.type === "dm" ? (item.otherProfile as any)?.avatar_decoration_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} size={36} className="shrink-0">
                     <Avatar className="h-9 w-9"><AvatarImage src={item.avatarUrl} /><AvatarFallback className="bg-primary/20 text-primary text-sm">{item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
                     {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0 z-20" />}
