@@ -12,6 +12,7 @@ import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import StyledDisplayName from "@/components/StyledDisplayName";
 
 interface UserPanelProps {
   className?: string;
@@ -84,7 +85,14 @@ const UserPanel = ({ className }: UserPanelProps) => {
             <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0 z-20" />
           </AvatarDecorationWrapper>
           <div className="min-w-0">
-            <p className="text-xs font-bold truncate leading-tight">{profile?.display_name || profile?.username || "User"}</p>
+            <StyledDisplayName
+              displayName={profile?.display_name || profile?.username || "User"}
+              fontStyle={(profile as any)?.name_font}
+              effect={(profile as any)?.name_effect}
+              gradientStart={(profile as any)?.name_gradient_start}
+              gradientEnd={(profile as any)?.name_gradient_end}
+              className="text-xs font-bold truncate leading-tight"
+            />
             {profile?.username && <p className="text-[10px] text-muted-foreground truncate leading-tight">@{profile.username}</p>}
           </div>
         </NavLink>

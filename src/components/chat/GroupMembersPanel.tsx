@@ -8,6 +8,7 @@ import { usePresence } from "@/hooks/usePresence";
 import { Users } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import StyledDisplayName from "@/components/StyledDisplayName";
 
 type Profile = Tables<"profiles">;
 
@@ -79,9 +80,14 @@ const GroupMembersPanel = ({ profiles, memberRoles, groupName, memberCount, grou
                   </AvatarDecorationWrapper>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-medium truncate">
-                        {profile.display_name || profile.username || "User"}
-                      </p>
+                      <StyledDisplayName
+                        displayName={profile.display_name || profile.username || "User"}
+                        fontStyle={(profile as any).name_font}
+                        effect={(profile as any).name_effect}
+                        gradientStart={profile.name_gradient_start}
+                        gradientEnd={profile.name_gradient_end}
+                        className="text-sm font-medium truncate"
+                      />
                       {role === "admin" && (
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
                           {t("groups.admin")}

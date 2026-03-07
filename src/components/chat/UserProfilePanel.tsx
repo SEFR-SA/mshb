@@ -56,6 +56,8 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
         <div>
           <StyledDisplayName
             displayName={profile.display_name || profile.username || "User"}
+            fontStyle={p?.name_font}
+            effect={p?.name_effect}
             gradientStart={p?.name_gradient_start}
             gradientEnd={p?.name_gradient_end}
             className="text-lg font-bold"

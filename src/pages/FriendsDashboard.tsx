@@ -17,6 +17,7 @@ import UserContextMenu from "@/components/chat/UserContextMenu";
 import { revertToPlain } from "@/lib/unicodeFonts";
 import { useBlockUser } from "@/hooks/useBlockUser";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import StyledDisplayName from "@/components/StyledDisplayName";
 
 type Profile = Tables<"profiles">;
 
@@ -59,7 +60,7 @@ const BlockedUsersTab = ({ blockedUserIds, onUnblock }: { blockedUserIds: Set<st
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{p.display_name || p.username || "User"}</p>
+            <StyledDisplayName displayName={p.display_name || p.username || "User"} fontStyle={(p as any).name_font} effect={(p as any).name_effect} gradientStart={(p as any).name_gradient_start} gradientEnd={(p as any).name_gradient_end} className="font-medium truncate" />
             {p.username && <p className="text-xs text-muted-foreground">@{p.username}</p>}
           </div>
           <Button variant="outline" size="sm" onClick={() => onUnblock(p.user_id)}>
@@ -284,7 +285,7 @@ const FriendsDashboard = () => {
             <StatusBadge status={(getUserStatus(f.profile) === "offline" ? "invisible" : getUserStatus(f.profile)) as UserStatus} className="absolute bottom-0 end-0 z-20" />
           </AvatarDecorationWrapper>
           <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{f.profile?.display_name || f.profile?.username || "User"}</p>
+            <StyledDisplayName displayName={f.profile?.display_name || f.profile?.username || "User"} fontStyle={(f.profile as any)?.name_font} effect={(f.profile as any)?.name_effect} gradientStart={(f.profile as any)?.name_gradient_start} gradientEnd={(f.profile as any)?.name_gradient_end} className="font-medium truncate" />
             {f.profile?.username && <p className="text-xs text-muted-foreground">@{f.profile.username}</p>}
           </div>
           <div className={`flex gap-1 ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition-opacity`}>
@@ -363,7 +364,7 @@ const FriendsDashboard = () => {
                       <AvatarFallback className="bg-primary/20 text-primary">{initials(p)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{p.display_name || p.username}</p>
+                      <StyledDisplayName displayName={p.display_name || p.username || "User"} fontStyle={(p as any).name_font} effect={(p as any).name_effect} gradientStart={(p as any).name_gradient_start} gradientEnd={(p as any).name_gradient_end} className="font-medium truncate" />
                       {p.username && <p className="text-xs text-muted-foreground">@{p.username}</p>}
                     </div>
                     {!alreadyFriend && (
@@ -458,7 +459,7 @@ const FriendsDashboard = () => {
                     <AvatarFallback className="bg-primary/20 text-primary">{initials(f.profile)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{f.profile?.display_name || f.profile?.username || "User"}</p>
+                    <StyledDisplayName displayName={f.profile?.display_name || f.profile?.username || "User"} fontStyle={(f.profile as any)?.name_font} effect={(f.profile as any)?.name_effect} gradientStart={(f.profile as any)?.name_gradient_start} gradientEnd={(f.profile as any)?.name_gradient_end} className="font-medium truncate" />
                     <p className="text-xs text-muted-foreground">{isIncoming ? t("friends.incoming") : t("friends.outgoing")}</p>
                   </div>
                   {isIncoming ? (

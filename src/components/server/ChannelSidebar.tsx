@@ -34,6 +34,7 @@ import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { useCreateChannel } from "@/contexts/CreateChannelContext";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { NavLink as RouterNavLink } from "react-router-dom";
+import StyledDisplayName from "@/components/StyledDisplayName";
 
 interface Channel {
   id: string;
@@ -67,6 +68,10 @@ interface VoiceParticipant {
   is_muted: boolean;
   is_deafened: boolean;
   is_screen_sharing: boolean;
+  name_font?: string | null;
+  name_effect?: string | null;
+  name_gradient_start?: string | null;
+  name_gradient_end?: string | null;
 }
 
 interface ServerMember {
@@ -74,6 +79,10 @@ interface ServerMember {
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  name_font?: string | null;
+  name_effect?: string | null;
+  name_gradient_start?: string | null;
+  name_gradient_end?: string | null;
 }
 
 interface Props {
@@ -227,7 +236,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     if (userIds.length === 0) { setServerMembers([]); return; }
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, display_name, username, avatar_url")
+      .select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end")
       .in("user_id", userIds);
     setServerMembers((profiles || []) as ServerMember[]);
   }, [serverId, user?.id]);
@@ -245,7 +254,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     const userIds = [...new Set(data.map((d) => d.user_id))];
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, display_name, username, avatar_url")
+      .select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end")
       .in("user_id", userIds);
 
     const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
@@ -262,6 +271,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         is_muted: !!(d as any).is_muted,
         is_deafened: !!(d as any).is_deafened,
         is_screen_sharing: !!(d as any).is_screen_sharing,
+        name_font: (p as any)?.name_font || null,
+        name_effect: (p as any)?.name_effect || null,
+        name_gradient_start: (p as any)?.name_gradient_start || null,
+        name_gradient_end: (p as any)?.name_gradient_end || null,
       });
       grouped.set(d.channel_id, list);
     });
@@ -586,7 +599,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   {(m.display_name || m.username || "U").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm truncate">{m.display_name || m.username || "User"}</span>
+              <StyledDisplayName displayName={m.display_name || m.username || "User"} fontStyle={m.name_font} effect={m.name_effect} gradientStart={m.name_gradient_start} gradientEnd={m.name_gradient_end} className="text-sm truncate" />
             </label>
           ))
         )}
@@ -753,7 +766,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                       </span>
                                     )}
                                   </div>
-                                  <span className="truncate">{p.display_name || p.username || "User"}</span>
+                                  <StyledDisplayName displayName={p.display_name || p.username || "User"} fontStyle={p.name_font} effect={p.name_effect} gradientStart={p.name_gradient_start} gradientEnd={p.name_gradient_end} className="truncate" />
                                   {p.is_screen_sharing && (
                                     <Monitor className="h-3 w-3 text-green-500 shrink-0" />
                                   )}
@@ -789,7 +802,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                         {t("streaming.live")}
                                       </span>
                                     </div>
-                                    <span className="truncate">{p.display_name || p.username || "User"}</span>
+                                    <StyledDisplayName displayName={p.display_name || p.username || "User"} fontStyle={p.name_font} effect={p.name_effect} gradientStart={p.name_gradient_start} gradientEnd={p.name_gradient_end} className="truncate" />
                                     <Monitor className="h-3 w-3 text-green-500 shrink-0" />
                                     {p.is_deafened ? (
                                       <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
@@ -827,7 +840,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                       </div>
                                       <div className="p-3 flex flex-col items-center gap-2.5">
                                         <p className="text-xs font-semibold text-foreground text-center">
-                                          {p.display_name || p.username || "User"} · {t("streaming.live")}
+                                          <StyledDisplayName displayName={p.display_name || p.username || "User"} fontStyle={p.name_font} effect={p.name_effect} gradientStart={p.name_gradient_start} gradientEnd={p.name_gradient_end} className="inline" /> · {t("streaming.live")}
                                         </p>
                                         <button
                                           onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); setStreamCardOpen(null); }}

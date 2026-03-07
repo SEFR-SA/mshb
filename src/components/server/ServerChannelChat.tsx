@@ -129,8 +129,15 @@ const MessageItem = React.memo(({
     return (
       <div className="flex items-center gap-3 py-2 px-1 text-sm text-muted-foreground select-none">
         <div className="flex-1 border-t border-border" />
-        <span className="shrink-0">
-          👋 <strong>{p?.display_name || p?.username || t("common.someone")}</strong>{" "}
+        <span className="shrink-0 inline-flex items-center gap-1">
+          👋 <StyledDisplayName
+            displayName={p?.display_name || p?.username || t("common.someone")}
+            fontStyle={(p as any)?.name_font}
+            effect={(p as any)?.name_effect}
+            gradientStart={(p as any)?.name_gradient_start}
+            gradientEnd={(p as any)?.name_gradient_end}
+            className="font-bold"
+          />{" "}
           {t("servers.joinedServer")}
         </span>
         <div className="flex-1 border-t border-border" />
@@ -447,7 +454,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
     if (newIds.length === 0) return;
-    const { data } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, name_gradient_start, name_gradient_end, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").in("user_id", newIds);
+    const { data } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").in("user_id", newIds);
     if (data) {
       setProfiles((prev) => {
         const next = new Map(prev);

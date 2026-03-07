@@ -35,6 +35,8 @@ interface AuthorProfile {
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  name_font?: string | null;
+  name_effect?: string | null;
   name_gradient_start: string | null;
   name_gradient_end: string | null;
 }
@@ -74,7 +76,7 @@ const PinnedMessagesDrawer = ({ threadId, groupThreadId, channelId }: PinnedMess
       if (authorIds.length > 0) {
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("user_id, display_name, username, avatar_url, name_gradient_start, name_gradient_end")
+          .select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end")
           .in("user_id", authorIds);
         if (profileData) {
           const map = new Map<string, AuthorProfile>();
@@ -132,6 +134,8 @@ const PinnedMessagesDrawer = ({ threadId, groupThreadId, channelId }: PinnedMess
                 <div className="flex items-center gap-2">
                   <StyledDisplayName
                     displayName={author?.display_name || author?.username || "User"}
+                    fontStyle={author?.name_font}
+                    effect={author?.name_effect}
                     gradientStart={author?.name_gradient_start}
                     gradientEnd={author?.name_gradient_end}
                     className="text-sm font-medium truncate"

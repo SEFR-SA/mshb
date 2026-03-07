@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Volume2 } from "lucide-react";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import StyledDisplayName from "@/components/StyledDisplayName";
 
 interface ActiveFriend {
   userId: string;
@@ -20,6 +21,10 @@ interface ActiveFriend {
   nameplateUrl: string | null;
   avatarDecorationUrl: string | null;
   isPro: boolean;
+  nameFont: string | null;
+  nameEffect: string | null;
+  nameGradientStart: string | null;
+  nameGradientEnd: string | null;
 }
 
 interface ActiveNowPanelProps {
@@ -52,7 +57,7 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
 
     const [{ data: channels }, { data: profiles }] = await Promise.all([
       supabase.from("channels").select("id, name, server_id").in("id", channelIds),
-      supabase.from("profiles").select("user_id, display_name, username, avatar_url, nameplate_url, avatar_decoration_url, is_pro").in("user_id", userIds),
+      supabase.from("profiles").select("user_id, display_name, username, avatar_url, nameplate_url, avatar_decoration_url, is_pro, name_font, name_effect, name_gradient_start, name_gradient_end").in("user_id", userIds),
     ]);
 
     const serverIds = [...new Set((channels || []).map((c) => c.server_id))];
@@ -81,6 +86,10 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
         nameplateUrl: profile?.nameplate_url || null,
         avatarDecorationUrl: (profile as any)?.avatar_decoration_url || null,
         isPro: profile?.is_pro || false,
+        nameFont: (profile as any)?.name_font || null,
+        nameEffect: (profile as any)?.name_effect || null,
+        nameGradientStart: (profile as any)?.name_gradient_start || null,
+        nameGradientEnd: (profile as any)?.name_gradient_end || null,
       };
     });
 
@@ -130,7 +139,14 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
                   </AvatarFallback>
                 </Avatar>
                 </AvatarDecorationWrapper>
-                <span className="font-medium text-sm truncate">{friend.displayName}</span>
+                <StyledDisplayName
+                  displayName={friend.displayName}
+                  fontStyle={friend.nameFont}
+                  effect={friend.nameEffect}
+                  gradientStart={friend.nameGradientStart}
+                  gradientEnd={friend.nameGradientEnd}
+                  className="font-medium text-sm truncate"
+                />
               </div>
 
               <div className="ms-1 space-y-0.5">

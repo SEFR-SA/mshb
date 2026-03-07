@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { Copy, ArrowLeft, Check, Search } from "lucide-react";
+import StyledDisplayName from "@/components/StyledDisplayName";
 import { getAppBaseUrl } from "@/lib/inviteUtils";
 import { copyToClipboard } from "@/lib/utils";
 
@@ -27,6 +28,10 @@ interface Friend {
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  name_font?: string | null;
+  name_effect?: string | null;
+  name_gradient_start?: string | null;
+  name_gradient_end?: string | null;
 }
 
 const EXPIRE_OPTIONS = [
@@ -119,7 +124,7 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
 
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, display_name, username, avatar_url")
+      .select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end")
       .in("user_id", friendIds);
 
     setFriends((profiles || []) as Friend[]);
@@ -274,7 +279,7 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
                             {name.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm font-medium flex-1 truncate">{name}</span>
+                        <StyledDisplayName displayName={name} fontStyle={f.name_font} effect={f.name_effect} gradientStart={f.name_gradient_start} gradientEnd={f.name_gradient_end} className="text-sm font-medium flex-1 truncate" />
                         <Button
                           size="sm"
                           variant={isSent ? "secondary" : "default"}

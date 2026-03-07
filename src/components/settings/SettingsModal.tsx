@@ -11,6 +11,7 @@ import {
   User, Shield, Users, Bell, Star, CreditCard,
   Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag,
 } from "lucide-react";
+import StyledDisplayName from "@/components/StyledDisplayName";
 
 // Lazy-load tab content to keep initial bundle small
 const ProfileTab       = lazy(() => import("./tabs/ProfileTab"));
@@ -122,7 +123,7 @@ const SettingsModal = () => {
           </Avatar>
           </AvatarDecorationWrapper>
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{profile?.display_name || profile?.username || "User"}</p>
+            <StyledDisplayName displayName={profile?.display_name || profile?.username || "User"} fontStyle={(profile as any)?.name_font} effect={(profile as any)?.name_effect} gradientStart={(profile as any)?.name_gradient_start} gradientEnd={(profile as any)?.name_gradient_end} className="text-sm font-medium truncate" />
             {profile?.username && <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>}
           </div>
         </div>

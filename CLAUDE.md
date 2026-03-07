@@ -232,6 +232,27 @@ useEffect(() => { /* ... */ }, [messageIds.join(",")]);
 - **Simplicity over Abstraction:** Do not invent "micro-frameworks", unnecessary wrapper functions, or complex architectural patterns for simple UI or data transformations.
 - **The "Senior Check":** Before proposing any code changes, audit your own logic. Ask yourself: *"Is this the absolute most concise, readable way to achieve this?"* If your diff adds 80 lines for a simple feature, delete it and rewrite the elegant, 2-line solution.
 
+### SENIOR DEV MANDATE: SINGLE SOURCE OF TRUTH (CRITICAL)
+Before rendering any user-visible data, always ask: **"Will this be displayed in more than one place?"** If yes, use the canonical shared component — never duplicate inline rendering logic.
+
+**Mandatory shared components — use them everywhere, no exceptions:**
+
+| Feature | Component | Required Props (from DB profile) |
+|---------|-----------|----------------------------------|
+| Display name with styling | `StyledDisplayName` from `@/components/StyledDisplayName` | `displayName`, `fontStyle={p.name_font}`, `effect={p.name_effect}`, `gradientStart={p.name_gradient_start}`, `gradientEnd={p.name_gradient_end}` |
+| Avatar decoration frame | `AvatarDecorationWrapper` from `@/components/shared/AvatarDecorationWrapper` | `decorationUrl`, `isPro`, `size` (px integer) |
+| Nameplate background | `NameplateWrapper` from `@/components/shared/NameplateWrapper` | `nameplateUrl`, `isPro` |
+| Profile effect overlay | `ProfileEffectWrapper` from `@/components/shared/ProfileEffectWrapper` | `effectUrl`, `isPro` |
+
+**StyledDisplayName — mandatory Supabase select fields:**
+Any profile fetch that renders a styled name MUST include all 4 fields:
+```
+name_font, name_effect, name_gradient_start, name_gradient_end
+```
+If the query uses `select("*")` these are already included. If it lists fields explicitly, you MUST add all 4. Omitting even one silently breaks font or color effects for users who have set them.
+
+**Common mistake to avoid:** Using `StyledDisplayName` but only passing `gradientStart`/`gradientEnd` while omitting `fontStyle` and `effect` — this breaks custom fonts and neon/toon/pop effects while appearing correct for gradient-only users.
+
 ---
 
 ## Adding a New Feature

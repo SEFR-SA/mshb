@@ -18,6 +18,7 @@ import CreateGroupDialog from "@/components/CreateGroupDialog";
 import ThreadContextMenu from "@/components/chat/ThreadContextMenu";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import StyledDisplayName from "@/components/StyledDisplayName";
 
 type Profile = Tables<"profiles">;
 
@@ -322,7 +323,14 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                   {(p.display_name || p.username || "?").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm truncate">{p.display_name || p.username}</span>
+              <StyledDisplayName
+                displayName={p.display_name || p.username || "User"}
+                fontStyle={(p as any).name_font}
+                effect={(p as any).name_effect}
+                gradientStart={p.name_gradient_start}
+                gradientEnd={p.name_gradient_end}
+                className="text-sm truncate"
+              />
             </button>
           ))}
           {!searching && searchResults.length === 0 && (
@@ -363,7 +371,18 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                       </AvatarDecorationWrapper>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium truncate">{item.name}</p>
+                          {item.type === "dm" && item.otherProfile ? (
+                            <StyledDisplayName
+                              displayName={item.name}
+                              fontStyle={(item.otherProfile as any).name_font}
+                              effect={(item.otherProfile as any).name_effect}
+                              gradientStart={item.otherProfile.name_gradient_start}
+                              gradientEnd={item.otherProfile.name_gradient_end}
+                              className="text-sm font-medium truncate"
+                            />
+                          ) : (
+                            <p className="text-sm font-medium truncate">{item.name}</p>
+                          )}
                           {item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
                         </div>
                         <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
@@ -429,7 +448,14 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate leading-tight">{myProfile?.display_name || myProfile?.username || "User"}</p>
+              <StyledDisplayName
+                displayName={myProfile?.display_name || myProfile?.username || "User"}
+                fontStyle={(myProfile as any)?.name_font}
+                effect={(myProfile as any)?.name_effect}
+                gradientStart={myProfile?.name_gradient_start}
+                gradientEnd={myProfile?.name_gradient_end}
+                className="text-sm font-medium truncate leading-tight"
+              />
               {myProfile?.username && <p className="text-[11px] text-muted-foreground truncate leading-tight">@{myProfile.username}</p>}
             </div>
           </NavLink>

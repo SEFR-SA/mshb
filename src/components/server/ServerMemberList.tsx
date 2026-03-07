@@ -37,6 +37,8 @@ interface Member {
     status_text?: string | null;
     status_until?: string | null;
     created_at: string;
+    name_font?: string | null;
+    name_effect?: string | null;
     name_gradient_start?: string | null;
     name_gradient_end?: string | null;
     nameplate_url?: string | null;
@@ -88,7 +90,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       const userIds = (data as any[]).map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, status_text, status_until, created_at, name_gradient_start, name_gradient_end, nameplate_url, avatar_decoration_url, profile_effect_url, is_pro, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
+        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, status_text, status_until, created_at, name_font, name_effect, name_gradient_start, name_gradient_end, nameplate_url, avatar_decoration_url, profile_effect_url, is_pro, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
         .in("user_id", userIds);
 
       const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
@@ -263,7 +265,14 @@ const ServerMemberList = ({ serverId }: Props) => {
                               />
                             </div>
 
-                            <div className="font-bold text-foreground text-base">{name}</div>
+                            <StyledDisplayName
+                              displayName={name}
+                              fontStyle={p?.name_font}
+                              effect={p?.name_effect}
+                              gradientStart={p?.name_gradient_start}
+                              gradientEnd={p?.name_gradient_end}
+                              className="font-bold text-foreground text-base"
+                            />
                             <div className="text-xs text-muted-foreground">@{username}</div>
 
                             <div className="flex flex-wrap gap-1 mt-2">
@@ -365,6 +374,8 @@ const ServerMemberList = ({ serverId }: Props) => {
                         </AvatarDecorationWrapper>
                         <StyledDisplayName
                           displayName={name}
+                          fontStyle={p?.name_font}
+                          effect={p?.name_effect}
                           gradientStart={p?.name_gradient_start}
                           gradientEnd={p?.name_gradient_end}
                           color={status !== "offline" && status !== "invisible" ? (highestRole?.color ?? null) : null}

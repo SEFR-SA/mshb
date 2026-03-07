@@ -17,6 +17,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
+import StyledDisplayName from "@/components/StyledDisplayName";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
 import ThreadContextMenu from "@/components/chat/ThreadContextMenu";
 import { useBlockUser } from "@/hooks/useBlockUser";
@@ -348,7 +349,18 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
           </AvatarDecorationWrapper>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <p className={`font-semibold truncate ${isMobileExpanded ? "text-base" : "text-sm"}`}>{item.name}</p>
+              {item.type === "dm" && item.otherProfile ? (
+                <StyledDisplayName
+                  displayName={item.name}
+                  fontStyle={(item.otherProfile as any).name_font}
+                  effect={(item.otherProfile as any).name_effect}
+                  gradientStart={item.otherProfile.name_gradient_start}
+                  gradientEnd={item.otherProfile.name_gradient_end}
+                  className={`font-semibold truncate ${isMobileExpanded ? "text-base" : "text-sm"}`}
+                />
+              ) : (
+                <p className={`font-semibold truncate ${isMobileExpanded ? "text-base" : "text-sm"}`}>{item.name}</p>
+              )}
               {item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
             </div>
             <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
@@ -417,7 +429,14 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
                   {(p.display_name || p.username || "?").charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm truncate">{p.display_name || p.username}</span>
+              <StyledDisplayName
+                displayName={p.display_name || p.username || "User"}
+                fontStyle={(p as any).name_font}
+                effect={(p as any).name_effect}
+                gradientStart={p.name_gradient_start}
+                gradientEnd={p.name_gradient_end}
+                className="text-sm truncate"
+              />
             </button>
           ))}
           {!searching && searchResults.length === 0 && (

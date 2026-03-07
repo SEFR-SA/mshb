@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import StyledDisplayName from "@/components/StyledDisplayName";
 
 type EditField = "displayName" | "username" | "email" | "password" | null;
 
@@ -136,7 +137,14 @@ const AccountTab = () => {
             <AvatarFallback className="bg-primary/20 text-primary text-xl">{initials}</AvatarFallback>
           </Avatar>
           <div className="mb-1">
-            <p className="font-bold">{profile?.display_name || profile?.username || "User"}</p>
+            <StyledDisplayName
+              displayName={profile?.display_name || profile?.username || "User"}
+              fontStyle={p?.name_font}
+              effect={p?.name_effect}
+              gradientStart={p?.name_gradient_start}
+              gradientEnd={p?.name_gradient_end}
+              className="font-bold"
+            />
             {profile?.username && <p className="text-sm text-muted-foreground">@{profile.username}</p>}
           </div>
         </div>

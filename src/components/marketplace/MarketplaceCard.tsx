@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ITEM_TYPE_GRADIENTS, type ItemType } from "@/config/marketplace";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
+import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 
 export interface MarketplaceItem {
@@ -64,20 +65,9 @@ const MarketplaceCard = ({
             <span className="absolute top-16 left-20 text-yellow-100/30 text-sm">✦</span>
             {/* Centered mock avatar with decoration overlay */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative" style={{ width: 96, height: 96 }}>
+              <AvatarDecorationWrapper decorationUrl={item.thumbnail_url} isPro={true} size={96}>
                 <AvatarImg src={userAvatarUrl} size={96} />
-                {item.thumbnail_url && (
-                  <img
-                    src={item.thumbnail_url}
-                    alt=""
-                    draggable={false}
-                    onContextMenu={(e) => e.preventDefault()}
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                    className="absolute pointer-events-none select-none"
-                    style={{ width: "125%", height: "125%", top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
-                  />
-                )}
-              </div>
+              </AvatarDecorationWrapper>
             </div>
           </>
         );

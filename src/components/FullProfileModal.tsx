@@ -27,6 +27,10 @@ interface MutualFriend {
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  name_font?: string | null;
+  name_effect?: string | null;
+  name_gradient_start?: string | null;
+  name_gradient_end?: string | null;
 }
 
 interface MutualServer {
@@ -66,9 +70,7 @@ const FriendRow = ({
       </AvatarFallback>
     </Avatar>
     <div className="min-w-0">
-      <p className="text-sm font-medium text-foreground truncate">
-        {profile.display_name || profile.username}
-      </p>
+      <StyledDisplayName displayName={profile.display_name || profile.username || "User"} fontStyle={profile.name_font} effect={profile.name_effect} gradientStart={profile.name_gradient_start} gradientEnd={profile.name_gradient_end} className="text-sm font-medium text-foreground truncate" />
       {profile.username && (
         <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>
       )}
@@ -170,7 +172,7 @@ const FullProfileModal = () => {
 
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id,display_name,username,avatar_url")
+      .select("user_id,display_name,username,avatar_url,name_font,name_effect,name_gradient_start,name_gradient_end")
       .in("user_id", mutualIds);
 
     setMutualFriends((profiles ?? []) as MutualFriend[]);
@@ -304,6 +306,8 @@ const FullProfileModal = () => {
         <div>
           <StyledDisplayName
             displayName={p?.display_name || p?.username || "User"}
+            fontStyle={p?.name_font}
+            effect={p?.name_effect}
             gradientStart={p?.name_gradient_start}
             gradientEnd={p?.name_gradient_end}
             className="text-xl font-bold"
@@ -390,6 +394,8 @@ const FullProfileModal = () => {
               <div>
                 <StyledDisplayName
                   displayName={p?.display_name || p?.username || "User"}
+                  fontStyle={p?.name_font}
+                  effect={p?.name_effect}
                   gradientStart={p?.name_gradient_start}
                   gradientEnd={p?.name_gradient_end}
                   className="text-xl font-bold"
