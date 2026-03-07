@@ -347,8 +347,8 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
             </Avatar>
             {item.type === "dm" && item.otherProfile && <StatusBadge status={(getUserStatus(item.otherProfile) === "offline" ? "invisible" : getUserStatus(item.otherProfile)) as UserStatus} className="absolute bottom-0 end-0 z-20" />}
           </AvatarDecorationWrapper>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
+          <div className="flex-1 min-w-0 overflow-visible">
+            <div className="flex items-center justify-between overflow-visible">
               {item.type === "dm" && item.otherProfile ? (
                 <StyledDisplayName
                   displayName={item.name}
@@ -356,7 +356,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
                   effect={(item.otherProfile as any).name_effect}
                   gradientStart={item.otherProfile.name_gradient_start}
                   gradientEnd={item.otherProfile.name_gradient_end}
-                  className={`font-semibold truncate ${isMobileExpanded ? "text-base" : "text-sm"}`}
+                  className={`font-semibold ${isMobileExpanded ? "text-base" : "text-sm"}`}
                 />
               ) : (
                 <p className={`font-semibold truncate ${isMobileExpanded ? "text-base" : "text-sm"}`}>{item.name}</p>

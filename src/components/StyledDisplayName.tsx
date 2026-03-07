@@ -45,14 +45,18 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
 
   const activeColor = color || gradientStart || "#FFFFFF";
 
-  const neonShadow = `0 0 2px #fff, 0 0 8px ${activeColor}, 0 0 16px ${activeColor}, 0 0 30px ${activeColor}`;
+  const neonShadow = `0 0 8px ${activeColor}, 0 0 16px ${activeColor}, 0 0 30px ${activeColor}`;
   const toonShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000`;
   const popShadow  = `2px 2px 0 rgba(0,0,0,0.4), 4px 4px 0 rgba(0,0,0,0.15)`;
 
-  // Shared bleed style: expands the paint area with padding then pulls it back with
-  // negative margins so text stays flush. Prevents parent overflow:hidden from clipping shadows.
+  // fontFamily is applied only to the inner text span — never to tagEl — so server tags
+  // always render in the plain UI font regardless of the user's display name font choice.
+  //
+  // For shadow effects: overflow:visible on the outer span overrides truncate's overflow:hidden
+  // so shadows aren't clipped. The inner span uses padding + negative margin as a bleed area.
   const bleedStyle: React.CSSProperties = {
     display: "inline-block",
+    fontFamily,
     padding: "0.2em 0.4em",
     margin: "-0.2em -0.4em",
     position: "relative",
@@ -61,7 +65,7 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
 
   if (effect === "Neon") {
     return (
-      <span className={cn("font-semibold", className)} style={{ fontFamily }}>
+      <span className={cn("font-semibold", className)} style={{ overflow: "visible" }}>
         <span style={{ ...bleedStyle, color: activeColor, textShadow: neonShadow }}>{rendered}</span>
         {tagEl}
       </span>
@@ -70,7 +74,7 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
 
   if (effect === "Toon") {
     return (
-      <span className={cn("font-semibold", className)} style={{ fontFamily }}>
+      <span className={cn("font-semibold", className)} style={{ overflow: "visible" }}>
         <span style={{ ...bleedStyle, color: activeColor, textShadow: toonShadow }}>{rendered}</span>
         {tagEl}
       </span>
@@ -79,7 +83,7 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
 
   if (effect === "Pop") {
     return (
-      <span className={cn("font-semibold", className)} style={{ fontFamily }}>
+      <span className={cn("font-semibold", className)} style={{ overflow: "visible" }}>
         <span style={{ ...bleedStyle, color: activeColor, textShadow: popShadow }}>{rendered}</span>
         {tagEl}
       </span>
@@ -88,10 +92,11 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
 
   if ((effect === "Gradient" || (!effect && gradientStart && gradientEnd)) && gradientStart && gradientEnd) {
     return (
-      <span className={cn("font-semibold", className)} style={{ fontFamily }}>
+      <span className={cn("font-semibold", className)}>
         <span
           style={{
             display: "inline-block",
+            fontFamily,
             padding: "2px 0",
             backgroundImage: `linear-gradient(90deg, ${gradientStart}, ${gradientEnd})`,
             WebkitBackgroundClip: "text",
@@ -109,16 +114,16 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
 
   if (color || (effect === "Solid" && gradientStart)) {
     return (
-      <span className={cn("font-semibold", className)} style={{ fontFamily }}>
-        <span style={{ color: color || gradientStart || undefined }}>{rendered}</span>
+      <span className={cn("font-semibold", className)}>
+        <span style={{ fontFamily, color: color || gradientStart || undefined }}>{rendered}</span>
         {tagEl}
       </span>
     );
   }
 
   return (
-    <span className={cn("font-semibold", className)} style={{ fontFamily }}>
-      {rendered}
+    <span className={cn("font-semibold", className)}>
+      {fontFamily ? <span style={{ fontFamily }}>{rendered}</span> : rendered}
       {tagEl}
     </span>
   );

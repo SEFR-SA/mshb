@@ -379,7 +379,7 @@ const ServerMemberList = ({ serverId }: Props) => {
                           gradientStart={p?.name_gradient_start}
                           gradientEnd={p?.name_gradient_end}
                           color={status !== "offline" && status !== "invisible" ? (highestRole?.color ?? null) : null}
-                          className={`text-sm truncate ${status === "offline" || status === "invisible" ? "text-muted-foreground" : "text-foreground"}`}
+                          className={`text-sm ${status === "offline" || status === "invisible" ? "text-muted-foreground" : "text-foreground"}`}
                           serverTag={(p as any)?.active_server_tag ? {
                             name: (p as any).active_server_tag.server_tag_name,
                             badge: (p as any).active_server_tag.server_tag_badge,

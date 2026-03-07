@@ -22,16 +22,21 @@ const NameplateWrapper = React.forwardRef<HTMLDivElement, NameplateWrapperProps>
       : "";
 
     return (
-      <div ref={ref} className={cn("relative overflow-hidden rounded-md", fadeOnHover && "group", className)} {...rest}>
-        <img
-          src={nameplateUrl}
-          alt=""
-          className={cn(
-            imageClassName ?? "absolute inset-0 w-full h-full object-cover pointer-events-none z-0",
-            fadeOnHover && "transition-opacity duration-200",
-            imgOpacity
-          )}
-        />
+      // overflow-hidden is intentionally NOT on this outer div — it would clip text-shadow glows
+      // from StyledDisplayName children (Neon/Toon/Pop effects). Instead the image is wrapped in
+      // its own clip container so it still gets clipped to the rounded corners independently.
+      <div ref={ref} className={cn("relative rounded-md", fadeOnHover && "group", className)} {...rest}>
+        <div className="absolute inset-0 rounded-[inherit] overflow-hidden pointer-events-none z-0">
+          <img
+            src={nameplateUrl}
+            alt=""
+            className={cn(
+              imageClassName ?? "w-full h-full object-cover",
+              fadeOnHover && "transition-opacity duration-200",
+              imgOpacity
+            )}
+          />
+        </div>
         <div className="relative z-10 h-full">{children}</div>
       </div>
     );

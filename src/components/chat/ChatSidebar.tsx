@@ -329,7 +329,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                 effect={(p as any).name_effect}
                 gradientStart={p.name_gradient_start}
                 gradientEnd={p.name_gradient_end}
-                className="text-sm truncate"
+                className="text-sm"
               />
             </button>
           ))}

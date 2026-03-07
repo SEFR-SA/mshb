@@ -22,8 +22,6 @@ export type NameEffect = "Solid" | "Gradient" | "Neon" | "Toon" | "Pop";
 export const EFFECT_OPTIONS: { id: NameEffect; label: string }[] = [
   { id: "Solid",    label: "GG"    },
   { id: "Gradient", label: "GG" },
-  { id: "Neon",     label: "GG"     },
-  { id: "Pop",      label: "GG"      },
 ];
 
 // 20 swatches in two rows of 10
