@@ -792,6 +792,8 @@ export type Database = {
           is_pro: boolean
           language: string | null
           last_seen: string | null
+          name_effect: string | null
+          name_font: string | null
           name_gradient_end: string | null
           name_gradient_start: string | null
           nameplate_url: string | null
@@ -819,6 +821,8 @@ export type Database = {
           is_pro?: boolean
           language?: string | null
           last_seen?: string | null
+          name_effect?: string | null
+          name_font?: string | null
           name_gradient_end?: string | null
           name_gradient_start?: string | null
           nameplate_url?: string | null
@@ -846,6 +850,8 @@ export type Database = {
           is_pro?: boolean
           language?: string | null
           last_seen?: string | null
+          name_effect?: string | null
+          name_font?: string | null
           name_gradient_end?: string | null
           name_gradient_start?: string | null
           nameplate_url?: string | null
