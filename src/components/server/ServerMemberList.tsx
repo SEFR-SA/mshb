@@ -21,6 +21,7 @@ import { usePresence } from "@/hooks/usePresence";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import StatusBubble from "@/components/shared/StatusBubble";
+import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 
 interface Member {
   user_id: string;
@@ -40,6 +41,7 @@ interface Member {
     name_gradient_end?: string | null;
     nameplate_url?: string | null;
     avatar_decoration_url?: string | null;
+    profile_effect_url?: string | null;
     is_pro?: boolean;
   };
 }
@@ -86,7 +88,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       const userIds = (data as any[]).map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, status_text, status_until, created_at, name_gradient_start, name_gradient_end, nameplate_url, avatar_decoration_url, is_pro, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
+        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, status_text, status_until, created_at, name_gradient_start, name_gradient_end, nameplate_url, avatar_decoration_url, profile_effect_url, is_pro, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
         .in("user_id", userIds);
 
       const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
@@ -233,111 +235,117 @@ const ServerMemberList = ({ serverId }: Props) => {
                     const status = getUserStatus({ user_id: m.user_id, status: p?.status });
 
                     const profileCardContent = (
-                      <div className="overflow-hidden rounded-lg bg-popover">
-                        {/* Banner */}
-                        <div
-                          className="h-[60px] w-full bg-primary/60"
-                          style={p?.banner_url ? { backgroundImage: `url(${p.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
-                        />
-                        {/* Avatar + Info */}
-                        <div className="px-4 pb-3">
-                          <div className="-mt-8 mb-2 flex items-end gap-2">
-                            <div className="relative shrink-0">
-                              <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={64}>
-                                <Avatar className="h-16 w-16 border-4 border-popover">
-                                  <AvatarImage src={p?.avatar_url || ""} />
-                                  <AvatarFallback className="bg-primary/20 text-primary text-lg">{name.charAt(0).toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                              </AvatarDecorationWrapper>
-                              <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="md" className="absolute bottom-1 start-12 z-20" />
-                            </div>
-                            <StatusBubble
-                              statusText={(p?.status_until && new Date(p.status_until) < new Date()) ? null : (p?.status_text ?? null)}
-                            />
-                          </div>
-
-                          <div className="font-bold text-foreground text-base">{name}</div>
-                          <div className="text-xs text-muted-foreground">@{username}</div>
-
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            <Badge className={`text-[10px] px-2 py-0.5 ${roleBadgeColors[m.role] || roleBadgeColors.member}`}>
-                              {t(`servers.${m.role}`)}
-                            </Badge>
-                            {(userAllRolesMap.get(m.user_id) || []).map((cr) => (
-                              <Badge
-                                key={cr.id}
-                                className="text-[10px] px-2 py-0.5 border"
-                                style={{
-                                  backgroundColor: `${cr.color}20`,
-                                  color: cr.color,
-                                  borderColor: `${cr.color}50`,
-                                }}
-                              >
-                                {cr.name}
-                              </Badge>
-                            ))}
-                          </div>
-
-                          {p?.about_me && (
-                            <>
-                              <Separator className="my-3" />
-                              <div>
-                                <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">{t("profile.aboutMe")}</div>
-                                <p className="text-sm text-foreground whitespace-pre-wrap break-words">{p.about_me}</p>
+                      <ProfileEffectWrapper
+                        effectUrl={(p as any)?.profile_effect_url}
+                        isPro={p?.is_pro}
+                        className="bg-popover rounded-lg"
+                      >
+                        <div className="max-h-[700px] overflow-y-auto">
+                          {/* Banner */}
+                          <div
+                            className="h-[105px] w-full bg-primary/60"
+                            style={p?.banner_url ? { backgroundImage: `url(${p.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                          />
+                          {/* Avatar + Info */}
+                          <div className="px-4 pb-3">
+                            <div className="-mt-10 mb-2 flex items-end gap-2">
+                              <div className="relative shrink-0">
+                                <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={80}>
+                                  <Avatar className="h-20 w-20 border-4 border-popover">
+                                    <AvatarImage src={p?.avatar_url || ""} />
+                                    <AvatarFallback className="bg-primary/20 text-primary text-xl">{name.charAt(0).toUpperCase()}</AvatarFallback>
+                                  </Avatar>
+                                </AvatarDecorationWrapper>
+                                <StatusBadge status={(status === "offline" ? "invisible" : status) as UserStatus} size="md" className="absolute bottom-1 start-[60px] z-20" />
                               </div>
-                            </>
-                          )}
-
-                          <Separator className="my-3" />
-
-                          <div className="space-y-1.5">
-                            <div>
-                              <div className="text-xs font-semibold uppercase text-muted-foreground">{t("profile.memberSince")}</div>
-                              <div className="text-xs text-foreground">{p?.created_at ? format(new Date(p.created_at), "MMM d, yyyy") : "—"}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-semibold uppercase text-muted-foreground">{t("profile.joinedServer")}</div>
-                              <div className="text-xs text-foreground">{m.joined_at ? format(new Date(m.joined_at), "MMM d, yyyy") : "—"}</div>
-                            </div>
-                          </div>
-
-                          {user && m.user_id !== user.id && (
-                            <>
-                              <Separator className="my-3" />
-                              <Input
-                                placeholder={t("profile.messageUser", { name: username })}
-                                className="h-8 text-xs"
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    const val = (e.target as HTMLInputElement).value;
-                                    handleQuickMessage(m.user_id, val);
-                                  }
-                                }}
+                              <StatusBubble
+                                statusText={(p?.status_until && new Date(p.status_until) < new Date()) ? null : (p?.status_text ?? null)}
                               />
-                            </>
-                          )}
-                          {user && m.user_id === user.id && serverSounds.length > 0 && (
-                            <>
-                              <Separator className="my-3" />
-                              <div>
-                                <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">
-                                  {t("servers.entranceSound")}
-                                </div>
-                                <select
-                                  value={entranceSoundId || ""}
-                                  onChange={(e) => updateEntranceSound(e.target.value || null)}
-                                  className="w-full text-xs h-8 rounded-md border border-input bg-background px-2"
+                            </div>
+
+                            <div className="font-bold text-foreground text-base">{name}</div>
+                            <div className="text-xs text-muted-foreground">@{username}</div>
+
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              <Badge className={`text-[10px] px-2 py-0.5 ${roleBadgeColors[m.role] || roleBadgeColors.member}`}>
+                                {t(`servers.${m.role}`)}
+                              </Badge>
+                              {(userAllRolesMap.get(m.user_id) || []).map((cr) => (
+                                <Badge
+                                  key={cr.id}
+                                  className="text-[10px] px-2 py-0.5 border"
+                                  style={{
+                                    backgroundColor: `${cr.color}20`,
+                                    color: cr.color,
+                                    borderColor: `${cr.color}50`,
+                                  }}
                                 >
-                                  <option value="">{t("servers.noEntranceSound")}</option>
-                                  {serverSounds.map((s) => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
-                                  ))}
-                                </select>
+                                  {cr.name}
+                                </Badge>
+                              ))}
+                            </div>
+
+                            {p?.about_me && (
+                              <>
+                                <Separator className="my-3" />
+                                <div>
+                                  <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">{t("profile.aboutMe")}</div>
+                                  <p className="text-sm text-foreground whitespace-pre-wrap break-words">{p.about_me}</p>
+                                </div>
+                              </>
+                            )}
+
+                            <Separator className="my-3" />
+
+                            <div className="space-y-1.5">
+                              <div>
+                                <div className="text-xs font-semibold uppercase text-muted-foreground">{t("profile.memberSince")}</div>
+                                <div className="text-xs text-foreground">{p?.created_at ? format(new Date(p.created_at), "MMM d, yyyy") : "—"}</div>
                               </div>
-                            </>
-                          )}
+                              <div>
+                                <div className="text-xs font-semibold uppercase text-muted-foreground">{t("profile.joinedServer")}</div>
+                                <div className="text-xs text-foreground">{m.joined_at ? format(new Date(m.joined_at), "MMM d, yyyy") : "—"}</div>
+                              </div>
+                            </div>
+
+                            {user && m.user_id !== user.id && (
+                              <>
+                                <Separator className="my-3" />
+                                <Input
+                                  placeholder={t("profile.messageUser", { name: username })}
+                                  className="h-8 text-xs"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      const val = (e.target as HTMLInputElement).value;
+                                      handleQuickMessage(m.user_id, val);
+                                    }
+                                  }}
+                                />
+                              </>
+                            )}
+                            {user && m.user_id === user.id && serverSounds.length > 0 && (
+                              <>
+                                <Separator className="my-3" />
+                                <div>
+                                  <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">
+                                    {t("servers.entranceSound")}
+                                  </div>
+                                  <select
+                                    value={entranceSoundId || ""}
+                                    onChange={(e) => updateEntranceSound(e.target.value || null)}
+                                    className="w-full text-xs h-8 rounded-md border border-input bg-background px-2"
+                                  >
+                                    <option value="">{t("servers.noEntranceSound")}</option>
+                                    {serverSounds.map((s) => (
+                                      <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      </ProfileEffectWrapper>
                     );
 
                     const highestRole = userHighestRoleMap.get(m.user_id);

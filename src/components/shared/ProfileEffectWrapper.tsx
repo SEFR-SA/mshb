@@ -21,7 +21,7 @@ const ProfileEffectWrapper = ({ effectUrl, isPro, className, children }: Profile
       <img
         src={effectUrl}
         alt=""
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none z-50"
+        className="absolute inset-0 w-full h-full object-cover object-top pointer-events-none z-50"
       />
     </div>
   );

@@ -12,7 +12,7 @@ import { ReportModalProvider } from "@/contexts/ReportModalContext";
 import { ForwardMessageProvider } from "@/contexts/ForwardMessageContext";
 import { CreateChannelProvider } from "@/contexts/CreateChannelContext";
 import { InviteToServerProvider } from "@/contexts/InviteToServerContext";
-import UserProfileModal from "@/components/UserProfileModal";
+import FullProfileModal from "@/components/FullProfileModal";
 import ReportMessageModal from "@/components/chat/ReportMessageModal";
 import ForwardMessageModal from "@/components/chat/ForwardMessageModal";
 import InviteToServerModal from "@/components/chat/InviteToServerModal";
@@ -181,7 +181,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <HashRouter>
-                <UserProfileModal />
+                <FullProfileModal />
                 <ReportMessageModal />
                 <ForwardMessageModal />
                 <InviteToServerModal />

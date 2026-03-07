@@ -23,7 +23,7 @@ const AvatarDecorationWrapper = ({
   }
 
   // Decoration is ~25% larger than the avatar to frame it
-  const decorationSize = Math.round(size * 1.25);
+  const decorationSize = Math.round(size * 1.2);
   const offset = Math.round((decorationSize - size) / 2);
 
   return (
