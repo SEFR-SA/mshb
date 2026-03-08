@@ -117,7 +117,7 @@ const GroupChat = () => {
         .select("*")
         .eq("id", groupId)
         .maybeSingle();
-      if (!group) { navigate("/channels/@me"); return; }
+      if (!group) { navigate("/"); return; }
       setGroupName((group as any).name);
       setGroupAvatarUrl((group as any).avatar_url || "");
 
@@ -342,7 +342,7 @@ const GroupChat = () => {
       {/* Header */}
       <header className="flex items-center gap-3 p-3 glass border-b border-border/50">
         {isMobile && (
-          <Button variant="ghost" size="icon" onClick={() => navigate("/channels/@me")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
         )}
@@ -659,7 +659,7 @@ const GroupChat = () => {
         onOpenChange={setSettingsOpen}
         groupId={groupId || ""}
         isAdmin={isAdmin}
-        onLeave={() => navigate("/channels/@me")}
+        onLeave={() => navigate("/")}
       />
     </div>
   );

@@ -245,7 +245,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
     setServers((prev) => prev.filter((s) => s.id !== deleteServerId));
     setDeleteServerId(null);
     toast({ title: t("servers.serverDeleted") });
-    navigate("/channels/@me");
+    navigate("/");
   };
 
   // Create a new folder from two servers
@@ -338,9 +338,9 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              onClick={() => { navigate("/channels/@me"); onNavigate?.(); }}
+              onClick={() => { navigate("/"); onNavigate?.(); }}
               className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all hover:rounded-xl ${
-                location.pathname === "/channels/@me" || location.pathname.startsWith("/channels/@me/")
+                location.pathname === "/" || location.pathname === "/friends" || location.pathname.startsWith("/chat/") || location.pathname.startsWith("/group/")
                   ? "bg-primary text-primary-foreground rounded-xl"
                   : "bg-sidebar-accent/30 text-sidebar-foreground hover:bg-primary/20 hover:text-primary"
               }`}
@@ -361,7 +361,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                 <Tooltip key={dm.threadId}>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={() => { navigate(`/channels/@me/chat/${dm.threadId}`); onNavigate?.(); }}
+                      onClick={() => { navigate(`/chat/${dm.threadId}`); onNavigate?.(); }}
                       className="relative flex items-center justify-center w-12 h-12 rounded-2xl hover:rounded-xl transition-all bg-sidebar-accent/30 hover:bg-primary/20 group"
                     >
                       <Avatar className="h-12 w-12 rounded-[inherit]">
@@ -443,7 +443,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                             <div className="absolute -start-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full z-10" />
                           )}
                           <NavLink
-                            to={`/channels/server/${s.id}`}
+                            to={`/server/${s.id}`}
                             onClick={(e) => {
                               if (longPressTriggeredRef.current) {
                                 e.preventDefault();
@@ -484,11 +484,11 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                       {t("actions.markAsRead")}
                     </ContextMenuItem>
                     <ContextMenuSeparator />
-                    <ContextMenuItem onClick={() => { navigate(`/channels/server/${s.id}`); requestCreateChannel(); }}>
+                    <ContextMenuItem onClick={() => { navigate(`/server/${s.id}`); requestCreateChannel(); }}>
                       <Plus className="h-4 w-4 me-2" />
                       {t("servers.createChannel")}
                     </ContextMenuItem>
-                    <ContextMenuItem onClick={() => { navigate(`/channels/server/${s.id}`); requestCreateSection(); }}>
+                    <ContextMenuItem onClick={() => { navigate(`/server/${s.id}`); requestCreateSection(); }}>
                       <FolderPlus className="h-4 w-4 me-2" />
                       {t("servers.createCategory")}
                     </ContextMenuItem>

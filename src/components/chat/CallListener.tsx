@@ -287,7 +287,7 @@ const CallListener = () => {
 
     // Navigate to DM chat
     if (threadId) {
-      navigate(`/channels/@me/chat/${threadId}`);
+      navigate(`/chat/${threadId}`);
     }
   }, [incomingCall, answerCall, voiceChannel, disconnectVoice, user, navigate]);
 

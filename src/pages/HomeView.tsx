@@ -13,9 +13,9 @@ const HomeView = () => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   
-  const isFriendsView = location.pathname === "/channels/@me" || location.pathname === "/channels/@me/friends";
-  const isChatView = location.pathname.startsWith("/channels/@me/chat/") || location.pathname.startsWith("/channels/@me/group/");
-  const isHomeRoot = location.pathname === "/channels/@me";
+  const isFriendsView = location.pathname === "/" || location.pathname === "/friends";
+  const isChatView = location.pathname.startsWith("/chat/") || location.pathname.startsWith("/group/");
+  const isHomeRoot = location.pathname === "/";
 
   // Load friend user IDs for ActiveNowPanel
   const [friendUserIds, setFriendUserIds] = useState<string[]>([]);
@@ -39,7 +39,7 @@ const HomeView = () => {
 
   // Mobile: full-page chat (no sidebars) or home view with ServerRail + HomeSidebar content
   if (isMobile) {
-    if (isChatView || location.pathname === "/channels/@me/friends") {
+    if (isChatView || location.pathname === "/friends") {
       // Full-page chat or friends view
       return (
         <div className="flex flex-col h-full">

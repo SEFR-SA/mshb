@@ -101,7 +101,7 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
     toast({ title: t("servers.serverDeleted") });
     setShowDeleteConfirm(false);
     onOpenChange(false);
-    navigate("/channels/@me");
+    navigate("/");
   };
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [

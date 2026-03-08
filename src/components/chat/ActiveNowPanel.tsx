@@ -111,7 +111,7 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
   }, [fetchActive]);
 
   const handleJoinVoice = (serverId: string, channelId: string) => {
-    navigate(`/channels/server/${serverId}?voiceChannel=${channelId}`);
+    navigate(`/server/${serverId}?voiceChannel=${channelId}`);
   };
 
   const initials = (name: string) => name.charAt(0).toUpperCase();

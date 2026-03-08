@@ -18,7 +18,6 @@ import ForwardMessageModal from "@/components/chat/ForwardMessageModal";
 import InviteToServerModal from "@/components/chat/InviteToServerModal";
 import AppLayout from "@/components/layout/AppLayout";
 import Auth from "@/pages/Auth";
-import LandingPage from "@/pages/LandingPage";
 import HomeView from "@/pages/HomeView";
 import FriendsDashboard from "@/pages/FriendsDashboard";
 import Chat from "@/pages/Chat";
@@ -50,20 +49,27 @@ declare global {
 // --- AUTH CALLBACK BRIDGE (runs outside HashRouter, detects by pathname) ---
 const AuthCallback = () => {
   useEffect(() => {
+    // Only act when Vercel served this page for the /auth-callback path
     if (!window.location.pathname.includes('auth-callback')) return;
+
+    // Supabase puts tokens in the URL hash (implicit flow) or search params (PKCE)
     const searchParams = new URLSearchParams(window.location.search);
     const hashParams   = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
     const accessToken  = searchParams.get('access_token')  || hashParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token') || hashParams.get('refresh_token');
+
     if (accessToken && refreshToken) {
       const deepLink = `mshb://auth#access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}`;
       window.location.href = deepLink;
-      setTimeout(() => { window.location.hash = '/channels/@me'; }, 3000);
+      // Fallback: if the browser stays on the web version, send to home after 3 s
+      setTimeout(() => { window.location.hash = '/'; }, 3000);
     } else {
-      window.location.hash = '/channels/@me';
+      window.location.hash = '/';
     }
   }, []);
 
+  // Only show the "opening app" UI when actually on the callback path
   if (!window.location.pathname.includes('auth-callback')) return null;
 
   return (
@@ -88,35 +94,45 @@ const DeepLinkHandler = () => {
     if (window.electronAPI && window.electronAPI.onDeepLink) {
       window.electronAPI.onDeepLink(async (url: string) => {
         console.log("Desktop app received deep link:", url);
+        
         const hash = url.split('#')[1];
         if (hash) {
           const params = new URLSearchParams(hash);
           const access_token = params.get('access_token');
           const refresh_token = params.get('refresh_token');
+
           if (access_token && refresh_token) {
-            const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+            const { error } = await supabase.auth.setSession({
+              access_token,
+              refresh_token,
+            });
+
             if (!error) {
               console.log("Successfully logged in via deep link!");
-              window.location.hash = "/channels/@me";
+              window.location.hash = "/";
             }
           }
         }
       });
     }
   }, []);
+
   return null;
 };
 
 // --- UPDATE BANNER COMPONENT ---
 const UpdateBanner = () => {
   const [updateStatus, setUpdateStatus] = useState<'none' | 'available' | 'downloaded'>('none');
+
   useEffect(() => {
     if (window.electronAPI) {
       window.electronAPI.onUpdateAvailable(() => setUpdateStatus('available'));
       window.electronAPI.onUpdateDownloaded(() => setUpdateStatus('downloaded'));
     }
   }, []);
+
   if (updateStatus === 'none') return null;
+
   return (
     <div className="w-full bg-indigo-600 text-white py-2 px-4 flex justify-between items-center z-[100] animate-in slide-in-from-top duration-300 shadow-lg">
       <div className="flex items-center gap-2">
@@ -125,7 +141,7 @@ const UpdateBanner = () => {
         </span>
       </div>
       {updateStatus === 'downloaded' && (
-        <button
+        <button 
           onClick={() => window.electronAPI.restartApp()}
           className="bg-white text-indigo-600 px-3 py-1 rounded-md text-xs font-bold hover:bg-slate-100 transition-all"
         >
@@ -170,27 +186,19 @@ const App = () => (
                 <ForwardMessageModal />
                 <InviteToServerModal />
                 <Routes>
-                  {/* Public landing page */}
-                  <Route path="/" element={<LandingPage />} />
                   <Route path="/auth" element={<Auth />} />
-
-                  {/* App routes under /channels/@me */}
-                  <Route path="/channels/@me" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                  
+                  <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                     <Route element={<HomeView />}>
                       <Route index element={<FriendsDashboard />} />
                       <Route path="friends" element={<FriendsDashboard />} />
                       <Route path="chat/:threadId" element={<Chat />} />
                       <Route path="group/:groupId" element={<GroupChat />} />
                     </Route>
+                    <Route path="server/:serverId" element={<ServerView />} />
+                    <Route path="server/:serverId/channel/:channelId" element={<ServerView />} />
                     <Route path="settings" element={<SettingsModal />} />
                   </Route>
-
-                  {/* Server routes */}
-                  <Route path="/channels/server/:serverId" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-                    <Route index element={<ServerView />} />
-                    <Route path="channel/:channelId" element={<ServerView />} />
-                  </Route>
-
                   <Route path="/invite/:code" element={<InviteJoin />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>

@@ -36,9 +36,9 @@ const AppLayout = () => {
 
   // On mobile, determine if we're in a "full-page" view (chat, channel chat) where bottom nav should be hidden
   const isFullPageView = isMobile && (
-    location.pathname.startsWith("/channels/@me/chat/") ||
-    location.pathname.startsWith("/channels/@me/group/") ||
-    /^\/channels\/server\/[^/]+\/channel\//.test(location.pathname)
+    location.pathname.startsWith("/chat/") ||
+    location.pathname.startsWith("/group/") ||
+    /^\/server\/[^/]+\/channel\//.test(location.pathname)
   );
 
   return (
@@ -104,10 +104,10 @@ const AppLayout = () => {
           {isMobile && !isFullPageView && (
             <nav className="flex glass border-t border-border/50">
               <NavLink
-                to="/channels/@me"
+                to="/"
                 end
                 className={({ isActive }) =>
-                  `relative flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive || location.pathname === "/channels/@me/friends" ? "text-primary" : "text-muted-foreground"
+                  `relative flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive || location.pathname === "/friends" ? "text-primary" : "text-muted-foreground"
                   }`
                 }
               >
@@ -120,7 +120,7 @@ const AppLayout = () => {
                 )}
               </NavLink>
               <NavLink
-                to="/channels/@me/settings"
+                to="/settings"
                 className={({ isActive }) =>
                   `flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive ? "text-primary" : "text-muted-foreground"
                   }`

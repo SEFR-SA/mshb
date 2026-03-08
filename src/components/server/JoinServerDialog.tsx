@@ -52,7 +52,7 @@ const JoinServerDialog = ({ open, onOpenChange }: Props) => {
       } as any);
       setCode("");
       onOpenChange(false);
-      navigate(`/channels/server/${serverId}`);
+      navigate(`/server/${serverId}`);
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
     }

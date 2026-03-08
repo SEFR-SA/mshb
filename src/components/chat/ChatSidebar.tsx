@@ -242,13 +242,13 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
       .eq("user1_id", u1)
       .eq("user2_id", u2)
       .maybeSingle();
-    if (existing) { navigate(`/channels/@me/chat/${existing.id}`); return; }
+    if (existing) { navigate(`/chat/${existing.id}`); return; }
     const { data: newThread } = await supabase
       .from("dm_threads")
       .insert({ user1_id: u1, user2_id: u2 })
       .select("id")
       .single();
-    if (newThread) navigate(`/channels/@me/chat/${newThread.id}`);
+    if (newThread) navigate(`/chat/${newThread.id}`);
   };
 
   const togglePinItem = async (itemId: string, type: "dm" | "group") => {
@@ -363,7 +363,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                       isDM={item.type === "dm"}
                     >
                     <NameplateWrapper nameplateUrl={item.type === "dm" ? (item.otherProfile as any)?.nameplate_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} className="rounded-md h-[42px]" imageClassName="absolute right-0 top-0 w-[224px] h-[42px] object-cover pointer-events-none z-0" fadeOnHover isActive={isActive}>
-                    <button onClick={() => navigate(item.type === "dm" ? `/channels/@me/chat/${item.id}` : `/channels/@me/group/${item.id}`)}
+                    <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
                       className={`flex items-center gap-2.5 w-full px-2 h-[42px] rounded-md transition-colors text-start ${!hasNameplate && isActive ? "bg-muted" : ""} ${!hasNameplate && !isActive ? "hover:bg-muted/50" : ""}`}>
                       <AvatarDecorationWrapper decorationUrl={item.type === "dm" ? (item.otherProfile as any)?.avatar_decoration_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} size={36} className="shrink-0">
                         <Avatar className="h-9 w-9"><AvatarImage src={item.avatarUrl} /><AvatarFallback className="bg-primary/20 text-primary text-sm">{item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
@@ -407,7 +407,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                   isDM={item.type === "dm"}
                 >
                 <NameplateWrapper nameplateUrl={item.type === "dm" ? (item.otherProfile as any)?.nameplate_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} className="rounded-md h-[42px]" imageClassName="absolute right-0 top-0 w-[224px] h-[42px] object-cover pointer-events-none z-0" fadeOnHover isActive={isActive}>
-                <button onClick={() => navigate(item.type === "dm" ? `/channels/@me/chat/${item.id}` : `/channels/@me/group/${item.id}`)}
+                <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
                   className={`flex items-center gap-2.5 w-full px-2 h-[42px] rounded-md transition-colors text-start ${!hasNameplate && isActive ? "bg-muted" : ""} ${!hasNameplate && !isActive ? "hover:bg-muted/50" : ""}`}>
                   <AvatarDecorationWrapper decorationUrl={item.type === "dm" ? (item.otherProfile as any)?.avatar_decoration_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} size={36} className="shrink-0">
                     <Avatar className="h-9 w-9"><AvatarImage src={item.avatarUrl} /><AvatarFallback className="bg-primary/20 text-primary text-sm">{item.type === "group" ? <Users className="h-4 w-4" /> : item.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>

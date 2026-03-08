@@ -61,14 +61,14 @@ const UserProfileModal = () => {
       .eq("user2_id", u2)
       .maybeSingle();
     if (existing) {
-      navigate(`/channels/@me/chat/${existing.id}`);
+      navigate(`/chat/${existing.id}`);
     } else {
       const { data: newThread } = await supabase
         .from("dm_threads")
         .insert({ user1_id: u1, user2_id: u2 })
         .select("id")
         .single();
-      if (newThread) navigate(`/channels/@me/chat/${newThread.id}`);
+      if (newThread) navigate(`/chat/${newThread.id}`);
     }
     closeProfile();
   };

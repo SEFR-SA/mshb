@@ -107,7 +107,7 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
       } as any);
       setIsMember(true);
       toast({ title: t("servers.joinedServer") });
-      navigate(`/channels/server/${serverId}`);
+      navigate(`/server/${serverId}`);
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
     }
@@ -212,7 +212,7 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
             <Button
               size="sm"
               className="w-full h-8 text-xs"
-              onClick={() => navigate(`/channels/server/${metadata.server_id}`)}
+              onClick={() => navigate(`/server/${metadata.server_id}`)}
             >
               {t("servers.goToServer")}
             </Button>

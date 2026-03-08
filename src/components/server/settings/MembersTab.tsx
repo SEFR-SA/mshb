@@ -209,14 +209,14 @@ const MembersTab = ({ serverId }: Props) => {
       .eq("user2_id", u2)
       .maybeSingle();
     if (existing) {
-      navigate(`/channels/@me/chat/${existing.id}`);
+      navigate(`/chat/${existing.id}`);
     } else {
       const { data: newThread } = await supabase
         .from("dm_threads")
         .insert({ user1_id: u1, user2_id: u2 })
         .select("id")
         .single();
-      if (newThread) navigate(`/channels/@me/chat/${newThread.id}`);
+      if (newThread) navigate(`/chat/${newThread.id}`);
     }
   };
 
@@ -241,7 +241,7 @@ const MembersTab = ({ serverId }: Props) => {
       if (!newThread) return;
       threadId = newThread.id;
     }
-    navigate(`/channels/@me/chat/${threadId}`);
+    navigate(`/chat/${threadId}`);
   };
 
   const handleComingSoon = () => {

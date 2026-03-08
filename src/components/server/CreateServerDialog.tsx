@@ -47,7 +47,7 @@ const CreateServerDialog = ({ open, onOpenChange }: Props) => {
 
       setName("");
       onOpenChange(false);
-      navigate(`/channels/server/${serverId}`);
+      navigate(`/server/${serverId}`);
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
     }

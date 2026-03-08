@@ -95,11 +95,11 @@ const VoiceUserContextMenu = ({
     const { data: existing } = await supabase
       .from("dm_threads").select("id").eq("user1_id", u1).eq("user2_id", u2).maybeSingle();
     if (existing) {
-      navigate(`/channels/@me/chat/${existing.id}`);
+      navigate(`/chat/${existing.id}`);
     } else {
       const { data: newThread } = await supabase
         .from("dm_threads").insert({ user1_id: u1, user2_id: u2 }).select("id").single();
-      if (newThread) navigate(`/channels/@me/chat/${newThread.id}`);
+      if (newThread) navigate(`/chat/${newThread.id}`);
     }
   };
 
@@ -117,7 +117,7 @@ const VoiceUserContextMenu = ({
       if (!newThread) return;
       threadId = newThread.id;
     }
-    navigate(`/channels/@me/chat/${threadId}?call=true`);
+    navigate(`/chat/${threadId}?call=true`);
   };
 
   const handleAddFriend = async () => {
@@ -180,7 +180,7 @@ const VoiceUserContextMenu = ({
       threadId = newThread.id;
     }
     await supabase.from("messages").insert({ thread_id: threadId, author_id: user.id, content: message.trim() });
-    navigate(`/channels/@me/chat/${threadId}`);
+    navigate(`/chat/${threadId}`);
   };
 
   if (isSelf) return <>{children}</>;
