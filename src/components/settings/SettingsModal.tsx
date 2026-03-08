@@ -25,6 +25,7 @@ const AppearanceTab    = lazy(() => import("./tabs/AppearanceTab"));
 const VoiceVideoTab    = lazy(() => import("./tabs/VoiceVideoTab"));
 const LanguageTab      = lazy(() => import("./tabs/LanguageTab"));
 const MarketplaceTab   = lazy(() => import("./tabs/MarketplaceTab"));
+const KeybindsTab      = lazy(() => import("./tabs/KeybindsTab"));
 
 type TabId =
   | "profile" | "account" | "social" | "notifications"
