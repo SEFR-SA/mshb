@@ -107,7 +107,7 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
       } as any);
       setIsMember(true);
       toast({ title: t("servers.joinedServer") });
-      navigate(`/server/${serverId}`);
+      navigate(`/channels/server/${serverId}`);
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
     }
