@@ -127,6 +127,27 @@ export const useInfiniteMessages = ({
     prevPageCountRef.current = 0;
   }, [filterValue]);
 
+  // --- Scroll-to-bottom tracking ---
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowScrollToBottom(distanceFromBottom > 200);
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [filterValue]);
+
+  const scrollToBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
+  }, []);
+
   // --- Realtime cache helpers ---
   const appendRealtimeMessage = useCallback(
     (msg: any) => {
