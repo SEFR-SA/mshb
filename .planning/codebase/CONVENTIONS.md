@@ -342,4 +342,52 @@ import { cn } from "@/lib/utils";
 
 ---
 
+## Agentic Behaviors (Always Active — No Slash Command Required)
+
+### /debug — Root Cause First
+When encountering an error, do NOT immediately write a patch.
+1. Analyze the full stack trace or error output
+2. Identify and explain the **root cause** ("why this happened")
+3. Only then propose the fix, targeting the root cause — not a symptom
+
+### /shadcn — shadcn-ui by Default
+When building new UI elements:
+- Write all code assuming standard `shadcn-ui` components (`Button`, `Dialog`, `Sheet`, `Input`, `Select`, etc.)
+- If a component is needed that has not yet been added to the project, **stop and output the exact install command** before writing implementation:
+  ```
+  npx shadcn@latest add <component-name>
+  ```
+- Never hand-roll a component that shadcn-ui provides
+
+### /simplify — DRY on Every Refactor
+Whenever refactoring code:
+- Actively reduce nesting (early returns over deep if/else)
+- Abstract repetitive logic into shared hooks or utilities
+- Apply DRY strictly — three identical code blocks is the threshold for extraction
+- Leave the diff smaller than you found it
+
+### /loop — Checklist + Step-by-Step Approval
+For any multi-step refactor or feature:
+1. Output a numbered checklist of all steps before touching code
+2. Wait for explicit plan approval
+3. Execute Step 1 only, then stop and wait for confirmation it works
+4. Proceed to Step 2 only after the user confirms Step 1 is successful
+5. Repeat until all steps are done
+
+### /insight — Architectural Analysis Before Changes
+Before making architectural changes (new context, new hook, restructuring data flow):
+1. Analyze existing patterns in the affected area
+2. Identify potential edge cases or performance bottlenecks
+3. Output an **"Architectural Insight"** block summarizing findings
+4. Only then propose your plan — the insight block is mandatory, not optional
+
+### /find-skills — Reuse Before Inventing
+Before writing any new utility function, hook, or UI component:
+1. Search the codebase (`src/hooks/`, `src/lib/`, `src/components/shared/`) for an existing implementation
+2. If a suitable one exists — use or extend it; never duplicate
+3. Only create a new file if nothing close enough exists
+4. State explicitly whether you found an existing match or are creating new code
+
+---
+
 *Convention analysis: 2026-02-26*
