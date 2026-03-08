@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import {
   Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag,
 } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 // Lazy-load tab content to keep initial bundle small
 const ProfileTab       = lazy(() => import("./tabs/ProfileTab"));
@@ -64,7 +65,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-const TAB_COMPONENTS: Record<TabId, React.LazyExoticComponent<() => React.ReactElement>> = {
+const TAB_COMPONENTS: Record<TabId, React.LazyExoticComponent<React.ComponentType<any>>> = {
   profile:       ProfileTab,
   account:       AccountTab,
   social:        SocialTab,
@@ -89,14 +90,35 @@ const SettingsModal = () => {
   const { user, profile, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [unsavedConfig, setUnsavedConfig] = useState<{ onSave: () => void; onReset: () => void } | null>(null);
+  const [shakeTrigger, setShakeTrigger] = useState(0);
+
+  const setUnsaved = (onSave: () => void, onReset: () => void) => setUnsavedConfig({ onSave, onReset });
+  const clearUnsaved = () => {
+    setUnsavedConfig(null);
+    setShakeTrigger(0);
+  };
+  const triggerShake = () => setShakeTrigger(Date.now());
 
   const isElectron = typeof window !== "undefined" && !!(window as any).electronAPI;
 
   const close = () => navigate(-1);
 
+  const handleCloseAttempt = () => {
+    if (unsavedConfig) {
+      triggerShake();
+    } else {
+      close();
+    }
+  };
+
+  // Use a ref to avoid stale closure in the keydown handler
+  const handleCloseAttemptRef = useRef(handleCloseAttempt);
+  useEffect(() => { handleCloseAttemptRef.current = handleCloseAttempt; });
+
   // ESC to close
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") handleCloseAttemptRef.current(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
@@ -143,7 +165,14 @@ const SettingsModal = () => {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => { setActiveTab(item.id); onSelect?.(); }}
+                    onClick={() => {
+                      if (unsavedConfig) {
+                        triggerShake();
+                      } else {
+                        setActiveTab(item.id);
+                        onSelect?.();
+                      }
+                    }}
                     className={cn(
                       "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors text-start",
                       activeTab === item.id
@@ -192,7 +221,7 @@ const SettingsModal = () => {
         <div className="flex-1 flex flex-col overflow-hidden bg-muted relative">
           {/* Close button */}
           <button
-            onClick={close}
+            onClick={handleCloseAttempt}
             className="absolute top-4 end-4 z-20 h-8 w-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors"
             aria-label="Close settings"
           >
@@ -224,10 +253,16 @@ const SettingsModal = () => {
           <div className="flex-1 overflow-y-auto overflow-x-hidden">
             <div className="max-w-4xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
               <Suspense fallback={<TabFallback />}>
-                <ActiveTab />
+                <ActiveTab setUnsaved={setUnsaved} clearUnsaved={clearUnsaved} />
               </Suspense>
             </div>
           </div>
+          <UnsavedChangesBar
+            show={!!unsavedConfig}
+            onSave={unsavedConfig?.onSave}
+            onReset={unsavedConfig?.onReset}
+            shakeTrigger={shakeTrigger}
+          />
         </div>
       </div>
     </div>

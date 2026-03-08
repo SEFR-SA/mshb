@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +23,7 @@ import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 
-const ProfileTab = () => {
+const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsaved?: any }) => {
   const { t } = useTranslation();
   const { user, profile, refreshProfile } = useAuth();
 
@@ -40,12 +40,21 @@ const ProfileTab = () => {
   const isPro = (profile as any)?.is_pro ?? false;
   const p     = profile as any;
 
+  const originalRef = useRef<any>(null);
+
   useEffect(() => {
     if (profile) {
-      setUsername(profile.username || "");
-      setDisplayName(profile.display_name || "");
-      setAboutMe(p?.about_me || "");
-      setActiveServerTagId(p?.active_server_tag_id || "none");
+      const values = {
+        username:          profile.username || "",
+        displayName:       profile.display_name || "",
+        aboutMe:           p?.about_me || "",
+        activeServerTagId: p?.active_server_tag_id || "none",
+      };
+      setUsername(values.username);
+      setDisplayName(values.displayName);
+      setAboutMe(values.aboutMe);
+      setActiveServerTagId(values.activeServerTagId);
+      originalRef.current = values;
     }
   }, [profile]);
 
@@ -85,10 +94,50 @@ const ProfileTab = () => {
       toast({ title: t("common.error"), description: msg, variant: "destructive" });
     } else {
       toast({ title: t("profile.saved") });
+      originalRef.current = {
+        username:          username.trim() || "",
+        displayName:       displayName.trim() || "",
+        aboutMe:           aboutMe.trim(),
+        activeServerTagId: activeServerTagId === "none" ? "none" : activeServerTagId,
+      };
+      clearUnsaved?.();
       await refreshProfile();
     }
     setSaving(false);
   };
+
+  const handleReset = () => {
+    if (!originalRef.current) return;
+    setUsername(originalRef.current.username);
+    setDisplayName(originalRef.current.displayName);
+    setAboutMe(originalRef.current.aboutMe);
+    setActiveServerTagId(originalRef.current.activeServerTagId);
+    clearUnsaved?.();
+  };
+
+  const isDirty =
+    originalRef.current !== null && (
+      username          !== originalRef.current.username          ||
+      displayName       !== originalRef.current.displayName       ||
+      aboutMe           !== originalRef.current.aboutMe           ||
+      activeServerTagId !== originalRef.current.activeServerTagId
+    );
+
+  const saveFnRef  = useRef(handleSave);
+  const resetFnRef = useRef(handleReset);
+  useEffect(() => {
+    saveFnRef.current  = handleSave;
+    resetFnRef.current = handleReset;
+  });
+
+  useEffect(() => {
+    if (!setUnsaved || !clearUnsaved) return;
+    if (isDirty) {
+      setUnsaved(() => saveFnRef.current(), () => resetFnRef.current());
+    } else {
+      clearUnsaved();
+    }
+  }, [isDirty]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
