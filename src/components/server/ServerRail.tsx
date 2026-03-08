@@ -688,6 +688,17 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                   </button>
                 )}
                 <div className="border-t my-2" />
+                <p className="px-4 py-1 text-xs text-muted-foreground font-semibold">{t("servers.serverNotifications")}</p>
+                {(["all_messages", "only_mentions", "nothing"] as const).map((lvl) => {
+                  const active = (notifPrefsMap.get(s.id) ?? "all_messages") === lvl;
+                  return (
+                    <button key={lvl} className={btnClass} onClick={() => { setNotifLevel(s.id, lvl); close(); }}>
+                      {active && <span className="text-primary">✓</span>}
+                      {!active && <span className="w-4" />}
+                      {t(lvl === "all_messages" ? "servers.allMessages" : lvl === "only_mentions" ? "servers.onlyMentions" : "servers.nothingNotif")}
+                    </button>
+                  );
+                })}
                 {s.owner_id !== user?.id && (
                   <button className={destructiveClass} onClick={() => { setLeaveServerId(s.id); close(); }}>
                     <LogOut className="h-4 w-4" />{t("servers.leave")}
