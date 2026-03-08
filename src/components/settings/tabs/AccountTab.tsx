@@ -33,6 +33,7 @@ import StyledDisplayName from "@/components/StyledDisplayName";
 import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useStreamerMode } from "@/contexts/StreamerModeContext";
 
 type EditField = "displayName" | "username" | "email" | "password" | null;
 
