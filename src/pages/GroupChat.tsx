@@ -117,7 +117,7 @@ const GroupChat = () => {
         .select("*")
         .eq("id", groupId)
         .maybeSingle();
-      if (!group) { navigate("/"); return; }
+      if (!group) { navigate("/channels/@me"); return; }
       setGroupName((group as any).name);
       setGroupAvatarUrl((group as any).avatar_url || "");
 
