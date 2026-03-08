@@ -757,7 +757,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             )}
-            {messages.map((msg, idx) => {
+            {messages.filter(m => !hiddenIds.has(m.id)).map((msg, idx, visibleMsgs) => {
               const prevMsg = idx > 0 ? messages[idx - 1] : null;
               const replyToMsg = (msg as any).reply_to_id
                 ? messages.find((m) => m.id === (msg as any).reply_to_id) || null
