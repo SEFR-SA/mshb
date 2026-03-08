@@ -1,44 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-## Plan: Add IP + Location Detection to Device Tracker
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-### Approach
+## Tech Stack
 
-Create a backend function (`resolve-device-location`) that:
-1. Reads the client's IP from the `x-forwarded-for` header (available in edge functions)
-2. Calls a free geo-IP API (`ip-api.com` — no key needed, 45 req/min free) to resolve city/country
-3. Returns `{ ip, city, country }` to the client
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-The device tracker hook calls this function on upsert, then stores `ip_address` and `location` (as `"City, Country"`) in the `user_devices` row. The `DevicesTab` UI displays the location beneath the browser/time line.
+## Core Directives (CRITICAL — Always Enforce)
 
-### Changes
+### 1. Plan First
 
-| Action | File | What |
-|--------|------|------|
-| **Create** | `supabase/functions/resolve-device-location/index.ts` | Edge function: extracts client IP from headers, calls `ip-api.com/json/{ip}`, returns `{ ip, city, country }` |
-| **Edit** | `supabase/config.toml` | Add `[functions.resolve-device-location]` with `verify_jwt = false` |
-| **Edit** | `src/hooks/useDeviceTracker.ts` | After parsing OS/browser, invoke `resolve-device-location` edge function, include `ip_address` and `location` in the upsert payload |
-| **Edit** | `src/components/settings/tabs/DevicesTab.tsx` | Add `ip_address` and `location` to the `Device` interface; render location (e.g. "Riyadh, Saudi Arabia") below the browser line in DeviceCard |
-| **Edit** | `src/i18n/en.ts` | Add `settings.unknownLocation` key |
-| **Edit** | `src/i18n/ar.ts` | Add `settings.unknownLocation` key |
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-### Edge Function Detail
+### 2. Single Source of Truth (SSOT)
 
-```typescript
-// resolve-device-location/index.ts
-// 1. Extract IP from x-forwarded-for header
-// 2. GET http://ip-api.com/json/{ip}?fields=city,country,status
-// 3. Return { ip, city, country } or { ip, city: null, country: null } on failure
-```
+Never duplicate display logic. Always use the canonical shared components:
 
-No API key required. The function is only called once per 5-minute throttle window (same as existing upsert throttle), so rate limits are not a concern.
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-### UI Change
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-In `DeviceCard`, add a third line showing location when available:
-```
-Windows                    [Current Device]
-Chrome · 2 minutes ago
-📍 Riyadh, Saudi Arabia
-```
+### 3. Pro Gating
 
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+
+### 4. No Hallucinations
+
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+
+### 5. No Over-Engineering
+
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+
+## Documentation Directory
+
+Read these files for specific details — do NOT rely on memory alone:
+
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+
+## Cosmetic Asset Specs
+
+Per-asset guides with exact dimensions, config files, and wrapper usage:
+
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

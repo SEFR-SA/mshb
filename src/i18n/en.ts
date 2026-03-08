@@ -682,6 +682,7 @@ export default {
     deviceLoggedOut: "Device removed",
     allDevicesLoggedOut: "All other devices have been logged out",
     noOtherDevices: "No other devices are logged into your account.",
+    unknownLocation: "Unknown location",
   },
   serverSettings: {
     serverProfile: "Server Profile",

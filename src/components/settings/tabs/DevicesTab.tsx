@@ -22,6 +22,8 @@ interface Device {
   browser: string;
   last_active: string;
   created_at: string;
+  ip_address: string | null;
+  location: string | null;
 }
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -90,6 +92,11 @@ const DevicesTab: React.FC = () => {
           <p className="text-xs text-muted-foreground mt-0.5">
             {device.browser} · {formatDistanceToNow(new Date(device.last_active), { addSuffix: true })}
           </p>
+          {device.location && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              📍 {device.location}
+            </p>
+          )}
         </div>
         {!isCurrent && (
           <TooltipProvider>

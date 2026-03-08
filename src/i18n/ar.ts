@@ -682,6 +682,7 @@ export default {
     deviceLoggedOut: "تم إزالة الجهاز",
     allDevicesLoggedOut: "تم تسجيل الخروج من جميع الأجهزة الأخرى",
     noOtherDevices: "لا توجد أجهزة أخرى مسجلة في حسابك.",
+    unknownLocation: "موقع غير معروف",
   },
   serverSettings: {
     serverProfile: "ملف السيرفر",
