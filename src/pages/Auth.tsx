@@ -64,8 +64,8 @@ const Auth = () => {
     setUsernameStatus("checking");
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
-      const { data } = await supabase.rpc("get_email_by_username", { p_username: username.trim() });
-      setUsernameStatus(data ? "taken" : "available");
+      const { data } = await supabase.rpc("check_username_available" as any, { p_username: username.trim() });
+      setUsernameStatus(data ? "available" : "taken");
     }, 300);
     return () => clearTimeout(debounceRef.current);
   }, [username, mode]);
