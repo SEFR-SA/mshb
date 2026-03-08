@@ -30,7 +30,7 @@ const KeybindsTab      = lazy(() => import("./tabs/KeybindsTab"));
 type TabId =
   | "profile" | "account" | "social" | "notifications"
   | "subscriptions" | "billing" | "appearance" | "voice" | "language"
-  | "marketplace";
+  | "marketplace" | "keybinds";
 
 interface NavItem {
   id: TabId;
