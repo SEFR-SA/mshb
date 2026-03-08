@@ -7,7 +7,7 @@ import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useNavigate } from "react-router-dom";
 import { startLoop, stopLoop, stopAllLoops, playSound } from "@/lib/soundManager";
-import { useStreamerMode } from "@/contexts/StreamerModeContext";
+
 import IncomingCallDialog from "./IncomingCallDialog";
 import VoiceCallUI from "./VoiceCallUI";
 
