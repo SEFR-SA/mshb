@@ -41,6 +41,9 @@ const AppLayout = () => {
     /^\/server\/[^/]+\/channel\//.test(location.pathname)
   );
 
+  // Hide the floating UserPanel on the Friends Dashboard to avoid overlapping the FAB
+  const isFriendsDashboard = location.pathname === "/" || location.pathname === "/friends";
+
   return (
     <div className={`flex flex-col h-screen overflow-hidden ${colorTheme === "default" ? "bg-background" : ""}`} style={colorTheme !== "default" ? gradientStyle : undefined}>
       <CallListener />
@@ -81,7 +84,7 @@ const AppLayout = () => {
         {!isMobile && (
           <UserPanel className="absolute bottom-0 left-0 z-50 m-2 w-[calc(72px+240px-16px)] bg-background border border-border/50 rounded-lg shadow-lg" />
         )}
-        {isMobile && !isFullPageView && (
+        {isMobile && !isFullPageView && !isFriendsDashboard && (
           <UserPanel className="fixed bottom-[60px] left-2 right-2 z-50 bg-background border border-border/50 rounded-lg" />
         )}
 
