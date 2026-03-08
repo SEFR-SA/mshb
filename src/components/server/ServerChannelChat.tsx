@@ -861,7 +861,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
               <ReplyInputBar authorName={replyingTo.authorName} onCancel={() => setReplyingTo(null)} />
             </div>
           )}
-          <div className="px-4 pb-4 pt-2 bg-transparent shrink-0">
+          <div className="px-4 pb-2 pt-2 bg-transparent shrink-0">
             {uploadProgress !== null && <Progress value={uploadProgress} className="mb-2 h-1" />}
             {selectedFile && (
               <div className="flex items-center gap-2 mb-2 p-2 bg-muted rounded-lg text-sm">
