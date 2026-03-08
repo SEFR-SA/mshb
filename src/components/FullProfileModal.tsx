@@ -282,7 +282,7 @@ const FullProfileModal = () => {
   const compactContent = (
     <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={p?.is_pro} className="flex flex-col">
       <div
-        className="h-24 rounded-t-lg"
+        className="h-24 relative"
         style={{
           background: p?.banner_url
             ? `url(${p.banner_url}) center/cover`
