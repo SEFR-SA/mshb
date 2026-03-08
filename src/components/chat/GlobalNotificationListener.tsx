@@ -21,13 +21,17 @@ const GlobalNotificationListener = () => {
 
     // Tab title unread count
     useEffect(() => {
+        if (isStreamerMode) {
+            document.title = "MSHB";
+            return;
+        }
         const prefs = getNotificationPrefs();
         if (prefs.showTabCount && totalUnread > 0) {
             document.title = `(${totalUnread}) MSHB`;
         } else {
             document.title = "MSHB";
         }
-    }, [totalUnread]);
+    }, [totalUnread, isStreamerMode]);
 
     useEffect(() => {
         if (!user) return;
