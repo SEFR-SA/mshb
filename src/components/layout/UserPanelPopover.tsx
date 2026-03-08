@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import StyledDisplayName from "@/components/StyledDisplayName";
-import { Pencil, LogOut, ChevronRight } from "lucide-react";
+import { Pencil, LogOut, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import StatusBubble from "@/components/shared/StatusBubble";
 
@@ -27,6 +28,7 @@ interface UserPanelPopoverProps {
 const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
   const { t } = useTranslation();
   const { user, profile, refreshProfile, signOut } = useAuth();
+  const isMobile = useIsMobile();
   
   const navigate = useNavigate();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
@@ -137,11 +139,38 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
                 <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", currentStatusOption.color)} />
                 {currentStatusOption.label}
               </span>
-              <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-accent-foreground" />
+              {isMobile
+                ? (showStatusMenu ? <ChevronUp className="h-3 w-3 text-muted-foreground group-hover:text-accent-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-accent-foreground" />)
+                : <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-accent-foreground" />
+              }
             </button>
 
-            {/* Side-positioned status submenu */}
-            {showStatusMenu && (
+            {/* Mobile: inline status list */}
+            {showStatusMenu && isMobile && (
+              <div className="mt-0.5 rounded-md border border-border bg-popover/95 backdrop-blur-xl p-1 space-y-0.5">
+                {STATUS_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    className={cn(
+                      "flex flex-col w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start gap-0.5 group",
+                      currentStatus === opt.value && "bg-accent text-accent-foreground"
+                    )}
+                    onClick={() => handleStatusChange(opt.value)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", opt.color)} />
+                      {opt.label}
+                    </span>
+                    {opt.description && (
+                      <span className="text-[10px] text-muted-foreground group-hover:text-accent-foreground ps-[18px]">{opt.description}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Desktop: side-positioned status submenu */}
+            {showStatusMenu && !isMobile && (
               <div className="absolute left-full bottom-0 ms-0 rtl:left-auto rtl:right-full z-50 ps-2 rtl:ps-0 rtl:pe-2">
                 <div className="w-[200px] rounded-md border border-border bg-popover/95 backdrop-blur-xl p-1 shadow-lg space-y-0.5">
                   {STATUS_OPTIONS.map((opt) => (
