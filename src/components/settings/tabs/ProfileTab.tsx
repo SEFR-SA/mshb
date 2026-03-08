@@ -324,12 +324,6 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
             </Select>
           </div>
 
-          {/* Save */}
-          <div className="pt-2">
-            <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
-              {saving ? t("common.loading") : t("profile.save")}
-            </Button>
-          </div>
         </div>
 
         {/* ── RIGHT COLUMN — sticky live preview ── */}
