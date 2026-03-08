@@ -147,7 +147,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
                   <button
                     key={opt.value}
                     className={cn(
-                      "flex flex-col w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors text-start gap-0.5",
+                      "flex flex-col w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start gap-0.5",
                       currentStatus === opt.value && "bg-accent"
                     )}
                     onClick={() => handleStatusChange(opt.value)}
