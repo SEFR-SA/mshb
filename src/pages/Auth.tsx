@@ -170,12 +170,6 @@ const Auth = () => {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (error) toast({ title: t("auth.loginError"), description: (error as Error).message, variant: "destructive" });
-  };
 
   // ── Shared components ──
   const LogoBadge = () => (
