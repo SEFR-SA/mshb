@@ -83,7 +83,7 @@ const ServerView = () => {
           if (data && (data as any[]).length > 0) {
             const ch = (data as any[])[0];
             setActiveChannel(ch as any);
-            navigate(`/server/${serverId}/channel/${ch.id}`, { replace: true });
+            navigate(`/channels/server/${serverId}/channel/${ch.id}`, { replace: true });
           }
         });
     }
