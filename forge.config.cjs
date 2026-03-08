@@ -6,7 +6,10 @@ module.exports = {
   packagerConfig: {
     asar: true,
     name: 'mshb',
-    icon: path.join(__dirname, 'assets/icon'), 
+    icon: path.join(__dirname, 'assets/icon'),
+    ignore: [
+      /node_modules\/@lovable\.dev/,
+    ],
   },
   rebuildConfig: {},
   makers: [
