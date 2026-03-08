@@ -135,7 +135,7 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="w-[900px] max-w-[95vw] max-h-[90vh] p-0 flex flex-col overflow-hidden gap-0">
+      <DialogContent className={cn("p-0 flex flex-col overflow-hidden gap-0", isMobile ? "w-full max-w-full" : "w-[900px] max-w-[95vw] max-h-[90vh]")}>
         {/* Body */}
         <div className="flex flex-1 overflow-hidden min-h-0">
           {/* ── Left Pane ── */}
