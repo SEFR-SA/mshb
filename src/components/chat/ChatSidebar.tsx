@@ -210,6 +210,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
       .on("postgres_changes", { event: "*", schema: "public", table: "group_threads" }, () => loadInbox())
       .on("postgres_changes", { event: "*", schema: "public", table: "group_members" }, () => loadInbox())
       .on("postgres_changes", { event: "*", schema: "public", table: "pinned_chats" }, () => loadInbox())
+      .on("postgres_changes", { event: "*", schema: "public", table: "thread_read_status" }, () => loadInbox())
       .subscribe();
 
     return () => { channel.unsubscribe(); };
