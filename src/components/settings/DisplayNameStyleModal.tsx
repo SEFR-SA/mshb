@@ -220,7 +220,7 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
               <p className="text-[10px] font-extrabold uppercase tracking-widest opacity-50 text-center">{t("nameStyle.previewTitle")}</p>
 
               {/* Profile Card Mock */}
-              <div className={cn("rounded-xl overflow-hidden border shadow-lg mx-auto w-full max-w-[260px]", isDark ? "border-white/10 bg-zinc-800" : "border-gray-300 bg-white")}>
+              <div className={cn("rounded-xl overflow-hidden border shadow-lg mx-auto w-full max-w-[300px]", isDark ? "border-white/10 bg-zinc-800" : "border-gray-300 bg-white")}>
                 <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={isPro}>
                   <NameplateWrapper nameplateUrl={p?.nameplate_url} isPro={isPro} className="rounded-t-xl">
                     {/* Banner — hide gradient placeholder when nameplate is providing the background */}
