@@ -202,7 +202,7 @@ const FriendsDashboard = () => {
       .maybeSingle();
 
     if (existing) {
-      navigate(`/chat/${existing.id}`);
+      navigate(`/channels/@me/chat/${existing.id}`);
       return;
     }
     const { data: newThread } = await supabase
