@@ -5,10 +5,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { playNotificationSound } from "@/lib/soundManager";
 import { getNotificationPrefs } from "@/lib/notificationPrefs";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
+import { useStreamerMode } from "@/contexts/StreamerModeContext";
 import { toast } from "@/hooks/use-toast";
 
 const GlobalNotificationListener = () => {
     const { user, profile } = useAuth();
+    const { isStreamerMode } = useStreamerMode();
     const location = useLocation();
     const pathnameRef = useRef(location.pathname);
     const { totalUnread } = useUnreadCount();
