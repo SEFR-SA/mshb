@@ -183,7 +183,7 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
         </div>
 
         {/* Mutual Servers */}
-        {!isSelf && mutualServers.length > 0 && (
+        {!isSelf && (
           <>
             <Separator />
             <Collapsible open={serversOpen} onOpenChange={setServersOpen}>
