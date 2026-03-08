@@ -306,12 +306,12 @@ const ProfileTab = () => {
               {/* Body */}
               <div className="px-4 pb-4 pt-0 relative">
                 {/* Avatar + Status Bubble row */}
-                <div className="-mt-7 mb-2 flex items-end gap-2">
+                <div className="-mt-10 mb-2 flex items-end gap-2">
                   <label className="cursor-pointer relative inline-block group shrink-0">
-                    <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={isPro} size={48}>
-                      <Avatar className="h-12 w-12 border-4 border-background" alwaysPlayGif>
+                    <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={isPro} size={80}>
+                      <Avatar className="h-20 w-20 border-4 border-background" alwaysPlayGif>
                         <AvatarImage src={profile?.avatar_url || ""} />
-                        <AvatarFallback className="bg-primary/20 text-primary text-lg">{initials}</AvatarFallback>
+                        <AvatarFallback className="bg-primary/20 text-primary text-2xl">{initials}</AvatarFallback>
                       </Avatar>
                     </AvatarDecorationWrapper>
                     <span className="absolute bottom-0 end-0 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow pointer-events-none">
