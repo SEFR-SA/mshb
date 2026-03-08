@@ -317,7 +317,7 @@ const ProfileTab = () => {
                       <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
                         <ImagePlus className="h-5 w-5 text-white" />
                       </div>
-                      <StatusBadge status={(p?.status || "online") as UserStatus} size="md" className="absolute bottom-0 end-0 z-20 ring-2 ring-background" />
+                      <StatusBadge status={(p?.status || "online") as UserStatus} size="md" className="absolute bottom-0 end-0 z-20" />
                     </AvatarDecorationWrapper>
                     <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
                   </label>
