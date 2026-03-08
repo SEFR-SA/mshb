@@ -185,7 +185,7 @@ export const useInfiniteMessages = ({
         return {
           ...old,
           pages: old.pages.map((page: any[]) =>
-            page.map((m: any) => (m.id === updated.id ? updated : m))
+            page.map((m: any) => (m.id === updated.id ? { ...m, ...updated } : m))
           ),
         };
       });
