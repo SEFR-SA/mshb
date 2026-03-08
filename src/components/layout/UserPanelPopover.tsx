@@ -91,8 +91,8 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
             </Avatar>
             <StatusBadge
               status={currentStatus}
-              size="sm"
-              className="absolute bottom-0 end-0 z-20 ring-2 ring-popover"
+              size="md"
+              className="absolute bottom-0 end-0 z-20 ring-2 ring-background"
             />
           </AvatarDecorationWrapper>
         </div>

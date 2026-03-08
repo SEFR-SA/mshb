@@ -235,9 +235,9 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
 
                   <div className="px-4 pb-4 pt-0 relative">
                     {/* Avatar overlapping banner */}
-                    <div className="-mt-8 mb-2">
-                      <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={isPro} size={56} className="inline-block">
-                        <Avatar className="h-14 w-14 border-4" style={{ borderColor: isDark ? "#27272a" : "#ffffff" }}>
+                    <div className="-mt-10 mb-2">
+                      <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={isPro} size={80} className="inline-block">
+                        <Avatar className="h-20 w-20 border-4" style={{ borderColor: isDark ? "#27272a" : "#ffffff" }}>
                           <AvatarImage src={profile?.avatar_url || ""} />
                           <AvatarFallback className="bg-primary/20 text-primary text-lg">{initials}</AvatarFallback>
                         </Avatar>
