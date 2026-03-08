@@ -74,6 +74,7 @@ const GroupChat = () => {
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string; content: string } | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
+  const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
 
   // Infinite scrolling messages
   const {

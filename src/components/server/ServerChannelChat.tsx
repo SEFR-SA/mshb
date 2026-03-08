@@ -332,6 +332,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string; content: string } | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
+  const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
 
   const isLocked = isPrivate && hasAccess === false;
   const [userRole, setUserRole] = useState<string>("member");
