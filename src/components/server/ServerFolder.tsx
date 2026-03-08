@@ -121,7 +121,7 @@ const ServerFolder: React.FC<ServerFolderProps> = ({
                       <div className="absolute -start-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full z-10" />
                     )}
                     <NavLink
-                      to={`/server/${s.id}`}
+                      to={`/channels/server/${s.id}`}
                       onClick={() => onNavigate?.()}
                       draggable
                       onDragStart={(e) => {

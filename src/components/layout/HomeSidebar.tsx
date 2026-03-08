@@ -64,7 +64,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
   const [searching, setSearching] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
 
-  const isFriendsActive = location.pathname === "/" || location.pathname === "/friends";
+  const isFriendsActive = location.pathname === "/channels/@me" || location.pathname === "/channels/@me/friends";
 
   const loadInbox = async () => {
     if (!user) return;
@@ -268,13 +268,13 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
       .eq("user1_id", u1)
       .eq("user2_id", u2)
       .maybeSingle();
-    if (existing) { navigate(`/chat/${existing.id}`); return; }
+    if (existing) { navigate(`/channels/@me/chat/${existing.id}`); return; }
     const { data: newThread } = await supabase
       .from("dm_threads")
       .insert({ user1_id: u1, user2_id: u2 })
       .select("id")
       .single();
-    if (newThread) navigate(`/chat/${newThread.id}`);
+    if (newThread) navigate(`/channels/@me/chat/${newThread.id}`);
   };
 
   const togglePinItem = async (itemId: string, type: "dm" | "group") => {
@@ -314,10 +314,10 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
     loadInbox();
   };
 
-  const activeThreadId = location.pathname.startsWith("/chat/")
-    ? location.pathname.split("/chat/")[1]
-    : location.pathname.startsWith("/group/")
-    ? location.pathname.split("/group/")[1]
+  const activeThreadId = location.pathname.startsWith("/channels/@me/chat/")
+    ? location.pathname.split("/channels/@me/chat/")[1]
+    : location.pathname.startsWith("/channels/@me/group/")
+    ? location.pathname.split("/channels/@me/group/")[1]
     : undefined;
 
   const renderThreadItem = (item: InboxItem) => {
@@ -336,7 +336,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
         onCall={item.type === "dm" && item.otherProfile ? () => directCall(item.otherProfile!.user_id) : undefined}
       >
         <NameplateWrapper nameplateUrl={item.type === "dm" ? (item.otherProfile as any)?.nameplate_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} className="rounded-md h-[42px]" imageClassName="absolute right-0 top-0 w-[224px] h-[42px] object-cover pointer-events-none z-0" fadeOnHover isActive={isActive}>
-        <button onClick={() => navigate(item.type === "dm" ? `/chat/${item.id}` : `/group/${item.id}`)}
+        <button onClick={() => navigate(item.type === "dm" ? `/channels/@me/chat/${item.id}` : `/channels/@me/group/${item.id}`)}
           className={`flex items-center gap-2 w-full px-2 h-[42px] rounded-md transition-colors text-start ${!hasNameplate && isActive ? "bg-muted" : ""} ${!hasNameplate && !isActive ? "hover:bg-muted/60" : ""}`}>
           <AvatarDecorationWrapper decorationUrl={item.type === "dm" ? (item.otherProfile as any)?.avatar_decoration_url : null} isPro={item.type === "dm" ? (item.otherProfile as any)?.is_pro : false} size={isMobileExpanded ? 40 : 32} className="shrink-0">
             <Avatar className={isMobileExpanded ? "h-10 w-10" : "h-8 w-8"}>
@@ -376,7 +376,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
       {/* Friends nav item */}
       <div className="p-2">
         <button
-          onClick={() => navigate("/friends")}
+          onClick={() => navigate("/channels/@me/friends")}
           className={`flex items-center gap-2 w-full p-2 rounded-md transition-colors ${
             isFriendsActive ? "bg-muted" : "hover:bg-muted/60"
           }`}

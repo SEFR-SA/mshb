@@ -61,7 +61,7 @@ const ServerView = () => {
       setActiveChannel(channel);
       // On mobile, navigate to the channel route for full-page chat
       if (isMobile) {
-        navigate(`/server/${serverId}/channel/${channel.id}`);
+        navigate(`/channels/server/${serverId}/channel/${channel.id}`);
       }
     }
   };
@@ -83,7 +83,7 @@ const ServerView = () => {
           if (data && (data as any[]).length > 0) {
             const ch = (data as any[])[0];
             setActiveChannel(ch as any);
-            navigate(`/server/${serverId}/channel/${ch.id}`, { replace: true });
+            navigate(`/channels/server/${serverId}/channel/${ch.id}`, { replace: true });
           }
         });
     }
@@ -137,7 +137,7 @@ const ServerView = () => {
         <>
           <div className="flex flex-col h-full">
             <header className="flex items-center gap-2 p-2 border-b border-border/50 glass">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/server/${serverId}`)}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/channels/server/${serverId}`)}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <span className="text-sm font-medium flex-1 truncate">#{activeChannel.name}</span>

@@ -172,7 +172,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       content: message.trim(),
     });
 
-    navigate(`/chat/${threadId}`);
+    navigate(`/channels/@me/chat/${threadId}`);
   };
 
   const updateEntranceSound = async (soundId: string | null) => {
