@@ -12,6 +12,7 @@ import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { Pencil, LogOut, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import StatusBubble from "@/components/shared/StatusBubble";
 
 const STATUS_OPTIONS: { value: UserStatus; label: string; color: string }[] = [
   { value: "online", label: "Online", color: "bg-green-500" },
@@ -34,6 +35,9 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
 
   const p = profile as any;
   const currentStatus = (getUserStatus(profile) || "online") as UserStatus;
+  const effectiveStatusText = (p?.status_until && new Date(p.status_until) < new Date())
+    ? null
+    : p?.status_text ?? null;
 
   const handleStatusChange = async (newStatus: UserStatus) => {
     if (!user) return;
@@ -77,7 +81,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
 
       {/* Avatar + Info */}
       <div className="px-3 pb-3">
-        <div className="-mt-10 mb-2">
+        <div className="-mt-10 mb-2 flex items-end gap-2">
           <AvatarDecorationWrapper
             decorationUrl={p?.avatar_decoration_url}
             isPro={p?.is_pro}
@@ -95,6 +99,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
               className="absolute bottom-0 end-0 z-20 ring-2 ring-background"
             />
           </AvatarDecorationWrapper>
+          <StatusBubble statusText={effectiveStatusText} />
         </div>
 
         {/* Name */}
