@@ -369,7 +369,7 @@ const Auth = () => {
     </div>
   );
 
-  const selectTriggerClass = `${inputClass} border-0`;
+  const selectTriggerClass = inputClass;
 
   const renderStep4 = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500" key="step4">
