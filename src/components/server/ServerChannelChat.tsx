@@ -771,6 +771,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                     reactions={reactions.get(msg.id) || EMPTY_REACTIONS}
                     user={user}
                     onReply={handleReply}
+                    onEdit={handleStartEdit}
                     onDeleteForMe={handleDeleteForMe}
                     onDeleteForEveryone={msg.author_id === user?.id ? handleDeleteForEveryone : undefined}
                     onMarkUnread={handleMarkUnread}
@@ -784,6 +785,11 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                     }}
                     reactionPickerMsgId={reactionPickerMsgId}
                     onReactionPickerHandled={() => setReactionPickerMsgId(null)}
+                    editingId={editingId}
+                    editContent={editContent}
+                    setEditContent={setEditContent}
+                    onEditSave={handleEditSave}
+                    onEditCancel={handleEditCancel}
                   />
                 </div>
               );
