@@ -1,75 +1,48 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Notification Toggles Audit
 
-## Tech Stack
+Here is the status of every toggle on the Notifications settings page:
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+| # | Toggle | Status | Details |
+|---|--------|--------|---------|
+| 1 | **Enable Desktop Notifications** | **Working** | `GlobalNotificationListener` and `useUnreadCount` both check `prefs.desktopEnabled` and fire `new Notification()` when unfocused |
+| 2 | **Message Sound** | **Working** | Both listeners check `prefs.messageSound` before calling `playNotificationSound()` |
+| 3 | **Incoming Call Sound** | **Not wired** | `callSound` pref is saved to localStorage but **never read**. `CallListener.tsx` unconditionally calls `startLoop("incoming_ring")` — ignoring the toggle entirely |
+| 4 | **Mention Sound** | **Working** | `GlobalNotificationListener` checks `prefs.mentionSound` for mention-specific sound |
+| 5 | **Show Unread Badge** | **Not wired** | `showBadge` pref is saved but **never read** anywhere. Unread badge dots render unconditionally |
+| 6 | **Show Count in Tab** | **Working** | `GlobalNotificationListener` reads `prefs.showTabCount` and updates `document.title` |
+| 7 | **Email: Missed Messages** | **Not implemented** | Placeholder, correctly marked "Coming Soon" |
+| 8 | **Email: Friend Requests** | **Not implemented** | Placeholder, correctly marked "Coming Soon" |
 
-## Core Directives (CRITICAL — Always Enforce)
+**Summary: 2 toggles are broken** — `callSound` and `showBadge` are saved but never consumed.
 
-### 1. Plan First
+---
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+## Plan: Wire the 2 broken toggles
 
-### 2. Single Source of Truth (SSOT)
+### 1. Wire `callSound` toggle in `CallListener.tsx`
 
-Never duplicate display logic. Always use the canonical shared components:
+File: `src/components/chat/CallListener.tsx`
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+- Import `getNotificationPrefs` from `@/lib/notificationPrefs`
+- Before calling `startLoop("incoming_ring")` (~line 163), read prefs and only start the ring loop if `prefs.callSound` is true
+- This is a 3-line change: import + wrap the `startLoop` call in an `if`
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+### 2. Wire `showBadge` toggle for unread badge dots
 
-### 3. Pro Gating
+This requires identifying where unread badge dots are rendered. The `showBadge` toggle description says "Show a red dot or count on app icon." In this web/Electron context, this means the unread count badges shown on the sidebar (server rail, DM list, etc.).
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+Files to update (wherever unread dot/count badges render):
+- Import `getNotificationPrefs` and conditionally hide the badge element when `prefs.showBadge` is false
+- The badge DOM still exists but is visually hidden, so counts still track correctly — only the visual indicator is suppressed
 
-### 4. No Hallucinations
+I will need to search for the badge rendering locations to identify exact files.
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+### Files Changed
 
-### 5. No Over-Engineering
+| File | Change |
+|------|--------|
+| `src/components/chat/CallListener.tsx` | Gate `startLoop("incoming_ring")` on `prefs.callSound` |
+| Badge rendering files (sidebar/rail) | Gate unread badge visibility on `prefs.showBadge` |
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
-
-## Documentation Directory
-
-Read these files for specific details — do NOT rely on memory alone:
-
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
