@@ -1,73 +1,72 @@
 
-## Fix: Wire Notification Preferences + Add Desktop Notifications
 
-### Problem
-1. `NotificationsTab` saves prefs to `localStorage` under `mshb_notification_prefs` — but **no code ever reads them**
-2. `GlobalNotificationListener` unconditionally calls `playNotificationSound()` and `toast()` — ignoring all toggle states
-3. **No native desktop notification** (`new Notification(...)`) is ever fired — the "Desktop Notifications" toggle does nothing
-4. The "Show tab count" toggle does nothing — no code updates `document.title`
-5. The "Email" toggles have no backend to send emails — these should be hidden or marked as "coming soon"
+## Plan: Wire Notification Preferences + Native Desktop Notifications
 
-### Solution
+### Audit Findings
 
-**1. Create a shared utility to read notification prefs**
+1. **`src/lib/notificationPrefs.ts` does NOT exist** — the previous plan was interrupted before this file was created. The `NotificationsTab` writes to `localStorage` under `mshb_notification_prefs`, but nothing reads it.
 
-New file: `src/lib/notificationPrefs.ts`
-- Export a `getNotificationPrefs()` function that reads and parses `mshb_notification_prefs` from localStorage with defaults
-- Single source of truth, importable from any component
+2. **`GlobalNotificationListener.tsx`** unconditionally calls `playNotificationSound()` and `toast()` — ignores all toggles. Zero `new Notification()` calls exist anywhere.
 
-**2. Update `GlobalNotificationListener` to respect prefs + fire desktop notifications**
+3. **`useUnreadCount.ts`** also unconditionally calls `playNotificationSound()` + `toast()` on DM unread count increase — ignores prefs, no focus check, no desktop notification.
 
-File: `src/components/chat/GlobalNotificationListener.tsx`
+4. **No `document.hasFocus()` check** anywhere — notifications fire even when the user is actively in the app.
+
+### Changes
+
+**1. New file: `src/lib/notificationPrefs.ts`**
+- Export `NotifPrefs` interface and `getNotificationPrefs()` that reads `mshb_notification_prefs` from localStorage with safe defaults
+- Single import point for all consumers
+
+**2. Update: `src/components/chat/GlobalNotificationListener.tsx`**
 - Import `getNotificationPrefs`
-- Before playing sound, check `prefs.messageSound` (for regular messages) and `prefs.mentionSound` (for mentions)
-- When `prefs.desktopEnabled` is true and `Notification.permission === "granted"`, fire a native `new Notification(title, { body, icon })` — this works in both Electron and browsers
-- The native notification is the key missing piece for Electron desktop notifications
+- Inside `shouldNotify` block:
+  - **Sound**: check `prefs.mentionSound` (if mention) or `prefs.messageSound` (otherwise) before calling `playNotificationSound()`
+  - **Desktop notification**: only fire `new Notification(title, { body, icon, silent: true })` when ALL of: `prefs.desktopEnabled`, `Notification.permission === "granted"`, and `!document.hasFocus()` (app not focused / minimized)
+  - **Toast**: keep existing in-app toast for non-active channels (this is the in-app fallback when focused)
+- Add a `useEffect` for tab title: when `prefs.showTabCount` is true, update `document.title` with unread count using a lightweight subscription to `useUnreadCount`
 
-**3. Add tab title unread count**
+**3. Update: `src/hooks/useUnreadCount.ts`**
+- Import `getNotificationPrefs`
+- Before `playNotificationSound()` + `toast()`: read prefs and check `prefs.messageSound` before playing sound
+- Add `!document.hasFocus()` guard — only sound/toast when app is not focused
+- Fire `new Notification()` for DM messages when `prefs.desktopEnabled` and `!document.hasFocus()`
 
-File: `src/components/chat/GlobalNotificationListener.tsx` (or a new small hook)
-- When `prefs.showTabCount` is true, update `document.title` to include unread count (e.g., `(3) MSHB`)
-- Read `totalUnread` from existing `useUnreadCount` hook
+**4. Update: `src/components/settings/tabs/NotificationsTab.tsx`**
+- Email section: disable both email toggles, add a "Coming Soon" badge/text so users aren't misled
+- No other changes needed — the permission request flow is already correct
 
-**4. Mark email toggles as "Coming Soon"**
-
-File: `src/components/settings/tabs/NotificationsTab.tsx`
-- Disable the email toggles and add a "Coming Soon" badge so users aren't confused
-
-**5. Fix the console warning**
-
-File: `src/components/settings/tabs/NotificationsTab.tsx`
-- The `ToggleRow` component gets a ref warning because `Switch` tries to forward a ref. Wrap `ToggleRow` in `React.forwardRef` or restructure to fix the warning from the console logs.
-
-### Key code change (GlobalNotificationListener)
+### Key Logic (GlobalNotificationListener)
 
 ```typescript
-import { getNotificationPrefs } from "@/lib/notificationPrefs";
-
-// Inside handleNewMessage, after shouldNotify is determined:
 if (shouldNotify) {
   const prefs = getNotificationPrefs();
+  const appFocused = document.hasFocus();
 
-  // Sound — respect toggle
+  // Sound — respect toggles
   const shouldPlaySound = isMentioned ? prefs.mentionSound : prefs.messageSound;
   if (shouldPlaySound) {
     playNotificationSound().catch(() => {});
   }
 
-  // Desktop notification — works in Electron + browser
-  if (prefs.desktopEnabled && Notification.permission === "granted") {
+  // Native OS notification — only when unfocused
+  if (
+    prefs.desktopEnabled &&
+    !appFocused &&
+    typeof Notification !== "undefined" &&
+    Notification.permission === "granted"
+  ) {
     new Notification(
       isMentioned ? `Mention in ${serverName}` : `New message in ${serverName}`,
       {
         body: `#${channelData.name}: ${content.substring(0, 80)}`,
         icon: "/icon-192.png",
-        silent: true, // we handle sound separately
+        silent: true,
       }
     );
   }
 
-  // In-app toast (only when not viewing the channel)
+  // In-app toast (when focused but not on that channel)
   if (!isActiveChannel) {
     toast({ ... });
   }
@@ -78,11 +77,8 @@ if (shouldNotify) {
 
 | File | Change |
 |------|--------|
-| `src/lib/notificationPrefs.ts` | New — shared getter for notification preferences |
-| `src/components/chat/GlobalNotificationListener.tsx` | Read prefs, conditionally play sound, fire native `new Notification()` for desktop |
-| `src/components/settings/tabs/NotificationsTab.tsx` | Fix forwardRef warning, mark email toggles as "Coming Soon", disable them |
+| `src/lib/notificationPrefs.ts` | **New** — shared `getNotificationPrefs()` utility |
+| `src/components/chat/GlobalNotificationListener.tsx` | Read prefs, gate sound on toggles, fire `new Notification()` when unfocused + enabled, add tab title unread effect |
+| `src/hooks/useUnreadCount.ts` | Read prefs, gate DM sound/toast on toggles + `document.hasFocus()`, fire native notification for DMs |
+| `src/components/settings/tabs/NotificationsTab.tsx` | Disable email toggles with "Coming Soon" label |
 
-### What this enables
-- Toggling "Desktop Notifications" ON will fire real OS-level notifications in Electron (and browsers that support it)
-- Sound toggles will actually mute/unmute notification sounds
-- Email toggles won't mislead users into thinking they work
