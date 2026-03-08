@@ -1,45 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-## Fix: Symmetric Mobile Margins on Profile Settings Page
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-### Root Cause
+## Tech Stack
 
-The content wrapper in `SettingsModal.tsx` (line 254) uses `px-4 sm:px-8` which is symmetric. However, the scrollable container (line 253) uses `overflow-y-auto`, which on non-overlay-scrollbar environments (desktop browsers, Electron, some Android WebViews) renders a visible scrollbar that eats ~15-17px from the **right** (or **end**) side. This creates an asymmetric appearance where the right padding appears larger than the left.
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-Additionally, on the **Profile tab specifically**, the right-column preview section (line 330: `w-full lg:w-[300px] shrink-0`) on mobile stacks below the form but retains `shrink-0`, which in certain flex scenarios can cause subtle width calculation issues.
+## Core Directives (CRITICAL — Always Enforce)
 
-### Changes
+### 1. Plan First
 
-**1. `src/components/settings/SettingsModal.tsx`** — Fix scrollbar-induced asymmetry
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-Line 253 — add `scrollbar-gutter: stable` to the scrollable container so the gutter space is always reserved symmetrically, preventing layout shift when content overflows:
+### 2. Single Source of Truth (SSOT)
 
-```tsx
-// Line 253: add inline style for scrollbar gutter
-<div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ scrollbarGutter: "stable" }}>
-```
+Never duplicate display logic. Always use the canonical shared components:
 
-This reserves space for the scrollbar even when it's not visible, keeping content centered. Combined with `px-4`, the padding remains equal on both sides.
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-**2. `src/components/settings/tabs/ProfileTab.tsx`** — Clean up right-column flex on mobile
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-Line 330 — remove `shrink-0` from the preview column (it's only needed on desktop `lg:` to prevent the column from shrinking):
+### 3. Pro Gating
 
-```tsx
-// Before
-<div className="w-full lg:w-[300px] shrink-0 sticky top-6 self-start space-y-4">
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
 
-// After  
-<div className="w-full lg:w-[300px] lg:shrink-0 sticky top-6 self-start space-y-4">
-```
+### 4. No Hallucinations
 
-This ensures the preview column doesn't interfere with flex width calculations on mobile.
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
 
-**3. RTL audit** — Both files already use logical properties correctly (`end-4`, `pe-10`, `border-e`). No legacy `ml-`/`pr-` directional classes found in the affected containers.
+### 5. No Over-Engineering
 
-### Files Changed
-| File | Line | Change |
-|------|------|--------|
-| `src/components/settings/SettingsModal.tsx` | 253 | Add `style={{ scrollbarGutter: "stable" }}` to scrollable container |
-| `src/components/settings/tabs/ProfileTab.tsx` | 330 | Change `shrink-0` to `lg:shrink-0` on preview column |
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
 
+## Documentation Directory
+
+Read these files for specific details — do NOT rely on memory alone:
+
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+
+## Cosmetic Asset Specs
+
+Per-asset guides with exact dimensions, config files, and wrapper usage:
+
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
