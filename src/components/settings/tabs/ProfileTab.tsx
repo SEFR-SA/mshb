@@ -314,10 +314,11 @@ const ProfileTab = () => {
                         <AvatarImage src={profile?.avatar_url || ""} />
                         <AvatarFallback className="bg-primary/20 text-primary text-2xl">{initials}</AvatarFallback>
                       </Avatar>
+                      <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                        <ImagePlus className="h-5 w-5 text-white" />
+                      </div>
+                      <StatusBadge status={(p?.status || "online") as UserStatus} size="md" className="absolute bottom-0 end-0 z-20 ring-2 ring-background" />
                     </AvatarDecorationWrapper>
-                    <span className="absolute bottom-0 end-0 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow pointer-events-none">
-                      <Camera className="h-3 w-3" />
-                    </span>
                     <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
                   </label>
                   <StatusBubble
