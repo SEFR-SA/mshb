@@ -11,7 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Upload, Pin, PinOff, UserRound, UserRoundX, Phone, PhoneOff, PhoneMissed, Forward, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Upload, UserRound, UserRoundX, Phone, PhoneOff, PhoneMissed, Forward, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
