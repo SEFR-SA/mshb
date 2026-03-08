@@ -121,7 +121,6 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
           />
           <input
             type="color"
-            data-vaul-no-drag
             value={active}
             onChange={(e) => { if (isPro) setColor(e.target.value); else toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") }); }}
             className="h-6 w-6 rounded cursor-pointer border-0 bg-transparent"
