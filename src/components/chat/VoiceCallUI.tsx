@@ -138,6 +138,23 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
   const { t } = useTranslation();
   const [goLiveOpen, setGoLiveOpen] = useState(false);
 
+  // Keybinds: Ctrl+Alt+S → start streaming, Ctrl+Alt+E → end stream
+  useEffect(() => {
+    if (callState !== "connected") return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.altKey && e.key.toUpperCase() === "S" && !isScreenSharing && onStartScreenShare) {
+        e.preventDefault();
+        setGoLiveOpen(true);
+      }
+      if (e.ctrlKey && e.altKey && e.key.toUpperCase() === "E" && isScreenSharing && onStopScreenShare) {
+        e.preventDefault();
+        onStopScreenShare();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [callState, isScreenSharing, onStartScreenShare, onStopScreenShare]);
+
   if (callState === "idle" || callState === "ended") return null;
 
   const initial = (otherName || "?").charAt(0).toUpperCase();

@@ -350,6 +350,23 @@ const CallListener = () => {
     };
   }, []);
 
+  // Keybinds: Ctrl+Enter → accept, Esc → decline incoming call
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!incomingCall || activeSession) return;
+      if (e.ctrlKey && e.key === "Enter") {
+        e.preventDefault();
+        handleAccept();
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleDecline();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [incomingCall, activeSession, handleAccept, handleDecline]);
+
   return (
     <>
       {incomingCall && !activeSession && (
