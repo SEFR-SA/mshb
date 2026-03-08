@@ -175,6 +175,7 @@ const App = () => (
   <ErrorBoundary>
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
+      <StreamerModeProvider>
       <AudioSettingsProvider>
         <VoiceChannelProvider>
           <AuthProvider>
