@@ -597,8 +597,13 @@ const GroupChat = () => {
           </div>
         )}
       </div>
+      {showScrollToBottom && (
+        <button onClick={scrollToBottom} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-primary text-primary-foreground rounded-full p-2 shadow-lg hover:bg-primary/90 transition-opacity animate-fade-in">
+          <ChevronDown className="h-5 w-5" />
+        </button>
+      )}
+      </div>
 
-      {/* Upload progress */}
       {uploadProgress !== null && (
         <div className="px-3 pt-2 space-y-1">
           <p className="text-xs text-muted-foreground">{t("files.uploading")}</p>

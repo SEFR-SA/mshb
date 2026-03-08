@@ -710,8 +710,13 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
           </div>
         )}
       </div>
+      {showScrollToBottom && (
+        <button onClick={scrollToBottom} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-primary text-primary-foreground rounded-full p-2 shadow-lg hover:bg-primary/90 transition-opacity animate-fade-in">
+          <ChevronDown className="h-5 w-5" />
+        </button>
+      )}
+      </div>
 
-      {/* Read-only banner for members in announcement channels */}
       {isAnnouncement && !canPost ? (
         <div className="px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 border-t border-border/40">
           <Megaphone className="h-4 w-4 shrink-0" />
