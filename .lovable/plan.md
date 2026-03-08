@@ -1,75 +1,52 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Redesign Auth.tsx: 5-Step Signup + Fix Build Errors
 
-## Tech Stack
+### Build Error Fix (prerequisite)
+Two edge functions have `err` typed as `unknown`:
+- `supabase/functions/delete-account/index.ts` line 177: `err.message` → `(err as Error).message`
+- `supabase/functions/export-user-data/index.ts` line 124: `err.message` → `(err as Error).message`
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+### Auth.tsx Complete Rewrite
 
-## Core Directives (CRITICAL — Always Enforce)
+**File:** `src/pages/Auth.tsx` — full rewrite, ~450 lines
 
-### 1. Plan First
+**Layout:** Split-screen. Left column = existing static hero (hidden on mobile). Right column = dynamic content.
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+**State machine:**
+- `mode`: `"login" | "signup" | "reset" | "pending"`
+- `step`: `1 | 2 | 3 | 4 | 5` (only used when `mode === "signup"`)
 
-### 2. Single Source of Truth (SSOT)
+**Right column structure:**
+1. **Top bar**: Logo (mobile only) + "Log in instead" / "Sign up instead" button + 5-step progress bar (only visible during signup)
+2. **Step content** with `animate-in fade-in slide-in-from-bottom-4` transition on each step change (keyed by step number)
+3. **Back button** on steps 2-5
 
-Never duplicate display logic. Always use the canonical shared components:
+**Progress bar:** 5 small segments using the existing `Progress` component or simple div bars, filled up to the current step.
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+**Styling changes:**
+- Labels: `text-xs font-bold uppercase tracking-wider text-muted-foreground`
+- Inputs: `h-14 text-lg bg-muted/50 border-0 rounded-xl focus-visible:ring-2` (borderless, soft background)
+- Buttons: `h-14 text-lg rounded-xl`
+- Generous spacing: `space-y-6` between fields
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+**Step breakdown:**
 
-### 3. Pro Gating
+| Step | Fields | Next condition |
+|------|--------|---------------|
+| 1 (Methods) | Welcome text + disclaimer + "Continue with Email" button + "Continue with Google" button | Click either button |
+| 2 (Account) | Username (with existing uniqueness check) + Email | Both filled, username available |
+| 3 (Security) | Password (with PasswordStrengthBar) + Confirm Password | All rules pass + passwords match |
+| 4 (Demographics) | DOB (3 selects) + Gender select | All filled |
+| 5 (Profile) | Display Name (optional) + "Sign Up" button | Submit triggers existing `signUp()` |
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+**Google OAuth (Step 1):** Call `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })` — Lovable Cloud manages Google OAuth automatically.
 
-### 4. No Hallucinations
+**Login flow:** Same as current — identifier + password, single screen, no progress bar.
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+**Reset flow:** Same as current — email input, single screen.
 
-### 5. No Over-Engineering
+**Pending flow:** Same as current — email verification screen.
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+**All existing auth logic preserved:** `signIn`, `signUp`, `resetPassword` from `useAuth()`, username uniqueness via `check_username_available` RPC, pending invite redirect.
 
-## Documentation Directory
-
-Read these files for specific details — do NOT rely on memory alone:
-
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
