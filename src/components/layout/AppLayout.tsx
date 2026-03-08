@@ -19,6 +19,7 @@ import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const AppLayout = () => {
+  useGlobalKeybinds();
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { voiceChannel, disconnectVoice } = useVoiceChannel();
