@@ -99,6 +99,7 @@ const AppearanceTab = () => {
   const { profile } = useAuth();
   const isPro = (profile as any)?.is_pro ?? false;
   const [showBuilder, setShowBuilder] = useState(false);
+  const isMobile = useIsMobile();
 
   const showUpgradeToast = () => toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
 
