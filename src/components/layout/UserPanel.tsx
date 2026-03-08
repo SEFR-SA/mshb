@@ -28,7 +28,7 @@ const UserPanel = ({ className }: UserPanelProps) => {
   
   const [popoverOpen, setPopoverOpen] = useState(false);
 
-  const status = (getUserStatus(profile) || "online") as UserStatus;
+  const status = ((profile as any)?.status || "online") as UserStatus;
 
   if (!user) return null;
 

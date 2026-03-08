@@ -32,7 +32,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
   const [showStatusMenu, setShowStatusMenu] = useState(false);
 
   const p = profile as any;
-  const currentStatus = (getUserStatus(profile) || "online") as UserStatus;
+  const currentStatus = (p?.status || "online") as UserStatus;
   const effectiveStatusText = (p?.status_until && new Date(p.status_until) < new Date())
     ? null
     : p?.status_text ?? null;
