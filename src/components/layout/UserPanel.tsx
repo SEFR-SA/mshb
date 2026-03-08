@@ -111,7 +111,7 @@ const UserPanel = ({ className }: UserPanelProps) => {
                 </Button>
                 <AudioControlPopover type="input" open={micPopoverOpen} onOpenChange={setMicPopoverOpen}>
                   <Button variant="ghost" size="icon" className="h-7 w-4 rounded-s-none px-0" title={t("settings.microphone")}>
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                    {micPopoverOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
                   </Button>
                 </AudioControlPopover>
               </div>
@@ -123,7 +123,7 @@ const UserPanel = ({ className }: UserPanelProps) => {
                 </Button>
                 <AudioControlPopover type="output" open={speakerPopoverOpen} onOpenChange={setSpeakerPopoverOpen}>
                   <Button variant="ghost" size="icon" className="h-7 w-4 rounded-s-none px-0" title={t("settings.speakers")}>
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                    {speakerPopoverOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
                   </Button>
                 </AudioControlPopover>
               </div>
