@@ -581,6 +581,7 @@ export default {
     appearance: "المظهر",
     voiceVideo: "الصوت والفيديو",
     languageTime: "اللغة والوقت",
+    keybinds: "اختصارات لوحة المفاتيح",
     marketplace: "السوق",
     editDisplayName: "تعديل الاسم المعروض",
     editUsername: "تعديل اسم المستخدم",

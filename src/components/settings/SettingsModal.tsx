@@ -77,6 +77,7 @@ const TAB_COMPONENTS: Record<TabId, React.LazyExoticComponent<React.ComponentTyp
   appearance:    AppearanceTab,
   voice:         VoiceVideoTab,
   language:      LanguageTab,
+  keybinds:      KeybindsTab,
   marketplace:   MarketplaceTab,
 };
 
