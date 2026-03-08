@@ -76,51 +76,49 @@ const UserPanel = ({ className }: UserPanelProps) => {
 
       {/* User profile row + audio controls */}
       <NameplateWrapper nameplateUrl={profile?.nameplate_url} isPro={profile?.is_pro} className="rounded-md">
-      <div className="flex items-center gap-2 p-2">
-        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-          <PopoverTrigger asChild>
-            <button className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity text-start bg-transparent border-none outline-none cursor-pointer p-0">
-              <AvatarDecorationWrapper decorationUrl={(profile as any)?.avatar_decoration_url} isPro={profile?.is_pro} size={32} className="shrink-0">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={profile?.avatar_url || ""} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                    {(profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0 z-20" />
-              </AvatarDecorationWrapper>
-              <div className="min-w-0">
-                <StyledDisplayName
-                  displayName={profile?.display_name || profile?.username || "User"}
-                  fontStyle={(profile as any)?.name_font}
-                  effect={(profile as any)?.name_effect}
-                  gradientStart={(profile as any)?.name_gradient_start}
-                  gradientEnd={(profile as any)?.name_gradient_end}
-                  className="text-xs font-bold truncate leading-tight"
-                />
-                {profile?.username && <p className="text-[10px] text-muted-foreground truncate leading-tight">@{profile.username}</p>}
-              </div>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent side="top" align="center" sideOffset={8} className="p-0 w-auto">
-            <UserPanelPopover onClose={() => setPopoverOpen(false)} />
-          </PopoverContent>
-        </Popover>
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger asChild>
+          <div className="flex items-center gap-2 p-2 cursor-pointer hover:opacity-90 transition-opacity">
+            <AvatarDecorationWrapper decorationUrl={(profile as any)?.avatar_decoration_url} isPro={profile?.is_pro} size={32} className="shrink-0">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={profile?.avatar_url || ""} />
+                <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                  {(profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0 z-20" />
+            </AvatarDecorationWrapper>
+            <div className="min-w-0 flex-1">
+              <StyledDisplayName
+                displayName={profile?.display_name || profile?.username || "User"}
+                fontStyle={(profile as any)?.name_font}
+                effect={(profile as any)?.name_effect}
+                gradientStart={(profile as any)?.name_gradient_start}
+                gradientEnd={(profile as any)?.name_gradient_end}
+                className="text-xs font-bold truncate leading-tight"
+              />
+              {profile?.username && <p className="text-[10px] text-muted-foreground truncate leading-tight">@{profile.username}</p>}
+            </div>
 
-        <div className="flex items-center shrink-0">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleGlobalMute} title={globalMuted ? t("audio.unmute") : t("audio.mute")}>
-            {globalMuted ? <MicOff className="h-3.5 w-3.5 text-destructive" /> : <Mic className="h-3.5 w-3.5" />}
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleGlobalDeafen} title={globalDeafened ? t("audio.undeafen") : t("audio.deafen")}>
-            {globalDeafened ? <HeadphoneOff className="h-3.5 w-3.5 text-destructive" /> : <Headphones className="h-3.5 w-3.5" />}
-          </Button>
-          <NavLink to="/settings">
-            <Button variant="ghost" size="icon" className="h-7 w-7" title={t("nav.settings")}>
-              <Settings className="h-3.5 w-3.5" />
-            </Button>
-          </NavLink>
-        </div>
-      </div>
+            <div className="flex items-center shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleGlobalMute} title={globalMuted ? t("audio.unmute") : t("audio.mute")}>
+                {globalMuted ? <MicOff className="h-3.5 w-3.5 text-destructive" /> : <Mic className="h-3.5 w-3.5" />}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleGlobalDeafen} title={globalDeafened ? t("audio.undeafen") : t("audio.deafen")}>
+                {globalDeafened ? <HeadphoneOff className="h-3.5 w-3.5 text-destructive" /> : <Headphones className="h-3.5 w-3.5" />}
+              </Button>
+              <NavLink to="/settings">
+                <Button variant="ghost" size="icon" className="h-7 w-7" title={t("nav.settings")}>
+                  <Settings className="h-3.5 w-3.5" />
+                </Button>
+              </NavLink>
+            </div>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent side="top" align="center" sideOffset={8} collisionPadding={8} className="p-0 w-auto">
+          <UserPanelPopover onClose={() => setPopoverOpen(false)} />
+        </PopoverContent>
+      </Popover>
       </NameplateWrapper>
     </div>
   );
