@@ -35,6 +35,9 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
 
   const p = profile as any;
   const currentStatus = (getUserStatus(profile) || "online") as UserStatus;
+  const effectiveStatusText = (p?.status_until && new Date(p.status_until) < new Date())
+    ? null
+    : p?.status_text ?? null;
 
   const handleStatusChange = async (newStatus: UserStatus) => {
     if (!user) return;
