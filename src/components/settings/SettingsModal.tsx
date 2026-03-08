@@ -92,6 +92,7 @@ const SettingsModal = () => {
   const navigate   = useNavigate();
   const { t }      = useTranslation();
   const { user, profile, signOut } = useAuth();
+  const isMobile   = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [unsavedConfig, setUnsavedConfig] = useState<{ onSave: () => void; onReset: () => void } | null>(null);
