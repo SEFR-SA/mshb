@@ -25,7 +25,7 @@ const UserPanel = ({ className }: UserPanelProps) => {
   const { user, profile } = useAuth();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
   const { voiceChannel, disconnectVoice, isScreenSharing, isCameraOn, nativeResolutionLabel } = useVoiceChannel();
-  const { getUserStatus } = usePresence();
+  
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   const status = (getUserStatus(profile) || "online") as UserStatus;
