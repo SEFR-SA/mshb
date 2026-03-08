@@ -9,7 +9,7 @@ import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import {
   User, Shield, Users, Bell, Star, CreditCard,
-  Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag,
+  Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag, Keyboard,
 } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
@@ -25,11 +25,12 @@ const AppearanceTab    = lazy(() => import("./tabs/AppearanceTab"));
 const VoiceVideoTab    = lazy(() => import("./tabs/VoiceVideoTab"));
 const LanguageTab      = lazy(() => import("./tabs/LanguageTab"));
 const MarketplaceTab   = lazy(() => import("./tabs/MarketplaceTab"));
+const KeybindsTab      = lazy(() => import("./tabs/KeybindsTab"));
 
 type TabId =
   | "profile" | "account" | "social" | "notifications"
   | "subscriptions" | "billing" | "appearance" | "voice" | "language"
-  | "marketplace";
+  | "marketplace" | "keybinds";
 
 interface NavItem {
   id: TabId;
@@ -60,6 +61,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "appearance",    labelKey: "settings.appearance",   icon: Palette },
       { id: "voice",         labelKey: "settings.voiceVideo",    icon: Mic },
       { id: "language",      labelKey: "settings.languageTime",  icon: Globe },
+      { id: "keybinds",      labelKey: "settings.keybinds",      icon: Keyboard },
       { id: "marketplace",   labelKey: "settings.marketplace",   icon: ShoppingBag },
     ],
   },
@@ -75,6 +77,7 @@ const TAB_COMPONENTS: Record<TabId, React.LazyExoticComponent<React.ComponentTyp
   appearance:    AppearanceTab,
   voice:         VoiceVideoTab,
   language:      LanguageTab,
+  keybinds:      KeybindsTab,
   marketplace:   MarketplaceTab,
 };
 

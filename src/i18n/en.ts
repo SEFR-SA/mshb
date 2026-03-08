@@ -581,6 +581,7 @@ export default {
     appearance: "Appearance",
     voiceVideo: "Voice & Video",
     languageTime: "Language & Time",
+    keybinds: "Keybinds",
     marketplace: "Marketplace",
     editDisplayName: "Edit Display Name",
     editUsername: "Edit Username",
