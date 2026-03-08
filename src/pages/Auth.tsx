@@ -22,7 +22,7 @@ const MONTHS = [
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 100 }, (_, i) => currentYear - i);
 
-const inputClass = "h-14 text-lg bg-muted/50 border-0 rounded-xl focus-visible:ring-2 focus-visible:ring-ring";
+const inputClass = "h-14 text-lg bg-muted/50 border border-border rounded-xl focus-visible:ring-2 focus-visible:ring-ring";
 const labelClass = "text-xs font-bold uppercase tracking-wider text-muted-foreground";
 const btnClass = "w-full h-14 text-lg rounded-xl";
 

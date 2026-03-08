@@ -240,6 +240,10 @@ export default {
     optional: "اختياري",
     block: "حظر",
     closeDM: "إغلاق المحادثة",
+    continue: "متابعة",
+    back: "رجوع",
+    or: "أو",
+    and: "و",
   },
   notifications: {
     newMessage: "لديك رسالة جديدة",

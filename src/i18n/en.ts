@@ -240,6 +240,10 @@ export default {
     optional: "optional",
     block: "Block",
     closeDM: "Close DM",
+    continue: "Continue",
+    back: "Back",
+    or: "or",
+    and: "and",
   },
   notifications: {
     newMessage: "You have a new message",
