@@ -36,7 +36,7 @@ interface MutualFriend {
 interface MutualServer {
   id: string;
   name: string;
-  avatar_url: string | null;
+  icon_url: string | null;
 }
 
 // ─── Small reusable section wrapper ──────────────────────────────────────────
