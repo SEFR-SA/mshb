@@ -64,10 +64,10 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
   const currentStatusOption = STATUS_OPTIONS.find((s) => s.value === currentStatus) || STATUS_OPTIONS[0];
 
   return (
-    <div className="w-[300px] overflow-hidden">
+    <div className="w-[300px] overflow-hidden rounded-t-xl">
       {/* Banner */}
       <div
-        className="h-[60px] w-full relative"
+        className="h-24 w-full relative"
         style={
           profile.banner_url
             ? { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
@@ -77,13 +77,13 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
 
       {/* Avatar + Info */}
       <div className="px-3 pb-3">
-        <div className="-mt-6 mb-2">
+        <div className="-mt-10 mb-2">
           <AvatarDecorationWrapper
             decorationUrl={p?.avatar_decoration_url}
             isPro={p?.is_pro}
-            size={48}
+            size={80}
           >
-            <Avatar className="h-12 w-12 border-[3px] border-popover">
+            <Avatar className="h-20 w-20 border-4 border-background">
               <AvatarImage src={profile.avatar_url || ""} />
               <AvatarFallback className="bg-primary/20 text-primary text-lg">
                 {initials}
@@ -91,8 +91,8 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
             </Avatar>
             <StatusBadge
               status={currentStatus}
-              size="sm"
-              className="absolute bottom-0 end-0 z-20 ring-2 ring-popover"
+              size="md"
+              className="absolute bottom-0 end-0 z-20 ring-2 ring-background"
             />
           </AvatarDecorationWrapper>
         </div>
