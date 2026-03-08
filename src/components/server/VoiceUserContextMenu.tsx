@@ -95,7 +95,7 @@ const VoiceUserContextMenu = ({
     const { data: existing } = await supabase
       .from("dm_threads").select("id").eq("user1_id", u1).eq("user2_id", u2).maybeSingle();
     if (existing) {
-      navigate(`/chat/${existing.id}`);
+      navigate(`/channels/@me/chat/${existing.id}`);
     } else {
       const { data: newThread } = await supabase
         .from("dm_threads").insert({ user1_id: u1, user2_id: u2 }).select("id").single();
