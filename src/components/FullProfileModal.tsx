@@ -545,7 +545,7 @@ const FullProfileModal = () => {
   if (isMobile) {
     return (
       <Drawer open={isOpen} onOpenChange={(o) => !o && closeProfile()}>
-        <DrawerContent>{compactContent}</DrawerContent>
+        <DrawerContent raw className="overflow-hidden">{compactContent}</DrawerContent>
       </Drawer>
     );
   }
