@@ -35,11 +35,11 @@ const VoiceVideoTab = () => {
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   // Enumerate camera devices on mount
-  useState(() => {
+  useEffect(() => {
     navigator.mediaDevices.enumerateDevices().then((devices) => {
       setCameraDevices(devices.filter((d) => d.kind === "videoinput"));
     }).catch(() => {});
-  });
+  }, []);
 
   const updateCameraPref = (id: string) => {
     setCameraDeviceId(id);
