@@ -253,7 +253,23 @@ const MessageItem = React.memo(({
                 <MessageFilePreview fileUrl={msg.file_url} fileName={msg.file_name || "file"} fileType={msg.file_type || ""} fileSize={msg.file_size || 0} isMine={isMine} />
               </div>
             ) : null}
-            {msg.content && (
+            {editingId === msg.id ? (
+              <div className="flex items-center gap-2 mt-1">
+                <Input
+                  value={editContent}
+                  onChange={(e) => setEditContent?.(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onEditSave?.(); }
+                    if (e.key === "Escape") onEditCancel?.();
+                  }}
+                  className="flex-1 h-8 text-sm"
+                  maxLength={5000}
+                  autoFocus
+                />
+                <Button size="sm" className="h-7 text-xs" onClick={onEditSave}>{t("actions.save")}</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onEditCancel}>{t("actions.cancel")}</Button>
+              </div>
+            ) : msg.content ? (
               isAnnouncement ? (
                 <div className="text-sm leading-relaxed prose-sm">
                   <ReactMarkdown
@@ -280,9 +296,10 @@ const MessageItem = React.memo(({
               ) : (
                 <p className={`whitespace-pre-wrap break-words ${getEmojiClass(msg.content) || "text-sm"}`}>
                   {renderMessageContent(msg.content, profiles, currentUserId, serverEmojis)}
+                  {msg.edited_at && <span className="text-[10px] text-muted-foreground ms-1">({t("actions.edited")})</span>}
                 </p>
               )
-            )}
+            ) : null}
             {/* Forwarded indicator */}
             {(msg as any).is_forwarded && (
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-0.5">
