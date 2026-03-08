@@ -88,7 +88,7 @@ const UserProfileModal = () => {
     <ProfileEffectWrapper effectUrl={(profile as any)?.profile_effect_url} isPro={(profile as any)?.is_pro} className="flex flex-col">
       {/* Banner */}
       <div
-        className="h-24 md:h-32 rounded-t-lg relative"
+        className="h-24 md:h-32 relative"
         style={{
           background: profile?.banner_url
             ? `url(${profile.banner_url}) center/cover`
@@ -183,7 +183,7 @@ const UserProfileModal = () => {
     if (isMobile) {
       return (
         <Drawer open={isOpen} onOpenChange={(o) => !o && closeProfile()}>
-          <DrawerContent>{skeleton}</DrawerContent>
+          <DrawerContent raw className="overflow-hidden">{skeleton}</DrawerContent>
         </Drawer>
       );
     }
@@ -199,7 +199,7 @@ const UserProfileModal = () => {
   if (isMobile) {
     return (
       <Drawer open={isOpen} onOpenChange={(o) => !o && closeProfile()}>
-        <DrawerContent>{content}</DrawerContent>
+        <DrawerContent raw className="overflow-hidden">{content}</DrawerContent>
       </Drawer>
     );
   }

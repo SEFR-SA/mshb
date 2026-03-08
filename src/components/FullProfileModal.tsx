@@ -282,7 +282,7 @@ const FullProfileModal = () => {
   const compactContent = (
     <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={p?.is_pro} className="flex flex-col">
       <div
-        className="h-24 rounded-t-lg"
+        className="h-24 relative"
         style={{
           background: p?.banner_url
             ? `url(${p.banner_url}) center/cover`
@@ -525,7 +525,7 @@ const FullProfileModal = () => {
     if (isMobile) {
       return (
         <Drawer open={isOpen} onOpenChange={(o) => !o && closeProfile()}>
-          <DrawerContent>{skeleton}</DrawerContent>
+          <DrawerContent raw className="overflow-hidden">{skeleton}</DrawerContent>
         </Drawer>
       );
     }
@@ -545,7 +545,7 @@ const FullProfileModal = () => {
   if (isMobile) {
     return (
       <Drawer open={isOpen} onOpenChange={(o) => !o && closeProfile()}>
-        <DrawerContent>{compactContent}</DrawerContent>
+        <DrawerContent raw className="overflow-hidden">{compactContent}</DrawerContent>
       </Drawer>
     );
   }

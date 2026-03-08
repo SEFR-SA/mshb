@@ -24,8 +24,8 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> & { raw?: boolean }
+>(({ className, children, raw, ...props }, ref) => (
   <DrawerPortal>
     <DrawerOverlay />
     <DrawerPrimitive.Content
@@ -36,17 +36,23 @@ const DrawerContent = React.forwardRef<
       )}
       {...props}
     >
-      {/* Drag Handle */}
-      <div className="flex justify-center mt-2 mb-1">
-        <div className="h-1.5 w-10 rounded-full bg-muted-foreground/30" />
-      </div>
-      {/* Inner content wrapper: horizontal padding + safe-area bottom */}
-      <div
-        className="flex flex-col gap-4 px-5 pb-5 w-full"
-        style={{ paddingBottom: "clamp(20px, calc(20px + env(safe-area-inset-bottom)), 40px)" }}
-      >
-        {children}
-      </div>
+      {raw ? (
+        children
+      ) : (
+        <>
+          {/* Drag Handle */}
+          <div className="flex justify-center mt-2 mb-1">
+            <div className="h-1.5 w-10 rounded-full bg-muted-foreground/30" />
+          </div>
+          {/* Inner content wrapper: horizontal padding + safe-area bottom */}
+          <div
+            className="flex flex-col gap-4 px-5 pb-5 w-full"
+            style={{ paddingBottom: "clamp(20px, calc(20px + env(safe-area-inset-bottom)), 40px)" }}
+          >
+            {children}
+          </div>
+        </>
+      )}
     </DrawerPrimitive.Content>
   </DrawerPortal>
 ));
