@@ -23,6 +23,7 @@ interface Props {
 const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
+  const isMobile = useIsMobile();
   const p = profile as any;
   const isPro = p?.is_pro ?? false;
 
