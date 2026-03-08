@@ -61,7 +61,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "appearance",    labelKey: "settings.appearance",   icon: Palette },
       { id: "voice",         labelKey: "settings.voiceVideo",    icon: Mic },
       { id: "language",      labelKey: "settings.languageTime",  icon: Globe },
-      { id: "keybinds",      labelKey: "settings.keybinds",      icon: Keyboard },
+      ...(!isMobile ? [{ id: "keybinds" as TabId, labelKey: "settings.keybinds", icon: Keyboard }] : []),
       { id: "marketplace",   labelKey: "settings.marketplace",   icon: ShoppingBag },
     ],
   },
