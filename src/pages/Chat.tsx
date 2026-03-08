@@ -797,7 +797,7 @@ const Chat = () => {
   return (
     <div className="flex h-full overflow-hidden">
       {chatPanel}
-      {!isMobile && showProfile && <UserProfilePanel profile={otherProfile} statusLabel={otherStatus} />}
+      {!isMobile && showProfile && <UserProfilePanel profile={otherProfile} statusLabel={otherStatus} userId={otherProfile?.user_id} />}
     </div>
   );
 };
