@@ -39,6 +39,7 @@ import StyledDisplayName from "@/components/StyledDisplayName";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
+import { useMessageKeybinds } from "@/hooks/useMessageKeybinds";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
