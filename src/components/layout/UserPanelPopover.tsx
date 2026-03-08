@@ -143,7 +143,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
             {/* Side-positioned status submenu */}
             {showStatusMenu && (
               <div className="absolute left-full top-0 ms-0 rtl:left-auto rtl:right-full z-50 ps-2 rtl:ps-0 rtl:pe-2">
-                <div className="w-[200px] rounded-md border border-border bg-popover/95 backdrop-blur-xl p-1 shadow-lg -mt-2">
+                <div className="w-[200px] rounded-md border border-border bg-popover/95 backdrop-blur-xl p-1 shadow-lg -mt-6 space-y-0.5">
                   {STATUS_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
