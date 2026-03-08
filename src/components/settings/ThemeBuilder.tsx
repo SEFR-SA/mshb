@@ -4,7 +4,8 @@ import { X, Dices, Sun, Moon, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { generateThemeFromColor, generateRandomTheme, type ThemeMode } from "@/lib/themeGenerator";
 import { useTheme } from "@/contexts/ThemeContext";
-import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 
 interface ThemeBuilderProps {
   onClose: () => void;
@@ -13,6 +14,7 @@ interface ThemeBuilderProps {
 const ThemeBuilder = ({ onClose }: ThemeBuilderProps) => {
   const { t } = useTranslation();
   const { setColorTheme } = useTheme();
+  const isMobile = useIsMobile();
 
   const [color, setColor] = useState("#5b7ee5");
   const [mode, setMode] = useState<ThemeMode>("auto");
@@ -26,13 +28,96 @@ const ThemeBuilder = ({ onClose }: ThemeBuilderProps) => {
   }, [mode]);
 
   const handleSave = () => {
-    // Store custom theme data in localStorage so ThemeContext can load it
     localStorage.setItem("app-custom-theme", JSON.stringify({ color, mode }));
     setColorTheme("custom");
     onClose();
   };
 
-  // Build inline style from vars for the preview wrapper
+  // Shared controls
+  const controls = (
+    <>
+      {/* Mini color swatch preview */}
+      <div className="flex gap-2 items-center">
+        <div className="h-10 flex-1 rounded-lg border border-border" style={{ background: vars["--color-bg"] }} />
+        <div className="h-10 flex-1 rounded-lg" style={{ background: vars["--color-primary"] }} />
+        <div className="h-10 flex-1 rounded-lg border border-border" style={{ background: vars["--color-surface"] }} />
+        <div className="h-10 flex-1 rounded-lg border border-border" style={{ background: vars["--color-bg-muted"] }} />
+      </div>
+
+      {/* Color Picker */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          {t("themeBuilder.pickColor")}
+        </label>
+        <div className="flex items-center gap-3">
+          <input
+            type="color"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="w-12 h-12 rounded-lg border-2 border-border cursor-pointer bg-transparent"
+          />
+          <span className="text-sm font-mono text-foreground uppercase">{color}</span>
+        </div>
+      </div>
+
+      {/* Mode Toggle */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          {t("themeBuilder.mode")}
+        </label>
+        <div className="flex gap-1">
+          {(["auto", "light", "dark"] as ThemeMode[]).map((m) => (
+            <Button
+              key={m}
+              variant={mode === m ? "default" : "outline"}
+              size="sm"
+              onClick={() => setMode(m)}
+              className="flex-1 text-xs capitalize"
+            >
+              {m === "light" && <Sun className="h-3 w-3 me-1" />}
+              {m === "dark" && <Moon className="h-3 w-3 me-1" />}
+              {t(`themeBuilder.mode_${m}`)}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Surprise Me */}
+      <Button variant="outline" onClick={handleSurprise} className="w-full gap-2">
+        <Dices className="h-4 w-4" />
+        {t("themeBuilder.surpriseMe")}
+      </Button>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open onOpenChange={(open) => !open && onClose()}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{t("themeBuilder.title")}</DrawerTitle>
+            <p className="text-xs text-muted-foreground">{t("themeBuilder.subtitle")}</p>
+          </DrawerHeader>
+          <div className="flex flex-col gap-4">
+            {controls}
+          </div>
+          <DrawerFooter>
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" onClick={onClose} className="flex-1">
+                {t("themeBuilder.cancel")}
+              </Button>
+              <Button onClick={handleSave} className="flex-1 gap-2">
+                <Save className="h-4 w-4" />
+                {t("themeBuilder.save")}
+              </Button>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Desktop: existing full-screen overlay
   const previewStyle: React.CSSProperties = {};
   if (vars) {
     Object.entries(vars).forEach(([k, v]) => {
@@ -86,7 +171,6 @@ const ThemeBuilder = ({ onClose }: ThemeBuilderProps) => {
                 </div>
               ))}
             </div>
-            {/* User panel */}
             <div
               className="p-2 flex items-center gap-2 border-t"
               style={{ borderColor: vars["--color-border"], background: vars["--color-bg-muted"] }}
@@ -108,7 +192,6 @@ const ThemeBuilder = ({ onClose }: ThemeBuilderProps) => {
               # general
             </div>
             <div className="flex-1 p-4 space-y-4 overflow-hidden">
-              {/* Mock messages */}
               {[
                 { name: "Mshb Bot", msg: t("themeBuilder.mockMsg1"), time: "12:00 PM" },
                 { name: "User", msg: t("themeBuilder.mockMsg2"), time: "12:01 PM" },
@@ -126,7 +209,6 @@ const ThemeBuilder = ({ onClose }: ThemeBuilderProps) => {
                 </div>
               ))}
             </div>
-            {/* Fake input */}
             <div className="p-3">
               <div
                 className="rounded-lg px-3 py-2 text-xs"
@@ -153,53 +235,10 @@ const ThemeBuilder = ({ onClose }: ThemeBuilderProps) => {
 
         <p className="text-xs text-muted-foreground">{t("themeBuilder.subtitle")}</p>
 
-        {/* Color Picker */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t("themeBuilder.pickColor")}
-          </label>
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className="w-12 h-12 rounded-lg border-2 border-border cursor-pointer bg-transparent"
-            />
-            <span className="text-sm font-mono text-foreground uppercase">{color}</span>
-          </div>
-        </div>
-
-        {/* Mode Toggle */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t("themeBuilder.mode")}
-          </label>
-          <div className="flex gap-1">
-            {(["auto", "light", "dark"] as ThemeMode[]).map((m) => (
-              <Button
-                key={m}
-                variant={mode === m ? "default" : "outline"}
-                size="sm"
-                onClick={() => setMode(m)}
-                className="flex-1 text-xs capitalize"
-              >
-                {m === "light" && <Sun className="h-3 w-3 me-1" />}
-                {m === "dark" && <Moon className="h-3 w-3 me-1" />}
-                {t(`themeBuilder.mode_${m}`)}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* Surprise Me */}
-        <Button variant="outline" onClick={handleSurprise} className="w-full gap-2">
-          <Dices className="h-4 w-4" />
-          {t("themeBuilder.surpriseMe")}
-        </Button>
+        {controls}
 
         <div className="flex-1" />
 
-        {/* Save / Cancel */}
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose} className="flex-1">
             {t("themeBuilder.cancel")}
