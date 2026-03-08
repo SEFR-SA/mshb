@@ -539,12 +539,14 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
 
   const handleDeleteForMe = useCallback(async (id: string) => {
     if (!user) return;
+    setHiddenIds(prev => new Set(prev).add(id));
     await supabase.from("message_hidden").insert({ user_id: user.id, message_id: id });
   }, [user]);
 
   const handleDeleteForEveryone = useCallback(async (id: string) => {
     await supabase.from("messages").update({ deleted_for_everyone: true, content: "" }).eq("id", id);
-  }, []);
+    updateRealtimeMessage({ id, deleted_for_everyone: true, content: "" });
+  }, [updateRealtimeMessage]);
 
   const handleMarkUnread = useCallback((msgId: string, msgCreatedAt: string) => {
     if (!user) return;
