@@ -758,7 +758,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
               </div>
             )}
             {messages.filter(m => !hiddenIds.has(m.id)).map((msg, idx, visibleMsgs) => {
-              const prevMsg = idx > 0 ? messages[idx - 1] : null;
+              const prevMsg = idx > 0 ? visibleMsgs[idx - 1] : null;
               const replyToMsg = (msg as any).reply_to_id
                 ? messages.find((m) => m.id === (msg as any).reply_to_id) || null
                 : null;
