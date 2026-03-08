@@ -137,9 +137,9 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
     <Dialog open onOpenChange={onClose}>
       <DialogContent className={cn("p-0 flex flex-col overflow-hidden gap-0", isMobile ? "w-full max-w-full" : "w-[900px] max-w-[95vw] max-h-[90vh]")}>
         {/* Body */}
-        <div className="flex flex-1 overflow-hidden min-h-0">
+        <div className={cn("flex flex-1 overflow-hidden min-h-0", isMobile && "flex-col overflow-y-auto")}>
           {/* ── Left Pane ── */}
-          <div className="w-[380px] shrink-0 overflow-y-auto p-6 flex flex-col gap-6 border-e border-border/50">
+          <div className={cn("overflow-y-auto flex flex-col", isMobile ? "w-full p-5 gap-5" : "w-[380px] shrink-0 p-6 gap-6 border-e border-border/50")}>
             <h2 className="text-base font-bold">{t("nameStyle.title")}</h2>
 
             {/* Font Grid */}
