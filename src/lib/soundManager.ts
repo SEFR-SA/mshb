@@ -149,6 +149,7 @@ export function stopAllLoops(): void {
  * Falls back silently if the file can't be fetched or decoded.
  */
 export async function playNotificationSound(): Promise<void> {
+  if (isStreamerMode()) return;
   try {
     warmUp();
     const ctx = getAudioContext();
