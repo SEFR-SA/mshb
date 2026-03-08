@@ -664,6 +664,7 @@ export default {
     camera: "الكاميرا",
     testSpeaker: "اختبار السماعة",
     inputVolume: "مستوى الإدخال",
+    outputVolume: "مستوى الإخراج",
     noDevices: "لا توجد أجهزة",
     selectLanguage: "اللغة",
     timeFormat: "تنسيق الوقت",

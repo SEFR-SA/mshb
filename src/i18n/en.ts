@@ -664,6 +664,7 @@ export default {
     camera: "Camera",
     testSpeaker: "Test Speaker",
     inputVolume: "Input Volume",
+    outputVolume: "Output Volume",
     noDevices: "No devices found",
     selectLanguage: "Language",
     timeFormat: "Time Format",

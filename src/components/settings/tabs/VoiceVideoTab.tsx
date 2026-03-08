@@ -19,7 +19,13 @@ const VoiceVideoTab = () => {
 
   // Camera devices are tab-local (not needed globally)
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
-  const [cameraDeviceId, setCameraDeviceId] = useState("default");
+  const [cameraDeviceId, setCameraDeviceId] = useState(() => {
+    try {
+      const stored = localStorage.getItem("mshb_device_prefs");
+      if (stored) { const p = JSON.parse(stored); return p.cameraDeviceId || "default"; }
+    } catch {}
+    return "default";
+  });
 
   const [micLevel, setMicLevel] = useState(0);
   const [isMonitoring, setIsMonitoring] = useState(false);
@@ -28,16 +34,8 @@ const VoiceVideoTab = () => {
   const micStreamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  // Load camera devices + camera pref on mount
+  // Enumerate camera devices on mount
   useState(() => {
-    try {
-      const stored = localStorage.getItem("mshb_device_prefs");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.cameraDeviceId) setCameraDeviceId(parsed.cameraDeviceId);
-      }
-    } catch {}
-
     navigator.mediaDevices.enumerateDevices().then((devices) => {
       setCameraDevices(devices.filter((d) => d.kind === "videoinput"));
     }).catch(() => {});
