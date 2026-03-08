@@ -22,6 +22,8 @@ interface Device {
   browser: string;
   last_active: string;
   created_at: string;
+  ip_address: string | null;
+  location: string | null;
 }
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
