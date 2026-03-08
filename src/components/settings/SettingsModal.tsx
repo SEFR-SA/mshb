@@ -27,9 +27,10 @@ const VoiceVideoTab    = lazy(() => import("./tabs/VoiceVideoTab"));
 const LanguageTab      = lazy(() => import("./tabs/LanguageTab"));
 const MarketplaceTab   = lazy(() => import("./tabs/MarketplaceTab"));
 const KeybindsTab      = lazy(() => import("./tabs/KeybindsTab"));
+const DevicesTab       = lazy(() => import("./tabs/DevicesTab"));
 
 type TabId =
-  | "profile" | "account" | "social" | "notifications"
+  | "profile" | "account" | "devices" | "social" | "notifications"
   | "subscriptions" | "billing" | "appearance" | "voice" | "language"
   | "marketplace" | "keybinds";
 
