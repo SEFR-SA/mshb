@@ -1,75 +1,64 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Fix: Make Theme Builder Responsive on Mobile
 
-## Tech Stack
+### Problem
+The `ThemeBuilder` component is a **fixed full-screen overlay** with a horizontal `flex` layout: a large preview mock on the left and a `w-72` controls panel on the right. On mobile (390px wide), this layout completely breaks — the preview overflows and the controls panel is either off-screen or crushed.
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+### Solution
+On mobile, render the Theme Builder as a **Drawer (bottom sheet)** instead of the fixed overlay. The preview mock is hidden (same pattern as DisplayNameStyleModal), and the controls are presented in a single-column scrollable drawer.
 
-## Core Directives (CRITICAL — Always Enforce)
+### Changes
 
-### 1. Plan First
+**File: `src/components/settings/ThemeBuilder.tsx`**
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+1. Import `useIsMobile` and Drawer components
+2. On mobile: wrap the controls in a `Drawer` bottom sheet, hide the large preview mock entirely, and show a small inline color swatch as a mini-preview instead
+3. On desktop: keep the existing full-screen overlay layout unchanged
 
-### 2. Single Source of Truth (SSOT)
+**Mobile layout structure:**
+```
+Drawer (bottom sheet)
+  ├─ Drag handle
+  ├─ Title + Close
+  ├─ Small color swatch preview (rounded div showing primary + bg colors)
+  ├─ Color picker
+  ├─ Mode toggle (auto/light/dark)
+  ├─ Surprise Me button
+  └─ Save / Cancel buttons
+```
 
-Never duplicate display logic. Always use the canonical shared components:
+**File: `src/components/settings/tabs/AppearanceTab.tsx`**
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+No changes needed — it already calls `setShowBuilder(true)` which renders `<ThemeBuilder />`. The ThemeBuilder itself will handle the responsive switch internally.
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+### Implementation Detail
 
-### 3. Pro Gating
+```tsx
+// ThemeBuilder.tsx — mobile branch
+if (isMobile) {
+  return (
+    <Drawer open onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>{t("themeBuilder.title")}</DrawerTitle>
+        </DrawerHeader>
+        {/* Mini color preview swatch */}
+        <div className="flex gap-2 items-center px-1">
+          <div className="h-10 flex-1 rounded-lg" style={{ background: vars["--color-bg"] }} />
+          <div className="h-10 flex-1 rounded-lg" style={{ background: vars["--color-primary"] }} />
+          <div className="h-10 flex-1 rounded-lg" style={{ background: vars["--color-surface"] }} />
+        </div>
+        {/* Color picker + mode + surprise + save/cancel — same controls, full width */}
+      </DrawerContent>
+    </Drawer>
+  );
+}
+// else: existing desktop overlay
+```
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+### Files Changed
+| File | Change |
+|------|--------|
+| `src/components/settings/ThemeBuilder.tsx` | Add `useIsMobile`, render as Drawer on mobile with mini swatch preview, keep desktop overlay unchanged |
 
-### 4. No Hallucinations
-
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
-
-### 5. No Over-Engineering
-
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
-
-## Documentation Directory
-
-Read these files for specific details — do NOT rely on memory alone:
-
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
