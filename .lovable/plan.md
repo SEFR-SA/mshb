@@ -1,39 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-## Fix Status Submenu: Hover Contrast, Disappearing Menu, and Positioning
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-### Changes to `src/components/layout/UserPanelPopover.tsx`
+## Tech Stack
 
-**1. Add `hover:text-accent-foreground`** to each status option button (line 150) — same fix as the other buttons.
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-**2. Fix disappearing submenu** — The gap between the status row and the side menu (`ms-2`) creates a dead zone where `onMouseLeave` fires. Fix by adding an invisible bridge: replace `ms-2` with `ms-0` on the submenu container and add `ps-2` padding on a wrapper so the hover area is continuous.
+## Core Directives (CRITICAL — Always Enforce)
 
-**3. Move submenu up** — Change `top-0` to `top-[-8px]` (or `bottom-0` to anchor from bottom) so the last option isn't clipped by the viewport.
+### 1. Plan First
 
-### Specific edits
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-- **Lines 144-164**: Wrap the submenu `div` in a bridge container:
-```tsx
-<div className="absolute left-full top-0 ms-0 rtl:left-auto rtl:right-full z-50 ps-2 rtl:ps-0 rtl:pe-2">
-  <div className="w-[200px] rounded-md border border-border bg-popover/95 backdrop-blur-xl p-1 shadow-lg -mt-2">
-    {STATUS_OPTIONS.map((opt) => (
-      <button
-        className={cn(
-          "... hover:bg-accent hover:text-accent-foreground ...",
-          currentStatus === opt.value && "bg-accent text-accent-foreground"
-        )}
-      >
-        ...
-        {opt.description && (
-          <span className="... group-hover:text-accent-foreground">...</span>
-        )}
-      </button>
-    ))}
-  </div>
-</div>
-```
+### 2. Single Source of Truth (SSOT)
 
-- Each status button gets `hover:text-accent-foreground` added to its className (already has `hover:bg-accent`)
-- The description `span` inside each button uses the parent `group` + `group-hover:text-accent-foreground` pattern
-- The active status item gets `text-accent-foreground` alongside `bg-accent`
+Never duplicate display logic. Always use the canonical shared components:
 
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+
+### 3. Pro Gating
+
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+
+### 4. No Hallucinations
+
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+
+### 5. No Over-Engineering
+
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+
+## Documentation Directory
+
+Read these files for specific details — do NOT rely on memory alone:
+
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+
+## Cosmetic Asset Specs
+
+Per-asset guides with exact dimensions, config files, and wrapper usage:
+
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

@@ -142,25 +142,27 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
 
             {/* Side-positioned status submenu */}
             {showStatusMenu && (
-              <div className="absolute left-full top-0 ms-2 rtl:left-auto rtl:right-full rtl:ms-0 rtl:me-2 z-50 w-[200px] rounded-md border border-border bg-popover/95 backdrop-blur-xl p-1 shadow-lg">
-                {STATUS_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    className={cn(
-                      "flex flex-col w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start gap-0.5",
-                      currentStatus === opt.value && "bg-accent"
-                    )}
-                    onClick={() => handleStatusChange(opt.value)}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", opt.color)} />
-                      {opt.label}
-                    </span>
-                    {opt.description && (
-                      <span className="text-[10px] text-muted-foreground ps-[18px]">{opt.description}</span>
-                    )}
-                  </button>
-                ))}
+              <div className="absolute left-full top-0 ms-0 rtl:left-auto rtl:right-full z-50 ps-2 rtl:ps-0 rtl:pe-2">
+                <div className="w-[200px] rounded-md border border-border bg-popover/95 backdrop-blur-xl p-1 shadow-lg -mt-2">
+                  {STATUS_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      className={cn(
+                        "flex flex-col w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start gap-0.5 group",
+                        currentStatus === opt.value && "bg-accent text-accent-foreground"
+                      )}
+                      onClick={() => handleStatusChange(opt.value)}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", opt.color)} />
+                        {opt.label}
+                      </span>
+                      {opt.description && (
+                        <span className="text-[10px] text-muted-foreground group-hover:text-accent-foreground ps-[18px]">{opt.description}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
