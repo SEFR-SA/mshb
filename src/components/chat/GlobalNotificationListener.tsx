@@ -64,9 +64,21 @@ const GlobalNotificationListener = () => {
                     .eq("server_id", serverId)
                     .maybeSingle();
 
-                const notificationLevel = (prefRow as any)?.level || channelData.servers.default_notification_level || "all_messages";
+                let notificationLevel = (prefRow as any)?.level || channelData.servers.default_notification_level || "all_messages";
 
-                // If user chose "nothing", skip entirely
+                // Check per-channel override (takes priority over server-level pref)
+                const { data: channelPrefRow } = await supabase
+                    .from("channel_notification_prefs" as any)
+                    .select("level")
+                    .eq("user_id", user.id)
+                    .eq("channel_id", msg.channel_id)
+                    .maybeSingle();
+
+                if ((channelPrefRow as any)?.level) {
+                    notificationLevel = (channelPrefRow as any).level;
+                }
+
+                // If user chose "nothing" at either level, skip entirely
                 if (notificationLevel === "nothing") return;
 
                 const content = msg.content || "";

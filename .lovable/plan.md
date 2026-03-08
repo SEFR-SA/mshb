@@ -1,57 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-## Plan: Per-Channel Notification Overrides
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-### Problem
-Users can set server-level notification preferences but cannot customize notifications for individual channels within a server.
+## Tech Stack
 
-### Changes
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-#### 1. Database: Create `channel_notification_prefs` table
+## Core Directives (CRITICAL — Always Enforce)
 
-```sql
-CREATE TABLE public.channel_notification_prefs (
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  channel_id uuid NOT NULL,
-  level text NOT NULL DEFAULT 'all_messages',
-  PRIMARY KEY (user_id, channel_id)
-);
+### 1. Plan First
 
-ALTER TABLE public.channel_notification_prefs ENABLE ROW LEVEL SECURITY;
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
--- Standard user-own-data RLS policies (SELECT, INSERT, UPDATE, DELETE)
-```
+### 2. Single Source of Truth (SSOT)
 
-Values: `all_messages`, `only_mentions`, `nothing`.
+Never duplicate display logic. Always use the canonical shared components:
 
-#### 2. New hook: `src/hooks/useChannelNotificationPref.ts`
-Mirror the pattern from `useServerNotificationPref.ts`:
-- Single-channel fetch + `setLevel` with upsert
-- Batch-fetch variant for multiple channels (used in sidebar)
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-#### 3. UI: Add notification option to channel dropdown in `ChannelSidebar.tsx`
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-Currently the admin dropdown (line ~572) only shows Edit/Manage Members/Delete for admins. We need a notification submenu available to **all users** (not just admins).
+### 3. Pro Gating
 
-Approach:
-- Add a `DropdownMenuSub` with Bell icon + "Notifications" label containing three `DropdownMenuCheckboxItem` options (All Messages, Only @mentions, Nothing) inside `renderAdminDropdown` — but also render a separate simpler dropdown for non-admins that only contains the notification option.
-- Refactor: rename `renderAdminDropdown` to `renderChannelDropdown` and always show the notification sub-menu, conditionally show admin items.
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
 
-#### 4. Update `GlobalNotificationListener.tsx`
+### 4. No Hallucinations
 
-After resolving server-level pref (line ~67), also check `channel_notification_prefs` for the specific channel. Channel-level pref takes priority over server-level pref:
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
 
-```
-channel pref → server pref → server default → "all_messages"
-```
+### 5. No Over-Engineering
 
-#### 5. i18n updates
-Add keys in `en.ts` and `ar.ts`:
-- `channels.notifications` — "Notifications"
-- `channels.allMessages` — "All Messages"
-- `channels.onlyMentions` — "Only @mentions"
-- `channels.nothing` — "Nothing"
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
 
-### Priority Chain
-Channel override > Server override > Server default > "all_messages"
+## Documentation Directory
 
+Read these files for specific details — do NOT rely on memory alone:
+
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+
+## Cosmetic Asset Specs
+
+Per-asset guides with exact dimensions, config files, and wrapper usage:
+
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

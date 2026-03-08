@@ -447,6 +447,11 @@ export default {
     announcementDesc: "يمكن فقط للمشرفين والمالكين النشر في هذه القناة.",
     announcementReadOnly: "يمكن فقط للمشرفين إرسال الرسائل في هذه القناة.",
     announcementBadge: "إعلانات",
+    notifications: "الإشعارات",
+    allMessages: "كل الرسائل",
+    onlyMentions: "المنشن فقط",
+    nothing: "لا شيء",
+    useServerDefault: "استخدام إعداد السيرفر",
   },
   audio: {
     mute: "كتم الميكروفون",
