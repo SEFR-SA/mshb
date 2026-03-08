@@ -306,7 +306,7 @@ const ProfileTab = () => {
               {/* Body */}
               <div className="px-4 pb-4 pt-0 relative">
                 {/* Avatar + Status Bubble row */}
-                <div className="-mt-7 mb-2 flex items-end gap-2">
+                <div className="-mt-10 mb-2 flex items-end gap-2">
                   <label className="cursor-pointer relative inline-block group shrink-0">
                     <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={isPro} size={80}>
                       <Avatar className="h-20 w-20 border-4 border-background" alwaysPlayGif>
