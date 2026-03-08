@@ -53,6 +53,7 @@ const CallListener = () => {
   const { user } = useAuth();
   const { globalMuted, globalDeafened } = useAudioSettings();
   const { voiceChannel, disconnectVoice } = useVoiceChannel();
+  const { isStreamerMode } = useStreamerMode();
   const navigate = useNavigate();
 
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
