@@ -1380,6 +1380,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_username_available: {
+        Args: { p_username: string }
+        Returns: boolean
+      }
       generate_invite_code: { Args: never; Returns: string }
       get_email_by_username: { Args: { p_username: string }; Returns: string }
       get_server_id_by_invite: { Args: { p_code: string }; Returns: string }
@@ -1424,6 +1428,10 @@ export type Database = {
         Returns: boolean
       }
       toggle_message_pin: { Args: { p_message_id: string }; Returns: boolean }
+      update_entrance_sound: {
+        Args: { p_server_id: string; p_sound_id: string }
+        Returns: undefined
+      }
       use_invite: { Args: { p_code: string }; Returns: string }
     }
     Enums: {

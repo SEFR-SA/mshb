@@ -16,7 +16,7 @@ const FileAttachmentButton = ({ onFileSelect, disabled }: FileAttachmentButtonPr
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isPro = (profile as any)?.is_pro ?? false;
-  const MAX_FILE_SIZE = isPro ? 1024 * 1024 * 1024 : 50 * 1024 * 1024; // 1 GB vs 50 MB
+  const MAX_FILE_SIZE = isPro ? 100 * 1024 * 1024 : 25 * 1024 * 1024; // 100 MB vs 25 MB
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

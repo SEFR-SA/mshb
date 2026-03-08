@@ -176,11 +176,10 @@ const ServerMemberList = ({ serverId }: Props) => {
   };
 
   const updateEntranceSound = async (soundId: string | null) => {
-    await supabase
-      .from("server_members" as any)
-      .update({ entrance_sound_id: soundId } as any)
-      .eq("server_id", serverId)
-      .eq("user_id", user!.id);
+    await supabase.rpc("update_entrance_sound" as any, {
+      p_server_id: serverId,
+      p_sound_id: soundId,
+    });
     setEntranceSoundId(soundId);
     toast.success(t("servers.entranceSoundUpdated"));
   };
