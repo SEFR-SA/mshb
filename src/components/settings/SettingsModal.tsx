@@ -247,7 +247,7 @@ const SettingsModal = () => {
               <Menu className="h-4 w-4" />
             </button>
             <span className="font-semibold text-sm truncate pe-10">
-              {t(NAV_GROUPS.flatMap((g) => g.items).find((i) => i.id === activeTab)?.labelKey ?? "")}
+              {t(navGroups.flatMap((g) => g.items).find((i) => i.id === activeTab)?.labelKey ?? "")}
             </span>
           </div>
 
