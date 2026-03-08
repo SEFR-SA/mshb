@@ -594,7 +594,7 @@ const Chat = () => {
                     }
                   }}
                 >
-                  <div id={`msg-${msg.id}`} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} group/msg hover:bg-muted/30 rounded-lg -mx-2 px-2 py-1 transition-colors ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
+                  <div id={`msg-${msg.id}`} onMouseEnter={() => setHoveredMsgId(msg.id)} onMouseLeave={() => setHoveredMsgId(null)} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} group/msg hover:bg-muted/30 rounded-lg -mx-2 px-2 py-1 transition-colors ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
                     <div className="max-w-[75%]">
                       {msgAny.reply_to_id && (() => {
                         const original = visibleMessages.find(m => m.id === msgAny.reply_to_id);
