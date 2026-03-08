@@ -116,6 +116,7 @@ function playSyntheticTone(
 const loopIntervals: Partial<Record<string, number>> = {};
 
 export function startLoop(key: "outgoing_ring" | "incoming_ring"): void {
+  if (isStreamerMode()) return;
   stopLoop(key);
   const isOutgoing = key === "outgoing_ring";
   // Outgoing: calmer two-tone, incoming: more urgent
