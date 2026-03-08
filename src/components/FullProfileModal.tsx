@@ -36,7 +36,7 @@ interface MutualFriend {
 interface MutualServer {
   id: string;
   name: string;
-  avatar_url: string | null;
+  icon_url: string | null;
 }
 
 // ─── Small reusable section wrapper ──────────────────────────────────────────
@@ -83,9 +83,9 @@ const FriendRow = ({
 const ServerRow = ({ server }: { server: MutualServer }) => (
   <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg">
     <div className="h-8 w-8 rounded-lg shrink-0 bg-muted flex items-center justify-center overflow-hidden">
-      {server.avatar_url ? (
+      {server.icon_url ? (
         <img
-          src={server.avatar_url}
+          src={server.icon_url}
           alt=""
           className="w-full h-full object-cover"
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
@@ -194,7 +194,7 @@ const FullProfileModal = () => {
 
     const { data: servers } = await supabase
       .from("servers")
-      .select("id,name,avatar_url")
+      .select("id,name,icon_url")
       .in("id", mutualIds);
 
     setMutualServers((servers ?? []) as MutualServer[]);

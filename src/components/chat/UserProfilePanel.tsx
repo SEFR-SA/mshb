@@ -38,9 +38,9 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
       )}
 
       {/* Avatar + Status Bubble row */}
-      <div className="px-4 -mt-10 flex items-end gap-2">
-        <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={80} className="shrink-0">
-          <Avatar className="h-20 w-20 border-4 border-background">
+      <div className="px-4 -mt-16 flex items-end gap-2">
+        <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={120} className="shrink-0">
+          <Avatar className="h-[120px] w-[120px] border-4 border-background">
             <AvatarImage src={profile.avatar_url || ""} />
             <AvatarFallback className="bg-primary/20 text-primary text-2xl">
               {(profile.display_name || profile.username || "?").charAt(0).toUpperCase()}
