@@ -71,6 +71,7 @@ export default {
     resetSubtext: "Enter your email to reset your password",
     loginInstead: "Log in instead",
     signupInstead: "Sign up instead",
+    kickedOut: "You were logged out from another device.",
   },
   nav: {
     inbox: "Messages",

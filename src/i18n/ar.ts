@@ -71,6 +71,7 @@ export default {
     resetSubtext: "أدخل بريدك الإلكتروني لإعادة تعيين كلمة المرور",
     loginInstead: "تسجيل الدخول بدلاً من ذلك",
     signupInstead: "إنشاء حساب بدلاً من ذلك",
+    kickedOut: "تم تسجيل خروجك من جهاز آخر.",
   },
   nav: {
     inbox: "الرسائل",

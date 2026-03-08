@@ -98,6 +98,7 @@ export function useDeviceTracker() {
         },
         (payload) => {
           if ((payload.old as any)?.device_id === deviceId) {
+            localStorage.setItem("mshb_kicked", "true");
             supabase.auth.signOut();
           }
         }
