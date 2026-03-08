@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import PasswordStrengthBar, { checkPasswordRules, allRulesPass } from "@/components/PasswordStrengthBar";
-import { CheckCircle2, XCircle, Eye, EyeOff, Mail, Lock, ArrowLeft, User, Chrome } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, EyeOff, Mail, Lock, ArrowLeft, User } from "lucide-react";
 
 type AuthMode = "login" | "signup" | "reset" | "pending";
 
