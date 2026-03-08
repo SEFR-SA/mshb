@@ -33,6 +33,7 @@ import StyledDisplayName from "@/components/StyledDisplayName";
 import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useStreamerMode } from "@/contexts/StreamerModeContext";
 
 type EditField = "displayName" | "username" | "email" | "password" | null;
 
@@ -41,6 +42,7 @@ const AccountTab = () => {
   const { user, profile, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { isStreamerMode } = useStreamerMode();
   const [editField, setEditField] = useState<EditField>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -305,7 +307,7 @@ const AccountTab = () => {
           >
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">{t("auth.email")}</p>
-              <p className="text-sm mt-0.5">{user?.email ? user.email.replace(/(.{3}).*(@)/, "$1•••$2") : "—"}</p>
+              <p className="text-sm mt-0.5">{isStreamerMode ? "••••••@••••••" : (user?.email ? user.email.replace(/(.{3}).*(@)/, "$1•••$2") : "—")}</p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="h-7 text-xs pointer-events-none">

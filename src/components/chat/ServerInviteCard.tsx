@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
 import { Users, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useStreamerMode } from "@/contexts/StreamerModeContext";
 import type { ServerInviteMetadata } from "@/lib/inviteUtils";
 
 interface Props {
@@ -20,6 +21,7 @@ type InviteStatus = "loading" | "valid" | "expired" | "maxed" | "not_found" | "a
 const ServerInviteCard = ({ metadata, isMine }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { isStreamerMode } = useStreamerMode();
   const navigate = useNavigate();
 
   const [memberCount, setMemberCount] = useState<number | null>(null);
@@ -146,7 +148,7 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           {t("servers.youAreInvited")}
         </p>
-        <h3 className="font-bold text-base leading-tight truncate">{metadata.server_name}</h3>
+        <h3 className="font-bold text-base leading-tight truncate">{isStreamerMode ? "••••••••" : metadata.server_name}</h3>
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           {inviteStatus === "loading" ? (

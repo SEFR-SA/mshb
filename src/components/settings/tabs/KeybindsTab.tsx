@@ -34,6 +34,12 @@ interface Section {
 
 const SECTIONS: Section[] = [
   {
+    title: "App Settings",
+    binds: [
+      { label: "Toggle Streamer Mode", keys: ["Ctrl", "Shift", "S"] },
+    ],
+  },
+  {
     title: "Messages",
     binds: [
       { label: "Edit Message", keys: ["E"] },

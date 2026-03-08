@@ -15,12 +15,15 @@ import VoiceConnectionManager from "@/components/server/VoiceConnectionBar";
 import UserPanel from "@/components/layout/UserPanel";
 import GlobalNotificationListener from "@/components/chat/GlobalNotificationListener";
 import { useGlobalKeybinds } from "@/hooks/useGlobalKeybinds";
+import { useStreamerMode } from "@/contexts/StreamerModeContext";
 import { NavLink } from "react-router-dom";
+import { Monitor, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const AppLayout = () => {
   useGlobalKeybinds();
   const { t } = useTranslation();
+  const { isStreamerMode, toggleStreamerMode } = useStreamerMode();
   const { user, profile } = useAuth();
   const { voiceChannel, disconnectVoice } = useVoiceChannel();
   const { getGradientStyle, colorTheme } = useTheme();
@@ -50,6 +53,23 @@ const AppLayout = () => {
     <div className={`flex flex-col h-screen overflow-hidden ${colorTheme === "default" ? "bg-background" : ""}`} style={colorTheme !== "default" ? gradientStyle : undefined}>
       <CallListener />
       <GlobalNotificationListener />
+
+      {/* Streamer Mode banner */}
+      {isStreamerMode && (
+        <div className="shrink-0 flex items-center justify-between px-4 py-1.5 bg-primary text-primary-foreground z-[9999]">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Monitor className="h-4 w-4" />
+            <span>Streamer Mode is Enabled</span>
+          </div>
+          <button
+            onClick={toggleStreamerMode}
+            className="flex items-center gap-1 text-xs font-semibold opacity-90 hover:opacity-100 transition-opacity"
+          >
+            <X className="h-3.5 w-3.5" />
+            Disable
+          </button>
+        </div>
+      )}
 
       {/* Electron WCO title bar: app icon, version, drag region, and safe-area spacer */}
       {isElectron && (
