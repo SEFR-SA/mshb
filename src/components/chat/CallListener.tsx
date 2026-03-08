@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { getNotificationPrefs } from "@/lib/notificationPrefs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
@@ -160,7 +161,10 @@ const CallListener = () => {
           });
 
           // Play incoming ring
-          startLoop("incoming_ring");
+          const callPrefs = getNotificationPrefs();
+          if (callPrefs.callSound) {
+            startLoop("incoming_ring");
+          }
 
           // Auto-decline after 3 minutes
           timeoutRef.current = setTimeout(async () => {

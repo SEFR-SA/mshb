@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { getNotificationPrefs } from "@/lib/notificationPrefs";
 import { ServerRailSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { useTranslation } from "react-i18next";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
@@ -56,7 +57,7 @@ const NotificationBell = () => {
     <NotificationCenter>
       <button className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-sidebar-accent/30 text-sidebar-foreground hover:bg-primary/20 hover:text-primary hover:rounded-xl transition-all">
         <Bell className="h-5 w-5" />
-        {unreadCount > 0 && (
+        {getNotificationPrefs().showBadge && unreadCount > 0 && (
           <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1 leading-none select-none">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
@@ -371,9 +372,11 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                         </AvatarFallback>
                       </Avatar>
                       {/* Unread badge */}
-                      <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1 leading-none select-none">
-                        {dm.unreadCount > 99 ? "99+" : dm.unreadCount}
-                      </span>
+                      {getNotificationPrefs().showBadge && (
+                        <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1 leading-none select-none">
+                          {dm.unreadCount > 99 ? "99+" : dm.unreadCount}
+                        </span>
+                      )}
                     </button>
                   </TooltipTrigger>
                 </Tooltip>
@@ -439,7 +442,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                           onPointerUp={isMobile ? cancelLongPress : undefined}
                           onPointerLeave={isMobile ? cancelLongPress : undefined}
                         >
-                          {hasUnread && (
+                          {getNotificationPrefs().showBadge && hasUnread && (
                             <div className="absolute -start-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full z-10" />
                           )}
                           <NavLink

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { getNotificationPrefs } from "@/lib/notificationPrefs";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -117,7 +118,7 @@ const ServerFolder: React.FC<ServerFolderProps> = ({
                 const hasUnread = unreadMap.get(s.id) || false;
                 return (
                   <div key={s.id} className="relative">
-                    {hasUnread && (
+                    {getNotificationPrefs().showBadge && hasUnread && (
                       <div className="absolute -start-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full z-10" />
                     )}
                     <NavLink

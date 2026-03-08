@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { getNotificationPrefs } from "@/lib/notificationPrefs";
 import { SidebarItemSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslation } from "react-i18next";
@@ -383,7 +384,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                           ) : (
                             <p className="text-sm font-medium truncate">{item.name}</p>
                           )}
-                          {item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
+                          {getNotificationPrefs().showBadge && item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
                         </div>
                         <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
                       </div>
@@ -416,7 +417,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium truncate">{item.name}</p>
-                      {item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
+                      {getNotificationPrefs().showBadge && item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
                   </div>
