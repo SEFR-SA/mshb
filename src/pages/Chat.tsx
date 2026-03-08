@@ -157,16 +157,6 @@ const Chat = () => {
     })();
   }, [threadId, user]);
 
-  const togglePin = async () => {
-    if (!threadId || !user) return;
-    if (isPinned) {
-      await supabase.from("pinned_chats").delete().eq("user_id", user.id).eq("thread_id", threadId);
-      setIsPinned(false);
-    } else {
-      await supabase.from("pinned_chats").insert({ user_id: user.id, thread_id: threadId } as any);
-      setIsPinned(true);
-    }
-  };
 
   const initiateCall = async () => {
     if (!threadId || !user || !otherId || callSessionId) return;
