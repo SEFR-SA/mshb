@@ -1428,6 +1428,10 @@ export type Database = {
         Returns: boolean
       }
       toggle_message_pin: { Args: { p_message_id: string }; Returns: boolean }
+      update_entrance_sound: {
+        Args: { p_server_id: string; p_sound_id: string }
+        Returns: undefined
+      }
       use_invite: { Args: { p_code: string }; Returns: string }
     }
     Enums: {
