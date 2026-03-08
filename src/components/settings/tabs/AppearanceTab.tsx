@@ -217,7 +217,7 @@ const AppearanceTab = () => {
       </div>
 
       {/* Theme Builder Overlay */}
-      {showBuilder && <ThemeBuilder onClose={() => setShowBuilder(false)} />}
+      {!isMobile && showBuilder && <ThemeBuilder onClose={() => setShowBuilder(false)} />}
     </div>
   );
 };
