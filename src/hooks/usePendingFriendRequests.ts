@@ -7,6 +7,7 @@ import { playNotificationSound } from "@/lib/soundManager";
 
 export function usePendingFriendRequests() {
   const { user } = useAuth();
+  const { isStreamerMode } = useStreamerMode();
   const [pendingCount, setPendingCount] = useState(0);
   const prevCountRef = useRef<number | null>(null);
 
