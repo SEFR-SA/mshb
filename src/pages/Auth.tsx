@@ -48,6 +48,14 @@ const Auth = () => {
   const [dobDay, setDobDay] = useState("");
   const [dobYear, setDobYear] = useState("");
 
+  // Show toast if kicked from another device
+  useEffect(() => {
+    if (localStorage.getItem("mshb_kicked")) {
+      localStorage.removeItem("mshb_kicked");
+      toast({ title: t("auth.kickedOut"), variant: "destructive" });
+    }
+  }, []);
+
   // Gender
   const [gender, setGender] = useState("");
 
