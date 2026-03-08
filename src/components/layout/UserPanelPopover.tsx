@@ -116,7 +116,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
         {/* Container 1: Edit Profile + Status */}
         <div className="mt-3 rounded-md bg-muted/50 p-1 space-y-0.5">
           <button
-            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors text-start"
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start"
             onClick={handleEditProfile}
           >
             <Pencil className="h-3.5 w-3.5 shrink-0" />
@@ -130,14 +130,14 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
             onMouseLeave={() => setShowStatusMenu(false)}
           >
             <button
-              className="flex items-center justify-between w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors text-start"
+              className="flex items-center justify-between w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start group"
               onClick={() => setShowStatusMenu(!showStatusMenu)}
             >
               <span className="flex items-center gap-2">
                 <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", currentStatusOption.color)} />
                 {currentStatusOption.label}
               </span>
-              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+              <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-accent-foreground" />
             </button>
 
             {/* Side-positioned status submenu */}
@@ -147,7 +147,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
                   <button
                     key={opt.value}
                     className={cn(
-                      "flex flex-col w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors text-start gap-0.5",
+                      "flex flex-col w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start gap-0.5",
                       currentStatus === opt.value && "bg-accent"
                     )}
                     onClick={() => handleStatusChange(opt.value)}
@@ -169,7 +169,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
         {/* Container 2: Sign Out */}
         <div className="mt-2 rounded-md bg-muted/50 p-1">
           <button
-            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors text-start text-destructive"
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-destructive hover:text-destructive-foreground transition-colors text-start text-destructive"
             onClick={handleSignOut}
           >
             <LogOut className="h-3.5 w-3.5 shrink-0" />
