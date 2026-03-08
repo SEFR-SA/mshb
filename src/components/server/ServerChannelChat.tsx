@@ -699,37 +699,42 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                 : null;
               const roleInfo = userRoleColorMap.get(msg.author_id) || null;
               return (
-                <MessageItem
+                <div
                   key={msg.id}
-                  msg={msg}
-                  prevMsg={prevMsg}
-                  replyToMsg={replyToMsg}
-                  profiles={profiles}
-                  roleInfo={roleInfo}
-                  currentUserId={user?.id}
-                  serverEmojis={serverEmojis}
-                  serverId={serverId}
-                  channelId={channelId}
-                  isAnnouncement={isAnnouncement}
-                  isFirstMessage={idx === 0}
-                  isHighlighted={highlightedMsgId === msg.id}
-                  reactions={reactions.get(msg.id) || EMPTY_REACTIONS}
-                  user={user}
-                  onReply={handleReply}
-                  onDeleteForMe={handleDeleteForMe}
-                  onDeleteForEveryone={msg.author_id === user?.id ? handleDeleteForEveryone : undefined}
-                  onMarkUnread={handleMarkUnread}
-                  onTogglePin={handleToggleMessagePin}
-                  onHighlight={setHighlightedMsgId}
-                  toggleReaction={toggleReaction}
-                  onAddReaction={(id) => setReactionPickerMsgId(id)}
-                  onForward={(id) => {
-                    const m = messages.find(v => v.id === id);
-                    if (m) openForwardModal({ content: m.content, fileUrl: m.file_url, fileName: m.file_name, fileType: m.file_type, fileSize: m.file_size });
-                  }}
-                  reactionPickerMsgId={reactionPickerMsgId}
-                  onReactionPickerHandled={() => setReactionPickerMsgId(null)}
-                />
+                  onMouseEnter={() => setHoveredMsgId(msg.id)}
+                  onMouseLeave={() => setHoveredMsgId(null)}
+                >
+                  <MessageItem
+                    msg={msg}
+                    prevMsg={prevMsg}
+                    replyToMsg={replyToMsg}
+                    profiles={profiles}
+                    roleInfo={roleInfo}
+                    currentUserId={user?.id}
+                    serverEmojis={serverEmojis}
+                    serverId={serverId}
+                    channelId={channelId}
+                    isAnnouncement={isAnnouncement}
+                    isFirstMessage={idx === 0}
+                    isHighlighted={highlightedMsgId === msg.id}
+                    reactions={reactions.get(msg.id) || EMPTY_REACTIONS}
+                    user={user}
+                    onReply={handleReply}
+                    onDeleteForMe={handleDeleteForMe}
+                    onDeleteForEveryone={msg.author_id === user?.id ? handleDeleteForEveryone : undefined}
+                    onMarkUnread={handleMarkUnread}
+                    onTogglePin={handleToggleMessagePin}
+                    onHighlight={setHighlightedMsgId}
+                    toggleReaction={toggleReaction}
+                    onAddReaction={(id) => setReactionPickerMsgId(id)}
+                    onForward={(id) => {
+                      const m = messages.find(v => v.id === id);
+                      if (m) openForwardModal({ content: m.content, fileUrl: m.file_url, fileName: m.file_name, fileType: m.file_type, fileSize: m.file_size });
+                    }}
+                    reactionPickerMsgId={reactionPickerMsgId}
+                    onReactionPickerHandled={() => setReactionPickerMsgId(null)}
+                  />
+                </div>
               );
             })}
             <div ref={messagesEndRef} />
