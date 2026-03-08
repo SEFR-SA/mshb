@@ -1,4 +1,4 @@
-import { useCallback, useRef, useLayoutEffect } from "react";
+import { useCallback, useRef, useLayoutEffect, useState, useEffect } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
