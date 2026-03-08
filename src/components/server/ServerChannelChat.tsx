@@ -839,7 +839,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
         </div>
       ) : isAnnouncement && canPost ? (
         /* Markdown toolbar for admins/owners in announcement channels */
-        <div className="px-4 pb-4 pt-2 bg-transparent shrink-0">
+        <div className="px-4 pb-2 pt-2 bg-transparent shrink-0">
           {replyingTo && (
             <div className="pb-2">
               <ReplyInputBar authorName={replyingTo.authorName} onCancel={() => setReplyingTo(null)} />
