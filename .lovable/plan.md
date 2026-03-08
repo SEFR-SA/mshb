@@ -1,75 +1,78 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Architectural Insight
 
-## Tech Stack
+**Existing patterns:** The app uses React Context for all global state (Auth, Theme, Audio, VoiceChannel). There is no Zustand/Jotai. `localStorage` is already used for notification prefs (`notificationPrefs.ts`). The `useGlobalKeybinds` hook is the canonical place for app-wide keyboard shortcuts. The `AppLayout` already renders global banners (Electron title bar, voice connection bar).
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+**Potential conflict:** `Ctrl+Shift+S` — no existing keybind uses this combo (Start Streaming is `Ctrl+Alt+S`). Safe to use.
 
-## Core Directives (CRITICAL — Always Enforce)
+**Key design decision:** Rather than a full Context, Streamer Mode is best implemented as a simple `localStorage`-backed hook (like `notificationPrefs.ts`) since it has no complex state, no children that need to set it, and only needs a boolean read. However, since multiple components need to reactively read it and the keybind can toggle it from anywhere, a lightweight Context is the cleaner choice — it avoids prop-drilling and ensures all consumers re-render on toggle.
 
-### 1. Plan First
+---
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+## Plan: Streamer Mode
 
-### 2. Single Source of Truth (SSOT)
+### 1. Create `StreamerModeContext` — new file
+**File:** `src/contexts/StreamerModeContext.tsx`
 
-Never duplicate display logic. Always use the canonical shared components:
+- Provides `isStreamerMode` (boolean) and `toggleStreamerMode()`.
+- Persists to `localStorage` key `mshb_streamer_mode`.
+- Reads initial value from `localStorage` on mount.
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+### 2. Wire into App provider tree
+**File:** `src/App.tsx`
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+- Wrap inside existing provider stack (after `ThemeProvider`, before `AudioSettingsProvider`).
 
-### 3. Pro Gating
+### 3. Add global keybind `Ctrl+Shift+S`
+**File:** `src/hooks/useGlobalKeybinds.ts`
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+- Import `useStreamerMode` from the new context.
+- Add a third condition: `Ctrl+Shift+S` → `toggleStreamerMode()`.
+- Show a toast confirming "Streamer Mode enabled/disabled".
 
-### 4. No Hallucinations
+### 4. Suppress all notifications when active
+**Files:**
+- `src/components/chat/GlobalNotificationListener.tsx` — early-return from `handleNewMessage` and skip tab title updates when streamer mode is on.
+- `src/hooks/useUnreadCount.ts` — skip sound, toast, and native notification when streamer mode is on.
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+Both files will import `useStreamerMode` and gate all sound/toast/Notification calls behind `!isStreamerMode`.
 
-### 5. No Over-Engineering
+### 5. Visual banner in AppLayout
+**File:** `src/components/layout/AppLayout.tsx`
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+- Import `useStreamerMode`.
+- Render a slim `bg-indigo-500 text-white` banner at the top (before Electron title bar / main content) when `isStreamerMode` is true.
+- Banner text: "Streamer Mode is Enabled" + a "Disable" button that calls `toggleStreamerMode()`.
 
-## Documentation Directory
+### 6. Update KeybindsTab
+**File:** `src/components/settings/tabs/KeybindsTab.tsx`
 
-Read these files for specific details — do NOT rely on memory alone:
+- Add a new "App Settings" section to the `SECTIONS` array:
+  ```ts
+  { title: "App Settings", binds: [{ label: "Toggle Streamer Mode", keys: ["Ctrl", "Shift", "S"] }] }
+  ```
 
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+### 7. Data masking (AccountTab + ServerInviteCard)
+**Files:**
+- `src/components/settings/tabs/AccountTab.tsx` — when `isStreamerMode`, display the user's email as `u***@***.com` (first char + asterisks).
+- `src/components/chat/ServerInviteCard.tsx` — when `isStreamerMode`, replace the invite code display with `••••••••`.
 
-## Cosmetic Asset Specs
+---
 
-Per-asset guides with exact dimensions, config files, and wrapper usage:
+### Files Summary
 
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
+| Action | File |
+|--------|------|
+| **Create** | `src/contexts/StreamerModeContext.tsx` |
+| **Edit** | `src/App.tsx` |
+| **Edit** | `src/hooks/useGlobalKeybinds.ts` |
+| **Edit** | `src/components/chat/GlobalNotificationListener.tsx` |
+| **Edit** | `src/hooks/useUnreadCount.ts` |
+| **Edit** | `src/components/layout/AppLayout.tsx` |
+| **Edit** | `src/components/settings/tabs/KeybindsTab.tsx` |
+| **Edit** | `src/components/settings/tabs/AccountTab.tsx` |
+| **Edit** | `src/components/chat/ServerInviteCard.tsx` |
+
+No database changes required. No new dependencies.
+
