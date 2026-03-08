@@ -8,7 +8,7 @@ import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Mic, MicOff, Headphones, HeadphoneOff, Settings, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown } from "lucide-react";
+import { Mic, MicOff, Headphones, HeadphoneOff, Settings, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, ChevronUp } from "lucide-react";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
