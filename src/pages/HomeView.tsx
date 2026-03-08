@@ -39,7 +39,7 @@ const HomeView = () => {
 
   // Mobile: full-page chat (no sidebars) or home view with ServerRail + HomeSidebar content
   if (isMobile) {
-    if (isChatView || location.pathname === "/friends") {
+    if (isChatView || location.pathname === "/channels/@me/friends") {
       // Full-page chat or friends view
       return (
         <div className="flex flex-col h-full">
