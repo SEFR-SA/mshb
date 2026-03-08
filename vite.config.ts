@@ -7,6 +7,11 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => {
   return {
     base: process.env.ELECTRON === 'true' ? './' : '/',
+    build: {
+      rollupOptions: {
+        external: ['@lovable.dev/cloud-auth-js'],
+      },
+    },
     server: {
       host: "::",
       port: 8080,
