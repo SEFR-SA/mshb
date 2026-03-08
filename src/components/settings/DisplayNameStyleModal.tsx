@@ -225,11 +225,11 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
                   <NameplateWrapper nameplateUrl={p?.nameplate_url} isPro={isPro} className="rounded-t-xl">
                     {/* Banner — hide gradient placeholder when nameplate is providing the background */}
                     {p?.banner_url ? (
-                      <img src={p.banner_url} alt="" className="h-20 w-full object-cover" />
+                      <img src={p.banner_url} alt="" className="h-24 w-full object-cover" />
                     ) : !(p?.nameplate_url && isPro) ? (
-                      <div className="h-20 w-full bg-gradient-to-r from-primary/40 to-primary/20" />
+                      <div className="h-24 w-full bg-gradient-to-r from-primary/40 to-primary/20" />
                     ) : (
-                      <div className="h-20 w-full" />
+                      <div className="h-24 w-full" />
                     )}
                   </NameplateWrapper>
 
