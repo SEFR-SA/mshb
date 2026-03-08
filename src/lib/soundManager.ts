@@ -3,6 +3,11 @@
  * Pre-warms AudioContext on first user gesture for instant playback.
  */
 
+/** Check streamer-mode flag directly from localStorage (works outside React). */
+function isStreamerMode(): boolean {
+  try { return localStorage.getItem("mshb_streamer_mode") === "true"; } catch { return false; }
+}
+
 type SoundKey =
   | "outgoing_ring"
   | "incoming_ring"
