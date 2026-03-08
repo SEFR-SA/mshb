@@ -554,6 +554,23 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                         )}
                       </ContextMenuSubContent>
                     </ContextMenuSub>
+                    <ContextMenuSub>
+                      <ContextMenuSubTrigger>
+                        <Bell className="h-4 w-4 me-2" />
+                        {t("servers.serverNotifications")}
+                      </ContextMenuSubTrigger>
+                      <ContextMenuSubContent className="w-48">
+                        {(["all_messages", "only_mentions", "nothing"] as const).map((lvl) => (
+                          <ContextMenuCheckboxItem
+                            key={lvl}
+                            checked={(notifPrefsMap.get(s.id) ?? "all_messages") === lvl}
+                            onSelect={() => setNotifLevel(s.id, lvl)}
+                          >
+                            {t(lvl === "all_messages" ? "servers.allMessages" : lvl === "only_mentions" ? "servers.onlyMentions" : "servers.nothingNotif")}
+                          </ContextMenuCheckboxItem>
+                        ))}
+                      </ContextMenuSubContent>
+                    </ContextMenuSub>
                     <ContextMenuSeparator />
                     {user && s.owner_id !== user.id && (
                       <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setLeaveServerId(s.id)}>
