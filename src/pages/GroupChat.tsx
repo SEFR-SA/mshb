@@ -84,6 +84,8 @@ const GroupChat = () => {
     scrollRef,
     appendRealtimeMessage,
     updateRealtimeMessage,
+    showScrollToBottom,
+    scrollToBottom,
   } = useInfiniteMessages({ groupThreadId: groupId });
 
   // Intersection observer for loading older messages
