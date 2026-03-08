@@ -18,7 +18,7 @@ const Avatar = React.forwardRef<
     <AvatarContext.Provider value={{ isHovered, alwaysPlayGif }}>
       <AvatarPrimitive.Root
         ref={ref}
-        className={cn("relative flex h-6 w-6 shrink-0 overflow-hidden rounded-full", className)}
+        className={cn("relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full", className)}
         onMouseEnter={(e) => {
           setIsHovered(true);
           onMouseEnter?.(e);
