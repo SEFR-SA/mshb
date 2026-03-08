@@ -79,15 +79,15 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
 
       {/* Avatar + Info */}
       <div className="px-3 pb-3">
-        <div className="-mt-7 mb-2 flex items-end gap-2">
+        <div className="-mt-10 mb-2 flex items-end gap-2">
           <AvatarDecorationWrapper
             decorationUrl={p?.avatar_decoration_url}
             isPro={p?.is_pro}
-            size={56}
+            size={80}
           >
-            <Avatar className="h-14 w-14 border-4 border-background">
+            <Avatar className="h-20 w-20 border-4 border-background">
               <AvatarImage src={profile.avatar_url || ""} />
-              <AvatarFallback className="bg-primary/20 text-primary text-base">
+              <AvatarFallback className="bg-primary/20 text-primary text-lg">
                 {initials}
               </AvatarFallback>
             </Avatar>
