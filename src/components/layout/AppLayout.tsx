@@ -104,10 +104,10 @@ const AppLayout = () => {
           {isMobile && !isFullPageView && (
             <nav className="flex glass border-t border-border/50">
               <NavLink
-                to="/"
+                to="/channels/@me"
                 end
                 className={({ isActive }) =>
-                  `relative flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive || location.pathname === "/friends" ? "text-primary" : "text-muted-foreground"
+                  `relative flex-1 flex flex-col items-center gap-1 py-2 text-xs transition-colors ${isActive || location.pathname === "/channels/@me/friends" ? "text-primary" : "text-muted-foreground"
                   }`
                 }
               >
