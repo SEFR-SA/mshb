@@ -342,7 +342,7 @@ const GroupChat = () => {
       {/* Header */}
       <header className="flex items-center gap-3 p-3 glass border-b border-border/50">
         {isMobile && (
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/channels/@me")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
         )}
