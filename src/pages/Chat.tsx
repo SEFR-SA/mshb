@@ -69,7 +69,7 @@ const Chat = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [isPinned, setIsPinned] = useState(false);
+  
   const [showProfile, setShowProfile] = useState(true);
   const [callSessionId, setCallSessionId] = useState<string | null>(null);
   const [isCallerState, setIsCallerState] = useState(false);
