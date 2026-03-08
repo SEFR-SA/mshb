@@ -2,3 +2,9 @@ project_id = "wqgotyhepamnwsjcydpy"
 
 [functions.giphy-proxy]
 verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false
+
+[functions.export-user-data]
+verify_jwt = false

@@ -18,17 +18,22 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, Loader2, Download } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
+import { useNavigate } from "react-router-dom";
 
 type EditField = "displayName" | "username" | "email" | "password" | null;
 
 const AccountTab = () => {
   const { t } = useTranslation();
   const { user, profile, refreshProfile, signOut } = useAuth();
+  const navigate = useNavigate();
   const [editField, setEditField] = useState<EditField>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [deleteConfirmPassword, setDeleteConfirmPassword] = useState("");
 
   // Display name edit
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
@@ -37,7 +42,6 @@ const AccountTab = () => {
   // Email edit
   const [newEmail, setNewEmail] = useState("");
   // Password edit
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -106,7 +110,6 @@ const AccountTab = () => {
       toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     } else {
       toast({ title: t("settings.passwordChanged") });
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setEditField(null);
@@ -115,7 +118,72 @@ const AccountTab = () => {
   };
 
   const handleDeleteAccount = async () => {
-    toast({ title: t("common.error"), description: "Account deletion requires contacting support.", variant: "destructive" });
+    if (!user || !deleteConfirmPassword) return;
+
+    // Re-authenticate to confirm identity
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email!,
+      password: deleteConfirmPassword,
+    });
+    if (signInError) {
+      toast({ title: t("common.error"), description: "Incorrect password.", variant: "destructive" });
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("delete-account", {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+
+      if (res.error || res.data?.error) {
+        toast({ title: t("common.error"), description: res.data?.error || "Deletion failed.", variant: "destructive" });
+        setDeleting(false);
+        return;
+      }
+
+      toast({ title: "Account deleted", description: "Your account and all data have been permanently removed." });
+      await signOut();
+      navigate("/auth");
+    } catch {
+      toast({ title: t("common.error"), description: "Something went wrong.", variant: "destructive" });
+      setDeleting(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setExporting(true);
+    toast({ title: "Preparing your data…", description: "Your data will be available to you shortly." });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("export-user-data", {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+
+      if (res.error || res.data?.error) {
+        toast({ title: t("common.error"), description: res.data?.error || "Export failed.", variant: "destructive" });
+        setExporting(false);
+        return;
+      }
+
+      // Trigger download
+      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mshb-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({ title: "Download started", description: "Your data export has been downloaded." });
+    } catch {
+      toast({ title: t("common.error"), description: "Something went wrong.", variant: "destructive" });
+    }
+    setExporting(false);
   };
 
   return (
@@ -253,7 +321,7 @@ const AccountTab = () => {
         <div className="bg-muted/10">
           <div
             className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/20 transition-colors"
-            onClick={() => { setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); toggleField("password"); }}
+            onClick={() => { setNewPassword(""); setConfirmPassword(""); toggleField("password"); }}
           >
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">{t("auth.password")}</p>
@@ -291,7 +359,7 @@ const AccountTab = () => {
         <div className="flex items-start sm:items-center justify-between gap-3">
           <div>
             <p className="font-medium text-sm">{t("settings.deleteAccount")}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Permanently delete your account and all data.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Permanently delete your account and all data. This cannot be undone.</p>
           </div>
           <div className="shrink-0">
             <AlertDialog>
@@ -301,12 +369,28 @@ const AccountTab = () => {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>{t("settings.deleteAccount")}</AlertDialogTitle>
-                  <AlertDialogDescription>{t("settings.deleteAccountConfirm")}</AlertDialogDescription>
+                  <AlertDialogDescription>
+                    {t("settings.deleteAccountConfirm")} This will permanently remove your profile, messages, servers you own, friendships, and all associated data. Enter your password to confirm.
+                  </AlertDialogDescription>
                 </AlertDialogHeader>
+                <div className="space-y-1.5 py-2">
+                  <Label className="text-xs text-muted-foreground">Current password</Label>
+                  <Input
+                    type="password"
+                    value={deleteConfirmPassword}
+                    onChange={(e) => setDeleteConfirmPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="bg-background"
+                  />
+                </div>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    {t("settings.deleteAccount")}
+                  <AlertDialogCancel onClick={() => setDeleteConfirmPassword("")}>{t("actions.cancel")}</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteAccount}
+                    disabled={deleting || !deleteConfirmPassword}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleting ? <><Loader2 className="h-4 w-4 animate-spin me-1" /> Deleting…</> : t("settings.deleteAccount")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -316,16 +400,16 @@ const AccountTab = () => {
         <div className="flex items-start sm:items-center justify-between gap-3">
           <div>
             <p className="font-medium text-sm">{t("settings.requestData")}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Download a copy of all your data.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Download a copy of all your data (GDPR).</p>
           </div>
           <div className="shrink-0">
             <Button
-              variant="link"
+              variant="outline"
               size="sm"
-              className="text-muted-foreground"
-              onClick={() => toast({ title: "Data export", description: "Data export request sent. You'll receive an email shortly." })}
+              onClick={handleExportData}
+              disabled={exporting}
             >
-              {t("settings.requestData")}
+              {exporting ? <><Loader2 className="h-4 w-4 animate-spin me-1" /> Exporting…</> : <><Download className="h-4 w-4 me-1" /> {t("settings.requestData")}</>}
             </Button>
           </div>
         </div>
