@@ -137,7 +137,7 @@ const ServerView = () => {
         <>
           <div className="flex flex-col h-full">
             <header className="flex items-center gap-2 p-2 border-b border-border/50 glass">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/server/${serverId}`)}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/channels/server/${serverId}`)}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <span className="text-sm font-medium flex-1 truncate">#{activeChannel.name}</span>

@@ -212,7 +212,7 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
             <Button
               size="sm"
               className="w-full h-8 text-xs"
-              onClick={() => navigate(`/server/${metadata.server_id}`)}
+              onClick={() => navigate(`/channels/server/${metadata.server_id}`)}
             >
               {t("servers.goToServer")}
             </Button>

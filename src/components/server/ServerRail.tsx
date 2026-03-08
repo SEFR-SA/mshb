@@ -488,7 +488,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                       <Plus className="h-4 w-4 me-2" />
                       {t("servers.createChannel")}
                     </ContextMenuItem>
-                    <ContextMenuItem onClick={() => { navigate(`/server/${s.id}`); requestCreateSection(); }}>
+                    <ContextMenuItem onClick={() => { navigate(`/channels/server/${s.id}`); requestCreateSection(); }}>
                       <FolderPlus className="h-4 w-4 me-2" />
                       {t("servers.createCategory")}
                     </ContextMenuItem>

@@ -107,7 +107,7 @@ const InviteJoin = () => {
     } as any);
 
     toast({ title: t("servers.joinedServer") });
-    navigate(`/server/${serverId}`);
+    navigate(`/channels/server/${serverId}`);
   };
 
   const handleLoginToJoin = () => {
