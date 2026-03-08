@@ -1,25 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-## Fix Popover Centering & Edge Collision
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-### Root Cause
-The `PopoverTrigger` only wraps the avatar+name button (left side of the panel). The audio controls sit outside. So `align="center"` centers on that narrow trigger -- not the full UserPanel width. This makes the popover lean right and potentially touch the page edge.
+## Tech Stack
 
-### Fix (single file: `src/components/layout/UserPanel.tsx`)
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-1. **Move `Popover` + `PopoverTrigger` to wrap the entire panel row** (avatar + name + audio controls), so the popover centers relative to the full width. The click-to-open behavior stays on just the avatar/name area via `e.stopPropagation` or by keeping the trigger on the outer container but making the audio buttons stop propagation.
+## Core Directives (CRITICAL — Always Enforce)
 
-   Actually, simpler approach: Keep trigger as-is but use `align="center"` with `alignOffset` to shift it left, **or** better yet -- add `collisionPadding` to prevent edge touching and use CSS to position relative to the full parent.
+### 1. Plan First
 
-   **Simplest correct fix**: On `PopoverContent`, add `collisionPadding={8}` to prevent edge-touching, and set `align="start"` with `alignOffset` calculated to visually center over the full panel. But this is fragile.
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-   **Best fix**: Wrap the entire `<div className="flex items-center gap-2 p-2">` row inside the `PopoverTrigger`, but make the audio buttons use `onPointerDown={(e) => e.stopPropagation()}` so clicking them doesn't toggle the popover. This way `align="center"` truly centers over the full panel width.
+### 2. Single Source of Truth (SSOT)
 
-2. Add `collisionPadding={8}` on `PopoverContent` to prevent touching the viewport edge.
+Never duplicate display logic. Always use the canonical shared components:
 
-### Changes in `src/components/layout/UserPanel.tsx`
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-- Restructure so `PopoverTrigger` wraps the full row (`flex items-center gap-2 p-2`)
-- Audio control buttons get `onPointerDown={e => e.stopPropagation()}` and `onClick={e => e.stopPropagation()}` to prevent them from triggering the popover
-- Add `collisionPadding={8}` to `PopoverContent`
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
+### 3. Pro Gating
+
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+
+### 4. No Hallucinations
+
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+
+### 5. No Over-Engineering
+
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+
+## Documentation Directory
+
+Read these files for specific details — do NOT rely on memory alone:
+
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+
+## Cosmetic Asset Specs
+
+Per-asset guides with exact dimensions, config files, and wrapper usage:
+
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
