@@ -51,6 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "profile",       labelKey: "settings.myProfile",    icon: User },
       { id: "account",       labelKey: "settings.myAccount",    icon: Shield },
+      { id: "devices",       labelKey: "settings.devices",      icon: Monitor },
       { id: "social",        labelKey: "settings.social",       icon: Users },
       { id: "notifications", labelKey: "settings.notifications",icon: Bell },
     ],
