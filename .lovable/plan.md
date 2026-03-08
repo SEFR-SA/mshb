@@ -1,75 +1,39 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Plan: Fix Message Deletion in Server Channels
 
-## Tech Stack
+The server channel chat has two bugs preventing delete from working visually:
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+1. **No hidden message tracking**: Unlike `Chat.tsx`, `ServerChannelChat.tsx` never loads or tracks `message_hidden` records. `handleDeleteForMe` inserts into the DB but doesn't update local state, so the message stays visible.
 
-## Core Directives (CRITICAL — Always Enforce)
+2. **`isDeleted` hardcoded to `false`**: Line 175 passes `isDeleted={false}` to `MessageContextMenu` instead of checking `msg.deleted_for_everyone`. This means "Delete for Everyone" updates the DB but the message still renders normally.
 
-### 1. Plan First
+### Changes — `src/components/server/ServerChannelChat.tsx`
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+**1. Add `hiddenIds` state and fetch on mount** (mirror the DM pattern from `Chat.tsx`):
+```ts
+const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+// useEffect to fetch message_hidden for the user
+```
 
-### 2. Single Source of Truth (SSOT)
+**2. Update `handleDeleteForMe`** to also add to `hiddenIds` locally:
+```ts
+setHiddenIds(prev => new Set(prev).add(id));
+```
 
-Never duplicate display logic. Always use the canonical shared components:
+**3. Filter messages** before rendering:
+```ts
+const visibleMessages = messages.filter(m => !hiddenIds.has(m.id));
+```
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+**4. Fix `isDeleted` prop** in `MessageItem` (line 175):
+```ts
+isDeleted={!!msg.deleted_for_everyone}
+```
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+**5. Update `handleDeleteForEveryone`** to also update the local message in realtime state so it renders as deleted immediately (via `updateRealtimeMessage` if available, or optimistic local update).
 
-### 3. Pro Gating
+**6. Render deleted messages** with "[message deleted]" placeholder text (matching DM behavior) instead of hiding the context menu options.
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+Single file: `src/components/server/ServerChannelChat.tsx`
 
-### 4. No Hallucinations
-
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
-
-### 5. No Over-Engineering
-
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
-
-## Documentation Directory
-
-Read these files for specific details — do NOT rely on memory alone:
-
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
