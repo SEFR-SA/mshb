@@ -21,7 +21,7 @@ export function usePendingFriendRequests() {
 
     const newCount = count || 0;
 
-    if (prevCountRef.current !== null && newCount > prevCountRef.current) {
+    if (prevCountRef.current !== null && newCount > prevCountRef.current && !isStreamerMode) {
       playNotificationSound();
       toast({ title: "You have a new friend request!" });
     }
