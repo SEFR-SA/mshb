@@ -135,6 +135,24 @@ export type Database = {
           },
         ]
       }
+      channel_notification_prefs: {
+        Row: {
+          channel_id: string
+          level: string
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          level?: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          level?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       channel_read_status: {
         Row: {
           channel_id: string
