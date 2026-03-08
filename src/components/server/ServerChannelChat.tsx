@@ -527,11 +527,32 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     ).then();
   }, [user, channelId]);
 
+  const handleStartEdit = useCallback((id: string, content: string) => {
+    setEditingId(id);
+    setEditContent(content);
+  }, []);
+
+  const handleEditSave = useCallback(async () => {
+    if (!editingId || !editContent.trim()) return;
+    await supabase.from("messages").update({
+      content: editContent.trim().slice(0, 5000),
+      edited_at: new Date().toISOString(),
+    }).eq("id", editingId);
+    updateRealtimeMessage({ ...messages.find((m: any) => m.id === editingId), content: editContent.trim().slice(0, 5000), edited_at: new Date().toISOString() });
+    setEditingId(null);
+    setEditContent("");
+  }, [editingId, editContent, messages, updateRealtimeMessage]);
+
+  const handleEditCancel = useCallback(() => {
+    setEditingId(null);
+    setEditContent("");
+  }, []);
+
   useMessageKeybinds({
     hoveredMessageId: hoveredMsgId,
     messages,
     currentUserId: user?.id,
-    onEdit: undefined,
+    onEdit: handleStartEdit,
     onDeleteForMe: handleDeleteForMe,
     onDeleteForEveryone: handleDeleteForEveryone,
     onTogglePin: handleToggleMessagePin,
