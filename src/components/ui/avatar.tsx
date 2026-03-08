@@ -18,9 +18,15 @@ const Avatar = React.forwardRef<
     <AvatarContext.Provider value={{ isHovered, alwaysPlayGif }}>
       <AvatarPrimitive.Root
         ref={ref}
-        className={cn("relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full", className)}
-        onMouseEnter={(e) => { setIsHovered(true); onMouseEnter?.(e); }}
-        onMouseLeave={(e) => { setIsHovered(false); onMouseLeave?.(e); }}
+        className={cn("relative flex h-6 w-6 shrink-0 overflow-hidden rounded-full", className)}
+        onMouseEnter={(e) => {
+          setIsHovered(true);
+          onMouseEnter?.(e);
+        }}
+        onMouseLeave={(e) => {
+          setIsHovered(false);
+          onMouseLeave?.(e);
+        }}
         {...props}
       />
     </AvatarContext.Provider>
@@ -62,16 +68,20 @@ const AvatarImage = React.forwardRef<
         setFirstFrame("");
       }
     };
-    img.onerror = () => { if (!cancelled) setFirstFrame(""); };
+    img.onerror = () => {
+      if (!cancelled) setFirstFrame("");
+    };
     img.src = src as string;
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [src, isGif, alwaysPlayGif]);
 
   let resolvedSrc: typeof src = src;
   if (isGif && !alwaysPlayGif) {
     // While firstFrame is null (loading), show the gif src directly so Radix
     // renders the image immediately; once we have the frame, swap to static.
-    resolvedSrc = isHovered ? src : (firstFrame === null ? src : firstFrame || "");
+    resolvedSrc = isHovered ? src : firstFrame === null ? src : firstFrame || "";
   }
 
   return (
