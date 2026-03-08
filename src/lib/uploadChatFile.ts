@@ -4,11 +4,39 @@ import { supabase } from "@/integrations/supabase/client";
  * Upload a file to the chat-files bucket and return its public URL.
  * Accepts an optional onProgress callback for tracking upload progress (0-100).
  */
+const ALLOWED_MIME_PREFIXES = ["image/", "video/", "audio/"];
+const ALLOWED_MIME_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/zip",
+  "application/x-rar-compressed",
+  "application/x-7z-compressed",
+  "text/plain",
+  "text/csv",
+  "application/json",
+];
+
+function isAllowedFileType(file: File): boolean {
+  const mime = file.type.toLowerCase();
+  if (ALLOWED_MIME_PREFIXES.some((p) => mime.startsWith(p))) return true;
+  if (ALLOWED_MIME_TYPES.includes(mime)) return true;
+  return false;
+}
+
 export const uploadChatFile = async (
   userId: string,
   file: File,
   onProgress?: (progress: number) => void
 ): Promise<string> => {
+  if (!isAllowedFileType(file)) {
+    throw new Error("File type not allowed. Supported: images, videos, audio, PDFs, documents, and archives.");
+  }
+
   const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const path = `${userId}/${Date.now()}_${sanitized}`;
 

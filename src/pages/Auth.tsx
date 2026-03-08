@@ -72,7 +72,7 @@ const Auth = () => {
 
   if (!loading && user) {
     const pendingInvite = localStorage.getItem("pendingInvite");
-    if (pendingInvite) {
+    if (pendingInvite && /^[a-zA-Z0-9_-]+$/.test(pendingInvite)) {
       localStorage.removeItem("pendingInvite");
       return <Navigate to={`/invite/${pendingInvite}`} replace />;
     }
