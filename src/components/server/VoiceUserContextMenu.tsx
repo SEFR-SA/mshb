@@ -180,7 +180,7 @@ const VoiceUserContextMenu = ({
       threadId = newThread.id;
     }
     await supabase.from("messages").insert({ thread_id: threadId, author_id: user.id, content: message.trim() });
-    navigate(`/chat/${threadId}`);
+    navigate(`/channels/@me/chat/${threadId}`);
   };
 
   if (isSelf) return <>{children}</>;

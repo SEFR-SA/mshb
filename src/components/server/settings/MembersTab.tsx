@@ -241,7 +241,7 @@ const MembersTab = ({ serverId }: Props) => {
       if (!newThread) return;
       threadId = newThread.id;
     }
-    navigate(`/chat/${threadId}`);
+    navigate(`/channels/@me/chat/${threadId}`);
   };
 
   const handleComingSoon = () => {

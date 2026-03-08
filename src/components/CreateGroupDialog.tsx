@@ -96,7 +96,7 @@ const CreateGroupDialog = ({ open, onOpenChange }: CreateGroupDialogProps) => {
     onOpenChange(false);
     setName("");
     setSelectedIds(new Set());
-    navigate(`/group/${group.id}`);
+    navigate(`/channels/@me/group/${group.id}`);
   };
 
   return (

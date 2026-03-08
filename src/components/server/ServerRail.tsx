@@ -361,7 +361,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                 <Tooltip key={dm.threadId}>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={() => { navigate(`/chat/${dm.threadId}`); onNavigate?.(); }}
+                      onClick={() => { navigate(`/channels/@me/chat/${dm.threadId}`); onNavigate?.(); }}
                       className="relative flex items-center justify-center w-12 h-12 rounded-2xl hover:rounded-xl transition-all bg-sidebar-accent/30 hover:bg-primary/20 group"
                     >
                       <Avatar className="h-12 w-12 rounded-[inherit]">
