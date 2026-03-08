@@ -102,7 +102,7 @@ const UserPanel = ({ className }: UserPanelProps) => {
               </div>
             </button>
           </PopoverTrigger>
-          <PopoverContent side="top" align="start" className="p-0 w-auto">
+          <PopoverContent side="top" align="center" sideOffset={8} className="p-0 w-auto">
             <UserPanelPopover onClose={() => setPopoverOpen(false)} />
           </PopoverContent>
         </Popover>
