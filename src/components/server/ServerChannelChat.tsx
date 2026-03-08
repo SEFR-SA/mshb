@@ -429,25 +429,36 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   }, [serverId, user?.id]);
 
   // Fetch custom role colors for all members in this server
+  const fetchRoleColors = useCallback(async () => {
+    if (!serverId) return;
+    const { data } = await supabase
+      .from("member_roles" as any)
+      .select("user_id, server_roles(id, color, icon_url, position)")
+      .eq("server_id", serverId);
+    const map = new Map<string, { color: string; iconUrl: string | null }>();
+    ((data as any[]) || []).forEach((mr) => {
+      const role = (mr as any).server_roles;
+      if (!role) return;
+      const existing = map.get(mr.user_id);
+      if (!existing || role.position < (existing as any)._position) {
+        map.set(mr.user_id, { color: role.color, iconUrl: role.icon_url, _position: role.position } as any);
+      }
+    });
+    setUserRoleColorMap(map);
+  }, [serverId]);
+
+  useEffect(() => { fetchRoleColors(); }, [fetchRoleColors]);
+
+  // Realtime: member roles and server roles changes
   useEffect(() => {
     if (!serverId) return;
-    (async () => {
-      const { data } = await supabase
-        .from("member_roles" as any)
-        .select("user_id, server_roles(id, color, icon_url, position)")
-        .eq("server_id", serverId);
-      const map = new Map<string, { color: string; iconUrl: string | null }>();
-      ((data as any[]) || []).forEach((mr) => {
-        const role = (mr as any).server_roles;
-        if (!role) return;
-        const existing = map.get(mr.user_id);
-        if (!existing || role.position < (existing as any)._position) {
-          map.set(mr.user_id, { color: role.color, iconUrl: role.icon_url, _position: role.position } as any);
-        }
-      });
-      setUserRoleColorMap(map);
-    })();
-  }, [serverId]);
+    const channel = supabase
+      .channel(`role-colors-${serverId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "member_roles", filter: `server_id=eq.${serverId}` }, () => fetchRoleColors())
+      .on("postgres_changes", { event: "*", schema: "public", table: "server_roles", filter: `server_id=eq.${serverId}` }, () => fetchRoleColors())
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [serverId, fetchRoleColors]);
 
   const [serverEmojis, setServerEmojis] = useState<{ name: string; url: string }[]>([]);
 

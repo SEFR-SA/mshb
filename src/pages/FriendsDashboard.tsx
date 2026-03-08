@@ -130,6 +130,10 @@ const FriendsDashboard = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "friendships" }, () => {
         loadFriendships();
       })
+      // Realtime: friend profile updates (avatar, display name, etc.)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles" }, () => {
+        loadFriendships();
+      })
       .subscribe();
 
     return () => { channel.unsubscribe(); };

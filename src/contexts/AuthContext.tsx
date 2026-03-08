@@ -97,6 +97,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Realtime: keep own profile in sync across tabs/devices
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`own-profile-${user.id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${user.id}` }, (payload) => {
+        setProfile(payload.new as Profile);
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [user?.id]);
+
   const signUp = async (email: string, password: string, username?: string, displayName?: string, dateOfBirth?: string, gender?: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,

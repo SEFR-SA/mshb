@@ -112,6 +112,13 @@ const RolesTab = ({ serverId, canEdit }: Props) => {
     if (!serverId) return;
     setLoading(true);
     fetchRoles().finally(() => setLoading(false));
+
+    // Realtime: role changes
+    const channel = supabase
+      .channel(`settings-roles-${serverId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "server_roles", filter: `server_id=eq.${serverId}` }, () => fetchRoles())
+      .subscribe();
+    return () => { channel.unsubscribe(); };
   }, [serverId]);
 
   // Derived: the role currently saved in DB for the selected ID
