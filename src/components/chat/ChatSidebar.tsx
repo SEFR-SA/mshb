@@ -242,7 +242,7 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
       .eq("user1_id", u1)
       .eq("user2_id", u2)
       .maybeSingle();
-    if (existing) { navigate(`/chat/${existing.id}`); return; }
+    if (existing) { navigate(`/channels/@me/chat/${existing.id}`); return; }
     const { data: newThread } = await supabase
       .from("dm_threads")
       .insert({ user1_id: u1, user2_id: u2 })
