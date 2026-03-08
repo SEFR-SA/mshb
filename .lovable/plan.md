@@ -1,75 +1,34 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Plan: Add Keybinds Tab to Settings
 
-## Tech Stack
+### 1. Create `src/components/settings/tabs/KeybindsTab.tsx`
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+- **Header**: "Keybinds" title + description text, with an "Add a Keybind" primary `Button` aligned top-right.
+- **`KbdKey` inline component**: Renders a single key as a `<kbd>` element styled with `bg-muted border border-border rounded px-2 py-1 text-xs font-mono`. A `KeyCombo` helper renders multiple keys separated by `+`.
+- **Two sections** using the same card style as other settings tabs (`rounded-xl border border-border/50 bg-muted/10 p-4`):
+  - **Messages**: E, Backspace, P, +, F, Ctrl+C, Alt+Enter
+  - **Voice & Video**: Ctrl+Shift+M, Ctrl+Shift+D, Ctrl+Enter, Esc, Ctrl+Alt+S, Ctrl+Alt+E
+- Each row: label on the left, key combo on the right, consistent with the toggle-row pattern used in NotificationsTab.
+- Accepts `setUnsaved`/`clearUnsaved` props for interface consistency (unused for now since keybinds are read-only defaults).
 
-## Core Directives (CRITICAL — Always Enforce)
+### 2. Wire into `src/components/settings/SettingsModal.tsx`
 
-### 1. Plan First
+- Add `"keybinds"` to the `TabId` union type.
+- Import `Keyboard` icon from `lucide-react`.
+- Add `{ id: "keybinds", labelKey: "settings.keybinds", icon: Keyboard }` to the App Settings nav group, after "voice".
+- Lazy-import `KeybindsTab` and add it to `TAB_COMPONENTS`.
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+### 3. Add i18n key
 
-### 2. Single Source of Truth (SSOT)
+- Add `"settings.keybinds": "Keybinds"` to `src/i18n/en.ts` and the Arabic equivalent to `src/i18n/ar.ts`.
 
-Never duplicate display logic. Always use the canonical shared components:
+### Files Changed
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+| File | Change |
+|------|--------|
+| `src/components/settings/tabs/KeybindsTab.tsx` | **New** — keybinds display with two sections |
+| `src/components/settings/SettingsModal.tsx` | Add keybinds to TabId, nav, lazy import, tab map |
+| `src/i18n/en.ts` | Add `settings.keybinds` translation |
+| `src/i18n/ar.ts` | Add `settings.keybinds` Arabic translation |
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
-
-### 3. Pro Gating
-
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
-
-### 4. No Hallucinations
-
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
-
-### 5. No Over-Engineering
-
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
-
-## Documentation Directory
-
-Read these files for specific details — do NOT rely on memory alone:
-
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
