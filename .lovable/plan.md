@@ -1,136 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-## Architectural Insight
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-**Current Codebase Analysis:**
-The MSHB project follows consistent patterns for user-server relationships (server_members, server_notification_prefs) with robust RLS policies and audit trails. The existing monetization infrastructure (marketplace_items, user_purchases, user_equipped) provides a foundation, but the Server Boost system introduces new complexity:
+## Tech Stack
 
-**Potential Edge Cases & Concerns:**
-1. **Race Conditions**: Multiple users boosting/unboosting simultaneously could corrupt boost_count calculations
-2. **Partial States**: Stripe webhook failures while database state changes could create inconsistencies  
-3. **Performance**: Trigger calculations on every boost status change could impact database performance for popular servers
-4. **Cascading Deletes**: Server/user deletions need careful handling of active boost subscriptions
-5. **Real-time Consistency**: UI must reflect boost count changes immediately across all connected clients
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-**Recommended Patterns:**
-- Use SECURITY DEFINER functions (like existing `is_server_admin`) for boost calculations to prevent RLS conflicts
-- Follow existing audit log pattern for boost status changes
-- Implement proper foreign key constraints with CASCADE options
-- Use atomic transactions for multi-table updates
+## Core Directives (CRITICAL — Always Enforce)
 
-## Phase 1 Plan: Database Architecture & Core Logic
+### 1. Plan First
 
-### Step 1: Create Migration for New Tables & Columns
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-**New Table: `user_boosts`**
-```sql
-CREATE TABLE public.user_boosts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  server_id uuid REFERENCES public.servers(id) ON DELETE SET NULL,
-  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'canceled', 'past_due')),
-  stripe_subscription_id text,
-  started_at timestamp with time zone NOT NULL DEFAULT now(),
-  canceled_at timestamp with time zone,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now()
-);
-```
+### 2. Single Source of Truth (SSOT)
 
-**Update `servers` table:**
-```sql
-ALTER TABLE public.servers 
-ADD COLUMN boost_count integer NOT NULL DEFAULT 0,
-ADD COLUMN boost_level integer NOT NULL DEFAULT 0;
-```
+Never duplicate display logic. Always use the canonical shared components:
 
-**Update `server_members` table:**
-```sql
-ALTER TABLE public.server_members 
-ADD COLUMN is_booster boolean NOT NULL DEFAULT false,
-ADD COLUMN boosted_at timestamp with time zone;
-```
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-### Step 2: Create RLS Policies for `user_boosts`
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-Following existing patterns for user-owned data:
-- Users can view their own boosts
-- Users can insert/update their own boosts
-- Server admins can view boosts for their server
-- No direct DELETE (status change only)
+### 3. Pro Gating
 
-### Step 3: Create Core Functions
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
 
-**Function 1: `calculate_server_boost_stats`**
-- Calculates boost_count and boost_level for a given server
-- Uses SECURITY DEFINER to avoid RLS conflicts
-- Implements the level math: 0-1→Level 0, 2-6→Level 1, 7-13→Level 2, 14+→Level 3
+### 4. No Hallucinations
 
-**Function 2: `update_booster_status`**  
-- Updates server_members.is_booster and boosted_at
-- Handles the logic for when someone becomes/stops being a booster
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
 
-### Step 4: Create Database Triggers
+### 5. No Over-Engineering
 
-**Trigger 1: `update_server_boost_stats_trigger`**
-- Fires on user_boosts INSERT/UPDATE/DELETE
-- Calls calculate_server_boost_stats for affected server
-- Updates servers.boost_count and servers.boost_level atomically
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
 
-**Trigger 2: `update_booster_role_trigger`**
-- Fires after server boost stats are updated
-- Calls update_booster_status to maintain server_members.is_booster consistency
+## Documentation Directory
 
-### Step 5: Add Indexes for Performance
+Read these files for specific details — do NOT rely on memory alone:
 
-Critical indexes for:
-- user_boosts(user_id, server_id, status) - for boost queries
-- user_boosts(server_id, status) - for server-wide counts
-- server_members(server_id, is_booster) - for booster lists
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
 
-### Step 6: Create Audit Trail Integration
+## Cosmetic Asset Specs
 
-Add boost-related actions to server_audit_logs:
-- 'boost_started'
-- 'boost_canceled' 
-- 'boost_level_changed'
+Per-asset guides with exact dimensions, config files, and wrapper usage:
 
-### Step 7: Handle Edge Cases
-
-**Server Deletion Handling:**
-- user_boosts.server_id ON DELETE SET NULL allows orphaned boosts
-- These can be reassigned later or marked for Stripe cancellation
-
-**User Deletion Handling:**
-- user_boosts.user_id ON DELETE CASCADE cleans up boosts
-- Triggers will automatically recalculate server stats
-
-**Concurrency Protection:**
-- Use SELECT ... FOR UPDATE in boost calculation functions
-- Atomic transactions for multi-table updates
-
-### Step 8: Add Validation Constraints
-
-- user_boosts: unique(user_id, server_id) to prevent duplicate boosts per server
-- servers: boost_count >= 0, boost_level >= 0 AND boost_level <= 3
-- server_members: boosted_at only set when is_booster = true
-
-### Migration Script Structure:
-1. CREATE new tables with proper constraints
-2. ALTER existing tables to add columns  
-3. CREATE indexes for performance
-4. CREATE functions with SECURITY DEFINER
-5. CREATE triggers to maintain consistency
-6. INSERT RLS policies following existing patterns
-7. Add validation check constraints
-
-This foundation provides:
-- ✅ Atomic boost count calculations
-- ✅ Automatic level progression
-- ✅ Booster role management
-- ✅ Race condition protection
-- ✅ Audit trail integration
-- ✅ Proper cleanup on deletions
-
-Ready for Stripe webhook integration and UI implementation in subsequent phases.
-
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

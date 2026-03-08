@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone, Music, Bell, BellOff } from "lucide-react";
+import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone, Music } from "lucide-react";
 import VoiceUserContextMenu from "./VoiceUserContextMenu";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { copyToClipboard } from "@/lib/utils";
@@ -35,8 +35,6 @@ import { useCreateChannel } from "@/contexts/CreateChannelContext";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { NavLink as RouterNavLink } from "react-router-dom";
 import StyledDisplayName from "@/components/StyledDisplayName";
-import { useChannelNotificationPref, type ChannelNotifLevel } from "@/hooks/useChannelNotificationPref";
-
 
 interface Channel {
   id: string;
@@ -101,91 +99,6 @@ const StreamPreviewVideo = ({ stream }: { stream: MediaStream }) => {
     if (ref.current) ref.current.srcObject = stream;
   }, [stream]);
   return <video ref={ref} autoPlay muted playsInline className="w-full h-full object-contain" />;
-};
-
-interface ChannelDropdownProps {
-  ch: Channel;
-  isAdmin: boolean;
-  onEdit: () => void;
-  onManageMembers: () => void;
-  onDelete: () => void;
-}
-
-const ChannelDropdown = ({ ch, isAdmin, onEdit, onManageMembers, onDelete }: ChannelDropdownProps) => {
-  const { t } = useTranslation();
-  const { level, setLevel } = useChannelNotificationPref(ch.id);
-
-  const handleNotifChange = (newLevel: ChannelNotifLevel | null) => {
-    setLevel(newLevel);
-  };
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-0.5 rounded transition-opacity"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <MoreVertical className="h-3.5 w-3.5" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        {/* Notifications submenu - visible to all members */}
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <Bell className="h-3.5 w-3.5 me-2" />
-            {t("channels.notifications")}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuCheckboxItem
-              checked={level === null}
-              onCheckedChange={() => handleNotifChange(null)}
-            >
-              {t("channels.useServerDefault")}
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              checked={level === "all_messages"}
-              onCheckedChange={() => handleNotifChange("all_messages")}
-            >
-              {t("channels.allMessages")}
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              checked={level === "only_mentions"}
-              onCheckedChange={() => handleNotifChange("only_mentions")}
-            >
-              {t("channels.onlyMentions")}
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              checked={level === "nothing"}
-              onCheckedChange={() => handleNotifChange("nothing")}
-            >
-              {t("channels.nothing")}
-            </DropdownMenuCheckboxItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-
-        {/* Admin-only options */}
-        {isAdmin && (
-          <>
-            <DropdownMenuItem onClick={onEdit}>
-              <Pencil className="h-3.5 w-3.5 me-2" />
-              {t("channels.edit")}
-            </DropdownMenuItem>
-            {ch.is_private && (
-              <DropdownMenuItem onClick={onManageMembers}>
-                <Users className="h-3.5 w-3.5 me-2" />
-                {t("channels.manageMembers")}
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem className="text-destructive" onClick={onDelete}>
-              <Trash2 className="h-3.5 w-3.5 me-2" />
-              {t("channels.delete")}
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
 };
 
 const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceChannelSelect, activeVoiceChannelId }: Props) => {
@@ -656,15 +569,37 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     }
   };
 
-  const renderAdminDropdown = (ch: Channel) => (
-    <ChannelDropdown
-      ch={ch}
-      isAdmin={isAdmin}
-      onEdit={() => openEditDialog(ch)}
-      onManageMembers={() => openManageMembers(ch)}
-      onDelete={() => setDeleteChannelId(ch.id)}
-    />
-  );
+  const renderAdminDropdown = (ch: Channel) => {
+    if (!isAdmin) return null;
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-0.5 rounded transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreVertical className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={() => openEditDialog(ch)}>
+            <Pencil className="h-3.5 w-3.5 me-2" />
+            {t("channels.edit")}
+          </DropdownMenuItem>
+          {ch.is_private && (
+            <DropdownMenuItem onClick={() => openManageMembers(ch)}>
+              <Users className="h-3.5 w-3.5 me-2" />
+              {t("channels.manageMembers")}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem className="text-destructive" onClick={() => setDeleteChannelId(ch.id)}>
+            <Trash2 className="h-3.5 w-3.5 me-2" />
+            {t("channels.delete")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
 
   const renderMemberPicker = (selected: string[], toggle: (id: string) => void) => (
     <div className="space-y-2">

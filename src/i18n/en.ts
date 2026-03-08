@@ -447,11 +447,6 @@ export default {
     announcementDesc: "Only admins and owners can post in this channel.",
     announcementReadOnly: "Only server admins can send messages in this channel.",
     announcementBadge: "Announcement",
-    notifications: "Notifications",
-    allMessages: "All Messages",
-    onlyMentions: "Only @mentions",
-    nothing: "Nothing",
-    useServerDefault: "Use Server Default",
   },
   audio: {
     mute: "Mute",
