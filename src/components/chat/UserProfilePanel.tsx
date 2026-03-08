@@ -102,8 +102,9 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
     <ProfileEffectWrapper
       effectUrl={p?.profile_effect_url}
       isPro={p?.is_pro}
-      className="w-72 border-s border-border/50 glass h-full overflow-y-auto"
+      className="w-72 border-s border-border/50 glass h-full flex flex-col"
     >
+      <div className="flex-1 overflow-y-auto min-h-0">
       {/* Banner area */}
       {p.banner_url ? (
         <img src={p.banner_url} alt="" className="h-24 w-full object-cover rounded-b-lg" />
