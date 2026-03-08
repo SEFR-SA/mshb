@@ -659,7 +659,7 @@ const GroupChat = () => {
         onOpenChange={setSettingsOpen}
         groupId={groupId || ""}
         isAdmin={isAdmin}
-        onLeave={() => navigate("/")}
+        onLeave={() => navigate("/channels/@me")}
       />
     </div>
   );

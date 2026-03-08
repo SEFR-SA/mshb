@@ -13,9 +13,9 @@ const HomeView = () => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   
-  const isFriendsView = location.pathname === "/" || location.pathname === "/friends";
-  const isChatView = location.pathname.startsWith("/chat/") || location.pathname.startsWith("/group/");
-  const isHomeRoot = location.pathname === "/";
+  const isFriendsView = location.pathname === "/channels/@me" || location.pathname === "/channels/@me/friends";
+  const isChatView = location.pathname.startsWith("/channels/@me/chat/") || location.pathname.startsWith("/channels/@me/group/");
+  const isHomeRoot = location.pathname === "/channels/@me";
 
   // Load friend user IDs for ActiveNowPanel
   const [friendUserIds, setFriendUserIds] = useState<string[]>([]);

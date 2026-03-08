@@ -148,7 +148,7 @@ const InviteJoin = () => {
           <div className="p-6 space-y-3">
             <h3 className="font-bold text-base">{t("servers.inviteInvalid")}</h3>
             <p className="text-sm text-muted-foreground">{t("servers.inviteInvalidDesc")}</p>
-            <Button className="w-full" onClick={() => navigate("/")}>{t("servers.goHome")}</Button>
+            <Button className="w-full" onClick={() => navigate("/channels/@me")}>{t("servers.goHome")}</Button>
           </div>
         </div>
       </div>

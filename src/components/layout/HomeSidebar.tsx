@@ -376,7 +376,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
       {/* Friends nav item */}
       <div className="p-2">
         <button
-          onClick={() => navigate("/friends")}
+          onClick={() => navigate("/channels/@me/friends")}
           className={`flex items-center gap-2 w-full p-2 rounded-md transition-colors ${
             isFriendsActive ? "bg-muted" : "hover:bg-muted/60"
           }`}

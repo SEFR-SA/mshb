@@ -76,7 +76,7 @@ const Auth = () => {
       localStorage.removeItem("pendingInvite");
       return <Navigate to={`/invite/${pendingInvite}`} replace />;
     }
-    return <Navigate to="/" replace />;
+    return <Navigate to="/channels/@me" replace />;
   }
 
   const daysInMonth = dobMonth && dobYear
