@@ -161,7 +161,10 @@ const CallListener = () => {
           });
 
           // Play incoming ring
-          startLoop("incoming_ring");
+          const callPrefs = getNotificationPrefs();
+          if (callPrefs.callSound) {
+            startLoop("incoming_ring");
+          }
 
           // Auto-decline after 3 minutes
           timeoutRef.current = setTimeout(async () => {

@@ -362,7 +362,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
               ) : (
                 <p className={`font-semibold truncate ${isMobileExpanded ? "text-base" : "text-sm"}`}>{item.name}</p>
               )}
-              {item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
+              {getNotificationPrefs().showBadge && item.unreadCount > 0 && <span className="ms-1 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">{item.unreadCount}</span>}
             </div>
             <p className="text-xs text-muted-foreground truncate">{item.lastMessage || ""}</p>
           </div>
