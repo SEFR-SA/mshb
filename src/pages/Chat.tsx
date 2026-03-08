@@ -148,7 +148,7 @@ const Chat = () => {
         .select("*")
         .eq("id", threadId)
         .maybeSingle();
-      if (!thread) { navigate("/"); return; }
+      if (!thread) { navigate("/channels/@me"); return; }
       const oid = thread.user1_id === user.id ? thread.user2_id : thread.user1_id;
       setOtherId(oid);
       const { data: prof } = await supabase.from("profiles").select("*, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").eq("user_id", oid).maybeSingle();
