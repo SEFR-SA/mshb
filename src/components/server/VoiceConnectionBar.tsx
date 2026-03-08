@@ -75,6 +75,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const [inactiveTimeout, setInactiveTimeout] = useState<number | null>(null);
   const [inactiveChannelName, setInactiveChannelName] = useState("AFK");
   const afkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const afkKickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudiosRef = useRef<HTMLAudioElement[]>([]);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -107,6 +108,21 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       if (!globalDeafened) setGlobalDeafened(true);
     }
   }, [channelId, inactiveChannelId, globalMuted, globalDeafened, setGlobalMuted, setGlobalDeafened]);
+
+  // 6-hour hard disconnect when sitting in the AFK channel
+  useEffect(() => {
+    if (afkKickTimerRef.current) clearTimeout(afkKickTimerRef.current);
+
+    if (inactiveChannelId && channelId === inactiveChannelId) {
+      afkKickTimerRef.current = setTimeout(() => {
+        onDisconnect();
+      }, 6 * 60 * 60 * 1000); // 6 hours = 21,600,000 ms
+    }
+
+    return () => {
+      if (afkKickTimerRef.current) clearTimeout(afkKickTimerRef.current);
+    };
+  }, [channelId, inactiveChannelId, onDisconnect]);
 
   // Fetch AFK settings when connected
   useEffect(() => {
