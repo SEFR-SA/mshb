@@ -382,7 +382,31 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     }
   };
 
-  // Fetch user's role in this server for announcement channel access control
+  useMessageKeybinds({
+    hoveredMessageId: hoveredMsgId,
+    messages,
+    currentUserId: user?.id,
+    onEdit: undefined, // ServerChannelChat doesn't have inline edit
+    onDeleteForMe: handleDeleteForMe,
+    onDeleteForEveryone: handleDeleteForEveryone,
+    onTogglePin: handleToggleMessagePin,
+    onAddReaction: (id) => setReactionPickerMsgId(id),
+    onForward: (id) => {
+      const m = messages.find(v => v.id === id);
+      if (m) openForwardModal({ content: m.content, fileUrl: m.file_url, fileName: m.file_name, fileType: m.file_type, fileSize: m.file_size });
+    },
+    onMarkUnread: (id) => {
+      const msg = messages.find(m => m.id === id);
+      if (msg && user) {
+        const before = new Date(new Date(msg.created_at).getTime() - 1000).toISOString();
+        supabase.from("channel_read_status" as any).upsert(
+          { channel_id: channelId, user_id: user.id, last_read_at: before } as any,
+          { onConflict: "channel_id,user_id" } as any
+        ).then();
+      }
+    },
+  });
+
   useEffect(() => {
     if (!serverId || !user) return;
     supabase
