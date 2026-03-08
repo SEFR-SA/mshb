@@ -123,6 +123,9 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
             type="color"
             value={active}
             onChange={(e) => { if (isPro) setColor(e.target.value); else toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") }); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             className="h-6 w-6 rounded cursor-pointer border-0 bg-transparent"
             title="Pick custom color"
           />
