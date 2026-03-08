@@ -332,7 +332,9 @@ const MessageItem = React.memo(({
     prevProps.serverEmojis === nextProps.serverEmojis &&
     prevProps.isHighlighted === nextProps.isHighlighted &&
     prevProps.reactions === nextProps.reactions &&
-    prevProps.isFirstMessage === nextProps.isFirstMessage
+    prevProps.isFirstMessage === nextProps.isFirstMessage &&
+    prevProps.editingId === nextProps.editingId &&
+    prevProps.editContent === nextProps.editContent
   );
 });
 
