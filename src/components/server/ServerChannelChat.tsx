@@ -525,6 +525,31 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     ).then();
   }, [user, channelId]);
 
+  useMessageKeybinds({
+    hoveredMessageId: hoveredMsgId,
+    messages,
+    currentUserId: user?.id,
+    onEdit: undefined,
+    onDeleteForMe: handleDeleteForMe,
+    onDeleteForEveryone: handleDeleteForEveryone,
+    onTogglePin: handleToggleMessagePin,
+    onAddReaction: (id) => setReactionPickerMsgId(id),
+    onForward: (id) => {
+      const m = messages.find(v => v.id === id);
+      if (m) openForwardModal({ content: m.content, fileUrl: m.file_url, fileName: m.file_name, fileType: m.file_type, fileSize: m.file_size });
+    },
+    onMarkUnread: (id) => {
+      const msg = messages.find(m => m.id === id);
+      if (msg && user) {
+        const before = new Date(new Date(msg.created_at).getTime() - 1000).toISOString();
+        supabase.from("channel_read_status" as any).upsert(
+          { channel_id: channelId, user_id: user.id, last_read_at: before } as any,
+          { onConflict: "channel_id,user_id" } as any
+        ).then();
+      }
+    },
+  });
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setNewMsg(val);
