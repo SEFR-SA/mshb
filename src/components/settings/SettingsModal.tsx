@@ -9,7 +9,7 @@ import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import {
   User, Shield, Users, Bell, Star, CreditCard,
-  Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag,
+  Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag, Keyboard,
 } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
