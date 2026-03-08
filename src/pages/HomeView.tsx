@@ -52,7 +52,7 @@ const HomeView = () => {
     return (
       <div className="flex h-full overflow-hidden">
         <ServerRail />
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-surface rounded-tl-[16px]">
           <div className="flex-1 overflow-hidden">
             <HomeSidebar isMobileExpanded />
           </div>
