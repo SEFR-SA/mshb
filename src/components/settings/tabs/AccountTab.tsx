@@ -40,6 +40,7 @@ const AccountTab = () => {
   const { t } = useTranslation();
   const { user, profile, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [editField, setEditField] = useState<EditField>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
