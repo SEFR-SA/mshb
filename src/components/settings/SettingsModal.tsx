@@ -135,6 +135,10 @@ const SettingsModal = () => {
 
   const initials = (profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase();
   const ActiveTab = TAB_COMPONENTS[activeTab];
+  const HIDDEN_ON_MOBILE: TabId[] = ["keybinds"];
+  const navGroups = isMobile
+    ? NAV_GROUPS.map(g => ({ ...g, items: g.items.filter(i => !HIDDEN_ON_MOBILE.includes(i.id)) }))
+    : NAV_GROUPS;
 
   // Reusable sidebar content — used in both desktop aside and mobile Sheet
   const SidebarNav = ({ onSelect }: { onSelect?: () => void }) => (
