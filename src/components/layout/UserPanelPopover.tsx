@@ -64,10 +64,10 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
   const currentStatusOption = STATUS_OPTIONS.find((s) => s.value === currentStatus) || STATUS_OPTIONS[0];
 
   return (
-    <div className="w-[300px] overflow-hidden">
+    <div className="w-[300px] overflow-hidden rounded-t-xl">
       {/* Banner */}
       <div
-        className="h-[60px] w-full relative"
+        className="h-24 w-full relative"
         style={
           profile.banner_url
             ? { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
