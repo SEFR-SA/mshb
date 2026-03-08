@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import {
@@ -91,6 +92,7 @@ const SettingsModal = () => {
   const navigate   = useNavigate();
   const { t }      = useTranslation();
   const { user, profile, signOut } = useAuth();
+  const isMobile   = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [unsavedConfig, setUnsavedConfig] = useState<{ onSave: () => void; onReset: () => void } | null>(null);
@@ -133,6 +135,10 @@ const SettingsModal = () => {
 
   const initials = (profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase();
   const ActiveTab = TAB_COMPONENTS[activeTab];
+  const HIDDEN_ON_MOBILE: TabId[] = ["keybinds"];
+  const navGroups = isMobile
+    ? NAV_GROUPS.map(g => ({ ...g, items: g.items.filter(i => !HIDDEN_ON_MOBILE.includes(i.id)) }))
+    : NAV_GROUPS;
 
   // Reusable sidebar content — used in both desktop aside and mobile Sheet
   const SidebarNav = ({ onSelect }: { onSelect?: () => void }) => (
@@ -157,7 +163,7 @@ const SettingsModal = () => {
 
       {/* Nav groups */}
       <nav className="flex-1 overflow-y-auto px-2 pb-2 space-y-4 mt-2">
-        {NAV_GROUPS.map((group) => (
+        {navGroups.map((group) => (
           <div key={group.headerKey}>
             <p className="px-2 mb-1 text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground/70">
               {t(group.headerKey)}
@@ -241,7 +247,7 @@ const SettingsModal = () => {
               <Menu className="h-4 w-4" />
             </button>
             <span className="font-semibold text-sm truncate pe-10">
-              {t(NAV_GROUPS.flatMap((g) => g.items).find((i) => i.id === activeTab)?.labelKey ?? "")}
+              {t(navGroups.flatMap((g) => g.items).find((i) => i.id === activeTab)?.labelKey ?? "")}
             </span>
           </div>
 
