@@ -1061,6 +1061,24 @@ export type Database = {
           },
         ]
       }
+      server_notification_prefs: {
+        Row: {
+          level: string
+          server_id: string
+          user_id: string
+        }
+        Insert: {
+          level?: string
+          server_id: string
+          user_id: string
+        }
+        Update: {
+          level?: string
+          server_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       server_roles: {
         Row: {
           color: string

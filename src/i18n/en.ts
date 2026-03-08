@@ -405,6 +405,10 @@ export default {
     entranceSound: "Entrance Sound",
     noEntranceSound: "None",
     entranceSoundUpdated: "Entrance sound updated",
+    serverNotifications: "Server Notifications",
+    allMessages: "All Messages",
+    onlyMentions: "Only @mentions",
+    nothingNotif: "Nothing",
   },
   auditLog: {
     title: "Audit Logs",

@@ -46,7 +46,7 @@ const GlobalNotificationListener = () => {
             try {
                 const res = await supabase
                     .from("channels" as any)
-                    .select("name, server_id, servers(name)")
+                    .select("name, server_id, servers(name, default_notification_level)")
                     .eq("id", msg.channel_id)
                     .maybeSingle();
 
@@ -54,7 +54,20 @@ const GlobalNotificationListener = () => {
                 if (!channelData || !channelData.servers) return;
 
                 const serverName = channelData.servers.name;
-                const notificationLevel = channelData.servers.default_notification_level || "all_messages";
+                const serverId = channelData.server_id;
+
+                // Check user's per-server notification pref
+                const { data: prefRow } = await supabase
+                    .from("server_notification_prefs" as any)
+                    .select("level")
+                    .eq("user_id", user.id)
+                    .eq("server_id", serverId)
+                    .maybeSingle();
+
+                const notificationLevel = (prefRow as any)?.level || channelData.servers.default_notification_level || "all_messages";
+
+                // If user chose "nothing", skip entirely
+                if (notificationLevel === "nothing") return;
 
                 const content = msg.content || "";
                 const isMentioned =

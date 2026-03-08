@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { getNotificationPrefs } from "@/lib/notificationPrefs";
+import { useServerNotificationPrefs } from "@/hooks/useServerNotificationPref";
 import { ServerRailSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { useTranslation } from "react-i18next";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
@@ -8,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2, CheckCheck, ShieldCheck, ScrollText, User, FolderPlus, Tag, TrendingUp, Smile, Sticker, Bell } from "lucide-react";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
-import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from "@/components/ui/context-menu";
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent, ContextMenuCheckboxItem } from "@/components/ui/context-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { TabId } from "./ServerSettingsDialog";
@@ -96,6 +97,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const unreadMap = useServerUnread(serverIds);
   const voiceActivityMap = useServerVoiceActivity(serverIds);
   const { unreadDMs } = useUnreadDMs();
+  const { prefsMap: notifPrefsMap, setLevel: setNotifLevel } = useServerNotificationPrefs(serverIds);
 
   // IDs of servers that are inside folders
   const folderedServerIds = new Set(folders.flatMap((f) => f.serverIds));
@@ -552,6 +554,23 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                         )}
                       </ContextMenuSubContent>
                     </ContextMenuSub>
+                    <ContextMenuSub>
+                      <ContextMenuSubTrigger>
+                        <Bell className="h-4 w-4 me-2" />
+                        {t("servers.serverNotifications")}
+                      </ContextMenuSubTrigger>
+                      <ContextMenuSubContent className="w-48">
+                        {(["all_messages", "only_mentions", "nothing"] as const).map((lvl) => (
+                          <ContextMenuCheckboxItem
+                            key={lvl}
+                            checked={(notifPrefsMap.get(s.id) ?? "all_messages") === lvl}
+                            onSelect={() => setNotifLevel(s.id, lvl)}
+                          >
+                            {t(lvl === "all_messages" ? "servers.allMessages" : lvl === "only_mentions" ? "servers.onlyMentions" : "servers.nothingNotif")}
+                          </ContextMenuCheckboxItem>
+                        ))}
+                      </ContextMenuSubContent>
+                    </ContextMenuSub>
                     <ContextMenuSeparator />
                     {user && s.owner_id !== user.id && (
                       <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => setLeaveServerId(s.id)}>
@@ -669,6 +688,17 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                   </button>
                 )}
                 <div className="border-t my-2" />
+                <p className="px-4 py-1 text-xs text-muted-foreground font-semibold">{t("servers.serverNotifications")}</p>
+                {(["all_messages", "only_mentions", "nothing"] as const).map((lvl) => {
+                  const active = (notifPrefsMap.get(s.id) ?? "all_messages") === lvl;
+                  return (
+                    <button key={lvl} className={btnClass} onClick={() => { setNotifLevel(s.id, lvl); close(); }}>
+                      {active && <span className="text-primary">✓</span>}
+                      {!active && <span className="w-4" />}
+                      {t(lvl === "all_messages" ? "servers.allMessages" : lvl === "only_mentions" ? "servers.onlyMentions" : "servers.nothingNotif")}
+                    </button>
+                  );
+                })}
                 {s.owner_id !== user?.id && (
                   <button className={destructiveClass} onClick={() => { setLeaveServerId(s.id); close(); }}>
                     <LogOut className="h-4 w-4" />{t("servers.leave")}
