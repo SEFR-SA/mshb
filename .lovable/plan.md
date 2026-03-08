@@ -1,75 +1,43 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Plan: Remove Static Save Button + Theme-Aware Floating Bar
 
-## Tech Stack
+### Changes
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+**1. `src/components/settings/tabs/ProfileTab.tsx`** — Delete the static "Save" button block
 
-## Core Directives (CRITICAL — Always Enforce)
+Lines 327-332 contain a hardcoded Save button at the bottom of the form:
+```tsx
+{/* Save */}
+<div className="pt-2">
+  <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
+    {saving ? t("common.loading") : t("profile.save")}
+  </Button>
+</div>
+```
+Remove this entire block. Saving is now exclusively handled by the floating `UnsavedChangesBar`.
 
-### 1. Plan First
+**2. `src/components/settings/UnsavedChangesBar.tsx`** — Dynamic theme color on the Save button
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+Currently the Save button uses `bg-green-600 hover:bg-green-700`. Replace this with the user's active theme primary color via the CSS variable `--color-primary` (set by the ThemeContext for all color presets).
 
-### 2. Single Source of Truth (SSOT)
+- Read the CSS variable at render time using `getComputedStyle` or, simpler, apply it inline via `var()`.
+- Replace the hardcoded green classes with an inline style:
 
-Never duplicate display logic. Always use the canonical shared components:
+```tsx
+<Button
+  size="sm"
+  onClick={onSave}
+  className="text-white hover:opacity-90"
+  style={{ backgroundColor: "var(--color-primary, hsl(var(--primary)))" }}
+>
+```
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+The `var(--color-primary, ...)` reads the solid theme hex if active, falling back to the base HSL `--primary` for default/base themes. This requires no context import — pure CSS variable resolution.
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+### Files Changed
+| File | Change |
+|------|--------|
+| `src/components/settings/tabs/ProfileTab.tsx` | Delete lines 327-332 (static Save button) |
+| `src/components/settings/UnsavedChangesBar.tsx` | Replace `bg-green-600 hover:bg-green-700` with inline `style={{ backgroundColor }}` using CSS variable |
 
-### 3. Pro Gating
-
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
-
-### 4. No Hallucinations
-
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
-
-### 5. No Over-Engineering
-
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
-
-## Documentation Directory
-
-Read these files for specific details — do NOT rely on memory alone:
-
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
