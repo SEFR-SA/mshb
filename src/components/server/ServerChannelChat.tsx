@@ -517,6 +517,14 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       .then();
   }, [channelId, user, isLocked]);
 
+  // Fetch hidden message IDs on mount
+  useEffect(() => {
+    if (!user || isLocked) return;
+    supabase.from("message_hidden").select("message_id").eq("user_id", user.id).then(({ data }) => {
+      if (data) setHiddenIds(new Set(data.map((r: any) => r.message_id)));
+    });
+  }, [user, channelId, isLocked]);
+
   // Realtime messages
   useEffect(() => {
     if (isLocked) return;
@@ -527,9 +535,12 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
         appendRealtimeMessage(msg);
         loadProfiles([msg.author_id]);
       })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `channel_id=eq.${channelId}` }, (payload) => {
+        updateRealtimeMessage(payload.new as any);
+      })
       .subscribe();
     return () => { channel.unsubscribe(); };
-  }, [channelId, loadProfiles, isLocked, appendRealtimeMessage]);
+  }, [channelId, loadProfiles, isLocked, appendRealtimeMessage, updateRealtimeMessage]);
 
   // ── Stable action callbacks for MessageItem (prevent memo from busting) ──
 
