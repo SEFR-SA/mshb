@@ -405,6 +405,10 @@ export default {
     entranceSound: "صوت الدخول",
     noEntranceSound: "لا يوجد",
     entranceSoundUpdated: "تم تحديث صوت الدخول",
+    serverNotifications: "إشعارات السيرفر",
+    allMessages: "جميع الرسائل",
+    onlyMentions: "الإشارات فقط",
+    nothingNotif: "لا شيء",
   },
   auditLog: {
     title: "سجل التدقيق",
