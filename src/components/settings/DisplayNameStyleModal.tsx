@@ -59,7 +59,7 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
     const gradientEnd = localEffect === "Gradient" ? localColorB : null;
     await supabase.from("profiles").update({
       name_font:           localFont === "Normal" ? null : localFont,
-      name_effect:         localEffect === "Solid" ? null : localEffect,
+      name_effect:         localEffect,
       name_gradient_start: localColorA,
       name_gradient_end:   gradientEnd,
       display_name:        profile?.display_name || "",

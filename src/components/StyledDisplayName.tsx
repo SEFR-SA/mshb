@@ -112,7 +112,7 @@ const StyledDisplayName: React.FC<StyledDisplayNameProps> = ({
     );
   }
 
-  if (color || (effect === "Solid" && gradientStart)) {
+  if (color || (effect === "Solid" && gradientStart) || (!effect && gradientStart && !gradientEnd)) {
     return (
       <span className={cn("font-semibold", className)}>
         <span style={{ fontFamily, color: color || gradientStart || undefined }}>{rendered}</span>
