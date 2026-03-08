@@ -45,6 +45,7 @@ import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import { useMessageKeybinds } from "@/hooks/useMessageKeybinds";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
