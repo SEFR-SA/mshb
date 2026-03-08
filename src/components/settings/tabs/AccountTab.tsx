@@ -18,10 +18,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { ChevronDown, ChevronUp, Pencil, Loader2, Download } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type EditField = "displayName" | "username" | "email" | "password" | null;
 
@@ -29,6 +40,7 @@ const AccountTab = () => {
   const { t } = useTranslation();
   const { user, profile, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [editField, setEditField] = useState<EditField>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -362,39 +374,77 @@ const AccountTab = () => {
             <p className="text-xs text-muted-foreground mt-0.5">Permanently delete your account and all data. This cannot be undone.</p>
           </div>
           <div className="shrink-0">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">{t("settings.deleteAccount")}</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{t("settings.deleteAccount")}</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {t("settings.deleteAccountConfirm")} This will permanently remove your profile, messages, servers you own, friendships, and all associated data. Enter your password to confirm.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="space-y-1.5 py-2">
-                  <Label className="text-xs text-muted-foreground">Current password</Label>
-                  <Input
-                    type="password"
-                    value={deleteConfirmPassword}
-                    onChange={(e) => setDeleteConfirmPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className="bg-background"
-                  />
-                </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancel onClick={() => setDeleteConfirmPassword("")}>{t("actions.cancel")}</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDeleteAccount}
-                    disabled={deleting || !deleteConfirmPassword}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {deleting ? <><Loader2 className="h-4 w-4 animate-spin me-1" /> Deleting…</> : t("settings.deleteAccount")}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {isMobile ? (
+              <Drawer>
+                <DrawerTrigger asChild>
+                  <Button variant="destructive" size="sm">{t("settings.deleteAccount")}</Button>
+                </DrawerTrigger>
+                <DrawerContent>
+                  <DrawerHeader>
+                    <DrawerTitle>{t("settings.deleteAccount")}</DrawerTitle>
+                    <DrawerDescription>
+                      {t("settings.deleteAccountConfirm")} This will permanently remove your profile, messages, servers you own, friendships, and all associated data. Enter your password to confirm.
+                    </DrawerDescription>
+                  </DrawerHeader>
+                  <div className="space-y-1.5 px-5">
+                    <Label className="text-xs text-muted-foreground">Current password</Label>
+                    <Input
+                      type="password"
+                      value={deleteConfirmPassword}
+                      onChange={(e) => setDeleteConfirmPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="bg-background"
+                    />
+                  </div>
+                  <DrawerFooter>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteAccount}
+                      disabled={deleting || !deleteConfirmPassword}
+                    >
+                      {deleting ? <><Loader2 className="h-4 w-4 animate-spin me-1" /> Deleting…</> : t("settings.deleteAccount")}
+                    </Button>
+                    <DrawerClose asChild>
+                      <Button variant="outline" onClick={() => setDeleteConfirmPassword("")}>{t("actions.cancel")}</Button>
+                    </DrawerClose>
+                  </DrawerFooter>
+                </DrawerContent>
+              </Drawer>
+            ) : (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">{t("settings.deleteAccount")}</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t("settings.deleteAccount")}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t("settings.deleteAccountConfirm")} This will permanently remove your profile, messages, servers you own, friendships, and all associated data. Enter your password to confirm.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="space-y-1.5 py-2">
+                    <Label className="text-xs text-muted-foreground">Current password</Label>
+                    <Input
+                      type="password"
+                      value={deleteConfirmPassword}
+                      onChange={(e) => setDeleteConfirmPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="bg-background"
+                    />
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setDeleteConfirmPassword("")}>{t("actions.cancel")}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteAccount}
+                      disabled={deleting || !deleteConfirmPassword}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {deleting ? <><Loader2 className="h-4 w-4 animate-spin me-1" /> Deleting…</> : t("settings.deleteAccount")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
         <div className="flex items-start sm:items-center justify-between gap-3">
