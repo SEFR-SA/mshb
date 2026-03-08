@@ -360,6 +360,7 @@ const CallListener = () => {
       }
       if (e.key === "Escape") {
         e.preventDefault();
+        e.stopImmediatePropagation();
         handleDecline();
       }
     };
