@@ -179,6 +179,7 @@ const MessageItem = React.memo(({
       fileType={msg.file_type}
       fileSize={msg.file_size}
       onReply={(id, authorName, content) => onReply(id, authorName, content)}
+      onEdit={isMine ? onEdit : undefined}
       onDeleteForMe={(id) => onDeleteForMe(id)}
       onDeleteForEveryone={onDeleteForEveryone}
       onTogglePin={onTogglePin}
