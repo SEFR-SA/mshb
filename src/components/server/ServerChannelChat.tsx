@@ -38,6 +38,7 @@ import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
+import { useMessageKeybinds } from "@/hooks/useMessageKeybinds";
 
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
 // Stable empty array reference — avoids creating new [] on every render for reactions-free messages
