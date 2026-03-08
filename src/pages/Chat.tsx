@@ -6,6 +6,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useForwardMessage } from "@/contexts/ForwardMessageContext";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import { usePresence } from "@/hooks/usePresence";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ const Chat = () => {
   const { isOnline, getUserStatus } = usePresence();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { openProfile } = useUserProfile();
 
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [otherProfile, setOtherProfile] = useState<Profile | null>(null);
@@ -445,7 +447,7 @@ const Chat = () => {
             <Phone className="h-4 w-4" />
           </Button>
           <PinnedMessagesDrawer threadId={threadId} />
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowProfile(!showProfile)} title={showProfile ? t("chat.hideProfile") : t("chat.showProfile")}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { if (isMobile) { openProfile(otherId); } else { setShowProfile(!showProfile); } }} title={showProfile ? t("chat.hideProfile") : t("chat.showProfile")}>
             {showProfile ? <UserRoundX className="h-4 w-4" /> : <UserRound className="h-4 w-4" />}
           </Button>
         </div>
