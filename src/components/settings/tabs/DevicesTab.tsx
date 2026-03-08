@@ -92,6 +92,11 @@ const DevicesTab: React.FC = () => {
           <p className="text-xs text-muted-foreground mt-0.5">
             {device.browser} · {formatDistanceToNow(new Date(device.last_active), { addSuffix: true })}
           </p>
+          {device.location && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              📍 {device.location}
+            </p>
+          )}
         </div>
         {!isCurrent && (
           <TooltipProvider>

@@ -25,7 +25,6 @@ function parseOS(ua: string): string {
 }
 
 function parseBrowser(ua: string): string {
-  // Check Electron first (MSHB desktop app)
   if (typeof window !== "undefined" && (window as any).electronAPI) return "MSHB Desktop";
   if (/Edg\//.test(ua)) return "Edge";
   if (/OPR\/|Opera/.test(ua)) return "Opera";
@@ -33,6 +32,18 @@ function parseBrowser(ua: string): string {
   if (/Chrome\//.test(ua) && !/Edg\//.test(ua)) return "Chrome";
   if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) return "Safari";
   return "Unknown";
+}
+
+async function resolveLocation(): Promise<{ ip: string | null; location: string | null }> {
+  try {
+    const { data, error } = await supabase.functions.invoke("resolve-device-location");
+    if (error || !data) return { ip: null, location: null };
+    const { ip, city, country } = data as { ip: string | null; city: string | null; country: string | null };
+    const location = city && country ? `${city}, ${country}` : country || null;
+    return { ip: ip || null, location };
+  } catch {
+    return { ip: null, location: null };
+  }
 }
 
 export function useDeviceTracker() {
@@ -48,14 +59,24 @@ export function useDeviceTracker() {
     const os = parseOS(navigator.userAgent);
     const browser = parseBrowser(navigator.userAgent);
 
-    supabase
-      .from("user_devices")
-      .upsert(
-        { user_id: user.id, device_id: deviceId, os, browser, last_active: new Date().toISOString() },
-        { onConflict: "user_id,device_id" }
-      )
-      .then(() => {
-        localStorage.setItem(LAST_UPSERT_KEY, String(Date.now()));
-      });
+    resolveLocation().then(({ ip, location }) => {
+      supabase
+        .from("user_devices")
+        .upsert(
+          {
+            user_id: user.id,
+            device_id: deviceId,
+            os,
+            browser,
+            last_active: new Date().toISOString(),
+            ip_address: ip,
+            location,
+          },
+          { onConflict: "user_id,device_id" }
+        )
+        .then(() => {
+          localStorage.setItem(LAST_UPSERT_KEY, String(Date.now()));
+        });
+    });
   }, [user]);
 }
