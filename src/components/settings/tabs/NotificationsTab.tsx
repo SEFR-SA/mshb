@@ -20,8 +20,6 @@ const DEFAULT_PREFS: NotifPrefs = {
   mentionSound: true,
   showBadge: true,
   showTabCount: true,
-  emailMissed: false,
-  emailFriendRequests: false,
 };
 
 interface ToggleRowProps {
