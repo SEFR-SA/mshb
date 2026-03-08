@@ -8,13 +8,14 @@ import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Mic, MicOff, Headphones, HeadphoneOff, Settings, PhoneOff, Monitor, MonitorOff, Video, VideoOff } from "lucide-react";
+import { Mic, MicOff, Headphones, HeadphoneOff, Settings, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown } from "lucide-react";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import UserPanelPopover from "./UserPanelPopover";
+import AudioControlPopover from "./AudioControlPopover";
 
 interface UserPanelProps {
   className?: string;
@@ -27,6 +28,8 @@ const UserPanel = ({ className }: UserPanelProps) => {
   const { voiceChannel, disconnectVoice, isScreenSharing, isCameraOn, nativeResolutionLabel } = useVoiceChannel();
   
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [micPopoverOpen, setMicPopoverOpen] = useState(false);
+  const [speakerPopoverOpen, setSpeakerPopoverOpen] = useState(false);
 
   const status = ((profile as any)?.status || "online") as UserStatus;
 
@@ -101,12 +104,30 @@ const UserPanel = ({ className }: UserPanelProps) => {
             </div>
 
             <div className="flex items-center shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleGlobalMute} title={globalMuted ? t("audio.unmute") : t("audio.mute")}>
-                {globalMuted ? <MicOff className="h-3.5 w-3.5 text-destructive" /> : <Mic className="h-3.5 w-3.5" />}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleGlobalDeafen} title={globalDeafened ? t("audio.undeafen") : t("audio.deafen")}>
-                {globalDeafened ? <HeadphoneOff className="h-3.5 w-3.5 text-destructive" /> : <Headphones className="h-3.5 w-3.5" />}
-              </Button>
+              {/* Mic button group */}
+              <div className="flex items-center">
+                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-e-none" onClick={toggleGlobalMute} title={globalMuted ? t("audio.unmute") : t("audio.mute")}>
+                  {globalMuted ? <MicOff className="h-3.5 w-3.5 text-destructive" /> : <Mic className="h-3.5 w-3.5" />}
+                </Button>
+                <AudioControlPopover type="input" open={micPopoverOpen} onOpenChange={setMicPopoverOpen}>
+                  <Button variant="ghost" size="icon" className="h-7 w-4 rounded-s-none px-0" title={t("settings.microphone")}>
+                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                </AudioControlPopover>
+              </div>
+
+              {/* Speaker button group */}
+              <div className="flex items-center">
+                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-e-none" onClick={toggleGlobalDeafen} title={globalDeafened ? t("audio.undeafen") : t("audio.deafen")}>
+                  {globalDeafened ? <HeadphoneOff className="h-3.5 w-3.5 text-destructive" /> : <Headphones className="h-3.5 w-3.5" />}
+                </Button>
+                <AudioControlPopover type="output" open={speakerPopoverOpen} onOpenChange={setSpeakerPopoverOpen}>
+                  <Button variant="ghost" size="icon" className="h-7 w-4 rounded-s-none px-0" title={t("settings.speakers")}>
+                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                </AudioControlPopover>
+              </div>
+
               <NavLink to="/settings">
                 <Button variant="ghost" size="icon" className="h-7 w-7" title={t("nav.settings")}>
                   <Settings className="h-3.5 w-3.5" />
