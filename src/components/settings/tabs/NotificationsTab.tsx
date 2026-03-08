@@ -128,16 +128,19 @@ const NotificationsTab = () => {
 
       {/* Email */}
       <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-1 divide-y divide-border/30">
-        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground pb-2">{t("settings.emailNotifications")}</h3>
+        <div className="flex items-center gap-2 pb-2">
+          <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("settings.emailNotifications")}</h3>
+          <span className="text-[10px] font-semibold uppercase tracking-wider bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Coming Soon</span>
+        </div>
         <ToggleRow
           label={t("settings.emailMissed")}
           checked={prefs.emailMissed}
-          onCheckedChange={(v) => update("emailMissed", v)}
+          onCheckedChange={() => {}}
         />
         <ToggleRow
           label={t("settings.emailFriendRequests")}
           checked={prefs.emailFriendRequests}
-          onCheckedChange={(v) => update("emailFriendRequests", v)}
+          onCheckedChange={() => {}}
         />
       </div>
     </div>

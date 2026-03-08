@@ -44,8 +44,29 @@ export function useUnreadCount() {
     }
 
     if (prevCountRef.current !== null && total > prevCountRef.current) {
-      playNotificationSound();
-      toast({ title: "You have a new message" });
+      const prefs = getNotificationPrefs();
+      const appFocused = document.hasFocus();
+
+      if (prefs.messageSound && !appFocused) {
+        playNotificationSound();
+      }
+
+      if (!appFocused) {
+        toast({ title: "You have a new message" });
+      }
+
+      if (
+        prefs.desktopEnabled &&
+        !appFocused &&
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted"
+      ) {
+        new Notification("New direct message", {
+          body: "You have a new unread message",
+          icon: "/icon-192.png",
+          silent: true,
+        });
+      }
     }
     prevCountRef.current = total;
 
