@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
 import { Users, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useStreamerMode } from "@/contexts/StreamerModeContext";
 import type { ServerInviteMetadata } from "@/lib/inviteUtils";
 
 interface Props {
