@@ -209,7 +209,7 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
         )}
 
         {/* Mutual Friends */}
-        {!isSelf && mutualFriends.length > 0 && (
+        {!isSelf && (
           <>
             <Separator />
             <Collapsible open={friendsOpen} onOpenChange={setFriendsOpen}>
