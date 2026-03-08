@@ -62,8 +62,6 @@ const NotificationBell = () => {
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
-          </span>
-        )}
       </button>
     </NotificationCenter>
   );
