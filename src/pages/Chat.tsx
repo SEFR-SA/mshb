@@ -89,6 +89,8 @@ const Chat = () => {
     scrollRef,
     appendRealtimeMessage,
     updateRealtimeMessage,
+    showScrollToBottom,
+    scrollToBottom,
   } = useInfiniteMessages({ threadId });
 
   // Intersection observer for loading older messages
