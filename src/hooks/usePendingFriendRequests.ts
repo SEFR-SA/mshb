@@ -1,11 +1,13 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStreamerMode } from "@/contexts/StreamerModeContext";
 import { toast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/lib/soundManager";
 
 export function usePendingFriendRequests() {
   const { user } = useAuth();
+  const { isStreamerMode } = useStreamerMode();
   const [pendingCount, setPendingCount] = useState(0);
   const prevCountRef = useRef<number | null>(null);
 
@@ -19,7 +21,7 @@ export function usePendingFriendRequests() {
 
     const newCount = count || 0;
 
-    if (prevCountRef.current !== null && newCount > prevCountRef.current) {
+    if (prevCountRef.current !== null && newCount > prevCountRef.current && !isStreamerMode) {
       playNotificationSound();
       toast({ title: "You have a new friend request!" });
     }

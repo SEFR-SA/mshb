@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStreamerMode } from "@/contexts/StreamerModeContext";
 import { useForwardMessage } from "@/contexts/ForwardMessageContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { usePresence } from "@/hooks/usePresence";
@@ -56,6 +57,7 @@ const Chat = () => {
   const { threadId } = useParams<{ threadId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
+  const { isStreamerMode } = useStreamerMode();
   const { isOnline, getUserStatus } = usePresence();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -185,7 +187,7 @@ const Chat = () => {
     if (data) {
       setCallSessionId(data.id);
       setIsCallerState(true);
-      startLoop("outgoing_ring");
+      if (!isStreamerMode) startLoop("outgoing_ring");
       startCall(data.id);
     }
   };
