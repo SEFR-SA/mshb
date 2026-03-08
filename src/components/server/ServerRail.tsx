@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { getNotificationPrefs } from "@/lib/notificationPrefs";
 import { ServerRailSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { useTranslation } from "react-i18next";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";

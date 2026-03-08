@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { getNotificationPrefs } from "@/lib/notificationPrefs";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

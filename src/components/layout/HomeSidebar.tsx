@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { getNotificationPrefs } from "@/lib/notificationPrefs";
 import { SidebarItemSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslation } from "react-i18next";
