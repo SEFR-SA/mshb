@@ -6,6 +6,7 @@
       "name": "mshb",
       "dependencies": {
         "@hookform/resolvers": "^3.10.0",
+        "@lovable.dev/cloud-auth-js": "^0.0.3",
         "@radix-ui/react-accordion": "^1.2.11",
         "@radix-ui/react-alert-dialog": "^1.1.14",
         "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -311,6 +312,8 @@
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.25", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ=="],
 
     "@listr2/prompt-adapter-inquirer": ["@listr2/prompt-adapter-inquirer@2.0.22", "", { "dependencies": { "@inquirer/type": "^1.5.5" }, "peerDependencies": { "@inquirer/prompts": ">= 3 < 8" } }, "sha512-hV36ZoY+xKL6pYOt1nPNnkciFkn89KZwqLhAFzJvYysAvL5uBQdiADZx/8bIDXIukzzwG0QlPYolgMzQUtKgpQ=="],
+
+    "@lovable.dev/cloud-auth-js": ["@lovable.dev/cloud-auth-js@0.0.3", "", {}, "sha512-y3k/UHs5BdeOeNR2SmB0jhiodXN9FrsNLrSecUat9H51w4xPzfE/RIh+au1jKZRdjikpQ0QA6wSadBVLRiJX+Q=="],
 
     "@malept/cross-spawn-promise": ["@malept/cross-spawn-promise@2.0.0", "", { "dependencies": { "cross-spawn": "^7.0.1" } }, "sha512-1DpKU0Z5ThltBwjNySMC14g0CkbyhCaz9FkhxqNsZI6uAPJXFS8cMXlBKo26FJ8ZuW6S9GCMcR9IO5k2X5/9Fg=="],
 
