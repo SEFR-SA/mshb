@@ -97,6 +97,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const unreadMap = useServerUnread(serverIds);
   const voiceActivityMap = useServerVoiceActivity(serverIds);
   const { unreadDMs } = useUnreadDMs();
+  const { prefsMap: notifPrefsMap, setLevel: setNotifLevel } = useServerNotificationPrefs(serverIds);
 
   // IDs of servers that are inside folders
   const folderedServerIds = new Set(folders.flatMap((f) => f.serverIds));
