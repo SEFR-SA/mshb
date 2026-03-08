@@ -61,7 +61,7 @@ const ServerView = () => {
       setActiveChannel(channel);
       // On mobile, navigate to the channel route for full-page chat
       if (isMobile) {
-        navigate(`/server/${serverId}/channel/${channel.id}`);
+        navigate(`/channels/server/${serverId}/channel/${channel.id}`);
       }
     }
   };
