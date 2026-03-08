@@ -12,6 +12,7 @@ import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { Pencil, LogOut, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import StatusBubble from "@/components/shared/StatusBubble";
 
 const STATUS_OPTIONS: { value: UserStatus; label: string; color: string }[] = [
   { value: "online", label: "Online", color: "bg-green-500" },
