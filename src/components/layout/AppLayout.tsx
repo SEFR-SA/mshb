@@ -36,9 +36,9 @@ const AppLayout = () => {
 
   // On mobile, determine if we're in a "full-page" view (chat, channel chat) where bottom nav should be hidden
   const isFullPageView = isMobile && (
-    location.pathname.startsWith("/chat/") ||
-    location.pathname.startsWith("/group/") ||
-    /^\/server\/[^/]+\/channel\//.test(location.pathname)
+    location.pathname.startsWith("/channels/@me/chat/") ||
+    location.pathname.startsWith("/channels/@me/group/") ||
+    /^\/channels\/server\/[^/]+\/channel\//.test(location.pathname)
   );
 
   return (
