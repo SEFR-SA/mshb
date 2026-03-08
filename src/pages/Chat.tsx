@@ -154,14 +154,6 @@ const Chat = () => {
       const { data: prof } = await supabase.from("profiles").select("*, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").eq("user_id", oid).maybeSingle();
       setOtherProfile(prof);
 
-      // Check pin status
-      const { data: pin } = await supabase
-        .from("pinned_chats")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("thread_id", threadId)
-        .maybeSingle();
-      setIsPinned(!!pin);
     })();
   }, [threadId, user]);
 
