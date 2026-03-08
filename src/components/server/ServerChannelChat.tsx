@@ -38,6 +38,7 @@ import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
+import { useMessageKeybinds } from "@/hooks/useMessageKeybinds";
 
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
 // Stable empty array reference — avoids creating new [] on every render for reactions-free messages
@@ -331,6 +332,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string; content: string } | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
+  const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
 
   const isLocked = isPrivate && hasAccess === false;
   const [userRole, setUserRole] = useState<string>("member");
@@ -523,6 +525,31 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     ).then();
   }, [user, channelId]);
 
+  useMessageKeybinds({
+    hoveredMessageId: hoveredMsgId,
+    messages,
+    currentUserId: user?.id,
+    onEdit: undefined,
+    onDeleteForMe: handleDeleteForMe,
+    onDeleteForEveryone: handleDeleteForEveryone,
+    onTogglePin: handleToggleMessagePin,
+    onAddReaction: (id) => setReactionPickerMsgId(id),
+    onForward: (id) => {
+      const m = messages.find(v => v.id === id);
+      if (m) openForwardModal({ content: m.content, fileUrl: m.file_url, fileName: m.file_name, fileType: m.file_type, fileSize: m.file_size });
+    },
+    onMarkUnread: (id) => {
+      const msg = messages.find(m => m.id === id);
+      if (msg && user) {
+        const before = new Date(new Date(msg.created_at).getTime() - 1000).toISOString();
+        supabase.from("channel_read_status" as any).upsert(
+          { channel_id: channelId, user_id: user.id, last_read_at: before } as any,
+          { onConflict: "channel_id,user_id" } as any
+        ).then();
+      }
+    },
+  });
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setNewMsg(val);
@@ -673,37 +700,42 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                 : null;
               const roleInfo = userRoleColorMap.get(msg.author_id) || null;
               return (
-                <MessageItem
+                <div
                   key={msg.id}
-                  msg={msg}
-                  prevMsg={prevMsg}
-                  replyToMsg={replyToMsg}
-                  profiles={profiles}
-                  roleInfo={roleInfo}
-                  currentUserId={user?.id}
-                  serverEmojis={serverEmojis}
-                  serverId={serverId}
-                  channelId={channelId}
-                  isAnnouncement={isAnnouncement}
-                  isFirstMessage={idx === 0}
-                  isHighlighted={highlightedMsgId === msg.id}
-                  reactions={reactions.get(msg.id) || EMPTY_REACTIONS}
-                  user={user}
-                  onReply={handleReply}
-                  onDeleteForMe={handleDeleteForMe}
-                  onDeleteForEveryone={msg.author_id === user?.id ? handleDeleteForEveryone : undefined}
-                  onMarkUnread={handleMarkUnread}
-                  onTogglePin={handleToggleMessagePin}
-                  onHighlight={setHighlightedMsgId}
-                  toggleReaction={toggleReaction}
-                  onAddReaction={(id) => setReactionPickerMsgId(id)}
-                  onForward={(id) => {
-                    const m = messages.find(v => v.id === id);
-                    if (m) openForwardModal({ content: m.content, fileUrl: m.file_url, fileName: m.file_name, fileType: m.file_type, fileSize: m.file_size });
-                  }}
-                  reactionPickerMsgId={reactionPickerMsgId}
-                  onReactionPickerHandled={() => setReactionPickerMsgId(null)}
-                />
+                  onMouseEnter={() => setHoveredMsgId(msg.id)}
+                  onMouseLeave={() => setHoveredMsgId(null)}
+                >
+                  <MessageItem
+                    msg={msg}
+                    prevMsg={prevMsg}
+                    replyToMsg={replyToMsg}
+                    profiles={profiles}
+                    roleInfo={roleInfo}
+                    currentUserId={user?.id}
+                    serverEmojis={serverEmojis}
+                    serverId={serverId}
+                    channelId={channelId}
+                    isAnnouncement={isAnnouncement}
+                    isFirstMessage={idx === 0}
+                    isHighlighted={highlightedMsgId === msg.id}
+                    reactions={reactions.get(msg.id) || EMPTY_REACTIONS}
+                    user={user}
+                    onReply={handleReply}
+                    onDeleteForMe={handleDeleteForMe}
+                    onDeleteForEveryone={msg.author_id === user?.id ? handleDeleteForEveryone : undefined}
+                    onMarkUnread={handleMarkUnread}
+                    onTogglePin={handleToggleMessagePin}
+                    onHighlight={setHighlightedMsgId}
+                    toggleReaction={toggleReaction}
+                    onAddReaction={(id) => setReactionPickerMsgId(id)}
+                    onForward={(id) => {
+                      const m = messages.find(v => v.id === id);
+                      if (m) openForwardModal({ content: m.content, fileUrl: m.file_url, fileName: m.file_name, fileType: m.file_type, fileSize: m.file_size });
+                    }}
+                    reactionPickerMsgId={reactionPickerMsgId}
+                    onReactionPickerHandled={() => setReactionPickerMsgId(null)}
+                  />
+                </div>
               );
             })}
             <div ref={messagesEndRef} />

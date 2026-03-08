@@ -1,86 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-## Plan: Implement All Keybind Shortcuts
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-This is a large task touching multiple components. The core challenge is: **message keybinds require knowing which message is "focused/hovered"**, while **voice/call keybinds are global**.
+## Tech Stack
 
-### Architecture
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-1. **Create a global `useGlobalKeybinds` hook** — handles voice/call shortcuts that work app-wide
-2. **Create a `useMessageKeybinds` hook** — handles message-level shortcuts, requires a "hovered message" tracking system
-3. **Add hover tracking to message rendering** in Chat, GroupChat, and ServerChannelChat
+## Core Directives (CRITICAL — Always Enforce)
 
-### Key Design Decision
+### 1. Plan First
 
-Message shortcuts (E, Backspace, P, +, F) are **single-key** — they must only fire when the user is NOT focused on a text input/textarea. The hook will check `document.activeElement` tag before acting.
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
----
+### 2. Single Source of Truth (SSOT)
 
-### Step 1: Create `src/hooks/useGlobalKeybinds.ts`
+Never duplicate display logic. Always use the canonical shared components:
 
-Registers a global `keydown` listener for:
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-| Shortcut | Action | Condition |
-|----------|--------|-----------|
-| `Ctrl+Shift+M` | Toggle mute | Always (uses `toggleGlobalMute` from AudioSettingsContext) |
-| `Ctrl+Shift+D` | Toggle deafen | Always (uses `toggleGlobalDeafen` from AudioSettingsContext) |
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-Mount this hook in `AppLayout.tsx`.
+### 3. Pro Gating
 
-### Step 2: Add call keybinds to `CallListener.tsx`
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
 
-Add a `keydown` listener inside CallListener:
+### 4. No Hallucinations
 
-| Shortcut | Action | Condition |
-|----------|--------|-----------|
-| `Ctrl+Enter` | Accept incoming call | Only when `incomingCall` is present |
-| `Esc` | Decline incoming call | Only when `incomingCall` is present |
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
 
-### Step 3: Add streaming keybinds to `VoiceCallUI.tsx`
+### 5. No Over-Engineering
 
-Add a `keydown` listener:
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
 
-| Shortcut | Action | Condition |
-|----------|--------|-----------|
-| `Ctrl+Alt+S` | Start streaming (open GoLive modal) | When in active call and not already sharing |
-| `Ctrl+Alt+E` | End stream | When actively screen sharing |
+## Documentation Directory
 
-### Step 4: Create `src/hooks/useMessageKeybinds.ts`
+Read these files for specific details — do NOT rely on memory alone:
 
-Accepts: `hoveredMessageId`, `messages`, `currentUserId`, and callback handlers (`onEdit`, `onDelete`, `onPin`, `onReaction`, `onForward`, `onCopy`, `onMarkUnread`).
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
 
-Registers `keydown` for:
+## Cosmetic Asset Specs
 
-| Key | Action | Guard |
-|-----|--------|-------|
-| `E` | Edit (own msg only) | Not in input |
-| `Backspace` | Delete for everyone (own) / Delete for me | Not in input |
-| `P` | Pin toggle | Not in input |
-| `+` | Add reaction | Not in input |
-| `F` | Forward | Not in input |
-| `Ctrl+C` | Copy text | Only when no text selection exists (to not override native copy) |
-| `Alt+Enter` | Mark unread | Not in input |
+Per-asset guides with exact dimensions, config files, and wrapper usage:
 
-All single-key shortcuts check: `!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)` and `!document.activeElement?.isContentEditable`.
-
-### Step 5: Add hovered message tracking to chat views
-
-In `Chat.tsx`, `GroupChat.tsx`, and `ServerChannelChat.tsx`:
-
-- Add `const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null)`
-- Add `onMouseEnter={() => setHoveredMsgId(msg.id)}` and `onMouseLeave={() => setHoveredMsgId(null)}` to each message row wrapper
-- Wire `useMessageKeybinds` with the hovered message and existing action handlers
-
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `src/hooks/useGlobalKeybinds.ts` | **New** — global mute/deafen keybinds |
-| `src/hooks/useMessageKeybinds.ts` | **New** — message-level keybinds |
-| `src/components/layout/AppLayout.tsx` | Mount `useGlobalKeybinds` |
-| `src/components/chat/CallListener.tsx` | Add Ctrl+Enter / Esc for incoming calls |
-| `src/components/chat/VoiceCallUI.tsx` | Add Ctrl+Alt+S / Ctrl+Alt+E for streaming |
-| `src/pages/Chat.tsx` | Add hover tracking + `useMessageKeybinds` |
-| `src/pages/GroupChat.tsx` | Add hover tracking + `useMessageKeybinds` |
-| `src/components/server/ServerChannelChat.tsx` | Add hover tracking + `useMessageKeybinds` |
-
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

@@ -45,6 +45,7 @@ import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import { useMessageKeybinds } from "@/hooks/useMessageKeybinds";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
@@ -78,6 +79,7 @@ const Chat = () => {
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string; content: string } | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
+  const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
 
   // Infinite scrolling messages
   const {
@@ -393,6 +395,31 @@ const Chat = () => {
     }
   };
 
+  useMessageKeybinds({
+    hoveredMessageId: hoveredMsgId,
+    messages: visibleMessages,
+    currentUserId: user?.id,
+    onEdit: (id, content) => { setEditingId(id); setEditContent(content); },
+    onDeleteForMe: deleteForMe,
+    onDeleteForEveryone: deleteForEveryone,
+    onTogglePin: handleToggleMessagePin,
+    onAddReaction: (id) => setReactionPickerMsgId(id),
+    onForward: (id) => {
+      const m = visibleMessages.find(v => v.id === id);
+      if (m) openForwardModal({ content: m.content, fileUrl: (m as any).file_url, fileName: (m as any).file_name, fileType: (m as any).file_type, fileSize: (m as any).file_size });
+    },
+    onMarkUnread: (id) => {
+      const msg = visibleMessages.find(m => m.id === id);
+      if (msg && user && threadId) {
+        const before = new Date(new Date(msg.created_at).getTime() - 1000).toISOString();
+        supabase.from("thread_read_status").upsert(
+          { user_id: user.id, thread_id: threadId, last_read_at: before },
+          { onConflict: "user_id,thread_id" }
+        ).then();
+      }
+    },
+  });
+
   // Center chat panel content
   const chatPanel = (
     <div className="flex flex-col h-full min-w-0 flex-1 relative" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
@@ -567,7 +594,7 @@ const Chat = () => {
                     }
                   }}
                 >
-                  <div id={`msg-${msg.id}`} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} group/msg hover:bg-muted/30 rounded-lg -mx-2 px-2 py-1 transition-colors ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
+                  <div id={`msg-${msg.id}`} onMouseEnter={() => setHoveredMsgId(msg.id)} onMouseLeave={() => setHoveredMsgId(null)} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-1" : idx === 0 ? "" : "mt-3"} group/msg hover:bg-muted/30 rounded-lg -mx-2 px-2 py-1 transition-colors ${highlightedMsgId === msg.id ? "animate-pulse bg-primary/10 rounded-lg" : ""}`}>
                     <div className="max-w-[75%]">
                       {msgAny.reply_to_id && (() => {
                         const original = visibleMessages.find(m => m.id === msgAny.reply_to_id);
