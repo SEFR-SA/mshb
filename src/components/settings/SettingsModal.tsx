@@ -10,7 +10,7 @@ import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import {
   User, Shield, Users, Bell, Star, CreditCard,
-  Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag, Keyboard,
+  Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag, Keyboard, Monitor,
 } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
@@ -27,9 +27,10 @@ const VoiceVideoTab    = lazy(() => import("./tabs/VoiceVideoTab"));
 const LanguageTab      = lazy(() => import("./tabs/LanguageTab"));
 const MarketplaceTab   = lazy(() => import("./tabs/MarketplaceTab"));
 const KeybindsTab      = lazy(() => import("./tabs/KeybindsTab"));
+const DevicesTab       = lazy(() => import("./tabs/DevicesTab"));
 
 type TabId =
-  | "profile" | "account" | "social" | "notifications"
+  | "profile" | "account" | "devices" | "social" | "notifications"
   | "subscriptions" | "billing" | "appearance" | "voice" | "language"
   | "marketplace" | "keybinds";
 
@@ -50,6 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "profile",       labelKey: "settings.myProfile",    icon: User },
       { id: "account",       labelKey: "settings.myAccount",    icon: Shield },
+      { id: "devices",       labelKey: "settings.devices",      icon: Monitor },
       { id: "social",        labelKey: "settings.social",       icon: Users },
       { id: "notifications", labelKey: "settings.notifications",icon: Bell },
     ],
@@ -71,6 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
 const TAB_COMPONENTS: Record<TabId, React.LazyExoticComponent<React.ComponentType<any>>> = {
   profile:       ProfileTab,
   account:       AccountTab,
+  devices:       DevicesTab,
   social:        SocialTab,
   notifications: NotificationsTab,
   subscriptions: SubscriptionsTab,
