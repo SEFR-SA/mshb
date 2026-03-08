@@ -31,7 +31,7 @@ export const UnsavedChangesBar: React.FC<UnsavedChangesBarProps> = ({ show, onSa
         <p className="text-sm font-medium text-white">{t("settings.unsavedChanges", "Careful — you have unsaved changes!")}</p>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={onReset} className="text-white hover:bg-white/10">{t("common.reset", "Reset")}</Button>
-          <Button size="sm" onClick={onSave} className="bg-green-600 hover:bg-green-700 text-white">{t("common.saveChanges", "Save Changes")}</Button>
+          <Button size="sm" onClick={onSave} className="text-white hover:opacity-90" style={{ backgroundColor: "var(--color-primary, hsl(var(--primary)))" }}>{t("common.saveChanges", "Save Changes")}</Button>
         </div>
       </div>
     </div>
