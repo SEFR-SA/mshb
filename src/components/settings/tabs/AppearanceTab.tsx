@@ -4,6 +4,7 @@ import { useTheme, COLOR_THEME_PRESETS } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Palette, Lock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import ThemeBuilder from "@/components/settings/ThemeBuilder";
@@ -98,6 +99,7 @@ const AppearanceTab = () => {
   const { profile } = useAuth();
   const isPro = (profile as any)?.is_pro ?? false;
   const [showBuilder, setShowBuilder] = useState(false);
+  const isMobile = useIsMobile();
 
   const showUpgradeToast = () => toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
 
@@ -109,6 +111,7 @@ const AppearanceTab = () => {
       </div>
 
       {/* ─── Custom Theme Banner ─── */}
+      {!isMobile && (
       <div
         className={cn(
           "relative rounded-xl border border-border p-4 flex items-center justify-between gap-4 overflow-hidden",
@@ -139,6 +142,7 @@ const AppearanceTab = () => {
           {t("themeBuilder.createTheme")}
         </Button>
       </div>
+      )}
 
       {/* Default Themes */}
       <div className="space-y-3">
@@ -213,7 +217,7 @@ const AppearanceTab = () => {
       </div>
 
       {/* Theme Builder Overlay */}
-      {showBuilder && <ThemeBuilder onClose={() => setShowBuilder(false)} />}
+      {!isMobile && showBuilder && <ThemeBuilder onClose={() => setShowBuilder(false)} />}
     </div>
   );
 };
