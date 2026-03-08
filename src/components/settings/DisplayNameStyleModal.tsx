@@ -207,7 +207,8 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
             </div>
           </div>
 
-          {/* ── Right Pane (Preview) ── */}
+          {/* ── Right Pane (Preview) — hidden on mobile ── */}
+          {!isMobile && (
           <div className={cn("flex-1 flex flex-col relative", isDark ? "bg-zinc-900 text-white" : "bg-gray-100 text-gray-900")}>
             {/* Theme toggle */}
             <button
@@ -284,6 +285,7 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
               </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* ── Footer ── */}
