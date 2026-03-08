@@ -442,7 +442,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                           onPointerUp={isMobile ? cancelLongPress : undefined}
                           onPointerLeave={isMobile ? cancelLongPress : undefined}
                         >
-                          {hasUnread && (
+                          {getNotificationPrefs().showBadge && hasUnread && (
                             <div className="absolute -start-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full z-10" />
                           )}
                           <NavLink
