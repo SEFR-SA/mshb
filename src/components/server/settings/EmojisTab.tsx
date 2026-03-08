@@ -77,6 +77,12 @@ const EmojisTab = ({ serverId, canEdit }: Props) => {
     if (!serverId) return;
     setLoading(true);
     fetchEmojis().finally(() => setLoading(false));
+
+    const channel = supabase
+      .channel(`emojis-rt-${serverId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "server_emojis", filter: `server_id=eq.${serverId}` }, () => fetchEmojis())
+      .subscribe();
+    return () => { channel.unsubscribe(); };
   }, [serverId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
