@@ -15,7 +15,9 @@ import VoiceConnectionManager from "@/components/server/VoiceConnectionBar";
 import UserPanel from "@/components/layout/UserPanel";
 import GlobalNotificationListener from "@/components/chat/GlobalNotificationListener";
 import { useGlobalKeybinds } from "@/hooks/useGlobalKeybinds";
+import { useStreamerMode } from "@/contexts/StreamerModeContext";
 import { NavLink } from "react-router-dom";
+import { Monitor, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const AppLayout = () => {
