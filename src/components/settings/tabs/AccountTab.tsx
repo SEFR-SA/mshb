@@ -18,10 +18,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { ChevronDown, ChevronUp, Pencil, Loader2, Download } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type EditField = "displayName" | "username" | "email" | "password" | null;
 
