@@ -327,7 +327,7 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
         </div>
 
         {/* ── RIGHT COLUMN — sticky live preview ── */}
-        <div className="w-full lg:w-[300px] lg:shrink-0 sticky top-6 self-start space-y-4">
+        <div className="w-full lg:w-[300px] shrink-0 sticky top-6 self-start space-y-4">
 
           {/* Preview 1: Profile Card */}
           <div>

@@ -250,7 +250,7 @@ const SettingsModal = () => {
           </Sheet>
 
           {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ scrollbarGutter: "stable" }}>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
             <div className="max-w-4xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
               <Suspense fallback={<TabFallback />}>
                 <ActiveTab setUnsaved={setUnsaved} clearUnsaved={clearUnsaved} />
