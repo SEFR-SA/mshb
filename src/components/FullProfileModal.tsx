@@ -194,7 +194,7 @@ const FullProfileModal = () => {
 
     const { data: servers } = await supabase
       .from("servers")
-      .select("id,name,avatar_url")
+      .select("id,name,icon_url")
       .in("id", mutualIds);
 
     setMutualServers((servers ?? []) as MutualServer[]);
