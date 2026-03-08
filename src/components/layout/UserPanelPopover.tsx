@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePresence } from "@/hooks/usePresence";
+
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
@@ -27,12 +27,12 @@ interface UserPanelPopoverProps {
 const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
   const { t } = useTranslation();
   const { user, profile, refreshProfile, signOut } = useAuth();
-  const { getUserStatus } = usePresence();
+  
   const navigate = useNavigate();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
 
   const p = profile as any;
-  const currentStatus = (getUserStatus(profile) || "online") as UserStatus;
+  const currentStatus = (p?.status || "online") as UserStatus;
   const effectiveStatusText = (p?.status_until && new Date(p.status_until) < new Date())
     ? null
     : p?.status_text ?? null;

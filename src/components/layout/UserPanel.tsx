@@ -4,7 +4,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
-import { usePresence } from "@/hooks/usePresence";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -25,10 +25,10 @@ const UserPanel = ({ className }: UserPanelProps) => {
   const { user, profile } = useAuth();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
   const { voiceChannel, disconnectVoice, isScreenSharing, isCameraOn, nativeResolutionLabel } = useVoiceChannel();
-  const { getUserStatus } = usePresence();
+  
   const [popoverOpen, setPopoverOpen] = useState(false);
 
-  const status = (getUserStatus(profile) || "online") as UserStatus;
+  const status = ((profile as any)?.status || "online") as UserStatus;
 
   if (!user) return null;
 
