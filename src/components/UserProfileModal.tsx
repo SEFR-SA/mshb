@@ -199,7 +199,7 @@ const UserProfileModal = () => {
   if (isMobile) {
     return (
       <Drawer open={isOpen} onOpenChange={(o) => !o && closeProfile()}>
-        <DrawerContent>{content}</DrawerContent>
+        <DrawerContent raw className="overflow-hidden">{content}</DrawerContent>
       </Drawer>
     );
   }
