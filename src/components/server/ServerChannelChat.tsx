@@ -346,6 +346,8 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     scrollRef,
     appendRealtimeMessage,
     updateRealtimeMessage,
+    showScrollToBottom,
+    scrollToBottom,
   } = useInfiniteMessages({ channelId, enabled: !isLocked });
 
   const { reactions, toggleReaction } = useMessageReactions(messages.map((m: any) => m.id));
