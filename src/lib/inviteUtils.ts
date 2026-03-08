@@ -33,36 +33,23 @@ export async function detectInviteInMessage(
 
   const code = match[1];
 
-  // Validate invite via existing RPC — returns server_id or null
-  const { data: serverId } = await supabase.rpc("get_server_id_by_invite_link", { p_code: code });
-  if (!serverId) return { isInvite: false };
+  // Use validate_invite RPC — bypasses RLS, returns real-time status
+  const { data, error } = await supabase.rpc("validate_invite" as any, { p_code: code });
+  if (error || !data) return { isInvite: false };
 
-  // Fetch invite record for expiry / max_uses snapshot
-  const { data: invite } = await supabase
-    .from("invites" as any)
-    .select("expires_at, max_uses")
-    .eq("code", code)
-    .maybeSingle();
-
-  // Fetch server details
-  const { data: server } = await supabase
-    .from("servers")
-    .select("name, icon_url, banner_url")
-    .eq("id", serverId)
-    .maybeSingle();
-
-  if (!server) return { isInvite: false };
+  const result = data as any;
+  if (result.status !== "valid") return { isInvite: false };
 
   return {
     isInvite: true,
     metadata: {
-      server_id: serverId,
+      server_id: result.server_id,
       invite_code: code,
-      server_name: (server as any).name,
-      server_icon_url: (server as any).icon_url ?? undefined,
-      server_banner_url: (server as any).banner_url ?? undefined,
-      expires_at: (invite as any)?.expires_at ?? null,
-      max_uses: (invite as any)?.max_uses ?? null,
+      server_name: result.server_name,
+      server_icon_url: result.server_icon_url ?? undefined,
+      server_banner_url: result.server_banner_url ?? undefined,
+      expires_at: result.expires_at ?? null,
+      max_uses: result.max_uses ?? null,
     },
   };
 }

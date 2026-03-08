@@ -1433,6 +1433,7 @@ export type Database = {
         Returns: undefined
       }
       use_invite: { Args: { p_code: string }; Returns: string }
+      validate_invite: { Args: { p_code: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
