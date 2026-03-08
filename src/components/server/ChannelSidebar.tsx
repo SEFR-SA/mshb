@@ -35,6 +35,8 @@ import { useCreateChannel } from "@/contexts/CreateChannelContext";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { NavLink as RouterNavLink } from "react-router-dom";
 import StyledDisplayName from "@/components/StyledDisplayName";
+import { useChannelNotificationPref, type ChannelNotifLevel } from "@/hooks/useChannelNotificationPref";
+
 
 interface Channel {
   id: string;
