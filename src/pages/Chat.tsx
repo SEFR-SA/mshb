@@ -57,7 +57,7 @@ const Chat = () => {
   const { threadId } = useParams<{ threadId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
-  const { isStreamerMode } = useStreamerMode();
+  
   const { isOnline, getUserStatus } = usePresence();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
