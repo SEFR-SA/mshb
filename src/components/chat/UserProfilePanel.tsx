@@ -236,10 +236,11 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
         )}
 
       </div>
+      </div>
 
-      {/* View Full Profile */}
+      {/* View Full Profile — pinned footer */}
       {targetUserId && (
-        <div className="px-4 pb-4 mt-3">
+        <div className="shrink-0 px-4 py-3 border-t border-border/50">
           <Button
             variant="ghost"
             className="w-full text-sm"
