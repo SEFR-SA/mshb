@@ -81,6 +81,12 @@ const AuditLogView = ({ serverId }: Props) => {
       setIsLoading(false);
     };
     load();
+
+    const channel = supabase
+      .channel(`audit-rt-${serverId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "server_audit_logs", filter: `server_id=eq.${serverId}` }, () => load())
+      .subscribe();
+    return () => { channel.unsubscribe(); };
   }, [serverId]);
 
   if (isLoading) {

@@ -77,6 +77,12 @@ const SoundboardTab = ({ serverId, canEdit }: Props) => {
     if (!serverId) return;
     setLoading(true);
     fetchSounds().finally(() => setLoading(false));
+
+    const channel = supabase
+      .channel(`soundboard-rt-${serverId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "server_soundboard", filter: `server_id=eq.${serverId}` }, () => fetchSounds())
+      .subscribe();
+    return () => { channel.unsubscribe(); };
   }, [serverId]);
 
   // Cleanup audio on unmount

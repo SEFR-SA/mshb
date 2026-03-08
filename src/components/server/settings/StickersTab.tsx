@@ -88,6 +88,12 @@ const StickersTab = ({ serverId, canEdit }: Props) => {
     if (!serverId) return;
     setLoading(true);
     fetchStickers().finally(() => setLoading(false));
+
+    const channel = supabase
+      .channel(`stickers-rt-${serverId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "server_stickers", filter: `server_id=eq.${serverId}` }, () => fetchStickers())
+      .subscribe();
+    return () => { channel.unsubscribe(); };
   }, [serverId]);
 
   const handleOpenDialog = () => {

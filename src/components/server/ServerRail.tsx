@@ -167,9 +167,15 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
         );
       })
       .subscribe();
+    const foldersChannel = supabase
+      .channel(`folders-rail-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "server_folders", filter: `user_id=eq.${user.id}` }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "server_folder_items" }, () => loadData())
+      .subscribe();
     return () => {
       channel.unsubscribe();
       serversChannel.unsubscribe();
+      foldersChannel.unsubscribe();
     };
   }, [user, loadData]);
 

@@ -66,26 +66,34 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
   const canEdit = isOwner || isAdmin;
   const canViewAuditLogs = isOwner || isAdmin;
 
+  const loadServerData = async () => {
+    if (!serverId) return;
+    const { data: s } = await supabase.from("servers" as any).select("*").eq("id", serverId).maybeSingle();
+    if (s) {
+      setServerName((s as any).name);
+      setDescription((s as any).description || "");
+      setIconUrl((s as any).icon_url || "");
+      setBannerUrl((s as any).banner_url || "");
+      setOwnerId((s as any).owner_id);
+    }
+    const { data: mems } = await supabase.from("server_members" as any).select("user_id, role").eq("server_id", serverId);
+    if (mems) {
+      const userIds = (mems as any[]).map((m) => m.user_id);
+      const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, status").in("user_id", userIds);
+      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
+      setMembers((mems as any[]).map((m) => ({ ...m, profile: profileMap.get(m.user_id) })));
+    }
+  };
+
   useEffect(() => {
     if (!open || !serverId) return;
-    const load = async () => {
-      const { data: s } = await supabase.from("servers" as any).select("*").eq("id", serverId).maybeSingle();
-      if (s) {
-        setServerName((s as any).name);
-        setDescription((s as any).description || "");
-        setIconUrl((s as any).icon_url || "");
-        setBannerUrl((s as any).banner_url || "");
-        setOwnerId((s as any).owner_id);
-      }
-      const { data: mems } = await supabase.from("server_members" as any).select("user_id, role").eq("server_id", serverId);
-      if (mems) {
-        const userIds = (mems as any[]).map((m) => m.user_id);
-        const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, status").in("user_id", userIds);
-        const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
-        setMembers((mems as any[]).map((m) => ({ ...m, profile: profileMap.get(m.user_id) })));
-      }
-    };
-    load();
+    loadServerData();
+
+    const channel = supabase
+      .channel(`settings-server-rt-${serverId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "servers", filter: `id=eq.${serverId}` }, () => loadServerData())
+      .subscribe();
+    return () => { channel.unsubscribe(); };
   }, [open, serverId]);
 
   useEffect(() => {

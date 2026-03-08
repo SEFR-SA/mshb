@@ -159,9 +159,20 @@ const Chat = () => {
       setOtherId(oid);
       const { data: prof } = await supabase.from("profiles").select("*, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").eq("user_id", oid).maybeSingle();
       setOtherProfile(prof);
-
     })();
   }, [threadId, user]);
+
+  // Realtime: keep DM partner's profile in sync
+  useEffect(() => {
+    if (!otherId) return;
+    const channel = supabase
+      .channel(`dm-partner-profile-${otherId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${otherId}` }, (payload) => {
+        setOtherProfile((prev) => prev ? { ...prev, ...(payload.new as any) } : prev);
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [otherId]);
 
 
   const initiateCall = async () => {
