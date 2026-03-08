@@ -1,52 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-## Redesign UserPanelPopover to Match Discord Layout
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-### Changes to `src/components/layout/UserPanelPopover.tsx`
+## Tech Stack
 
-**1. Container-based layout instead of separators**
-Replace `<Separator>` lines with grouped containers using `rounded-md bg-accent/30 p-1` (or similar muted background) to visually group items, matching Discord's card-within-card pattern:
-- **Container 1**: "Edit Profile" button + Status row (with chevron)
-- **Container 2**: "Sign Out" button
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-**2. Rename "Settings" to "Edit Profile"**
-Change the label from `t("nav.settings", "Edit Profile")` to just `"Edit Profile"` (hardcode or use a proper i18n key like `t("profile.editProfile", "Edit Profile")`).
+## Core Directives (CRITICAL — Always Enforce)
 
-**3. Status submenu appears to the side (not inline)**
-Instead of expanding the status options inside the popover, render them as a **side-positioned floating panel** using absolute/fixed positioning:
-- When the status row is hovered or clicked, show a separate floating menu to the right (or left in RTL) of the popover
-- Use `absolute` positioning relative to the popover, offset to the side with `left-full` or `right-full`
-- The side menu has its own rounded container with status options (Online, Idle, DND, Invisible) each with a description like Discord shows
+### 1. Plan First
 
-### Structure
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-```text
-┌─────────────────────────┐
-│  Banner                 │
-│  Avatar + Status Bubble │
-│  Name / @username       │
-│                         │
-│  ┌───────────────────┐  │
-│  │ ✏ Edit Profile    │  │
-│  │ ● Online        > │──┤──► ┌──────────────────┐
-│  └───────────────────┘  │    │ ● Online          │
-│                         │    │ 🌙 Idle            │
-│  ┌───────────────────┐  │    │ ⛔ Do Not Disturb │
-│  │ → Sign Out        │  │    │ ○ Invisible       │
-│  └───────────────────┘  │    └──────────────────┘
-└─────────────────────────┘
-```
+### 2. Single Source of Truth (SSOT)
 
-### Implementation details
+Never duplicate display logic. Always use the canonical shared components:
 
-- Remove all `<Separator>` usage
-- Wrap "Edit Profile" + status row in a `div` with `rounded-md bg-muted/50 p-1 space-y-0.5`
-- Wrap "Sign Out" in a separate `div` with same container styling
-- Add `mt-2` gap between the two containers
-- For the side status menu: use a `div` with `absolute left-full top-0 ml-2` (flipped for RTL with `rtl:left-auto rtl:right-full rtl:ml-0 rtl:mr-2`) positioned relative to the status button row
-- The side menu container uses `rounded-md border bg-popover/95 backdrop-blur-xl p-1 shadow-lg w-[200px]`
-- Show on hover of the status row OR on click, hide on mouse leave from both the row and the submenu (use a wrapper div with `onMouseEnter`/`onMouseLeave`)
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-### File changed
-- `src/components/layout/UserPanelPopover.tsx` -- full restructure of the bottom section
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
+### 3. Pro Gating
+
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+
+### 4. No Hallucinations
+
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+
+### 5. No Over-Engineering
+
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+
+## Documentation Directory
+
+Read these files for specific details — do NOT rely on memory alone:
+
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+
+## Cosmetic Asset Specs
+
+Per-asset guides with exact dimensions, config files, and wrapper usage:
+
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

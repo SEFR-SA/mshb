@@ -5,8 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePresence } from "@/hooks/usePresence";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import StyledDisplayName from "@/components/StyledDisplayName";
@@ -14,12 +12,12 @@ import { Pencil, LogOut, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import StatusBubble from "@/components/shared/StatusBubble";
 
-const STATUS_OPTIONS: { value: UserStatus; label: string; color: string }[] = [
+const STATUS_OPTIONS: { value: UserStatus; label: string; color: string; description?: string }[] = [
   { value: "online", label: "Online", color: "bg-green-500" },
   { value: "idle", label: "Idle", color: "bg-yellow-500" },
-  { value: "busy", label: "Busy", color: "bg-red-500" },
-  { value: "dnd", label: "Do Not Disturb", color: "bg-red-700" },
-  { value: "invisible", label: "Invisible", color: "bg-gray-400" },
+  { value: "busy", label: "Busy", color: "bg-red-500", description: "You will still receive notifications" },
+  { value: "dnd", label: "Do Not Disturb", color: "bg-red-700", description: "You will not receive notifications" },
+  { value: "invisible", label: "Invisible", color: "bg-gray-400", description: "You will appear offline" },
 ];
 
 interface UserPanelPopoverProps {
@@ -68,10 +66,10 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
   const currentStatusOption = STATUS_OPTIONS.find((s) => s.value === currentStatus) || STATUS_OPTIONS[0];
 
   return (
-    <div className="w-[300px] overflow-hidden rounded-t-xl">
+    <div className="w-[300px] overflow-visible rounded-t-xl">
       {/* Banner */}
       <div
-        className="h-24 w-full relative"
+        className="h-24 w-full relative rounded-t-xl"
         style={
           profile.banner_url
             ? { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
@@ -115,64 +113,69 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
           <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>
         )}
 
-        <Separator className="my-2" />
-
-        {/* Edit Profile */}
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-2 h-8 text-xs"
-          onClick={handleEditProfile}
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          {t("nav.settings", "Edit Profile")}
-        </Button>
-
-        <Separator className="my-1" />
-
-        {/* Status Selector */}
-        <div className="relative">
-          <Button
-            variant="ghost"
-            className="w-full justify-between h-8 text-xs"
-            onClick={() => setShowStatusMenu(!showStatusMenu)}
+        {/* Container 1: Edit Profile + Status */}
+        <div className="mt-3 rounded-md bg-muted/50 p-1 space-y-0.5">
+          <button
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors text-start"
+            onClick={handleEditProfile}
           >
-            <span className="flex items-center gap-2">
-              <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", currentStatusOption.color)} />
-              {currentStatusOption.label}
-            </span>
-            <ChevronRight className={cn("h-3 w-3 transition-transform", showStatusMenu && "rotate-90")} />
-          </Button>
+            <Pencil className="h-3.5 w-3.5 shrink-0" />
+            {t("profile.editProfile", "Edit Profile")}
+          </button>
 
-          {showStatusMenu && (
-            <div className="mt-1 rounded-md border border-border bg-popover/95 backdrop-blur-xl p-1">
-              {STATUS_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  className={cn(
-                    "flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors text-start",
-                    currentStatus === opt.value && "bg-accent"
-                  )}
-                  onClick={() => handleStatusChange(opt.value)}
-                >
-                  <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", opt.color)} />
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Status row with side submenu */}
+          <div
+            className="relative"
+            onMouseEnter={() => setShowStatusMenu(true)}
+            onMouseLeave={() => setShowStatusMenu(false)}
+          >
+            <button
+              className="flex items-center justify-between w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors text-start"
+              onClick={() => setShowStatusMenu(!showStatusMenu)}
+            >
+              <span className="flex items-center gap-2">
+                <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", currentStatusOption.color)} />
+                {currentStatusOption.label}
+              </span>
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            </button>
+
+            {/* Side-positioned status submenu */}
+            {showStatusMenu && (
+              <div className="absolute left-full top-0 ms-2 rtl:left-auto rtl:right-full rtl:ms-0 rtl:me-2 z-50 w-[200px] rounded-md border border-border bg-popover/95 backdrop-blur-xl p-1 shadow-lg">
+                {STATUS_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    className={cn(
+                      "flex flex-col w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors text-start gap-0.5",
+                      currentStatus === opt.value && "bg-accent"
+                    )}
+                    onClick={() => handleStatusChange(opt.value)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", opt.color)} />
+                      {opt.label}
+                    </span>
+                    {opt.description && (
+                      <span className="text-[10px] text-muted-foreground ps-[18px]">{opt.description}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        <Separator className="my-1" />
-
-        {/* Switch Accounts / Sign Out */}
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-2 h-8 text-xs text-destructive hover:text-destructive"
-          onClick={handleSignOut}
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          {t("auth.signOut", "Sign Out")}
-        </Button>
+        {/* Container 2: Sign Out */}
+        <div className="mt-2 rounded-md bg-muted/50 p-1">
+          <button
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors text-start text-destructive"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-3.5 w-3.5 shrink-0" />
+            {t("auth.signOut", "Sign Out")}
+          </button>
+        </div>
       </div>
     </div>
   );
