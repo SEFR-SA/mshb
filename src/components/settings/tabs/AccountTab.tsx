@@ -42,6 +42,7 @@ const AccountTab = () => {
   const { user, profile, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { isStreamerMode } = useStreamerMode();
   const [editField, setEditField] = useState<EditField>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
