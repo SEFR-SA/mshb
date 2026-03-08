@@ -172,7 +172,7 @@ const MessageItem = React.memo(({
       messageId={msg.id}
       authorName={name}
       isMine={isMine}
-      isDeleted={false}
+      isDeleted={!!msg.deleted_for_everyone}
       isPinned={!!msg.is_pinned}
       fileUrl={msg.file_url}
       fileName={msg.file_name}
@@ -253,7 +253,9 @@ const MessageItem = React.memo(({
                 <MessageFilePreview fileUrl={msg.file_url} fileName={msg.file_name || "file"} fileType={msg.file_type || ""} fileSize={msg.file_size || 0} isMine={isMine} />
               </div>
             ) : null}
-            {editingId === msg.id ? (
+            {msg.deleted_for_everyone ? (
+              <p className="text-sm italic text-muted-foreground">{t("actions.messageDeleted", "[message deleted]")}</p>
+            ) : editingId === msg.id ? (
               <div className="flex items-center gap-2 mt-1">
                 <Input
                   value={editContent}
@@ -362,6 +364,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
 
   const isLocked = isPrivate && hasAccess === false;
   const [userRole, setUserRole] = useState<string>("member");
@@ -516,6 +519,14 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       .then();
   }, [channelId, user, isLocked]);
 
+  // Fetch hidden message IDs on mount
+  useEffect(() => {
+    if (!user || isLocked) return;
+    supabase.from("message_hidden").select("message_id").eq("user_id", user.id).then(({ data }) => {
+      if (data) setHiddenIds(new Set(data.map((r: any) => r.message_id)));
+    });
+  }, [user, channelId, isLocked]);
+
   // Realtime messages
   useEffect(() => {
     if (isLocked) return;
@@ -526,9 +537,12 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
         appendRealtimeMessage(msg);
         loadProfiles([msg.author_id]);
       })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `channel_id=eq.${channelId}` }, (payload) => {
+        updateRealtimeMessage(payload.new as any);
+      })
       .subscribe();
     return () => { channel.unsubscribe(); };
-  }, [channelId, loadProfiles, isLocked, appendRealtimeMessage]);
+  }, [channelId, loadProfiles, isLocked, appendRealtimeMessage, updateRealtimeMessage]);
 
   // ── Stable action callbacks for MessageItem (prevent memo from busting) ──
 
@@ -538,12 +552,14 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
 
   const handleDeleteForMe = useCallback(async (id: string) => {
     if (!user) return;
+    setHiddenIds(prev => new Set(prev).add(id));
     await supabase.from("message_hidden").insert({ user_id: user.id, message_id: id });
   }, [user]);
 
   const handleDeleteForEveryone = useCallback(async (id: string) => {
     await supabase.from("messages").update({ deleted_for_everyone: true, content: "" }).eq("id", id);
-  }, []);
+    updateRealtimeMessage({ id, deleted_for_everyone: true, content: "" });
+  }, [updateRealtimeMessage]);
 
   const handleMarkUnread = useCallback((msgId: string, msgCreatedAt: string) => {
     if (!user) return;
@@ -743,8 +759,8 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             )}
-            {messages.map((msg, idx) => {
-              const prevMsg = idx > 0 ? messages[idx - 1] : null;
+            {messages.filter(m => !hiddenIds.has(m.id)).map((msg, idx, visibleMsgs) => {
+              const prevMsg = idx > 0 ? visibleMsgs[idx - 1] : null;
               const replyToMsg = (msg as any).reply_to_id
                 ? messages.find((m) => m.id === (msg as any).reply_to_id) || null
                 : null;
