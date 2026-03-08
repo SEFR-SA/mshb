@@ -11,8 +11,6 @@ interface NotifPrefs {
   mentionSound: boolean;
   showBadge: boolean;
   showTabCount: boolean;
-  emailMissed: boolean;
-  emailFriendRequests: boolean;
 }
 
 const DEFAULT_PREFS: NotifPrefs = {
