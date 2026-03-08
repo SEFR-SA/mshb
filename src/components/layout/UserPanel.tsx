@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,12 +7,14 @@ import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { usePresence } from "@/hooks/usePresence";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Mic, MicOff, Headphones, HeadphoneOff, Settings, PhoneOff, Monitor, MonitorOff, Video, VideoOff } from "lucide-react";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import StyledDisplayName from "@/components/StyledDisplayName";
+import UserPanelPopover from "./UserPanelPopover";
 
 interface UserPanelProps {
   className?: string;
@@ -24,6 +26,7 @@ const UserPanel = ({ className }: UserPanelProps) => {
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
   const { voiceChannel, disconnectVoice, isScreenSharing, isCameraOn, nativeResolutionLabel } = useVoiceChannel();
   const { getUserStatus } = usePresence();
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   const status = (getUserStatus(profile) || "online") as UserStatus;
 
@@ -74,28 +77,35 @@ const UserPanel = ({ className }: UserPanelProps) => {
       {/* User profile row + audio controls */}
       <NameplateWrapper nameplateUrl={profile?.nameplate_url} isPro={profile?.is_pro} className="rounded-md">
       <div className="flex items-center gap-2 p-2">
-        <NavLink to="/settings" className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity">
-          <AvatarDecorationWrapper decorationUrl={(profile as any)?.avatar_decoration_url} isPro={profile?.is_pro} size={32} className="shrink-0">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={profile?.avatar_url || ""} />
-              <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                {(profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0 z-20" />
-          </AvatarDecorationWrapper>
-          <div className="min-w-0">
-            <StyledDisplayName
-              displayName={profile?.display_name || profile?.username || "User"}
-              fontStyle={(profile as any)?.name_font}
-              effect={(profile as any)?.name_effect}
-              gradientStart={(profile as any)?.name_gradient_start}
-              gradientEnd={(profile as any)?.name_gradient_end}
-              className="text-xs font-bold truncate leading-tight"
-            />
-            {profile?.username && <p className="text-[10px] text-muted-foreground truncate leading-tight">@{profile.username}</p>}
-          </div>
-        </NavLink>
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
+            <button className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity text-start bg-transparent border-none outline-none cursor-pointer p-0">
+              <AvatarDecorationWrapper decorationUrl={(profile as any)?.avatar_decoration_url} isPro={profile?.is_pro} size={32} className="shrink-0">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={profile?.avatar_url || ""} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                    {(profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <StatusBadge status={status} size="sm" className="absolute bottom-0 end-0 z-20" />
+              </AvatarDecorationWrapper>
+              <div className="min-w-0">
+                <StyledDisplayName
+                  displayName={profile?.display_name || profile?.username || "User"}
+                  fontStyle={(profile as any)?.name_font}
+                  effect={(profile as any)?.name_effect}
+                  gradientStart={(profile as any)?.name_gradient_start}
+                  gradientEnd={(profile as any)?.name_gradient_end}
+                  className="text-xs font-bold truncate leading-tight"
+                />
+                {profile?.username && <p className="text-[10px] text-muted-foreground truncate leading-tight">@{profile.username}</p>}
+              </div>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="top" align="start" className="p-0 w-auto">
+            <UserPanelPopover onClose={() => setPopoverOpen(false)} />
+          </PopoverContent>
+        </Popover>
 
         <div className="flex items-center shrink-0">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleGlobalMute} title={globalMuted ? t("audio.unmute") : t("audio.mute")}>
