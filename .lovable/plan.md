@@ -1,123 +1,82 @@
 
 
-## Notification Event Triggers — Implementation Plan
+## MSHB Landing Page -- Implementation Plan
 
-### Phase 1: Server Mentions (Database Trigger)
+### Overview
+Create a Discord-style landing page at `/` using Sado (light) / Mjlis (dark) brand colors, with Saudi Made badge, feature showcase, "Download Now" and "Sign Up" CTAs. Move the entire app to `/channels/@me` prefix.
 
-**SQL trigger on `messages` table, `AFTER INSERT` where `channel_id IS NOT NULL`.**
+### Reference Design
+Following the uploaded Discord landing page layout: hero with large heading + CTAs, alternating left/right feature sections with device mockups, scrolling marquee bar, final CTA section, and footer.
 
-The trigger function will:
-1. Check if `NEW.channel_id` is not null (server message only)
-2. Look up the `server_id` from `channels` table
-3. If `content` contains `@all`, insert a notification for every `server_members` row (excluding `NEW.author_id`)
-4. Otherwise, scan for `@username` patterns using `regexp_matches`, look up each username in `profiles`, and insert a notification for that user (if they are a server member)
-5. Payload: `type = 'mention'`, `actor_id = NEW.author_id`, `entity_id = NEW.id`, `user_id = matched user`
+---
 
-```sql
-CREATE OR REPLACE FUNCTION public.notify_on_mention()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-DECLARE
-  v_server_id uuid;
-  v_mention text;
-  v_target_uid uuid;
-BEGIN
-  IF NEW.channel_id IS NULL THEN RETURN NEW; END IF;
+### 1. Create Landing Page (`src/pages/LandingPage.tsx`)
 
-  SELECT server_id INTO v_server_id FROM channels WHERE id = NEW.channel_id;
-  IF v_server_id IS NULL THEN RETURN NEW; END IF;
+A self-contained page with scoped Sado/Mjlis CSS variables (respects `prefers-color-scheme` + manual toggle). Sections:
 
-  IF NEW.content ILIKE '%@all%' THEN
-    INSERT INTO notifications (user_id, actor_id, type, entity_id)
-    SELECT sm.user_id, NEW.author_id, 'mention', NEW.id
-    FROM server_members sm
-    WHERE sm.server_id = v_server_id AND sm.user_id <> NEW.author_id;
-  ELSE
-    FOR v_mention IN SELECT (regexp_matches(NEW.content, '@(\w+)', 'g'))[1] LOOP
-      SELECT p.user_id INTO v_target_uid
-      FROM profiles p
-      JOIN server_members sm ON sm.user_id = p.user_id AND sm.server_id = v_server_id
-      WHERE p.username = v_mention
-      LIMIT 1;
+**Navbar** -- MSHB logo, theme toggle (light/dark), "Download Now" button, "Sign Up" button (links to `/auth`)
 
-      IF v_target_uid IS NOT NULL AND v_target_uid <> NEW.author_id THEN
-        INSERT INTO notifications (user_id, actor_id, type, entity_id)
-        VALUES (v_target_uid, NEW.author_id, 'mention', NEW.id);
-      END IF;
-    END LOOP;
-  END IF;
+**Hero Section** -- Large bold heading (e.g., "YOUR PLACE TO TALK, PLAY & CONNECT"), subtitle, two CTA buttons: "Download Now" (links to download/placeholder) and "Sign Up" (links to `/auth`). Saudi Made badge image from the provided URL. Background uses brand primary color with subtle decorative elements.
 
-  RETURN NEW;
-END;
-$$;
+**Feature Sections (alternating layout, ~5-6 sections):**
+1. "Make Your Group Chats More Fun" -- text left, placeholder image right (recommended: 600x400px)
+2. "Stream Like You're In The Same Room" -- placeholder image left, text right (recommended: 800x450px)
+3. "Hop In When You're Free, No Need To Call" -- text left, placeholder image right (recommended: 500x600px)
+4. "See Who's Around To Chill" -- placeholder image left, text right (recommended: 600x500px)
+5. "Always Have Something To Do Together" -- text left, placeholder image right (recommended: 700x400px)
+6. "Wherever You Are, Hang Out Here" -- placeholder image left, text right (recommended: 600x400px)
 
-CREATE TRIGGER trg_notify_on_mention
-AFTER INSERT ON public.messages
-FOR EACH ROW EXECUTE FUNCTION public.notify_on_mention();
+**Scrolling Marquee** -- Horizontal scrolling text: "TALK -- PLAY -- CHAT -- HANG OUT" repeating (CSS animation)
+
+**Final CTA Section** -- "YOU CAN'T SCROLL ANYMORE, BETTER GO CHAT" with "Sign Up" button
+
+**Footer** -- MSHB branding, Saudi Made badge, minimal links
+
+All placeholder images will use a gray box with dimensions text overlay so you know what to replace.
+
+---
+
+### 2. Route Migration (`src/App.tsx`)
+
+```
+/              → LandingPage (public, no auth)
+/auth          → Auth (stays the same)
+/channels/@me  → ProtectedRoute > AppLayout
+  /channels/@me          → HomeView > FriendsDashboard
+  /channels/@me/friends  → FriendsDashboard
+  /channels/@me/chat/:threadId → Chat
+  /channels/@me/group/:groupId → GroupChat
+  /channels/@me/settings → SettingsModal
+/channels/server/:serverId → ServerView
+/channels/server/:serverId/channel/:channelId → ServerView
+/invite/:code  → InviteJoin
 ```
 
-**Key detail:** The trigger uses `SECURITY DEFINER` to bypass RLS (since the INSERT policy on `notifications` requires `auth.uid() = actor_id`, which doesn't exist in a trigger context). This is correct and safe — the trigger runs server-side with validated data.
+Auth redirect on login changes from `"/"` to `"/channels/@me"`.
 
 ---
 
-### Phase 2: Missed Calls (Frontend Wiring)
+### 3. Internal Navigation Updates
 
-**Location:** `src/components/chat/CallListener.tsx`
+All `navigate("/")` and `to="/"` references need updating to `/channels/@me`. Files affected:
 
-Two insertion points for missed call notifications:
-
-1. **Callee timeout** (line ~166): When the 3-minute timeout fires and the callee didn't answer, the callee's client sets status to `"missed"`. At this point, insert a notification for the callee (`user_id = user.id`, `actor_id = session.caller_id`, `type = 'missed_call'`).
-
-2. **Caller sees "missed" status** (line ~207): The caller's realtime watcher detects `status === "missed"`. No notification needed here — the callee already inserted it.
-
-So only one insert is needed — in the callee's timeout handler.
-
----
-
-### Phase 3: Kicks & Streams (Frontend Wiring)
-
-**Kicks** — `src/components/server/ServerMemberContextMenu.tsx`, `handleKick` function (line 159):
-- After the audit log insert, add: `supabase.from("notifications").insert({ user_id: targetUserId, actor_id: user.id, type: 'server_kick', entity_id: serverId })`
-
-**Streams** — `src/components/server/VoiceConnectionBar.tsx`, after `is_screen_sharing: true` DB update (line ~436):
-- Fetch all server members for the current voice channel's server, then batch-insert notifications for each member (excluding self): `type = 'stream_start'`, `actor_id = user.id`, `entity_id = serverId`
-- To get the server_id, use the `voiceChannel` context which already has the server_id available.
+| File | What to change |
+|------|---------------|
+| `src/pages/Auth.tsx` | `Navigate to="/"` → `/channels/@me` |
+| `src/pages/Chat.tsx` | `navigate("/")` → `/channels/@me` (2 occurrences) |
+| `src/pages/GroupChat.tsx` | `navigate("/")` → `/channels/@me` (3 occurrences) |
+| `src/pages/InviteJoin.tsx` | `navigate("/")` → `/channels/@me` |
+| `src/pages/HomeView.tsx` | pathname checks: `"/"` → `/channels/@me` |
+| `src/components/server/ServerRail.tsx` | `navigate("/")` and pathname checks → `/channels/@me` |
+| `src/components/server/ServerSettingsDialog.tsx` | `navigate("/")` → `/channels/@me` |
+| `src/components/layout/HomeSidebar.tsx` | `navigate("/friends")` → `/channels/@me/friends`, pathname check |
+| `src/components/layout/AppLayout.tsx` | `to="/"` → `/channels/@me` |
 
 ---
 
-### Phase 4: UI Formatting (NotificationCenter.tsx)
+### 4. Scoped Theme Variables
 
-Updates to `NotificationCenter.tsx`:
-- Change timestamp from relative (`formatDistanceToNow`) to absolute date+time format using `format(date, "MMM d, yyyy 'at' h:mm a")` from date-fns
-- Add `server_kick` and `stream_start` cases to `getNotificationText`:
-  - `server_kick`: "You were kicked from a server" (entity_id is server_id but we'd need a join to get the name — will add server name fetch to the query)
-  - `stream_start`: "{{name}} started a stream"
-
-Updates to `useNotifications.ts`:
-- The query already joins `profiles` on `actor_id`. For `server_kick` and `stream_start` where `entity_id` references a server, we can't easily do a polymorphic join in one query. Instead, for these types, we'll fetch the server name inline in the component (or simply show "a server" in the text — simpler and avoids complex joins).
-
-Translation keys to add (both `en.ts` and `ar.ts`):
-- `notificationCenter.serverKick`: "You were kicked from a server"
-- `notificationCenter.streamStart`: "{{name}} started a stream"
-
----
-
-### Additional Notification Types — Proposals
-
-Here are 5 additional notification types worth implementing in the future:
-
-| Type | Trigger | Description |
-|------|---------|-------------|
-| `friend_request` | Frontend: `friendships` INSERT | "{{name}} sent you a friend request" — wire into existing friend request logic (e.g., `FriendsDashboard.tsx`, `ServerMemberContextMenu.tsx` `handleAddFriend`) |
-| `friend_accepted` | Frontend: `friendships` UPDATE to `accepted` | "{{name}} accepted your friend request" |
-| `server_join` | DB trigger on `server_members` INSERT | "{{name}} joined your server" — notify server owner only |
-| `group_invite` | Frontend: group member add logic | "{{name}} added you to a group" |
-| `dm_message` | DB trigger on `messages` where `thread_id IS NOT NULL` | "{{name}} sent you a message" — useful for mobile push notifications later |
-
-I recommend implementing `friend_request` and `friend_accepted` first since the code paths are simple and well-defined.
+The landing page wraps content in a div with CSS custom properties set inline (Sado for light, Mjlis for dark), so it uses brand colors independent of the app's theme engine. A `useMediaQuery('(prefers-color-scheme: dark)')` check or a local state toggle determines which palette to apply.
 
 ---
 
@@ -125,11 +84,27 @@ I recommend implementing `friend_request` and `friend_accepted` first since the 
 
 | File | Action |
 |------|--------|
-| Migration SQL | New trigger function + trigger on `messages` |
-| `src/components/chat/CallListener.tsx` | Insert missed_call notification in timeout handler |
-| `src/components/server/ServerMemberContextMenu.tsx` | Insert server_kick notification in handleKick |
-| `src/components/server/VoiceConnectionBar.tsx` | Insert stream_start notifications on screen share start |
-| `src/components/NotificationCenter.tsx` | Update timestamp format, add new type cases |
-| `src/hooks/useNotifications.ts` | No changes needed (query already works) |
-| `src/i18n/en.ts` + `ar.ts` | Add serverKick + streamStart translation keys |
+| `src/pages/LandingPage.tsx` | **Create** -- full landing page |
+| `src/App.tsx` | **Edit** -- add landing route, restructure app routes under `/channels/@me` and `/channels/server` |
+| `src/pages/Auth.tsx` | **Edit** -- redirect to `/channels/@me` |
+| `src/pages/Chat.tsx` | **Edit** -- update navigate calls |
+| `src/pages/GroupChat.tsx` | **Edit** -- update navigate calls |
+| `src/pages/HomeView.tsx` | **Edit** -- update pathname checks |
+| `src/pages/InviteJoin.tsx` | **Edit** -- update navigate call |
+| `src/components/server/ServerRail.tsx` | **Edit** -- update navigate + pathname checks |
+| `src/components/server/ServerSettingsDialog.tsx` | **Edit** -- update navigate call |
+| `src/components/layout/HomeSidebar.tsx` | **Edit** -- update navigate + pathname checks |
+| `src/components/layout/AppLayout.tsx` | **Edit** -- update NavLink `to` |
+
+### Placeholder Image Dimensions Guide
+
+| Section | Recommended Size | Notes |
+|---------|-----------------|-------|
+| Hero background/decoration | 1200x600px | Abstract brand-colored artwork |
+| Feature mockup 1 (Group Chat) | 600x400px | App screenshot showing group chat |
+| Feature mockup 2 (Streaming) | 800x450px | Widescreen streaming UI |
+| Feature mockup 3 (Voice) | 500x600px | Portrait voice channel UI |
+| Feature mockup 4 (Members) | 600x500px | Member list / presence |
+| Feature mockup 5 (Activities) | 700x400px | Activities / integrations |
+| Feature mockup 6 (Mobile) | 400x600px | Mobile app screenshot |
 
