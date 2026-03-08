@@ -236,6 +236,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
       .on("postgres_changes", { event: "*", schema: "public", table: "dm_thread_visibility" }, () => loadInbox())
       .on("postgres_changes", { event: "*", schema: "public", table: "blocked_users" }, () => loadInbox())
       .on("postgres_changes", { event: "*", schema: "public", table: "pinned_chats" }, () => loadInbox())
+      .on("postgres_changes", { event: "*", schema: "public", table: "thread_read_status" }, () => loadInbox())
       .subscribe();
 
     return () => { channel.unsubscribe(); };
