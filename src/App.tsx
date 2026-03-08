@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { StreamerModeProvider } from "@/contexts/StreamerModeContext";
 import { AudioSettingsProvider } from "@/contexts/AudioSettingsContext";
 import { VoiceChannelProvider } from "@/contexts/VoiceChannelContext";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
