@@ -49,6 +49,7 @@ async function resolveLocation(): Promise<{ ip: string | null; location: string 
 export function useDeviceTracker() {
   const { user } = useAuth();
 
+  // Upsert device on mount (throttled)
   useEffect(() => {
     if (!user) return;
 
@@ -78,5 +79,33 @@ export function useDeviceTracker() {
           localStorage.setItem(LAST_UPSERT_KEY, String(Date.now()));
         });
     });
+  }, [user]);
+
+  // Realtime: force sign-out when this device's row is deleted
+  useEffect(() => {
+    if (!user) return;
+
+    const deviceId = getDeviceId();
+    const channel = supabase
+      .channel(`device-kick-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "user_devices",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          if ((payload.old as any)?.device_id === deviceId) {
+            supabase.auth.signOut();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, [user]);
 }
