@@ -64,7 +64,7 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
   const [searching, setSearching] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
 
-  const isFriendsActive = location.pathname === "/" || location.pathname === "/friends";
+  const isFriendsActive = location.pathname === "/channels/@me" || location.pathname === "/channels/@me/friends";
 
   const loadInbox = async () => {
     if (!user) return;
