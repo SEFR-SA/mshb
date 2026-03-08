@@ -1,75 +1,71 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Plan: Discord-style Audio Quick-Access Popovers in UserPanel
 
-## Tech Stack
+### Current State
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+- **AudioSettingsContext** only manages `globalMuted`/`globalDeafened` toggles. It has **no** device selection or volume state.
+- Device preferences (`micDeviceId`, `speakerDeviceId`) live exclusively in `VoiceVideoTab` via `localStorage("mshb_device_prefs")` — not shared through context.
+- Volume levels are not tracked anywhere (no input/output volume sliders exist outside the mic test meter).
 
-## Core Directives (CRITICAL — Always Enforce)
+### Approach
 
-### 1. Plan First
+Rather than over-engineering the context, I will:
+- **Extend `AudioSettingsContext`** to include device lists, active device IDs, input/output volume (0-100), and setters. This makes the popover and VoiceVideoTab share the same source of truth.
+- **Refactor `VoiceVideoTab`** to consume the context instead of managing its own localStorage state for devices.
+- Build two compact popover components inline in UserPanel (or as a shared `AudioControlPopover`).
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+### Step-by-step
 
-### 2. Single Source of Truth (SSOT)
+#### 1. Extend `AudioSettingsContext.tsx`
 
-Never duplicate display logic. Always use the canonical shared components:
+Add to the context interface and provider:
+- `micDevices`, `speakerDevices` — enumerated on mount via `navigator.mediaDevices.enumerateDevices()`
+- `micDeviceId`, `speakerDeviceId` — active selections, synced to `localStorage("mshb_device_prefs")`
+- `setMicDeviceId(id)`, `setSpeakerDeviceId(id)` — update + persist
+- `inputVolume` (0–200, default 100), `outputVolume` (0–200, default 100) — sliders
+- `setInputVolume`, `setOutputVolume` — update + persist to `localStorage("mshb_audio_volumes")`
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+#### 2. Create `AudioControlPopover` component
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+New file: `src/components/layout/AudioControlPopover.tsx`
 
-### 3. Pro Gating
+Props: `type: "input" | "output"`, controls which devices/volume to show.
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+**Inside the popover** (opens `side="top"`):
+- **Device list**: `RadioGroup` of available devices, active one selected. Uses `RadioGroupItem` per device.
+- **Volume slider**: `Slider` component (0–200), with a percentage label.
+- `Separator` divider.
+- **"Voice Settings" link**: A ghost `Button` that navigates to `/settings` with the voice tab pre-selected (or dispatches a custom event to open SettingsModal to voice tab).
 
-### 4. No Hallucinations
+Uses: `Popover`, `PopoverTrigger`, `PopoverContent`, `RadioGroup`, `RadioGroupItem`, `Slider`, `Separator`, `Button`.
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+#### 3. Update `UserPanel.tsx`
 
-### 5. No Over-Engineering
+Replace the current standalone mic and headphones buttons with grouped pairs:
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+```text
+┌─────┬──┐  ┌─────┬──┐  ┌─────┐
+│ Mic │ ▾│  │ 🎧  │ ▾│  │ ⚙️  │
+└─────┴──┘  └─────┴──┘  └─────┘
+```
 
-## Documentation Directory
+- Main icon button: toggles mute/deafen (existing behavior).
+- Chevron button (`ChevronDown`, ~`h-7 w-4`): opens `AudioControlPopover` for that type.
+- Tight `gap-0` grouping with a subtle visual divider between the icon and chevron.
 
-Read these files for specific details — do NOT rely on memory alone:
+#### 4. Refactor `VoiceVideoTab.tsx`
 
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+- Remove local device enumeration and localStorage reads.
+- Import device lists and active IDs from `useAudioSettings()` instead.
+- Keep mic-test meter logic local (it's specific to this tab).
 
-## Cosmetic Asset Specs
+### Files Changed
 
-Per-asset guides with exact dimensions, config files, and wrapper usage:
+| File | Change |
+|------|--------|
+| `src/contexts/AudioSettingsContext.tsx` | Add device lists, active IDs, volumes, persistence |
+| `src/components/layout/AudioControlPopover.tsx` | **New** — reusable popover for input/output device + volume |
+| `src/components/layout/UserPanel.tsx` | Add chevron buttons opening AudioControlPopover |
+| `src/components/settings/tabs/VoiceVideoTab.tsx` | Consume context for devices instead of local state |
 
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
