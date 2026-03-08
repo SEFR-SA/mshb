@@ -58,6 +58,7 @@ const Chat = () => {
   const { isOnline, getUserStatus } = usePresence();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { openProfile } = useUserProfile();
 
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [otherProfile, setOtherProfile] = useState<Profile | null>(null);
