@@ -245,7 +245,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
     setServers((prev) => prev.filter((s) => s.id !== deleteServerId));
     setDeleteServerId(null);
     toast({ title: t("servers.serverDeleted") });
-    navigate("/");
+    navigate("/channels/@me");
   };
 
   // Create a new folder from two servers
