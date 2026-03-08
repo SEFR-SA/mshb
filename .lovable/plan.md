@@ -1,75 +1,97 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Architectural Insight
 
-## Tech Stack
+**Individual session revocation limitation.** Supabase's client SDK only exposes `signOut({ scope: 'others' })` (kill all OTHER sessions) and `signOut({ scope: 'global' })` (kill ALL sessions). There is no API to revoke a single specific session by token or session ID. This means the "Log out" button on an individual device card can only **delete the tracking row** from `user_devices` — it cannot actually invalidate that session's JWT. The device will appear removed from the list, but the session remains valid until the JWT expires or the user does a global sign-out. This is a known Supabase limitation and matches how most apps handle it (Discord included — individual device logout is best-effort). The "Log Out of All Other Devices" button, however, **does** truly revoke all other sessions via `scope: 'others'`.
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+**Hook placement.** The tracker must run globally for every authenticated page load, not just when Settings is open. The best place is inside `AppLayout` (or a component rendered by it), since all authenticated routes pass through it.
 
-## Core Directives (CRITICAL — Always Enforce)
+**Stale device cleanup.** Devices where `last_active` is older than ~30 days should be considered stale. We can filter these out in the UI query rather than adding a cron job.
 
-### 1. Plan First
+---
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+## Plan
 
-### 2. Single Source of Truth (SSOT)
+### 1. Database Migration — `user_devices` table
 
-Never duplicate display logic. Always use the canonical shared components:
+```sql
+CREATE TABLE public.user_devices (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  device_id text NOT NULL,
+  os text NOT NULL DEFAULT 'Unknown',
+  browser text NOT NULL DEFAULT 'Unknown',
+  ip_address text,
+  location text,
+  last_active timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, device_id)
+);
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+ALTER TABLE public.user_devices ENABLE ROW LEVEL SECURITY;
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+CREATE POLICY "Users can view own devices"
+  ON public.user_devices FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
 
-### 3. Pro Gating
+CREATE POLICY "Users can upsert own devices"
+  ON public.user_devices FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+CREATE POLICY "Users can update own devices"
+  ON public.user_devices FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id);
 
-### 4. No Hallucinations
+CREATE POLICY "Users can delete own devices"
+  ON public.user_devices FOR DELETE TO authenticated
+  USING (auth.uid() = user_id);
+```
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+### 2. Session Tracking Hook — `src/hooks/useDeviceTracker.ts`
 
-### 5. No Over-Engineering
+- On mount (when `user` exists), generate or retrieve `mshb_device_id` from localStorage (crypto.randomUUID).
+- Parse `navigator.userAgent` to extract OS and browser strings.
+- Upsert into `user_devices` matching `(user_id, device_id)`, updating `os`, `browser`, `last_active`.
+- Throttle: only upsert once per 5 minutes using a localStorage timestamp to avoid hammering the DB on every re-render.
+- IP/location left `null` for now (client can't reliably self-detect IP; can add an edge function later if desired).
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+### 3. Integrate Hook Globally — `src/components/layout/AppLayout.tsx`
 
-## Documentation Directory
+- Import and call `useDeviceTracker()` inside `AppLayout` so it runs for all authenticated routes.
 
-Read these files for specific details — do NOT rely on memory alone:
+### 4. UI Component — `src/components/settings/tabs/DevicesTab.tsx`
 
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+- **Header:** "Devices" + description text.
+- **Current device card** (matching localStorage `mshb_device_id`): green "Current Device" badge, OS icon (`Monitor`/`Smartphone`/`Laptop`), browser name, `last_active` as relative time.
+- **Other device cards:** same layout, each with a red "Log Out" button that deletes that row from `user_devices`. (Note: this removes the tracker only; the actual session remains valid until JWT expiry — acceptable trade-off.)
+- **"Log Out of All Other Devices" button** at the bottom: calls `supabase.auth.signOut({ scope: 'others' })` then deletes all rows in `user_devices` where `device_id != currentDeviceId`. This truly revokes all other sessions.
+- Filter out devices with `last_active` older than 30 days.
 
-## Cosmetic Asset Specs
+### 5. Wire into SettingsModal — `src/components/settings/SettingsModal.tsx`
 
-Per-asset guides with exact dimensions, config files, and wrapper usage:
+- Add `"devices"` to `TabId` union.
+- Add nav item `{ id: "devices", labelKey: "settings.devices", icon: Monitor }` under User Settings (after "account").
+- Add lazy import for `DevicesTab` and entry in `TAB_COMPONENTS`.
 
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
+### 6. i18n — `src/i18n/en.ts` and `src/i18n/ar.ts`
+
+- Add keys: `settings.devices`, `settings.devicesDescription`, `settings.currentDevice`, `settings.logOutDevice`, `settings.logOutAllOther`, `settings.logOutAllConfirm`, `settings.deviceLoggedOut`, `settings.allDevicesLoggedOut`.
+
+---
+
+### Files Summary
+
+| Action | File |
+|--------|------|
+| **Migration** | `user_devices` table + RLS |
+| **Create** | `src/hooks/useDeviceTracker.ts` |
+| **Create** | `src/components/settings/tabs/DevicesTab.tsx` |
+| **Edit** | `src/components/layout/AppLayout.tsx` — add `useDeviceTracker()` |
+| **Edit** | `src/components/settings/SettingsModal.tsx` — add devices tab |
+| **Edit** | `src/i18n/en.ts` — add device strings |
+| **Edit** | `src/i18n/ar.ts` — add device strings |
+
+### Individual Device Logout Caveat
+
+As noted above, the per-device "Log Out" button only removes the tracking row. True session invalidation for a single session is not supported by the auth system. The "Log Out All Other Devices" button **does** revoke sessions server-side. This will be noted with a subtle tooltip on the individual button.
+
