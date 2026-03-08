@@ -73,6 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
 const TAB_COMPONENTS: Record<TabId, React.LazyExoticComponent<React.ComponentType<any>>> = {
   profile:       ProfileTab,
   account:       AccountTab,
+  devices:       DevicesTab,
   social:        SocialTab,
   notifications: NotificationsTab,
   subscriptions: SubscriptionsTab,
