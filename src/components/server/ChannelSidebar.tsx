@@ -571,37 +571,15 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     }
   };
 
-  const renderAdminDropdown = (ch: Channel) => {
-    if (!isAdmin) return null;
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-0.5 rounded transition-opacity"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <MoreVertical className="h-3.5 w-3.5" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={() => openEditDialog(ch)}>
-            <Pencil className="h-3.5 w-3.5 me-2" />
-            {t("channels.edit")}
-          </DropdownMenuItem>
-          {ch.is_private && (
-            <DropdownMenuItem onClick={() => openManageMembers(ch)}>
-              <Users className="h-3.5 w-3.5 me-2" />
-              {t("channels.manageMembers")}
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem className="text-destructive" onClick={() => setDeleteChannelId(ch.id)}>
-            <Trash2 className="h-3.5 w-3.5 me-2" />
-            {t("channels.delete")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
+  const renderAdminDropdown = (ch: Channel) => (
+    <ChannelDropdown
+      ch={ch}
+      isAdmin={isAdmin}
+      onEdit={() => openEditDialog(ch)}
+      onManageMembers={() => openManageMembers(ch)}
+      onDelete={() => setDeleteChannelId(ch.id)}
+    />
+  );
 
   const renderMemberPicker = (selected: string[], toggle: (id: string) => void) => (
     <div className="space-y-2">
