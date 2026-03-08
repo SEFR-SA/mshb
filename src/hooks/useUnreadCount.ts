@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStreamerMode } from "@/contexts/StreamerModeContext";
 import { toast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/lib/soundManager";
 import { getNotificationPrefs } from "@/lib/notificationPrefs";
 
 export function useUnreadCount() {
   const { user } = useAuth();
+  const { isStreamerMode } = useStreamerMode();
   const [totalUnread, setTotalUnread] = useState(0);
   const prevCountRef = useRef<number | null>(null);
 
