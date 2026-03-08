@@ -103,6 +103,91 @@ const StreamPreviewVideo = ({ stream }: { stream: MediaStream }) => {
   return <video ref={ref} autoPlay muted playsInline className="w-full h-full object-contain" />;
 };
 
+interface ChannelDropdownProps {
+  ch: Channel;
+  isAdmin: boolean;
+  onEdit: () => void;
+  onManageMembers: () => void;
+  onDelete: () => void;
+}
+
+const ChannelDropdown = ({ ch, isAdmin, onEdit, onManageMembers, onDelete }: ChannelDropdownProps) => {
+  const { t } = useTranslation();
+  const { level, setLevel } = useChannelNotificationPref(ch.id);
+
+  const handleNotifChange = (newLevel: ChannelNotifLevel | null) => {
+    setLevel(newLevel);
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-0.5 rounded transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreVertical className="h-3.5 w-3.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        {/* Notifications submenu - visible to all members */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <Bell className="h-3.5 w-3.5 me-2" />
+            {t("channels.notifications")}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuCheckboxItem
+              checked={level === null}
+              onCheckedChange={() => handleNotifChange(null)}
+            >
+              {t("channels.useServerDefault")}
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={level === "all_messages"}
+              onCheckedChange={() => handleNotifChange("all_messages")}
+            >
+              {t("channels.allMessages")}
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={level === "only_mentions"}
+              onCheckedChange={() => handleNotifChange("only_mentions")}
+            >
+              {t("channels.onlyMentions")}
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={level === "nothing"}
+              onCheckedChange={() => handleNotifChange("nothing")}
+            >
+              {t("channels.nothing")}
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+
+        {/* Admin-only options */}
+        {isAdmin && (
+          <>
+            <DropdownMenuItem onClick={onEdit}>
+              <Pencil className="h-3.5 w-3.5 me-2" />
+              {t("channels.edit")}
+            </DropdownMenuItem>
+            {ch.is_private && (
+              <DropdownMenuItem onClick={onManageMembers}>
+                <Users className="h-3.5 w-3.5 me-2" />
+                {t("channels.manageMembers")}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+              <Trash2 className="h-3.5 w-3.5 me-2" />
+              {t("channels.delete")}
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceChannelSelect, activeVoiceChannelId }: Props) => {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
