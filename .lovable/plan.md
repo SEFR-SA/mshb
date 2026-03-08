@@ -1,87 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-## Realtime Audit: Missing Subscriptions Across the Codebase
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-After thorough analysis, here are the components/areas that **lack realtime subscriptions** and require you to navigate away and back to see changes:
+## Tech Stack
 
----
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-### 1. Group Chat — Group Info Updates (name, avatar, members joining/leaving)
-**File:** `src/pages/GroupChat.tsx` (lines 116-157)
-- Group name, avatar, member count, member roles, and profiles are fetched once on mount with no realtime subscription on `group_threads`, `group_members`, or `profiles`.
-- **Impact:** If someone changes the group name/avatar, or a member joins/leaves, you won't see it until you navigate away and back.
-- **Fix:** Add realtime listener on `group_members` (filter by `group_id`) and `group_threads` (filter by `id`) to re-fetch group info.
+## Core Directives (CRITICAL — Always Enforce)
 
-### 2. Server Settings Dialog — No Realtime at All
-**File:** `src/components/server/ServerSettingsDialog.tsx`
-- The entire settings dialog and all its sub-tabs (`MembersTab`, `RolesTab`, `EmojisTab`, `StickersTab`, `SoundboardTab`, `ServerProfileTab`, `ServerTagTab`, `EngagementTab`) have **zero** realtime subscriptions.
-- **Impact:** If another admin changes server settings, roles, emojis, stickers, or soundboard entries while you have the dialog open, nothing updates.
-- **Fix:** This is lower priority since settings dialogs are typically used by one admin at a time, but adding realtime to `MembersTab` (for member joins/leaves/role changes) and `RolesTab` would be most impactful.
+### 1. Plan First
 
-### 3. Channel Sidebar — Server Info Updates
-**File:** `src/components/server/ChannelSidebar.tsx` (lines 201-227)
-- Has realtime on `channels` table but **not on `servers` table**. If the server name, icon, or banner changes, the sidebar header won't update.
-- **Impact:** Server name/icon changes require navigating away.
-- **Fix:** Add realtime listener on `servers` (filter by `id=serverId`) to update `server` state.
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-### 4. Channel Sidebar — Soundboard
-**File:** `src/components/server/ChannelSidebar.tsx` (lines 170-178)
-- Server soundboard sounds are fetched once on voice channel join with no realtime subscription on `server_soundboard`.
-- **Impact:** New soundboard clips added by admins won't appear until reconnect.
-- **Fix:** Add realtime listener on `server_soundboard` filtered by `server_id`.
+### 2. Single Source of Truth (SSOT)
 
-### 5. Pinned Messages Drawer — No Realtime
-**File:** `src/components/chat/PinnedMessagesDrawer.tsx`
-- Pinned messages are fetched only when the drawer opens. No realtime subscription on `messages` for pin/unpin changes.
-- **Impact:** If someone pins/unpins a message while the drawer is open, it won't update. Also, the pin count badge in the header won't update.
-- **Fix:** Add realtime listener on `messages` (filtered by thread/group/channel) watching for UPDATE events on `is_pinned`.
+Never duplicate display logic. Always use the canonical shared components:
 
-### 6. AuthContext — Profile Not Realtime-Synced
-**File:** `src/contexts/AuthContext.tsx`
-- The user's own profile is only fetched on auth state change or manual `refreshProfile()` calls. No realtime subscription on `profiles` for the current user.
-- **Impact:** If another device/tab updates your profile (e.g., status expiry, display name), the current session won't reflect it.
-- **Fix:** Add a realtime listener on `profiles` filtered by `user_id=eq.${user.id}` to auto-refresh profile state.
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-### 7. ChatSidebar / HomeSidebar — Pinned Chats Not Realtime
-**Files:** `src/components/chat/ChatSidebar.tsx`, `src/components/layout/HomeSidebar.tsx`
-- Both sidebars listen for messages, threads, and groups, but **neither listens for `pinned_chats`** changes.
-- **Impact:** Pinning/unpinning a chat from the context menu won't reorder the sidebar until you navigate away.
-- **Fix:** Add `pinned_chats` to the existing realtime channel subscriptions in both sidebars.
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-### 8. FriendsDashboard — Profile Updates Not Realtime
-**File:** `src/pages/FriendsDashboard.tsx`
-- Has realtime on `friendships` table but not on `profiles`. If a friend changes their display name or avatar, it won't update.
-- **Impact:** Stale friend display names/avatars until page refresh.
-- **Fix:** Lower priority — profiles change infrequently, but could add a profiles listener.
+### 3. Pro Gating
 
-### 9. ServerChannelChat — Member Roles Not Realtime
-**File:** `src/components/server/ServerChannelChat.tsx` (lines 434-445)
-- Member roles (colors shown next to names) are fetched once on mount with no realtime subscription on `member_roles` or `server_roles`.
-- **Impact:** Role color changes by admins won't reflect in the chat until navigation.
-- **Fix:** Add realtime listener on `member_roles` and `server_roles` filtered by `server_id`.
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
 
----
+### 4. No Hallucinations
 
-### Priority Ranking
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
 
-| Priority | Area | User Impact |
-|----------|------|-------------|
-| **High** | Group Chat — group info/members | Very visible, frequent changes |
-| **High** | Pinned Messages Drawer | Pin/unpin feels broken without it |
-| **High** | ChatSidebar/HomeSidebar — pinned_chats | Pin action feels unresponsive |
-| **High** | AuthContext — own profile | Status/cosmetics out of sync |
-| **Medium** | ChannelSidebar — server info | Server name/icon changes |
-| **Medium** | ServerChannelChat — member roles | Role color updates |
-| **Medium** | ChannelSidebar — soundboard | New sounds not appearing |
-| **Low** | Server Settings Dialog tabs | Admin-only, single-user typical |
-| **Low** | FriendsDashboard — profiles | Infrequent profile changes |
+### 5. No Over-Engineering
 
-### Implementation Approach
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
 
-Each fix follows the same pattern already used throughout the codebase:
-1. Add a `supabase.channel()` subscription with `postgres_changes` on the relevant table(s)
-2. On event, either re-fetch the data or optimistically update local state
-3. Clean up the subscription in the `useEffect` return
+## Documentation Directory
 
-All changes are additive — no existing logic needs to change, just new `useEffect` blocks with realtime subscriptions added to each component.
+Read these files for specific details — do NOT rely on memory alone:
 
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+
+## Cosmetic Asset Specs
+
+Per-asset guides with exact dimensions, config files, and wrapper usage:
+
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

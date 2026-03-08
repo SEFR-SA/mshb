@@ -51,42 +51,59 @@ const PinnedMessagesDrawer = ({ threadId, groupThreadId, channelId }: PinnedMess
 
   const pinnedCount = pinnedMessages.length;
 
+  const fetchPinned = async () => {
+    let query = supabase
+      .from("messages")
+      .select("id, content, created_at, author_id, file_url, file_name")
+      .eq("is_pinned", true)
+      .eq("deleted_for_everyone", false)
+      .order("created_at", { ascending: false });
+
+    if (threadId) query = query.eq("thread_id", threadId);
+    else if (groupThreadId) query = query.eq("group_thread_id", groupThreadId);
+    else if (channelId) query = query.eq("channel_id", channelId);
+
+    const { data } = await query;
+    const msgs = (data || []) as PinnedMsg[];
+    setPinnedMessages(msgs);
+
+    const authorIds = [...new Set(msgs.map((m) => m.author_id))];
+    if (authorIds.length > 0) {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end")
+        .in("user_id", authorIds);
+      if (profileData) {
+        const map = new Map<string, AuthorProfile>();
+        profileData.forEach((p: any) => map.set(p.user_id, p));
+        setProfiles(map);
+      }
+    }
+  };
+
   // Fetch pinned messages when opened
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    (async () => {
-      let query = supabase
-        .from("messages")
-        .select("id, content, created_at, author_id, file_url, file_name")
-        .eq("is_pinned", true)
-        .eq("deleted_for_everyone", false)
-        .order("created_at", { ascending: false });
-
-      if (threadId) query = query.eq("thread_id", threadId);
-      else if (groupThreadId) query = query.eq("group_thread_id", groupThreadId);
-      else if (channelId) query = query.eq("channel_id", channelId);
-
-      const { data } = await query;
-      const msgs = (data || []) as PinnedMsg[];
-      setPinnedMessages(msgs);
-
-      // Load profiles for authors
-      const authorIds = [...new Set(msgs.map((m) => m.author_id))];
-      if (authorIds.length > 0) {
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end")
-          .in("user_id", authorIds);
-        if (profileData) {
-          const map = new Map<string, AuthorProfile>();
-          profileData.forEach((p: any) => map.set(p.user_id, p));
-          setProfiles(map);
-        }
-      }
-      setLoading(false);
-    })();
+    fetchPinned().finally(() => setLoading(false));
   }, [open, threadId, groupThreadId, channelId]);
+
+  // Realtime: listen for pin/unpin changes
+  useEffect(() => {
+    const filterId = threadId || groupThreadId || channelId;
+    if (!filterId) return;
+    const filterCol = threadId ? "thread_id" : groupThreadId ? "group_thread_id" : "channel_id";
+    const channel = supabase
+      .channel(`pinned-msgs-${filterId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `${filterCol}=eq.${filterId}` }, (payload) => {
+        const updated = payload.new as any;
+        if (updated.is_pinned !== undefined) {
+          fetchPinned();
+        }
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [threadId, groupThreadId, channelId]);
 
   const triggerButton = (
     <Button

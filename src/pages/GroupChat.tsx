@@ -185,7 +185,7 @@ const GroupChat = () => {
     ).then();
   }, [groupId, user]);
 
-  // Realtime
+  // Realtime — messages + group info + members
   useEffect(() => {
     if (!groupId) return;
     const channel = supabase
@@ -202,6 +202,30 @@ const GroupChat = () => {
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `group_thread_id=eq.${groupId}` }, (payload) => {
         updateRealtimeMessage(payload.new as Message);
+      })
+      // Realtime: group info changes (name, avatar, etc.)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "group_threads", filter: `id=eq.${groupId}` }, (payload) => {
+        const updated = payload.new as any;
+        setGroupName(updated.name || groupName);
+        setGroupAvatarUrl(updated.avatar_url || "");
+      })
+      // Realtime: members joining/leaving
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_members", filter: `group_id=eq.${groupId}` }, async () => {
+        const { data: members } = await supabase.from("group_members").select("*").eq("group_id", groupId);
+        setMemberCount(members?.length || 0);
+        const myMembership = members?.find((m: any) => m.user_id === user?.id);
+        setIsAdmin((myMembership as any)?.role === "admin");
+        const rolesMap = new Map<string, string>();
+        members?.forEach((m: any) => rolesMap.set(m.user_id, m.role));
+        setMemberRoles(rolesMap);
+        // Refresh profiles for any new members
+        const userIds = members?.map((m: any) => m.user_id) || [];
+        if (userIds.length > 0) {
+          const { data: profs } = await supabase.from("profiles").select("*, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").in("user_id", userIds);
+          const map = new Map<string, any>();
+          profs?.forEach((p) => map.set(p.user_id, p));
+          setProfiles(map);
+        }
       })
       .subscribe();
     return () => { channel.unsubscribe(); };

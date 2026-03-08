@@ -222,9 +222,30 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     const channel = supabase
       .channel(`channels-${serverId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "channels", filter: `server_id=eq.${serverId}` }, () => load())
+      // Realtime: server info changes (name, icon, banner, etc.)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "servers", filter: `id=eq.${serverId}` }, (payload) => {
+        setServer(payload.new as any);
+      })
       .subscribe();
     return () => { channel.unsubscribe(); };
   }, [serverId]);
+
+  // Realtime: soundboard changes
+  useEffect(() => {
+    if (!voiceChannel?.serverId) return;
+    const channel = supabase
+      .channel(`soundboard-${voiceChannel.serverId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "server_soundboard", filter: `server_id=eq.${voiceChannel.serverId}` }, () => {
+        supabase
+          .from("server_soundboard" as any)
+          .select("id, name, url")
+          .eq("server_id", voiceChannel.serverId)
+          .order("created_at")
+          .then(({ data }) => setServerSounds((data as any[]) || []));
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [voiceChannel?.serverId]);
 
   const fetchServerMembers = useCallback(async () => {
     const { data } = await supabase

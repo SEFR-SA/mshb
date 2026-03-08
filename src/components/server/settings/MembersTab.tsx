@@ -100,6 +100,14 @@ const MembersTab = ({ serverId }: Props) => {
     if (!serverId) return;
     setLoading(true);
     fetchMembers().finally(() => setLoading(false));
+
+    // Realtime: member joins/leaves/role changes
+    const channel = supabase
+      .channel(`settings-members-${serverId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "server_members", filter: `server_id=eq.${serverId}` }, () => fetchMembers())
+      .on("postgres_changes", { event: "*", schema: "public", table: "member_roles", filter: `server_id=eq.${serverId}` }, () => fetchMembers())
+      .subscribe();
+    return () => { channel.unsubscribe(); };
   }, [serverId]);
 
   // Current user's role in this server
