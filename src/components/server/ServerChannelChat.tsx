@@ -653,7 +653,8 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
+      <div className="relative flex-1 overflow-hidden">
+      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto p-4">
         {messagesLoading ? (
           <MessageSkeleton count={6} />
         ) : (

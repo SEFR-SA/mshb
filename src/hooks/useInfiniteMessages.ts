@@ -203,5 +203,7 @@ export const useInfiniteMessages = ({
     scrollRef,
     appendRealtimeMessage,
     updateRealtimeMessage,
+    showScrollToBottom,
+    scrollToBottom,
   };
 };
