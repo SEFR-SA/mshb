@@ -81,7 +81,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
 
       {/* Avatar + Info */}
       <div className="px-3 pb-3">
-        <div className="-mt-10 mb-2">
+        <div className="-mt-10 mb-2 flex items-end gap-2">
           <AvatarDecorationWrapper
             decorationUrl={p?.avatar_decoration_url}
             isPro={p?.is_pro}
@@ -99,6 +99,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
               className="absolute bottom-0 end-0 z-20 ring-2 ring-background"
             />
           </AvatarDecorationWrapper>
+          <StatusBubble statusText={effectiveStatusText} />
         </div>
 
         {/* Name */}
