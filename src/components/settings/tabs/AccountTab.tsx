@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
+import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 
 type EditField = "displayName" | "username" | "email" | "password" | null;
 
@@ -126,28 +127,30 @@ const AccountTab = () => {
 
       {/* Profile preview card */}
       <div className="rounded-xl overflow-hidden border border-border/50 bg-muted/20">
-        {p?.banner_url ? (
-          <img src={p.banner_url} alt="" className="h-20 w-full object-cover" />
-        ) : (
-          <div className="h-20 w-full bg-gradient-to-r from-primary/30 to-primary/10" />
-        )}
-        <div className="px-4 pb-4 -mt-8 flex items-end gap-3">
-          <Avatar className="h-16 w-16 border-4 border-background shrink-0" alwaysPlayGif>
-            <AvatarImage src={profile?.avatar_url || ""} />
-            <AvatarFallback className="bg-primary/20 text-primary text-xl">{initials}</AvatarFallback>
-          </Avatar>
-          <div className="mb-1">
-            <StyledDisplayName
-              displayName={profile?.display_name || profile?.username || "User"}
-              fontStyle={p?.name_font}
-              effect={p?.name_effect}
-              gradientStart={p?.name_gradient_start}
-              gradientEnd={p?.name_gradient_end}
-              className="font-bold"
-            />
-            {profile?.username && <p className="text-sm text-muted-foreground">@{profile.username}</p>}
+        <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={p?.is_pro}>
+          {p?.banner_url ? (
+            <img src={p.banner_url} alt="" className="h-20 w-full object-cover" />
+          ) : (
+            <div className="h-20 w-full bg-gradient-to-r from-primary/30 to-primary/10" />
+          )}
+          <div className="px-4 pb-4 -mt-8 flex items-end gap-3">
+            <Avatar className="h-16 w-16 border-4 border-background shrink-0" alwaysPlayGif>
+              <AvatarImage src={profile?.avatar_url || ""} />
+              <AvatarFallback className="bg-primary/20 text-primary text-xl">{initials}</AvatarFallback>
+            </Avatar>
+            <div className="mb-1">
+              <StyledDisplayName
+                displayName={profile?.display_name || profile?.username || "User"}
+                fontStyle={p?.name_font}
+                effect={p?.name_effect}
+                gradientStart={p?.name_gradient_start}
+                gradientEnd={p?.name_gradient_end}
+                className="font-bold"
+              />
+              {profile?.username && <p className="text-sm text-muted-foreground">@{profile.username}</p>}
+            </div>
           </div>
-        </div>
+        </ProfileEffectWrapper>
       </div>
 
       {/* Editable rows */}

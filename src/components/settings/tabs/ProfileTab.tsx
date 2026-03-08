@@ -302,7 +302,6 @@ const ProfileTab = () => {
                   </div>
                   <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
                 </label>
-              </ProfileEffectWrapper>
 
               {/* Body */}
               <div className="px-4 pb-4 pt-0 relative">
@@ -332,6 +331,7 @@ const ProfileTab = () => {
                   <p className="text-xs text-muted-foreground mt-2 line-clamp-3 whitespace-pre-wrap">{aboutMe}</p>
                 )}
               </div>
+              </ProfileEffectWrapper>
             </div>
           </div>
 
