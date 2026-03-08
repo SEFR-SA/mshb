@@ -11,7 +11,7 @@ import { useForwardMessage } from "@/contexts/ForwardMessageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload, Lock, Megaphone, Pin, Forward, Loader2 } from "lucide-react";
+import { Send, Hash, Upload, Lock, Megaphone, Pin, Forward, Loader2, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import MarkdownToolbar from "@/components/chat/MarkdownToolbar";
@@ -346,6 +346,8 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     scrollRef,
     appendRealtimeMessage,
     updateRealtimeMessage,
+    showScrollToBottom,
+    scrollToBottom,
   } = useInfiniteMessages({ channelId, enabled: !isLocked });
 
   const { reactions, toggleReaction } = useMessageReactions(messages.map((m: any) => m.id));
@@ -651,7 +653,8 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
+      <div className="relative flex-1 overflow-hidden">
+      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto p-4">
         {messagesLoading ? (
           <MessageSkeleton count={6} />
         ) : (
@@ -707,8 +710,13 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
           </div>
         )}
       </div>
+      {showScrollToBottom && (
+        <button onClick={scrollToBottom} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-primary text-primary-foreground rounded-full p-2 shadow-lg hover:bg-primary/90 transition-opacity animate-fade-in">
+          <ChevronDown className="h-5 w-5" />
+        </button>
+      )}
+      </div>
 
-      {/* Read-only banner for members in announcement channels */}
       {isAnnouncement && !canPost ? (
         <div className="px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 border-t border-border/40">
           <Megaphone className="h-4 w-4 shrink-0" />

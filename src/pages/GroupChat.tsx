@@ -10,7 +10,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Settings2, Users, Upload, Pin, PinOff, UserRound, UserRoundX, Forward, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Settings2, Users, Upload, Pin, PinOff, UserRound, UserRoundX, Forward, Loader2, ChevronDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
@@ -84,6 +84,8 @@ const GroupChat = () => {
     scrollRef,
     appendRealtimeMessage,
     updateRealtimeMessage,
+    showScrollToBottom,
+    scrollToBottom,
   } = useInfiniteMessages({ groupThreadId: groupId });
 
   // Intersection observer for loading older messages
@@ -374,7 +376,8 @@ const GroupChat = () => {
       </header>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
+      <div className="relative flex-1 overflow-hidden">
+      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto p-4">
         {messagesLoading ? <MessageSkeleton count={6} /> : (
           <div className="animate-fade-in">
             {/* Top sentinel for infinite scroll */}
@@ -594,8 +597,13 @@ const GroupChat = () => {
           </div>
         )}
       </div>
+      {showScrollToBottom && (
+        <button onClick={scrollToBottom} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-primary text-primary-foreground rounded-full p-2 shadow-lg hover:bg-primary/90 transition-opacity animate-fade-in">
+          <ChevronDown className="h-5 w-5" />
+        </button>
+      )}
+      </div>
 
-      {/* Upload progress */}
       {uploadProgress !== null && (
         <div className="px-3 pt-2 space-y-1">
           <p className="text-xs text-muted-foreground">{t("files.uploading")}</p>
