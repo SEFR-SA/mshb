@@ -24,12 +24,15 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
 
   const status = (statusLabel === "offline" ? "invisible" : statusLabel) as UserStatus;
   const p = profile as any;
-  const effectiveStatusText = (p?.status_until && new Date(p.status_until) < new Date())
-    ? null
-    : p?.status_text ?? null;
+  const effectiveStatusText =
+    p?.status_until && new Date(p.status_until) < new Date() ? null : (p?.status_text ?? null);
 
   return (
-    <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={p?.is_pro} className="w-72 border-s border-border/50 glass h-full overflow-y-auto">
+    <ProfileEffectWrapper
+      effectUrl={p?.profile_effect_url}
+      isPro={p?.is_pro}
+      className="w-72 border-s border-border/50 glass h-full overflow-y-auto"
+    >
       {/* Banner area */}
       {p.banner_url ? (
         <img src={p.banner_url} alt="" className="h-24 w-full object-cover rounded-b-lg" />
@@ -39,8 +42,13 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
 
       {/* Avatar + Status Bubble row */}
       <div className="px-4 -mt-16 flex items-end gap-2">
-        <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={120} className="shrink-0">
-          <Avatar className="h-[120px] w-[120px] border-4 border-background">
+        <AvatarDecorationWrapper
+          decorationUrl={p?.avatar_decoration_url}
+          isPro={p?.is_pro}
+          size={90}
+          className="shrink-0"
+        >
+          <Avatar className="h-[80px] w-[80px] border-4 border-background">
             <AvatarImage src={profile.avatar_url || ""} />
             <AvatarFallback className="bg-primary/20 text-primary text-2xl">
               {(profile.display_name || profile.username || "?").charAt(0).toUpperCase()}
@@ -61,24 +69,28 @@ const UserProfilePanel = ({ profile, statusLabel }: UserProfilePanelProps) => {
             gradientStart={p?.name_gradient_start}
             gradientEnd={p?.name_gradient_end}
             className="text-lg font-bold"
-            serverTag={p?.active_server_tag ? {
-              name: p.active_server_tag.server_tag_name,
-              badge: p.active_server_tag.server_tag_badge,
-              color: (p.active_server_tag as any).server_tag_container_color ?? p.active_server_tag.server_tag_color,
-              badgeColor: p.active_server_tag.server_tag_color,
-            } : null}
+            serverTag={
+              p?.active_server_tag
+                ? {
+                    name: p.active_server_tag.server_tag_name,
+                    badge: p.active_server_tag.server_tag_badge,
+                    color:
+                      (p.active_server_tag as any).server_tag_container_color ?? p.active_server_tag.server_tag_color,
+                    badgeColor: p.active_server_tag.server_tag_color,
+                  }
+                : null
+            }
           />
-          {profile.username && (
-            <p className="text-sm text-muted-foreground">@{profile.username}</p>
-          )}
+          {profile.username && <p className="text-sm text-muted-foreground">@{profile.username}</p>}
         </div>
 
         {/* Status */}
         <div className="flex items-center gap-2">
           <StatusBadge status={status} size="sm" />
-          <span className="text-sm capitalize">{t(`status.${statusLabel !== "offline" ? statusLabel : "invisible"}`)}</span>
+          <span className="text-sm capitalize">
+            {t(`status.${statusLabel !== "offline" ? statusLabel : "invisible"}`)}
+          </span>
         </div>
-
 
         {/* About Me */}
         {p.about_me && (
