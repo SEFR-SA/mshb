@@ -419,7 +419,6 @@ const Chat = () => {
       }
     },
   });
-  };
 
   // Center chat panel content
   const chatPanel = (
