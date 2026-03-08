@@ -4,6 +4,7 @@ import { useTheme, COLOR_THEME_PRESETS } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Palette, Lock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import ThemeBuilder from "@/components/settings/ThemeBuilder";
