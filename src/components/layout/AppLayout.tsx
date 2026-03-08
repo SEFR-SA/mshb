@@ -23,6 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 const AppLayout = () => {
   useGlobalKeybinds();
   const { t } = useTranslation();
+  const { isStreamerMode, toggleStreamerMode } = useStreamerMode();
   const { user, profile } = useAuth();
   const { voiceChannel, disconnectVoice } = useVoiceChannel();
   const { getGradientStyle, colorTheme } = useTheme();
