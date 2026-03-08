@@ -353,6 +353,7 @@ const GroupChat = () => {
     },
   });
 
+  const typingNames = Array.from(typingUsers)
     .map((uid) => profiles.get(uid)?.display_name || profiles.get(uid)?.username || "Someone")
     .join(", ");
 
