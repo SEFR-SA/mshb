@@ -119,15 +119,13 @@ const DisplayNameStyleModal = ({ onClose, onApplied }: Props) => {
             className="flex-1 h-7 px-2 text-xs rounded-md bg-muted/40 border border-border/50 font-mono"
             maxLength={7}
           />
-          {!isMobile && (
-            <input
-              type="color"
-              value={active}
-              onChange={(e) => { if (isPro) setColor(e.target.value); else toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") }); }}
-              className="h-6 w-6 rounded cursor-pointer border-0 bg-transparent"
-              title="Pick custom color"
-            />
-          )}
+          <input
+            type="color"
+            value={active}
+            onChange={(e) => { if (isPro) setColor(e.target.value); else toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") }); }}
+            className="h-6 w-6 rounded cursor-pointer border-0 bg-transparent"
+            title="Pick custom color"
+          />
         </div>
       </div>
     );
