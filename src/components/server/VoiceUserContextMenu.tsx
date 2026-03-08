@@ -117,7 +117,7 @@ const VoiceUserContextMenu = ({
       if (!newThread) return;
       threadId = newThread.id;
     }
-    navigate(`/chat/${threadId}?call=true`);
+    navigate(`/channels/@me/chat/${threadId}?call=true`);
   };
 
   const handleAddFriend = async () => {
