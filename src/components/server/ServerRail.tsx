@@ -484,7 +484,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                       {t("actions.markAsRead")}
                     </ContextMenuItem>
                     <ContextMenuSeparator />
-                    <ContextMenuItem onClick={() => { navigate(`/server/${s.id}`); requestCreateChannel(); }}>
+                    <ContextMenuItem onClick={() => { navigate(`/channels/server/${s.id}`); requestCreateChannel(); }}>
                       <Plus className="h-4 w-4 me-2" />
                       {t("servers.createChannel")}
                     </ContextMenuItem>
