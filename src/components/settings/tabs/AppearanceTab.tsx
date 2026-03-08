@@ -111,6 +111,7 @@ const AppearanceTab = () => {
       </div>
 
       {/* ─── Custom Theme Banner ─── */}
+      {!isMobile && (
       <div
         className={cn(
           "relative rounded-xl border border-border p-4 flex items-center justify-between gap-4 overflow-hidden",
@@ -141,6 +142,7 @@ const AppearanceTab = () => {
           {t("themeBuilder.createTheme")}
         </Button>
       </div>
+      )}
 
       {/* Default Themes */}
       <div className="space-y-3">
