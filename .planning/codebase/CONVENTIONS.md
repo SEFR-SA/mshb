@@ -284,4 +284,62 @@ Avoid excessive type fighting; pragmatic typing is expected.
 
 ---
 
+## Component Convention
+
+```typescript
+// PascalCase filename, Props interface at top, default export at bottom
+interface Props {
+  threadId: string;
+  onClose?: () => void;
+}
+
+const MyComponent = ({ threadId, onClose }: Props) => {
+  return <div />;
+};
+
+export default MyComponent;
+```
+
+## Hook Convention
+
+```typescript
+// use prefix, return an object
+export const useMyHook = (id: string) => {
+  const [value, setValue] = useState<string>("");
+  return { value, setValue };
+};
+```
+
+## Database Types
+
+```typescript
+import type { Tables } from "@/integrations/supabase/types";
+type Profile = Tables<"profiles">;
+type Message = Tables<"messages">;
+```
+
+## CSS / Styling
+
+```typescript
+import { cn } from "@/lib/utils";
+<div className={cn("base-class", isActive && "active-class", className)} />
+```
+
+## Anti-Over-Engineering (SENIOR DEV MANDATE)
+
+- **Zero-Bloat Policy:** Never write a 50-line function when a 2-line native method exists.
+- **Native First:** Prefer `.map()`, `.filter()`, `.reduce()`, standard React hooks, ES6+ over manual logic.
+- **Simplicity over Abstraction:** No micro-frameworks, no unnecessary wrappers, no complex patterns for simple tasks.
+- **The Senior Check:** Before proposing changes, ask: *"Is this the absolute most concise, readable way?"* If your diff adds 80 lines for a simple feature, rewrite it.
+
+## Mobile-First & Responsive Design
+
+1. **Tailwind Mobile-First:** Base classes target mobile. Use `md:`, `lg:`, `xl:` breakpoints to scale up. Do NOT write desktop-first CSS.
+2. **`useIsMobile()` Hook:** Use `src/hooks/use-mobile.tsx` to conditionally render heavy components or switch behaviors.
+3. **Modals vs. Sheets:** `Dialog` on desktop, `Sheet` or `Drawer` on mobile.
+4. **Touch Targets:** Interactive elements need at least `p-2` or `h-10 w-10`.
+5. **Horizontal Scrolling:** Use `overflow-x-hidden` on main containers unless building a swipeable carousel.
+
+---
+
 *Convention analysis: 2026-02-26*

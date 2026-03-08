@@ -185,4 +185,65 @@
 
 ---
 
+## Data Fetching Pattern
+
+Supabase is called **directly** inside components and hooks — no React Query wrappers:
+
+```typescript
+const [data, setData] = useState<MyType[]>([]);
+
+useEffect(() => {
+  supabase.from("table").select("*").eq("user_id", user.id).then(({ data }) => {
+    if (data) setData(data);
+  });
+}, [user.id]);
+```
+
+## Real-time Subscription Pattern
+
+```typescript
+useEffect(() => {
+  const channel = supabase
+    .channel(`unique-channel-name-${id}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `thread_id=eq.${id}` }, (payload) => {
+      setMessages(prev => [...prev, payload.new as Message]);
+    })
+    .subscribe();
+  return () => { channel.unsubscribe(); }; // ALWAYS clean up
+}, [id]);
+```
+
+For a table to emit realtime events, add in a migration:
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.your_table;
+```
+
+## Global State — Context Provider Stack
+
+Order in `App.tsx` matters:
+```
+QueryClientProvider → ThemeProvider → AudioSettingsProvider → VoiceChannelProvider → AuthProvider
+```
+
+Access via hooks: `useAuth()`, `useTheme()`, `useAudioSettings()`, `useVoiceChannel()`
+
+## Security
+
+- **RLS (Row-Level Security)** is enabled on all tables. Never disable it, never write client-side bypass logic.
+- All access control lives in SQL policies in `supabase/migrations/`.
+- Common issues: `supabase.from(...).select(...)` returns error on RLS violation — wrap in try/catch and surface as toast.
+
+## Debugging Common Integration Issues
+
+| Problem | Where to look |
+|---------|--------------|
+| Realtime subscription not firing | Check migration added table to `supabase_realtime` publication |
+| Subscription fires but UI doesn't update | Stale closure in handler — check state setter is called correctly |
+| Subscription memory leak | Every `supabase.channel()` must have `return () => channel.unsubscribe()` |
+| Presence not tracking | `usePresence.ts` — uses Supabase Presence API, not `postgres_changes` |
+| DB type errors on query | Cast with `as any` for RPC calls and complex joins |
+| Status not resetting | `AuthContext` checks `status_until` on load and resets expired statuses |
+
+---
+
 *Integration audit: 2026-02-26*

@@ -8,8 +8,8 @@ Nameplates are wide banner images rendered as the background of user identity ro
 
 | Property | Value |
 |----------|-------|
-| Dimensions | **600 × 80 px** (or 1200 × 160 px @2×) |
-| Aspect ratio | ~7.5:1 wide banner |
+| Dimensions | **224 × 42 px** (or 448 × 84 px @2×) |
+| Aspect ratio | ~5.3:1 wide banner |
 | Format | **APNG** or **WebP** (animated); **PNG** (static). Never GIF. |
 | Background | Can be opaque or semi-transparent — it sits behind the avatar + name |
 | Safe zone | Keep important content away from the left ~48 px (avatar area) and right ~8 px edges |
@@ -19,7 +19,7 @@ Nameplates are wide banner images rendered as the background of user identity ro
 ## Step-by-Step
 
 ### 1. Export the asset
-Export as **APNG** (animated) or **PNG** (static) at 600×80 px or 1200×160 px.
+Export as **APNG** (animated) or **PNG** (static) at 224×42 px or 448×84 px.
 
 ### 2. Host the file
 Upload to Supabase Storage or a CDN. Copy the public URL.

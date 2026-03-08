@@ -302,4 +302,80 @@ const { voiceChannel, setVoiceChannel } = useVoiceChannel();
 
 ---
 
+## Project Directory Structure
+
+```
+src/
+├── App.tsx                    # Root: routing tree + provider stack
+├── pages/                     # Route-level components
+│   ├── Auth.tsx               # Login / signup / password reset
+│   ├── Chat.tsx               # 1-on-1 DM view
+│   ├── GroupChat.tsx          # Group chat view
+│   ├── ServerView.tsx         # Server hub (channel list + chat area)
+│   ├── FriendsDashboard.tsx   # Friends management
+│   ├── Settings.tsx           # User profile & preferences
+│   └── InviteJoin.tsx         # Server invite acceptance
+├── components/
+│   ├── chat/                  # DM/group chat UI components
+│   ├── server/                # Server/channel UI components
+│   ├── layout/                # AppLayout, HomeSidebar
+│   ├── shared/                # Shared wrappers (AvatarDecorationWrapper, NameplateWrapper, etc.)
+│   └── ui/                    # shadcn-ui primitives (do not edit)
+├── contexts/
+│   ├── AuthContext.tsx        # Session, user, profile — useAuth()
+│   ├── ThemeContext.tsx       # Light/dark/custom theme — useTheme()
+│   ├── VoiceChannelContext.tsx # Voice channel state + WebRTC
+│   └── AudioSettingsContext.tsx# Global mute/deafen — useAudioSettings()
+├── hooks/                     # Custom hooks (usePresence, useWebRTC, etc.)
+├── integrations/supabase/
+│   ├── client.ts              # Supabase client singleton
+│   └── types.ts               # Auto-generated DB types (do not edit manually)
+├── lib/
+│   ├── utils.ts               # cn() — Tailwind class merging
+│   ├── uploadChatFile.ts      # File upload to Supabase Storage
+│   ├── soundManager.ts        # Audio notification playback
+│   ├── emojiUtils.ts          # Emoji-only detection & sizing
+│   └── unicodeFonts.ts        # Unicode decorative font conversion
+└── i18n/
+    ├── en.ts                  # English translations
+    ├── ar.ts                  # Arabic translations
+    └── index.ts               # i18next configuration
+```
+
+## Key Files Quick Reference
+
+| File | Purpose |
+|------|---------|
+| `src/App.tsx` | Routing tree and provider stack |
+| `src/contexts/AuthContext.tsx` | Auth state, session, profile — `useAuth()` |
+| `src/integrations/supabase/client.ts` | Supabase client singleton |
+| `src/integrations/supabase/types.ts` | Auto-generated DB types |
+| `src/i18n/en.ts` | English translations |
+| `src/i18n/ar.ts` | Arabic translations |
+| `src/lib/utils.ts` | `cn()` for Tailwind class merging |
+| `src/lib/uploadChatFile.ts` | File upload with progress tracking |
+| `src/lib/soundManager.ts` | Audio playback for notifications/calls |
+| `src/hooks/usePresence.ts` | Online presence and user status |
+| `src/hooks/useWebRTC.ts` | Voice/video call management |
+| `supabase/migrations/` | All database schema changes |
+
+## Adding a New Feature — Checklist
+
+1. **Write a migration** in `supabase/migrations/` (filename: timestamp + description):
+   ```sql
+   ALTER TABLE public.messages ADD COLUMN is_pinned BOOLEAN NOT NULL DEFAULT false;
+   ALTER PUBLICATION supabase_realtime ADD TABLE public.new_table; -- if new table
+   ```
+2. **Add/update RLS policies** in the same migration file.
+3. **Reference types** via `Tables<"table_name">` — no manual type editing.
+4. **Build the component** in the appropriate `src/components/` subdirectory.
+5. **Create a page** in `src/pages/` only if it needs its own route.
+6. **Add the route** to `src/App.tsx`.
+7. **Set up realtime** with proper cleanup (`return () => channel.unsubscribe()`).
+8. **Enforce Pro Locks:** Check `profile?.is_pro`. Show lock icons/badges and upgrade toast for free users.
+9. **Add translations** to both `en.ts` and `ar.ts`.
+10. **Test mobile** using `useIsMobile()` hook for responsive layout adjustments.
+
+---
+
 *Architecture analysis: 2026-02-26*

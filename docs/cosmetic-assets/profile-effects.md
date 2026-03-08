@@ -8,8 +8,8 @@ Profile effects are full-card animated overlays that appear on top of the user p
 
 | Property | Value |
 |----------|-------|
-| Dimensions | **440 × 580 px** (or 880 × 1160 px @2×) |
-| Aspect ratio | ~0.76:1 portrait |
+| Dimensions | **480 × 880 px** (or 960 × 1760 px @2×) |
+| Aspect ratio | ~0.55:1 portrait |
 | Format | **APNG** or **WebP** (animated). Never GIF. |
 | Background | Must be transparent — the effect overlays the profile card content |
 | Loops | Should loop seamlessly |
@@ -19,7 +19,7 @@ Profile effects are full-card animated overlays that appear on top of the user p
 ## Step-by-Step
 
 ### 1. Export the asset
-Export as **APNG** or animated **WebP** at 440×580 px with a transparent background.
+Export as **APNG** or animated **WebP** at 480×880 px with a transparent background.
 
 ### 2. Host the file
 Upload to Supabase Storage or a CDN. Copy the public URL.

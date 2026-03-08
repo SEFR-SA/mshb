@@ -8,7 +8,7 @@ Avatar decorations are animated or static frames that surround user avatars. The
 
 | Property | Value |
 |----------|-------|
-| Dimensions | **128 × 128 px** (or 256 × 256 px @2×) |
+| Dimensions | **144 × 144 px** (or 288 × 288 px @2×) |
 | Shape | Square with transparent background |
 | Format | **APNG** or **WebP** (animated); **PNG** (static). Never GIF. |
 | Content area | The center ~60% should be transparent so the avatar shows through |
@@ -22,7 +22,7 @@ The `AvatarDecorationWrapper` renders the decoration at **1.2× the avatar size*
 
 ### 1. Export the asset
 - Export as **APNG** (for animation) or **PNG** (for static) with a transparent background.
-- Dimensions must be square (128×128 or 256×256).
+- Dimensions must be square (144×144 or 288×288).
 
 ### 2. Host the file
 Upload to Supabase Storage or a CDN. Copy the public URL.

@@ -4,6 +4,16 @@ Server tags are small labeled badges displayed next to server names (in the chan
 
 ---
 
+## Badge Icon Asset Specs
+
+| Property | Value |
+|----------|-------|
+| Dimensions | **16 × 16 px** (or 32 × 32 px @2×) |
+| Format | **SVG** (vector — scales to any size) |
+| Color | Dynamic via `color` prop — use `fill="currentColor"` |
+
+---
+
 ## Tag Components
 
 | Part | Description |
