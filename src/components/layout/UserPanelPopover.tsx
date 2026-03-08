@@ -130,14 +130,14 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
             onMouseLeave={() => setShowStatusMenu(false)}
           >
             <button
-              className="flex items-center justify-between w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors text-start"
+              className="flex items-center justify-between w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start group"
               onClick={() => setShowStatusMenu(!showStatusMenu)}
             >
               <span className="flex items-center gap-2">
                 <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", currentStatusOption.color)} />
                 {currentStatusOption.label}
               </span>
-              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+              <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-accent-foreground" />
             </button>
 
             {/* Side-positioned status submenu */}
