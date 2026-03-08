@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import {
