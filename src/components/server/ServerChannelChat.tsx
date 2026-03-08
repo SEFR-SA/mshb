@@ -253,7 +253,9 @@ const MessageItem = React.memo(({
                 <MessageFilePreview fileUrl={msg.file_url} fileName={msg.file_name || "file"} fileType={msg.file_type || ""} fileSize={msg.file_size || 0} isMine={isMine} />
               </div>
             ) : null}
-            {editingId === msg.id ? (
+            {msg.deleted_for_everyone ? (
+              <p className="text-sm italic text-muted-foreground">{t("actions.messageDeleted", "[message deleted]")}</p>
+            ) : editingId === msg.id ? (
               <div className="flex items-center gap-2 mt-1">
                 <Input
                   value={editContent}
