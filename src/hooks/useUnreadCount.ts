@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/lib/soundManager";
+import { getNotificationPrefs } from "@/lib/notificationPrefs";
 
 export function useUnreadCount() {
   const { user } = useAuth();
