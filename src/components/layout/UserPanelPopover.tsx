@@ -94,7 +94,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
             <StatusBadge
               status={currentStatus}
               size="md"
-              className="absolute bottom-0 end-0 z-20"
+              className="absolute bottom-0 end-0 z-20 translate-x-[2px] translate-y-[2px]"
             />
           </AvatarDecorationWrapper>
           <StatusBubble statusText={effectiveStatusText} />
