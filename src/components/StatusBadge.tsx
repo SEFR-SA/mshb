@@ -20,7 +20,7 @@ export function StatusBadge({ status, size = "sm", className }: StatusBadgeProps
   return (
     <span
       className={cn(
-        "rounded-full inline-block shrink-0",
+        "rounded-full inline-block shrink-0 ring-[3px] ring-background",
         size === "sm" ? "h-2.5 w-2.5" : "h-3 w-3",
         statusColors[status] || statusColors.online,
         className
