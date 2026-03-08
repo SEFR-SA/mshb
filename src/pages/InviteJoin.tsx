@@ -81,7 +81,7 @@ const InviteJoin = () => {
         .eq("user_id", user.id)
         .maybeSingle();
       if (membership) {
-        navigate(`/server/${row.id}`, { replace: true });
+        navigate(`/channels/server/${row.id}`, { replace: true });
         return;
       }
     }
