@@ -94,6 +94,15 @@ const DeepLinkHandler = () => {
     if (window.electronAPI && window.electronAPI.onDeepLink) {
       window.electronAPI.onDeepLink(async (url: string) => {
         console.log("Desktop app received deep link:", url);
+
+        // Handle invite deep links: mshb://invite/CODE
+        if (url.startsWith('mshb://invite/')) {
+          const code = url.replace('mshb://invite/', '').split(/[?#]/)[0];
+          if (code) {
+            window.location.hash = `/invite/${code}`;
+            return;
+          }
+        }
         
         const hash = url.split('#')[1];
         if (hash) {

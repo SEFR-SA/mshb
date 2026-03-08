@@ -2,6 +2,7 @@ import React from "react";
 
 const URL_REGEX = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/g;
 const EMOJI_REGEX = /:([a-zA-Z0-9_]+):/g;
+const INVITE_URL_REGEX = /^https?:\/\/[^\s/]+\/invite\/([A-Za-z0-9]{4,20})/;
 
 /** Render a plain text segment, converting URLs to clickable links */
 function renderUrls(text: string): React.ReactNode[] {
@@ -10,6 +11,27 @@ function renderUrls(text: string): React.ReactNode[] {
     if (URL_REGEX.test(part)) {
       URL_REGEX.lastIndex = 0;
       const href = part.startsWith("http") ? part : `https://${part}`;
+
+      // Intercept invite URLs for internal navigation
+      const inviteMatch = href.match(INVITE_URL_REGEX);
+      if (inviteMatch) {
+        const code = inviteMatch[1];
+        return (
+          <a
+            key={i}
+            href={`#/invite/${code}`}
+            className="underline text-blue-400 hover:text-blue-300"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              window.location.hash = `/invite/${code}`;
+            }}
+          >
+            {part}
+          </a>
+        );
+      }
+
       return (
         <a
           key={i}
@@ -58,7 +80,6 @@ export function renderLinkedText(
         />
       );
     } else {
-      // Unknown :name: — leave as plain text
       parts.push(match[0]);
     }
     lastIndex = match.index + match[0].length;

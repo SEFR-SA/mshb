@@ -8,20 +8,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Users, XCircle } from "lucide-react";
 
-interface ServerData {
-  id: string;
-  name: string;
-  icon_url: string | null;
-  banner_url: string | null;
-  created_at: string;
-}
-
-interface InviteData {
-  expires_at: string | null;
-  max_uses: number | null;
-  use_count: number;
-}
-
 type PageStatus = "loading" | "invalid" | "preview" | "joining";
 
 const InviteJoin = () => {
@@ -31,8 +17,8 @@ const InviteJoin = () => {
   const navigate = useNavigate();
 
   const [status, setStatus] = useState<PageStatus>("loading");
-  const [server, setServer] = useState<ServerData | null>(null);
-  const [invite, setInvite] = useState<InviteData | null>(null);
+  const [server, setServer] = useState<{ id: string; name: string; icon_url: string | null; banner_url: string | null; created_at: string } | null>(null);
+  const [invite, setInvite] = useState<{ expires_at: string | null; max_uses: number | null; use_count: number } | null>(null);
   const [memberCount, setMemberCount] = useState<number | null>(null);
   const [onlineCount, setOnlineCount] = useState<number | null>(null);
 
@@ -42,46 +28,36 @@ const InviteJoin = () => {
   }, [code, user, authLoading]);
 
   const loadInvite = async () => {
-    if (!code) { console.error("[InviteJoin] No invite code in URL"); setStatus("invalid"); return; }
+    if (!code) { setStatus("invalid"); return; }
 
-    // Single SECURITY DEFINER RPC — bypasses RLS on servers/invites/server_members
-    // so unauthenticated users and non-members can still see the preview.
-    const { data: rows, error } = await supabase.rpc("get_server_preview_by_invite" as any, { p_code: code });
-    if (error) {
-      console.error("[InviteJoin] RPC error from get_server_preview_by_invite:", error);
-      setStatus("invalid");
-      return;
-    }
+    // Use validate_invite RPC — bypasses RLS
+    const { data, error } = await supabase.rpc("validate_invite" as any, { p_code: code });
+    if (error || !data) { setStatus("invalid"); return; }
 
-    const row = (rows as any)?.[0];
-    if (!row) {
-      console.error("[InviteJoin] Invite not found, expired, or maxed for code:", code);
-      setStatus("invalid");
-      return;
-    }
+    const result = data as any;
+    if (result.status !== "valid") { setStatus("invalid"); return; }
 
     setServer({
-      id: row.id,
-      name: row.name,
-      icon_url: row.icon_url,
-      banner_url: row.banner_url,
-      created_at: row.server_created_at,
+      id: result.server_id,
+      name: result.server_name,
+      icon_url: result.server_icon_url,
+      banner_url: result.server_banner_url,
+      created_at: result.server_created_at,
     });
-    setInvite({ expires_at: row.expires_at, max_uses: row.max_uses, use_count: row.use_count });
-    setMemberCount(Number(row.member_count));
-    setOnlineCount(Number(row.online_count));
+    setInvite({ expires_at: result.expires_at, max_uses: result.max_uses, use_count: result.use_count });
+    setMemberCount(Number(result.member_count));
+    setOnlineCount(Number(result.online_count));
 
-    // If user is authenticated, check membership and auto-navigate if already a member.
-    // Authenticated members pass the server_members RLS policy so this query works for them.
+    // If authenticated, check membership and auto-navigate
     if (user) {
       const { data: membership } = await supabase
         .from("server_members" as any)
         .select("id")
-        .eq("server_id", row.id)
+        .eq("server_id", result.server_id)
         .eq("user_id", user.id)
         .maybeSingle();
       if (membership) {
-        navigate(`/server/${row.id}`, { replace: true });
+        navigate(`/server/${result.server_id}`, { replace: true });
         return;
       }
     }
@@ -93,18 +69,13 @@ const InviteJoin = () => {
     if (!code || !user || !server) return;
     setStatus("joining");
 
+    // use_invite atomically validates, increments, and inserts membership
     const { data: serverId, error } = await supabase.rpc("use_invite", { p_code: code });
     if (error || !serverId) {
       toast({ title: t("servers.inviteInvalid"), description: t("servers.inviteInvalidDesc"), variant: "destructive" });
       setStatus("invalid");
       return;
     }
-
-    await supabase.from("server_members" as any).insert({
-      server_id: serverId,
-      user_id: user.id,
-      role: "member",
-    } as any);
 
     toast({ title: t("servers.joinedServer") });
     navigate(`/server/${serverId}`);
@@ -128,7 +99,6 @@ const InviteJoin = () => {
     }
   };
 
-  // Loading state
   if (authLoading || status === "loading") {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -137,7 +107,6 @@ const InviteJoin = () => {
     );
   }
 
-  // Invalid/expired invite
   if (status === "invalid") {
     return (
       <div className="flex h-screen items-center justify-center bg-background p-4">
@@ -155,16 +124,13 @@ const InviteJoin = () => {
     );
   }
 
-  // Preview (valid invite)
   return (
     <div className="flex h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-[340px] rounded-xl overflow-hidden border border-border/50 bg-card shadow-lg">
-        {/* Banner */}
         <div className="relative h-[100px] bg-gradient-to-br from-primary/30 to-muted/60 overflow-hidden">
           {server?.banner_url && (
             <img src={server.banner_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
           )}
-          {/* Server icon overlapping banner */}
           <div className="absolute -bottom-6 left-5">
             <Avatar className="h-16 w-16 rounded-2xl ring-4 ring-card">
               <AvatarImage src={server?.icon_url || ""} />
@@ -175,14 +141,12 @@ const InviteJoin = () => {
           </div>
         </div>
 
-        {/* Content */}
         <div className="pt-9 px-5 pb-5 space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             {t("servers.youAreInvited")}
           </p>
           <h3 className="font-bold text-lg leading-tight truncate">{server?.name}</h3>
 
-          {/* Stats */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
@@ -194,7 +158,6 @@ const InviteJoin = () => {
             </span>
           </div>
 
-          {/* Created date */}
           {server?.created_at && (
             <p className="text-xs text-muted-foreground">
               {t("servers.serverCreatedAt", { date: formatDate(server.created_at) })}
@@ -202,14 +165,12 @@ const InviteJoin = () => {
           )}
 
           <div className="border-t border-border/40 pt-3 space-y-3">
-            {/* Invite expiry */}
             <p className="text-xs text-muted-foreground">
               {invite?.expires_at
                 ? t("servers.inviteExpires", { date: formatDate(invite.expires_at) })
                 : t("servers.inviteNeverExpires")}
             </p>
 
-            {/* CTA */}
             {!user ? (
               <div className="space-y-2">
                 <Button className="w-full" onClick={handleLoginToJoin}>

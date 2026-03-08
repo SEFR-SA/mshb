@@ -29,27 +29,29 @@ const JoinServerDialog = ({ open, onOpenChange }: Props) => {
       const urlMatch = inviteCode.match(/\/invite\/([A-Za-z0-9]+)$/);
       if (urlMatch) inviteCode = urlMatch[1];
 
-      // Try new invite system first, then fall back to legacy
-      let serverId: string | null = null;
-      const { data: newId } = await supabase.rpc("get_server_id_by_invite_link", { p_code: inviteCode });
-      if (newId) {
-        // Use the invite (increment counter)
-        await supabase.rpc("use_invite", { p_code: inviteCode });
-        serverId = newId;
-      } else {
+      // use_invite atomically validates, increments, and inserts membership
+      const { data: serverId, error } = await supabase.rpc("use_invite", { p_code: inviteCode });
+      if (error || !serverId) {
+        // Fall back to legacy invite_code on servers table
         const { data: legacyId } = await supabase.rpc("get_server_id_by_invite", { p_code: inviteCode });
-        serverId = legacyId;
-      }
-      if (!serverId) {
-        toast({ title: t("servers.invalidCode"), variant: "destructive" });
+        if (!legacyId) {
+          toast({ title: t("servers.invalidCode"), variant: "destructive" });
+          setLoading(false);
+          return;
+        }
+        // Legacy: insert membership client-side (no invites row to validate)
+        await supabase.from("server_members" as any).insert({
+          server_id: legacyId,
+          user_id: user.id,
+          role: "member",
+        } as any);
+        setCode("");
+        onOpenChange(false);
+        navigate(`/server/${legacyId}`);
         setLoading(false);
         return;
       }
-      await supabase.from("server_members" as any).insert({
-        server_id: serverId,
-        user_id: user.id,
-        role: "member",
-      } as any);
+
       setCode("");
       onOpenChange(false);
       navigate(`/server/${serverId}`);

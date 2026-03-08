@@ -15,7 +15,7 @@ interface Props {
   isMine: boolean;
 }
 
-type InviteStatus = "loading" | "valid" | "expired" | "maxed";
+type InviteStatus = "loading" | "valid" | "expired" | "maxed" | "not_found" | "already_joined";
 
 const ServerInviteCard = ({ metadata, isMine }: Props) => {
   const { t } = useTranslation();
@@ -24,90 +24,77 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
 
   const [memberCount, setMemberCount] = useState<number | null>(null);
   const [onlineCount, setOnlineCount] = useState<number | null>(null);
-  const [createdAt, setCreatedAt] = useState<string | null>(null);
-  const [isMember, setIsMember] = useState(false);
+  const [serverCreatedAt, setServerCreatedAt] = useState<string | null>(null);
   const [inviteStatus, setInviteStatus] = useState<InviteStatus>("loading");
   const [joining, setJoining] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [serverId, setServerId] = useState(metadata.server_id);
 
   useEffect(() => {
     const load = async () => {
-      // 1. Fetch member IDs for this server
-      const { data: members } = await supabase
-        .from("server_members" as any)
-        .select("user_id")
-        .eq("server_id", metadata.server_id);
-      const ids: string[] = (members || []).map((m: any) => m.user_id);
-      setMemberCount(ids.length);
-
-      // 2. Online count — profiles with last_seen in the last 5 minutes
-      if (ids.length > 0) {
-        const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const { count } = await supabase
-          .from("profiles")
-          .select("user_id", { count: "exact", head: true })
-          .in("user_id", ids)
-          .gt("last_seen", since);
-        setOnlineCount(count ?? 0);
-      } else {
-        setOnlineCount(0);
+      // Use validate_invite RPC — bypasses RLS, returns real-time status
+      const { data, error } = await supabase.rpc("validate_invite" as any, { p_code: metadata.invite_code });
+      if (error || !data) {
+        setInviteStatus("not_found");
+        return;
       }
 
-      // 3. Is current user already a member?
+      const result = data as any;
+      const status = result.status as string;
+
+      if (status === "not_found") {
+        setInviteStatus("not_found");
+        return;
+      }
+      if (status === "expired") {
+        setInviteStatus("expired");
+        return;
+      }
+      if (status === "maxed") {
+        setInviteStatus("maxed");
+        return;
+      }
+
+      // Valid invite — populate details from RPC response
+      setServerId(result.server_id);
+      setMemberCount(Number(result.member_count));
+      setOnlineCount(Number(result.online_count));
+      setServerCreatedAt(result.server_created_at ?? null);
+
+      // Check if user is already a member
       if (user) {
         const { data: membership } = await supabase
           .from("server_members" as any)
           .select("id")
-          .eq("server_id", metadata.server_id)
+          .eq("server_id", result.server_id)
           .eq("user_id", user.id)
           .maybeSingle();
-        setIsMember(!!membership);
+        if (membership) {
+          setInviteStatus("already_joined");
+          return;
+        }
       }
 
-      // 4. Server created_at
-      const { data: srv } = await supabase
-        .from("servers")
-        .select("created_at")
-        .eq("id", metadata.server_id)
-        .single();
-      setCreatedAt((srv as any)?.created_at ?? null);
-
-      // 5. Invite validity
-      const { data: inv } = await supabase
-        .from("invites" as any)
-        .select("expires_at, max_uses, use_count")
-        .eq("code", metadata.invite_code)
-        .maybeSingle();
-      if (!inv) {
-        setInviteStatus("expired");
-        return;
-      }
-      const isExpired = (inv as any).expires_at && new Date((inv as any).expires_at) < new Date();
-      const isMaxed = (inv as any).max_uses && (inv as any).use_count >= (inv as any).max_uses;
-      setInviteStatus(isExpired ? "expired" : isMaxed ? "maxed" : "valid");
+      setInviteStatus("valid");
     };
     load();
-  }, [metadata.server_id, metadata.invite_code, user]);
+  }, [metadata.invite_code, user]);
 
   const handleJoin = async () => {
     if (!user || joining) return;
     setJoining(true);
     try {
-      const { data: serverId, error } = await supabase.rpc("use_invite", { p_code: metadata.invite_code });
-      if (error || !serverId) {
+      // use_invite now atomically validates, increments, AND inserts membership
+      const { data: sid, error } = await supabase.rpc("use_invite", { p_code: metadata.invite_code });
+      if (error || !sid) {
         toast({ title: t("servers.inviteInvalid"), description: t("servers.inviteInvalidDesc"), variant: "destructive" });
         setInviteStatus("expired");
         setJoining(false);
         return;
       }
-      await supabase.from("server_members" as any).insert({
-        server_id: serverId,
-        user_id: user.id,
-        role: "member",
-      } as any);
-      setIsMember(true);
+      setInviteStatus("already_joined");
       toast({ title: t("servers.joinedServer") });
-      navigate(`/server/${serverId}`);
+      navigate(`/server/${sid}`);
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
     }
@@ -124,7 +111,8 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
     }
   };
 
-  const isInvalid = inviteStatus === "expired" || inviteStatus === "maxed";
+  const isMember = inviteStatus === "already_joined";
+  const isInvalid = inviteStatus === "expired" || inviteStatus === "maxed" || inviteStatus === "not_found";
 
   return (
     <div className={cn("w-full max-w-[320px] rounded-xl overflow-hidden border border-border/50 bg-card shadow-sm", isInvalid && "opacity-75")}>
@@ -132,14 +120,9 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
       <div className="relative h-[80px] bg-gradient-to-br from-primary/30 to-muted/60">
         {metadata.server_banner_url && (
           <div className="absolute inset-0 overflow-hidden">
-            <img
-              src={metadata.server_banner_url}
-              alt=""
-              className="w-full h-full object-cover"
-            />
+            <img src={metadata.server_banner_url} alt="" className="w-full h-full object-cover" />
           </div>
         )}
-        {/* Server icon overlapping the bottom edge of the banner */}
         <div className="absolute -bottom-5 left-4">
           <Avatar className="h-14 w-14 rounded-2xl ring-4 ring-card">
             <AvatarImage src={metadata.server_icon_url || ""} />
@@ -148,7 +131,6 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
             </AvatarFallback>
           </Avatar>
         </div>
-        {/* Dismiss button (receiver only) */}
         {!isMine && !isMember && (
           <button
             className="absolute top-2 end-2 h-6 w-6 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white/80 hover:text-white transition-colors"
@@ -160,17 +142,12 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
         )}
       </div>
 
-      {/* Content area — top padding to clear the overlapping icon */}
       <div className="pt-7 px-4 pb-4 space-y-2">
-        {/* Header label */}
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           {t("servers.youAreInvited")}
         </p>
-
-        {/* Server name */}
         <h3 className="font-bold text-base leading-tight truncate">{metadata.server_name}</h3>
 
-        {/* Online / Member counts */}
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           {inviteStatus === "loading" ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -188,22 +165,19 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
           )}
         </div>
 
-        {/* Created date */}
-        {createdAt && (
+        {serverCreatedAt && (
           <p className="text-xs text-muted-foreground">
-            {t("servers.serverCreatedAt", { date: formatDate(createdAt) })}
+            {t("servers.serverCreatedAt", { date: formatDate(serverCreatedAt) })}
           </p>
         )}
 
         <div className="border-t border-border/40 pt-2 space-y-2">
-          {/* Invite expiry */}
           <p className="text-xs text-muted-foreground">
             {metadata.expires_at
               ? t("servers.inviteExpires", { date: formatDate(metadata.expires_at) })
               : t("servers.inviteNeverExpires")}
           </p>
 
-          {/* CTA */}
           {inviteStatus === "loading" ? (
             <Button size="sm" className="w-full h-8 text-xs" disabled>
               <Loader2 className="h-3 w-3 me-1 animate-spin" />
@@ -212,7 +186,7 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
             <Button
               size="sm"
               className="w-full h-8 text-xs"
-              onClick={() => navigate(`/server/${metadata.server_id}`)}
+              onClick={() => navigate(`/server/${serverId}`)}
             >
               {t("servers.goToServer")}
             </Button>
@@ -229,7 +203,7 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
                 <><Users className="h-3 w-3 me-1" />{t("servers.joinServer")}</>
               )}
             </Button>
-          ) : inviteStatus === "expired" ? (
+          ) : inviteStatus === "expired" || inviteStatus === "not_found" ? (
             <div className="space-y-1">
               <p className="text-xs text-destructive">{t("servers.inviteInvalidDesc")}</p>
               <p className="text-xs text-muted-foreground">{t("servers.requestNewInvite")}</p>
