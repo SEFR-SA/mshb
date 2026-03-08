@@ -27,7 +27,7 @@ interface UserPanelPopoverProps {
 const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
   const { t } = useTranslation();
   const { user, profile, refreshProfile, signOut } = useAuth();
-  const { getUserStatus } = usePresence();
+  
   const navigate = useNavigate();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
 
