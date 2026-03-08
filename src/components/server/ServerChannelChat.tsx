@@ -119,8 +119,9 @@ const MessageItem = React.memo(({
   msg, prevMsg, replyToMsg, profiles, roleInfo,
   currentUserId, serverEmojis, serverId, channelId, isAnnouncement,
   isFirstMessage, isHighlighted, reactions, user,
-  onReply, onDeleteForMe, onDeleteForEveryone, onMarkUnread, onTogglePin, onHighlight,
+  onReply, onEdit, onDeleteForMe, onDeleteForEveryone, onMarkUnread, onTogglePin, onHighlight,
   toggleReaction, onAddReaction, onForward, reactionPickerMsgId, onReactionPickerHandled,
+  editingId, editContent, setEditContent, onEditSave, onEditCancel,
 }: MessageItemProps) => {
   const { t } = useTranslation();
   const p = profiles.get(msg.author_id);
