@@ -314,10 +314,10 @@ const HomeSidebar = ({ isMobileExpanded }: HomeSidebarProps = {}) => {
     loadInbox();
   };
 
-  const activeThreadId = location.pathname.startsWith("/chat/")
-    ? location.pathname.split("/chat/")[1]
-    : location.pathname.startsWith("/group/")
-    ? location.pathname.split("/group/")[1]
+  const activeThreadId = location.pathname.startsWith("/channels/@me/chat/")
+    ? location.pathname.split("/channels/@me/chat/")[1]
+    : location.pathname.startsWith("/channels/@me/group/")
+    ? location.pathname.split("/channels/@me/group/")[1]
     : undefined;
 
   const renderThreadItem = (item: InboxItem) => {
