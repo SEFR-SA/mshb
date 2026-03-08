@@ -234,20 +234,20 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
           </>
         )}
 
-        {/* View Full Profile */}
-        {targetUserId && (
-          <>
-            <Separator />
-            <Button
-              variant="ghost"
-              className="w-full text-sm"
-              onClick={() => openProfile(targetUserId)}
-            >
-              {t("profile.viewFullProfile", "View Full Profile")}
-            </Button>
-          </>
-        )}
       </div>
+
+      {/* View Full Profile */}
+      {targetUserId && (
+        <div className="px-4 pb-4 mt-3">
+          <Button
+            variant="ghost"
+            className="w-full text-sm"
+            onClick={() => openProfile(targetUserId)}
+          >
+            {t("profile.viewFullProfile", "View Full Profile")}
+          </Button>
+        </div>
+      )}
     </ProfileEffectWrapper>
   );
 };
