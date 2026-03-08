@@ -11,8 +11,6 @@ interface NotifPrefs {
   mentionSound: boolean;
   showBadge: boolean;
   showTabCount: boolean;
-  emailMissed: boolean;
-  emailFriendRequests: boolean;
 }
 
 const DEFAULT_PREFS: NotifPrefs = {
@@ -22,8 +20,6 @@ const DEFAULT_PREFS: NotifPrefs = {
   mentionSound: true,
   showBadge: true,
   showTabCount: true,
-  emailMissed: false,
-  emailFriendRequests: false,
 };
 
 interface ToggleRowProps {
@@ -126,23 +122,6 @@ const NotificationsTab = () => {
         />
       </div>
 
-      {/* Email */}
-      <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-1 divide-y divide-border/30">
-        <div className="flex items-center gap-2 pb-2">
-          <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">{t("settings.emailNotifications")}</h3>
-          <span className="text-[10px] font-semibold uppercase tracking-wider bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Coming Soon</span>
-        </div>
-        <ToggleRow
-          label={t("settings.emailMissed")}
-          checked={prefs.emailMissed}
-          onCheckedChange={() => {}}
-        />
-        <ToggleRow
-          label={t("settings.emailFriendRequests")}
-          checked={prefs.emailFriendRequests}
-          onCheckedChange={() => {}}
-        />
-      </div>
     </div>
   );
 };

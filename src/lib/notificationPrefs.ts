@@ -5,8 +5,6 @@ export interface NotifPrefs {
   mentionSound: boolean;
   showBadge: boolean;
   showTabCount: boolean;
-  emailMissed: boolean;
-  emailFriendRequests: boolean;
 }
 
 const DEFAULT_PREFS: NotifPrefs = {
@@ -16,8 +14,6 @@ const DEFAULT_PREFS: NotifPrefs = {
   mentionSound: true,
   showBadge: true,
   showTabCount: true,
-  emailMissed: false,
-  emailFriendRequests: false,
 };
 
 export function getNotificationPrefs(): NotifPrefs {
