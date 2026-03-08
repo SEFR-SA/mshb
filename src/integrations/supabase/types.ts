@@ -776,6 +776,27 @@ export type Database = {
           },
         ]
       }
+      profile_notes: {
+        Row: {
+          author_id: string
+          note: string
+          target_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id: string
+          note?: string
+          target_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string
+          note?: string
+          target_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           about_me: string | null
