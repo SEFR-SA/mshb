@@ -122,7 +122,7 @@ const UserContextMenu = ({ children, targetUserId, targetUsername }: UserContext
         </ContextMenuItem>
         <ContextMenuItem onClick={() => openProfile(targetUserId)}>
           <User className="h-4 w-4 me-2" />
-          {t("profile.title")}
+          {t("voiceContext.viewProfile")}
         </ContextMenuItem>
         <ContextMenuItem onClick={() => openInviteToServer(targetUserId)}>
           <UserPlus className="h-4 w-4 me-2" />
