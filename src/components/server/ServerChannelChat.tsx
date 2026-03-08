@@ -97,6 +97,7 @@ interface MessageItemProps {
   reactions: any[];
   user: any;
   onReply: (id: string, authorName: string, content: string) => void;
+  onEdit?: (id: string, content: string) => void;
   onDeleteForMe: (id: string) => void;
   onDeleteForEveryone: ((id: string) => void) | undefined;
   onMarkUnread: (id: string, createdAt: string) => void;
@@ -107,6 +108,11 @@ interface MessageItemProps {
   onForward: (id: string) => void;
   reactionPickerMsgId: string | null;
   onReactionPickerHandled: () => void;
+  editingId?: string | null;
+  editContent?: string;
+  setEditContent?: (v: string) => void;
+  onEditSave?: () => void;
+  onEditCancel?: () => void;
 }
 
 const MessageItem = React.memo(({
