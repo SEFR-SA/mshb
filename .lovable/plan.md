@@ -1,75 +1,72 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Plan: Per-User Server Notification Preferences
 
-## Tech Stack
+### Problem
+Currently, server notification level is a server-wide setting (`servers.default_notification_level`). Users cannot individually override their notification preference for a specific server. The user wants a "Server Notifications" submenu in the server right-click context menu with three options: All Messages, Only @mentions, Nothing.
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+### Changes
 
-## Core Directives (CRITICAL — Always Enforce)
+#### 1. Database: Create `server_notification_prefs` table
+New table to store per-user per-server notification preferences.
 
-### 1. Plan First
+```sql
+CREATE TABLE public.server_notification_prefs (
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  server_id uuid NOT NULL,
+  level text NOT NULL DEFAULT 'all_messages',
+  PRIMARY KEY (user_id, server_id)
+);
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+ALTER TABLE public.server_notification_prefs ENABLE ROW LEVEL SECURITY;
 
-### 2. Single Source of Truth (SSOT)
+CREATE POLICY "Users can view own prefs" ON public.server_notification_prefs
+  FOR SELECT TO authenticated USING (auth.uid() = user_id);
 
-Never duplicate display logic. Always use the canonical shared components:
+CREATE POLICY "Users can upsert own prefs" ON public.server_notification_prefs
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+CREATE POLICY "Users can update own prefs" ON public.server_notification_prefs
+  FOR UPDATE TO authenticated USING (auth.uid() = user_id);
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+CREATE POLICY "Users can delete own prefs" ON public.server_notification_prefs
+  FOR DELETE TO authenticated USING (auth.uid() = user_id);
+```
 
-### 3. Pro Gating
+Values for `level`: `all_messages`, `only_mentions`, `nothing`.
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+#### 2. `src/hooks/useServerNotificationPref.ts` (new file)
+Custom hook that:
+- Fetches the user's notification pref for a given server from `server_notification_prefs`
+- Falls back to the server's `default_notification_level` if no row exists
+- Provides a `setLevel` function that upserts the preference
+- Exposes the current `level` value
 
-### 4. No Hallucinations
+#### 3. `src/components/server/ServerRail.tsx`
+- Add "Server Notifications" submenu after the "Server Settings" submenu (before the separator before Leave/Delete)
+- Uses `ContextMenuSub` > `ContextMenuSubTrigger` (Bell icon + "Server Notifications") > `ContextMenuSubContent` with three `ContextMenuCheckboxItem` entries:
+  - All Messages (`all_messages`)
+  - Only @mentions (`only_mentions`) 
+  - Nothing (`nothing`)
+- Each item shows a checkmark when active
+- Track per-server pref state using a local map loaded on mount, updated on click via upsert
+- Also add the same options to the mobile long-press bottom sheet
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+#### 4. `src/components/chat/GlobalNotificationListener.tsx`
+- After fetching `channelData.servers.default_notification_level`, also fetch the user's override from `server_notification_prefs` for that server
+- Use user pref if it exists, otherwise fall back to server default
+- When level is `nothing`, skip all notifications entirely
 
-### 5. No Over-Engineering
+#### 5. i18n: `src/i18n/en.ts` and `src/i18n/ar.ts`
+Add keys:
+- `servers.serverNotifications` — "Server Notifications"
+- `servers.allMessages` — "All Messages"
+- `servers.onlyMentions` — "Only @mentions"  
+- `servers.nothing` — "Nothing"
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+### Flow
+1. User right-clicks server → sees "Server Notifications" submenu with radio-style items
+2. Selecting an option upserts into `server_notification_prefs`
+3. When a new message arrives, `GlobalNotificationListener` checks user's per-server pref first, then server default
+4. `nothing` = no sound, no desktop notification, no toast; `only_mentions` = only when @mentioned; `all_messages` = all
 
-## Documentation Directory
-
-Read these files for specific details — do NOT rely on memory alone:
-
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
