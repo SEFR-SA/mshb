@@ -443,7 +443,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                             <div className="absolute -start-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full z-10" />
                           )}
                           <NavLink
-                            to={`/server/${s.id}`}
+                            to={`/channels/server/${s.id}`}
                             onClick={(e) => {
                               if (longPressTriggeredRef.current) {
                                 e.preventDefault();
