@@ -172,6 +172,7 @@ export async function playNotificationSound(): Promise<void> {
  * Works anywhere in the app (calls, voice channels, or standalone).
  */
 export function playSound(key: SoundKey): void {
+  if (isStreamerMode()) return;
   // Ensure context is alive on every call (covers edge cases)
   warmUp();
 

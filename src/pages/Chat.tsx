@@ -187,7 +187,7 @@ const Chat = () => {
     if (data) {
       setCallSessionId(data.id);
       setIsCallerState(true);
-      if (!isStreamerMode) startLoop("outgoing_ring");
+      startLoop("outgoing_ring");
       startCall(data.id);
     }
   };

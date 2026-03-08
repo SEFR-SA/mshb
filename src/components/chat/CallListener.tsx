@@ -162,9 +162,9 @@ const CallListener = () => {
             threadId: session.thread_id,
           });
 
-          // Play incoming ring (suppressed in streamer mode)
+          // Play incoming ring (streamer mode gate is inside soundManager)
           const callPrefs = getNotificationPrefs();
-          if (callPrefs.callSound && !isStreamerMode) {
+          if (callPrefs.callSound) {
             startLoop("incoming_ring");
           }
 
