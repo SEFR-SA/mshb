@@ -223,6 +223,7 @@ const App = () => (
           </AuthProvider>
         </VoiceChannelProvider>
       </AudioSettingsProvider>
+      </StreamerModeProvider>
     </ThemeProvider>
   </QueryClientProvider>
   </ErrorBoundary>

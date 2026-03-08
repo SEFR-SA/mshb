@@ -45,7 +45,7 @@ export function useUnreadCount() {
       }
     }
 
-    if (prevCountRef.current !== null && total > prevCountRef.current) {
+    if (prevCountRef.current !== null && total > prevCountRef.current && !isStreamerMode) {
       const prefs = getNotificationPrefs();
       const appFocused = document.hasFocus();
 

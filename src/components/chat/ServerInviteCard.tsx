@@ -148,7 +148,7 @@ const ServerInviteCard = ({ metadata, isMine }: Props) => {
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           {t("servers.youAreInvited")}
         </p>
-        <h3 className="font-bold text-base leading-tight truncate">{metadata.server_name}</h3>
+        <h3 className="font-bold text-base leading-tight truncate">{isStreamerMode ? "••••••••" : metadata.server_name}</h3>
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           {inviteStatus === "loading" ? (

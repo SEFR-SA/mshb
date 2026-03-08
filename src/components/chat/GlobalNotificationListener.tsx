@@ -41,6 +41,7 @@ const GlobalNotificationListener = () => {
 
             if (msg.author_id === user.id) return;
             if (!msg.channel_id) return;
+            if (isStreamerMode) return;
 
             try {
                 const res = await supabase

@@ -307,7 +307,7 @@ const AccountTab = () => {
           >
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">{t("auth.email")}</p>
-              <p className="text-sm mt-0.5">{user?.email ? user.email.replace(/(.{3}).*(@)/, "$1•••$2") : "—"}</p>
+              <p className="text-sm mt-0.5">{isStreamerMode ? "••••••@••••••" : (user?.email ? user.email.replace(/(.{3}).*(@)/, "$1•••$2") : "—")}</p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="h-7 text-xs pointer-events-none">

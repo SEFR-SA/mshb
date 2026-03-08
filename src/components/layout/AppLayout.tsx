@@ -54,6 +54,23 @@ const AppLayout = () => {
       <CallListener />
       <GlobalNotificationListener />
 
+      {/* Streamer Mode banner */}
+      {isStreamerMode && (
+        <div className="shrink-0 flex items-center justify-between px-4 py-1.5 bg-primary text-primary-foreground z-[9999]">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Monitor className="h-4 w-4" />
+            <span>Streamer Mode is Enabled</span>
+          </div>
+          <button
+            onClick={toggleStreamerMode}
+            className="flex items-center gap-1 text-xs font-semibold opacity-90 hover:opacity-100 transition-opacity"
+          >
+            <X className="h-3.5 w-3.5" />
+            Disable
+          </button>
+        </div>
+      )}
+
       {/* Electron WCO title bar: app icon, version, drag region, and safe-area spacer */}
       {isElectron && (
         <>
