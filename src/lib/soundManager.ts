@@ -3,6 +3,11 @@
  * Pre-warms AudioContext on first user gesture for instant playback.
  */
 
+/** Check streamer-mode flag directly from localStorage (works outside React). */
+function isStreamerMode(): boolean {
+  try { return localStorage.getItem("mshb_streamer_mode") === "true"; } catch { return false; }
+}
+
 type SoundKey =
   | "outgoing_ring"
   | "incoming_ring"
@@ -111,6 +116,7 @@ function playSyntheticTone(
 const loopIntervals: Partial<Record<string, number>> = {};
 
 export function startLoop(key: "outgoing_ring" | "incoming_ring"): void {
+  if (isStreamerMode()) return;
   stopLoop(key);
   const isOutgoing = key === "outgoing_ring";
   // Outgoing: calmer two-tone, incoming: more urgent
@@ -143,6 +149,7 @@ export function stopAllLoops(): void {
  * Falls back silently if the file can't be fetched or decoded.
  */
 export async function playNotificationSound(): Promise<void> {
+  if (isStreamerMode()) return;
   try {
     warmUp();
     const ctx = getAudioContext();
@@ -165,6 +172,7 @@ export async function playNotificationSound(): Promise<void> {
  * Works anywhere in the app (calls, voice channels, or standalone).
  */
 export function playSound(key: SoundKey): void {
+  if (isStreamerMode()) return;
   // Ensure context is alive on every call (covers edge cases)
   warmUp();
 

@@ -7,7 +7,7 @@ import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useNavigate } from "react-router-dom";
 import { startLoop, stopLoop, stopAllLoops, playSound } from "@/lib/soundManager";
-import { useStreamerMode } from "@/contexts/StreamerModeContext";
+
 import IncomingCallDialog from "./IncomingCallDialog";
 import VoiceCallUI from "./VoiceCallUI";
 
@@ -54,7 +54,7 @@ const CallListener = () => {
   const { user } = useAuth();
   const { globalMuted, globalDeafened } = useAudioSettings();
   const { voiceChannel, disconnectVoice } = useVoiceChannel();
-  const { isStreamerMode } = useStreamerMode();
+  
   const navigate = useNavigate();
 
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
@@ -162,9 +162,9 @@ const CallListener = () => {
             threadId: session.thread_id,
           });
 
-          // Play incoming ring (suppressed in streamer mode)
+          // Play incoming ring (streamer mode gate is inside soundManager)
           const callPrefs = getNotificationPrefs();
-          if (callPrefs.callSound && !isStreamerMode) {
+          if (callPrefs.callSound) {
             startLoop("incoming_ring");
           }
 
