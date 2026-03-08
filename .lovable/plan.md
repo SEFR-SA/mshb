@@ -1,75 +1,50 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Architectural Insight
 
-## Tech Stack
+The current approach of sprinkling `isStreamerMode` checks across individual callers is fragile — every new sound source requires remembering to add the gate. The sound manager (`soundManager.ts`) is the **single chokepoint** for all audio in the app. By adding the streamer mode check directly inside `playSound`, `playNotificationSound`, and `startLoop`, we get **total silence** with one edit to one file, and zero risk of future callers bypassing the gate.
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+Since `soundManager.ts` is a plain module (not a React component), it can't use `useStreamerMode()`. Instead, it will read `localStorage.getItem("mshb_streamer_mode")` directly — the same key the context writes to. This is a synchronous, zero-overhead check.
 
-## Core Directives (CRITICAL — Always Enforce)
+This also lets us **remove** the scattered `isStreamerMode` checks we previously added in `CallListener.tsx`, `Chat.tsx`, and `usePendingFriendRequests.ts` (for sound only — the toast suppression in `usePendingFriendRequests` and `GlobalNotificationListener` stays).
 
-### 1. Plan First
+---
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+## Plan
 
-### 2. Single Source of Truth (SSOT)
+### 1. Centralize sound suppression in `soundManager.ts`
+**File:** `src/lib/soundManager.ts`
 
-Never duplicate display logic. Always use the canonical shared components:
+Add a helper:
+```ts
+function isStreamerMode(): boolean {
+  try { return localStorage.getItem("mshb_streamer_mode") === "true"; } catch { return false; }
+}
+```
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+Gate the three public sound functions:
+- `playSound()` — early return if `isStreamerMode()`
+- `playNotificationSound()` — early return if `isStreamerMode()`
+- `startLoop()` — early return if `isStreamerMode()`
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+**Result:** Every sound in the entire app — call_end, mute/unmute, deafen/undeafen, ringtones, notification pings, voice join — is silenced. Total silence.
 
-### 3. Pro Gating
+### 2. Clean up redundant per-component checks (optional but recommended)
+Remove the `isStreamerMode` sound gates we added previously in:
+- `src/components/chat/CallListener.tsx` (line 167 — the `&& !isStreamerMode` on `startLoop`)
+- `src/pages/Chat.tsx` (line 190 — the `if (!isStreamerMode)` on `startLoop`)
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+These are now redundant since the sound manager itself blocks everything. Removing them keeps the code clean. The `useStreamerMode` imports can also be removed from these files if no other streamer-mode logic remains.
 
-### 4. No Hallucinations
+**Note:** Keep the `isStreamerMode` checks in `usePendingFriendRequests.ts`, `GlobalNotificationListener.tsx`, and `useUnreadCount.ts` — those gate **toasts and native OS notifications**, not just sounds.
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+---
 
-### 5. No Over-Engineering
+### Files Summary
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+| Action | File | Change |
+|--------|------|--------|
+| **Edit** | `src/lib/soundManager.ts` | Add `isStreamerMode()` helper, gate `playSound`, `playNotificationSound`, `startLoop` |
+| **Edit** | `src/components/chat/CallListener.tsx` | Remove redundant `!isStreamerMode` from `startLoop` call |
+| **Edit** | `src/pages/Chat.tsx` | Remove redundant `!isStreamerMode` from `startLoop` call |
 
-## Documentation Directory
-
-Read these files for specific details — do NOT rely on memory alone:
-
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
