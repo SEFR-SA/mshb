@@ -97,6 +97,7 @@ interface MessageItemProps {
   reactions: any[];
   user: any;
   onReply: (id: string, authorName: string, content: string) => void;
+  onEdit?: (id: string, content: string) => void;
   onDeleteForMe: (id: string) => void;
   onDeleteForEveryone: ((id: string) => void) | undefined;
   onMarkUnread: (id: string, createdAt: string) => void;
@@ -107,14 +108,20 @@ interface MessageItemProps {
   onForward: (id: string) => void;
   reactionPickerMsgId: string | null;
   onReactionPickerHandled: () => void;
+  editingId?: string | null;
+  editContent?: string;
+  setEditContent?: (v: string) => void;
+  onEditSave?: () => void;
+  onEditCancel?: () => void;
 }
 
 const MessageItem = React.memo(({
   msg, prevMsg, replyToMsg, profiles, roleInfo,
   currentUserId, serverEmojis, serverId, channelId, isAnnouncement,
   isFirstMessage, isHighlighted, reactions, user,
-  onReply, onDeleteForMe, onDeleteForEveryone, onMarkUnread, onTogglePin, onHighlight,
+  onReply, onEdit, onDeleteForMe, onDeleteForEveryone, onMarkUnread, onTogglePin, onHighlight,
   toggleReaction, onAddReaction, onForward, reactionPickerMsgId, onReactionPickerHandled,
+  editingId, editContent, setEditContent, onEditSave, onEditCancel,
 }: MessageItemProps) => {
   const { t } = useTranslation();
   const p = profiles.get(msg.author_id);
@@ -172,6 +179,7 @@ const MessageItem = React.memo(({
       fileType={msg.file_type}
       fileSize={msg.file_size}
       onReply={(id, authorName, content) => onReply(id, authorName, content)}
+      onEdit={isMine ? onEdit : undefined}
       onDeleteForMe={(id) => onDeleteForMe(id)}
       onDeleteForEveryone={onDeleteForEveryone}
       onTogglePin={onTogglePin}
@@ -245,7 +253,23 @@ const MessageItem = React.memo(({
                 <MessageFilePreview fileUrl={msg.file_url} fileName={msg.file_name || "file"} fileType={msg.file_type || ""} fileSize={msg.file_size || 0} isMine={isMine} />
               </div>
             ) : null}
-            {msg.content && (
+            {editingId === msg.id ? (
+              <div className="flex items-center gap-2 mt-1">
+                <Input
+                  value={editContent}
+                  onChange={(e) => setEditContent?.(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onEditSave?.(); }
+                    if (e.key === "Escape") onEditCancel?.();
+                  }}
+                  className="flex-1 h-8 text-sm"
+                  maxLength={5000}
+                  autoFocus
+                />
+                <Button size="sm" className="h-7 text-xs" onClick={onEditSave}>{t("actions.save")}</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onEditCancel}>{t("actions.cancel")}</Button>
+              </div>
+            ) : msg.content ? (
               isAnnouncement ? (
                 <div className="text-sm leading-relaxed prose-sm">
                   <ReactMarkdown
@@ -272,9 +296,10 @@ const MessageItem = React.memo(({
               ) : (
                 <p className={`whitespace-pre-wrap break-words ${getEmojiClass(msg.content) || "text-sm"}`}>
                   {renderMessageContent(msg.content, profiles, currentUserId, serverEmojis)}
+                  {msg.edited_at && <span className="text-[10px] text-muted-foreground ms-1">({t("actions.edited")})</span>}
                 </p>
               )
-            )}
+            ) : null}
             {/* Forwarded indicator */}
             {(msg as any).is_forwarded && (
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-0.5">
@@ -307,7 +332,9 @@ const MessageItem = React.memo(({
     prevProps.serverEmojis === nextProps.serverEmojis &&
     prevProps.isHighlighted === nextProps.isHighlighted &&
     prevProps.reactions === nextProps.reactions &&
-    prevProps.isFirstMessage === nextProps.isFirstMessage
+    prevProps.isFirstMessage === nextProps.isFirstMessage &&
+    prevProps.editingId === nextProps.editingId &&
+    prevProps.editContent === nextProps.editContent
   );
 });
 
@@ -333,6 +360,8 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
   const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
 
   const isLocked = isPrivate && hasAccess === false;
   const [userRole, setUserRole] = useState<string>("member");
@@ -525,11 +554,32 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     ).then();
   }, [user, channelId]);
 
+  const handleStartEdit = useCallback((id: string, content: string) => {
+    setEditingId(id);
+    setEditContent(content);
+  }, []);
+
+  const handleEditSave = useCallback(async () => {
+    if (!editingId || !editContent.trim()) return;
+    await supabase.from("messages").update({
+      content: editContent.trim().slice(0, 5000),
+      edited_at: new Date().toISOString(),
+    }).eq("id", editingId);
+    updateRealtimeMessage({ ...messages.find((m: any) => m.id === editingId), content: editContent.trim().slice(0, 5000), edited_at: new Date().toISOString() });
+    setEditingId(null);
+    setEditContent("");
+  }, [editingId, editContent, messages, updateRealtimeMessage]);
+
+  const handleEditCancel = useCallback(() => {
+    setEditingId(null);
+    setEditContent("");
+  }, []);
+
   useMessageKeybinds({
     hoveredMessageId: hoveredMsgId,
     messages,
     currentUserId: user?.id,
-    onEdit: undefined,
+    onEdit: handleStartEdit,
     onDeleteForMe: handleDeleteForMe,
     onDeleteForEveryone: handleDeleteForEveryone,
     onTogglePin: handleToggleMessagePin,
@@ -721,6 +771,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                     reactions={reactions.get(msg.id) || EMPTY_REACTIONS}
                     user={user}
                     onReply={handleReply}
+                    onEdit={handleStartEdit}
                     onDeleteForMe={handleDeleteForMe}
                     onDeleteForEveryone={msg.author_id === user?.id ? handleDeleteForEveryone : undefined}
                     onMarkUnread={handleMarkUnread}
@@ -734,6 +785,11 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                     }}
                     reactionPickerMsgId={reactionPickerMsgId}
                     onReactionPickerHandled={() => setReactionPickerMsgId(null)}
+                    editingId={editingId}
+                    editContent={editContent}
+                    setEditContent={setEditContent}
+                    onEditSave={handleEditSave}
+                    onEditCancel={handleEditCancel}
                   />
                 </div>
               );
