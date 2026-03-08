@@ -169,7 +169,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
         {/* Container 2: Sign Out */}
         <div className="mt-2 rounded-md bg-muted/50 p-1">
           <button
-            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors text-start text-destructive"
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-destructive hover:text-destructive-foreground transition-colors text-start text-destructive"
             onClick={handleSignOut}
           >
             <LogOut className="h-3.5 w-3.5 shrink-0" />
