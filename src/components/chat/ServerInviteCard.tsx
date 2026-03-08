@@ -21,6 +21,7 @@ type InviteStatus = "loading" | "valid" | "expired" | "maxed" | "not_found" | "a
 const ServerInviteCard = ({ metadata, isMine }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { isStreamerMode } = useStreamerMode();
   const navigate = useNavigate();
 
   const [memberCount, setMemberCount] = useState<number | null>(null);
