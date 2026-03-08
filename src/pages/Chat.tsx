@@ -11,7 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Upload, Pin, PinOff, UserRound, UserRoundX, Phone, PhoneOff, PhoneMissed, Forward, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, MoreVertical, Pencil, Trash2, X, Check, Upload, Pin, UserRound, UserRoundX, Phone, PhoneOff, PhoneMissed, Forward, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
@@ -69,7 +69,7 @@ const Chat = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [isPinned, setIsPinned] = useState(false);
+  
   const [showProfile, setShowProfile] = useState(true);
   const [callSessionId, setCallSessionId] = useState<string | null>(null);
   const [isCallerState, setIsCallerState] = useState(false);
@@ -154,27 +154,9 @@ const Chat = () => {
       const { data: prof } = await supabase.from("profiles").select("*, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").eq("user_id", oid).maybeSingle();
       setOtherProfile(prof);
 
-      // Check pin status
-      const { data: pin } = await supabase
-        .from("pinned_chats")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("thread_id", threadId)
-        .maybeSingle();
-      setIsPinned(!!pin);
     })();
   }, [threadId, user]);
 
-  const togglePin = async () => {
-    if (!threadId || !user) return;
-    if (isPinned) {
-      await supabase.from("pinned_chats").delete().eq("user_id", user.id).eq("thread_id", threadId);
-      setIsPinned(false);
-    } else {
-      await supabase.from("pinned_chats").insert({ user_id: user.id, thread_id: threadId } as any);
-      setIsPinned(true);
-    }
-  };
 
   const initiateCall = async () => {
     if (!threadId || !user || !otherId || callSessionId) return;
@@ -463,9 +445,6 @@ const Chat = () => {
             <Phone className="h-4 w-4" />
           </Button>
           <PinnedMessagesDrawer threadId={threadId} />
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={togglePin} title={isPinned ? t("chat.unpinChat") : t("chat.pinChat")}>
-            {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
-          </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowProfile(!showProfile)} title={showProfile ? t("chat.hideProfile") : t("chat.showProfile")}>
             {showProfile ? <UserRoundX className="h-4 w-4" /> : <UserRound className="h-4 w-4" />}
           </Button>
