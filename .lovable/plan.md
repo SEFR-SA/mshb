@@ -1,75 +1,75 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Additional Missing Realtime Subscriptions
 
-## Tech Stack
+After a second thorough pass, here are the areas still lacking realtime that were not addressed in the previous batch:
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+---
 
-## Core Directives (CRITICAL — Always Enforce)
+### 1. Server Settings — EmojisTab (no realtime)
+**File:** `src/components/server/settings/EmojisTab.tsx`
+- Fetches emojis once on mount (line 76-79), no `postgres_changes` subscription on `server_emojis`.
+- **Impact:** If another admin uploads/deletes emojis while you have the tab open, nothing updates.
+- **Fix:** Add realtime listener on `server_emojis` filtered by `server_id`.
 
-### 1. Plan First
+### 2. Server Settings — StickersTab (no realtime)
+**File:** `src/components/server/settings/StickersTab.tsx`
+- Same pattern as EmojisTab. Fetches once, no subscription on `server_stickers`.
+- **Fix:** Add realtime listener on `server_stickers` filtered by `server_id`.
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+### 3. Server Settings — SoundboardTab (no realtime)
+**File:** `src/components/server/settings/SoundboardTab.tsx`
+- Fetches sounds once on mount (line 76-79), no realtime.
+- **Fix:** Add realtime listener on `server_soundboard` filtered by `server_id`.
 
-### 2. Single Source of Truth (SSOT)
+### 4. Server Settings — ServerSettingsDialog itself (no realtime on server info)
+**File:** `src/components/server/ServerSettingsDialog.tsx` (lines 69-89)
+- Fetches server name/icon/banner/owner once when dialog opens. No realtime on `servers` table.
+- **Impact:** If another admin changes the server name/icon while dialog is open, the profile tab shows stale data.
+- **Fix:** Add realtime listener on `servers` filtered by `id=eq.${serverId}` to update local state.
 
-Never duplicate display logic. Always use the canonical shared components:
+### 5. Server Settings — AuditLogView (no realtime)
+**File:** `src/components/server/AuditLogView.tsx` (lines 55-84)
+- Fetches audit logs once on mount. New audit log entries won't appear until re-opening.
+- **Fix:** Add realtime listener on `server_audit_logs` filtered by `server_id`.
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+### 6. ServerRail — Folders not realtime
+**File:** `src/components/server/ServerRail.tsx` (lines 130-174)
+- Has realtime on `server_members` and `servers`, but **not** on `server_folders` or `server_folder_items`.
+- **Impact:** Creating/renaming/deleting folders or moving servers between folders from another session won't update.
+- **Fix:** Add `server_folders` and `server_folder_items` to the existing realtime channel.
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+### 7. Chat.tsx — Other user's profile not realtime
+**File:** `src/pages/Chat.tsx`
+- The DM partner's profile (display name, avatar, status) is fetched once. If they change their avatar or name during the conversation, it stays stale.
+- **Fix:** Add realtime listener on `profiles` filtered by `user_id=eq.${otherUserId}` to update `otherProfile`.
 
-### 3. Pro Gating
+---
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+### Summary Table
 
-### 4. No Hallucinations
+| Priority | Area | File |
+|----------|------|------|
+| Medium | EmojisTab | `settings/EmojisTab.tsx` |
+| Medium | StickersTab | `settings/StickersTab.tsx` |
+| Medium | SoundboardTab | `settings/SoundboardTab.tsx` |
+| Medium | ServerSettingsDialog server info | `ServerSettingsDialog.tsx` |
+| Low | AuditLogView | `AuditLogView.tsx` |
+| Medium | ServerRail folders | `ServerRail.tsx` |
+| Medium | Chat.tsx other user profile | `Chat.tsx` |
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+### Implementation
 
-### 5. No Over-Engineering
+Same pattern as before — add `useEffect` with `supabase.channel().on("postgres_changes", ...).subscribe()` and re-fetch on event. No migration needed since `server_emojis`, `server_stickers`, `server_audit_logs`, `server_folders`, and `server_folder_items` already have realtime enabled or just need the publication addition in one migration.
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+**Database migration** will add these tables to the realtime publication:
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.server_emojis;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.server_stickers;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.server_audit_logs;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.server_folders;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.server_folder_items;
+```
 
-## Documentation Directory
+Then each component gets a new `useEffect` block with the appropriate subscription and cleanup.
 
-Read these files for specific details — do NOT rely on memory alone:
-
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
