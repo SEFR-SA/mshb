@@ -447,7 +447,7 @@ const Chat = () => {
             <Phone className="h-4 w-4" />
           </Button>
           <PinnedMessagesDrawer threadId={threadId} />
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { if (isMobile) { openProfile(otherUserId); } else { setShowProfile(!showProfile); } }} title={showProfile ? t("chat.hideProfile") : t("chat.showProfile")}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { if (isMobile) { openProfile(otherId); } else { setShowProfile(!showProfile); } }} title={showProfile ? t("chat.hideProfile") : t("chat.showProfile")}>
             {showProfile ? <UserRoundX className="h-4 w-4" /> : <UserRound className="h-4 w-4" />}
           </Button>
         </div>
