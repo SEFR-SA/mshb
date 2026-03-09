@@ -747,7 +747,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
-    if (file.size > MAX_FILE_SIZE) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
+    if (file.size > getBoostPerks(serverBoostLevel).maxUploadSizeMB * 1024 * 1024) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
     setSelectedFile(file);
   };
 
