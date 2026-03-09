@@ -1,31 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-## Plan: Deploy Edge Functions + Fix Build Error
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-### Build Error Fix
+## Tech Stack
 
-**File:** `src/components/server/ServerChannelChat.tsx` (line 750)
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-`MAX_FILE_SIZE` is referenced in `handleDrop` but never defined. The same file already computes the correct value on line 914 using `getBoostPerks(serverBoostLevel).maxUploadSizeMB * 1024 * 1024`.
+## Core Directives (CRITICAL — Always Enforce)
 
-**Fix:** Replace `MAX_FILE_SIZE` on line 750 with `getBoostPerks(serverBoostLevel).maxUploadSizeMB * 1024 * 1024`, matching the pattern already used in `ChatInputActions`. Also remove the unused `DEFAULT_MAX_FILE_SIZE` constant on line 45.
+### 1. Plan First
 
-### Edge Function Deployments
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-1. **`streampay-webhook`** — Redeploy. The file already contains the updated code with boost announcement message insertion (lines 212-245). Already configured in `config.toml` with `verify_jwt = false`.
+### 2. Single Source of Truth (SSOT)
 
-2. **`cancel-streampay-subscription`** — First-time deploy. Code is already in the repo. Need to add its config entry to `supabase/config.toml`:
-   ```toml
-   [functions.cancel-streampay-subscription]
-   verify_jwt = false
-   ```
+Never duplicate display logic. Always use the canonical shared components:
 
-3. **`create-streampay-checkout`** — Test invocation using the edge function testing tool to verify it returns the expected error (since we likely don't have a real StreamPay key configured, we expect a 502 or "Payment gateway not configured" response).
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-### Steps
-1. Fix `MAX_FILE_SIZE` build error in `ServerChannelChat.tsx`
-2. Add `cancel-streampay-subscription` to `config.toml`
-3. Deploy `streampay-webhook` (redeploy)
-4. Deploy `cancel-streampay-subscription` (first deploy)
-5. Test `create-streampay-checkout` with a curl/invoke call
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
+### 3. Pro Gating
+
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+
+### 4. No Hallucinations
+
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+
+### 5. No Over-Engineering
+
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+
+## Documentation Directory
+
+Read these files for specific details — do NOT rely on memory alone:
+
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+
+## Cosmetic Asset Specs
+
+Per-asset guides with exact dimensions, config files, and wrapper usage:
+
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

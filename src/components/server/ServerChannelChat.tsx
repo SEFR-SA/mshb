@@ -42,7 +42,7 @@ import { useMessageKeybinds } from "@/hooks/useMessageKeybinds";
 import { getBoostPerks } from "@/config/boostPerks";
 
 // Default to 200 MB; overridden by server boost level once fetched
-const DEFAULT_MAX_FILE_SIZE = 200 * 1024 * 1024;
+
 // Stable empty array reference — avoids creating new [] on every render for reactions-free messages
 const EMPTY_REACTIONS: any[] = [];
 
@@ -747,7 +747,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
-    if (file.size > MAX_FILE_SIZE) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
+    if (file.size > getBoostPerks(serverBoostLevel).maxUploadSizeMB * 1024 * 1024) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
     setSelectedFile(file);
   };
 
