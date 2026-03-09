@@ -11,7 +11,7 @@ import { useForwardMessage } from "@/contexts/ForwardMessageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload, Lock, Megaphone, Pin, Forward, Loader2, ChevronDown } from "lucide-react";
+import { Send, Hash, Upload, Lock, Megaphone, Pin, Forward, Loader2, ChevronDown, Rocket } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import MarkdownToolbar from "@/components/chat/MarkdownToolbar";
@@ -39,8 +39,10 @@ import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 import { useMessageKeybinds } from "@/hooks/useMessageKeybinds";
+import { getBoostPerks } from "@/config/boostPerks";
 
-const MAX_FILE_SIZE = 200 * 1024 * 1024;
+// Default to 200 MB; overridden by server boost level once fetched
+const DEFAULT_MAX_FILE_SIZE = 200 * 1024 * 1024;
 // Stable empty array reference — avoids creating new [] on every render for reactions-free messages
 const EMPTY_REACTIONS: any[] = [];
 
@@ -131,6 +133,23 @@ const MessageItem = React.memo(({
   const timeDiff = prevMsg ? new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime() : Infinity;
   const isGrouped = sameAuthor && timeDiff < 5 * 60 * 1000;
   const msgAny = msg as any;
+
+  // Server boost announcement
+  if (msgAny.type === "boost") {
+    return (
+      <div key={msg.id} className="flex items-center gap-3 px-4 py-2 select-none">
+        <div className="flex-1 border-t border-pink-500/30" />
+        <div className="flex items-center gap-2 text-sm shrink-0">
+          <Rocket className="h-4 w-4 text-pink-500" />
+          <span>
+            <span className="font-semibold text-foreground">{msg.content}</span>
+            {" "}<span className="text-muted-foreground">{t("serverBoost.boostAnnouncement")}</span>
+          </span>
+        </div>
+        <div className="flex-1 border-t border-pink-500/30" />
+      </div>
+    );
+  }
 
   // Welcome (join) message
   if (msgAny.type === "welcome") {
@@ -461,6 +480,18 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   }, [serverId, fetchRoleColors]);
 
   const [serverEmojis, setServerEmojis] = useState<{ name: string; url: string }[]>([]);
+  const [serverBoostLevel, setServerBoostLevel] = useState(0);
+
+  // Fetch server boost level once (updates MAX_FILE_SIZE for upload gate)
+  useEffect(() => {
+    if (!serverId) return;
+    supabase
+      .from("servers")
+      .select("boost_level")
+      .eq("id", serverId)
+      .single()
+      .then(({ data }) => { if (data) setServerBoostLevel((data as any).boost_level ?? 0); });
+  }, [serverId]);
 
   // Initial fetch of server emojis
   useEffect(() => {
@@ -880,7 +911,8 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
               )}
               <ChatInputActions
                 onFileSelect={(f) => {
-                  if (f.size > MAX_FILE_SIZE) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
+                  const maxBytes = getBoostPerks(serverBoostLevel).maxUploadSizeMB * 1024 * 1024;
+                  if (f.size > maxBytes) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
                   setSelectedFile(f);
                 }}
                 onEmojiSelect={(emoji) => { setNewMsg((prev) => prev + emoji); inputRef.current?.focus(); }}
@@ -894,6 +926,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                 }}
                 disabled={sending}
                 serverId={serverId}
+                serverBoostLevel={serverBoostLevel}
               />
               <AutoResizeTextarea
                 ref={inputRef}

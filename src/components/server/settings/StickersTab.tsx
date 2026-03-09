@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useServerOwnerIsPro } from "@/hooks/useServerOwnerIsPro";
+import { getBoostPerks } from "@/config/boostPerks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Upload, ImageIcon } from "lucide-react";
+import { Loader2, Trash2, Upload, ImageIcon, Zap } from "lucide-react";
 
 const MAX_SIZE_KB = 600;
 
@@ -27,6 +27,7 @@ interface StickerItem {
 interface Props {
   serverId: string;
   canEdit: boolean;
+  boostLevel: number;
 }
 
 const getFormat = (filename: string): string => {
@@ -36,11 +37,10 @@ const getFormat = (filename: string): string => {
   return "PNG";
 };
 
-const StickersTab = ({ serverId, canEdit }: Props) => {
+const StickersTab = ({ serverId, canEdit, boostLevel }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const ownerIsPro = useServerOwnerIsPro(serverId);
-  const STICKER_LIMIT = ownerIsPro ? 50 : 5;
+  const STICKER_LIMIT = getBoostPerks(boostLevel).maxStickers;
 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -185,8 +185,11 @@ const StickersTab = ({ serverId, canEdit }: Props) => {
               <Upload className="h-4 w-4 me-2" />
               {t("serverSettings.uploadSticker")}
             </Button>
-            {items.length >= STICKER_LIMIT && !ownerIsPro && (
-              <p className="text-xs text-muted-foreground">{t("pro.upgradeForMore")}</p>
+            {items.length >= STICKER_LIMIT && boostLevel < 3 && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Zap className="h-3 w-3 text-pink-500" />
+                {t("serverBoost.upgradeForMoreStickers", { next: boostLevel + 1 })}
+              </p>
             )}
           </div>
         )}

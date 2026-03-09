@@ -209,6 +209,41 @@ Deno.serve(async (req) => {
         `Boost recorded: user=${userId} server=${serverId} tx=${transactionId}`
       );
 
+      // ── Insert boost announcement system message ──────────────────────────
+      // Non-fatal: boost is already recorded; a message failure must not
+      // cause StreamPay to retry the webhook.
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name, username")
+          .eq("user_id", userId)
+          .maybeSingle();
+        const displayName =
+          (profile as any)?.display_name ||
+          (profile as any)?.username ||
+          "Someone";
+
+        const { data: channel } = await supabase
+          .from("channels")
+          .select("id")
+          .eq("server_id", serverId)
+          .eq("type", "text")
+          .order("position")
+          .limit(1)
+          .maybeSingle();
+
+        if (channel) {
+          await supabase.from("messages").insert({
+            channel_id: channel.id,
+            author_id:  userId,
+            content:    displayName,
+            type:       "boost",
+          });
+        }
+      } catch (msgErr) {
+        console.error("Failed to insert boost announcement message:", msgErr);
+      }
+
     } else if (eventType === "payment.failed" || eventType === "payment.refunded") {
       if (!transactionId) {
         console.error(`${eventType} event missing transaction ID`);

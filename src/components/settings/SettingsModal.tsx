@@ -10,7 +10,7 @@ import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import {
   User, Shield, Users, Bell, Star, CreditCard,
-  Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag, Keyboard, Monitor,
+  Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag, Keyboard, Monitor, Zap,
 } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
@@ -28,10 +28,11 @@ const LanguageTab      = lazy(() => import("./tabs/LanguageTab"));
 const MarketplaceTab   = lazy(() => import("./tabs/MarketplaceTab"));
 const KeybindsTab      = lazy(() => import("./tabs/KeybindsTab"));
 const DevicesTab       = lazy(() => import("./tabs/DevicesTab"));
+const BoostsTab        = lazy(() => import("./tabs/BoostsTab"));
 
 type TabId =
   | "profile" | "account" | "devices" | "social" | "notifications"
-  | "subscriptions" | "billing" | "appearance" | "voice" | "language"
+  | "subscriptions" | "billing" | "boosts" | "appearance" | "voice" | "language"
   | "marketplace" | "keybinds";
 
 interface NavItem {
@@ -61,6 +62,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "subscriptions", labelKey: "settings.subscriptions",icon: Star },
       { id: "billing",       labelKey: "settings.billing",      icon: CreditCard },
+      { id: "boosts",        labelKey: "settings.myBoosts",     icon: Zap },
       { id: "appearance",    labelKey: "settings.appearance",   icon: Palette },
       { id: "voice",         labelKey: "settings.voiceVideo",    icon: Mic },
       { id: "language",      labelKey: "settings.languageTime",  icon: Globe },
@@ -83,6 +85,7 @@ const TAB_COMPONENTS: Record<TabId, React.LazyExoticComponent<React.ComponentTyp
   language:      LanguageTab,
   keybinds:      KeybindsTab,
   marketplace:   MarketplaceTab,
+  boosts:        BoostsTab,
 };
 
 const TabFallback = () => (

@@ -16,6 +16,7 @@ interface ChatInputActionsProps {
   onStickerSelect: (url: string) => Promise<void>;
   disabled?: boolean;
   serverId?: string;
+  serverBoostLevel?: number;
 }
 
 const ChatInputActions = ({
@@ -25,6 +26,7 @@ const ChatInputActions = ({
   onStickerSelect,
   disabled,
   serverId,
+  serverBoostLevel,
 }: ChatInputActionsProps) => {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
@@ -36,7 +38,7 @@ const ChatInputActions = ({
   if (!isMobile) {
     return (
       <>
-        <FileAttachmentButton onFileSelect={onFileSelect} disabled={disabled} />
+        <FileAttachmentButton onFileSelect={onFileSelect} disabled={disabled} serverBoostLevel={serverBoostLevel} />
         <EmojiPicker onEmojiSelect={onEmojiSelect} serverId={serverId} />
         <GifPicker onGifSelect={onGifSelect} />
         <StickerPicker onStickerSelect={onStickerSelect} serverId={serverId} />

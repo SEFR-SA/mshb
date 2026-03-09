@@ -26,6 +26,8 @@ import GroupChat from "@/pages/GroupChat";
 import SettingsModal from "@/components/settings/SettingsModal";
 import ServerView from "@/pages/ServerView";
 import InviteJoin from "@/pages/InviteJoin";
+import BoostSuccess from "@/pages/BoostSuccess";
+import BoostCancel from "@/pages/BoostCancel";
 import NotFound from "@/pages/NotFound";
 import "@/i18n";
 import React, { useEffect, useState } from 'react';
@@ -211,6 +213,8 @@ const App = () => (
                     <Route path="settings" element={<SettingsModal />} />
                   </Route>
                   <Route path="/invite/:code" element={<InviteJoin />} />
+                  <Route path="/boost/success" element={<BoostSuccess />} />
+                  <Route path="/boost/cancel" element={<BoostCancel />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </HashRouter>

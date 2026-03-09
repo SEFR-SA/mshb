@@ -1,14 +1,14 @@
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { useServerOwnerIsPro } from "@/hooks/useServerOwnerIsPro";
+import { getBoostPerks } from "@/config/boostPerks";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
-import { Camera, Loader2 } from "lucide-react";
+import { Camera, Loader2, Lock } from "lucide-react";
 
 interface Props {
   serverId: string;
@@ -22,6 +22,7 @@ interface Props {
   setBannerUrl: (url: string) => void;
   canEdit: boolean;
   userId?: string;
+  boostLevel: number;
 }
 
 const ServerProfileTab = ({
@@ -36,9 +37,12 @@ const ServerProfileTab = ({
   setBannerUrl,
   canEdit,
   userId,
+  boostLevel,
 }: Props) => {
   const { t } = useTranslation();
-  const ownerIsPro = useServerOwnerIsPro(serverId);
+  const boostFeatures = getBoostPerks(boostLevel).features;
+  const hasAnimatedIcon = boostFeatures.includes("animated_icon");
+  const hasBanner = boostFeatures.includes("server_banner");
   const [saving, setSaving] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -57,7 +61,7 @@ const ServerProfileTab = ({
   const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!ownerIsPro && (file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif"))) {
+    if (!hasAnimatedIcon && (file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif"))) {
       toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast"), variant: "destructive" });
       e.target.value = "";
       return;
@@ -78,8 +82,8 @@ const ServerProfileTab = ({
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!ownerIsPro && (file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif"))) {
-      toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast"), variant: "destructive" });
+    if (!hasBanner) {
+      toast({ title: t("serverBoost.bannerRequiresBoost"), description: t("serverBoost.bannerRequiresBoostDesc"), variant: "destructive" });
       e.target.value = "";
       return;
     }
@@ -129,6 +133,14 @@ const ServerProfileTab = ({
           {canEdit && (
             <div className="absolute inset-0 bg-background/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
               {uploadingBanner ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
+            </div>
+          )}
+          {!hasBanner && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg pointer-events-none">
+              <div className="flex items-center gap-1.5 bg-background/80 rounded-full px-3 py-1 text-xs font-medium">
+                <Lock className="h-3 w-3" />
+                {t("serverBoost.requiresLevel1")}
+              </div>
             </div>
           )}
         </div>

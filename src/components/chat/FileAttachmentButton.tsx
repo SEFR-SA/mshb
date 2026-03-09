@@ -4,26 +4,40 @@ import { Button } from "@/components/ui/button";
 import { Paperclip } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { getBoostPerks } from "@/config/boostPerks";
 
 interface FileAttachmentButtonProps {
   onFileSelect: (file: File) => void;
   disabled?: boolean;
+  serverBoostLevel?: number;
 }
 
-const FileAttachmentButton = ({ onFileSelect, disabled }: FileAttachmentButtonProps) => {
+const FileAttachmentButton = ({ onFileSelect, disabled, serverBoostLevel }: FileAttachmentButtonProps) => {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isPro = (profile as any)?.is_pro ?? false;
-  const MAX_FILE_SIZE = isPro ? 100 * 1024 * 1024 : 25 * 1024 * 1024; // 100 MB vs 25 MB
+  const MAX_FILE_SIZE =
+    serverBoostLevel !== undefined
+      ? getBoostPerks(serverBoostLevel).maxUploadSizeMB * 1024 * 1024
+      : isPro ? 100 * 1024 * 1024 : 25 * 1024 * 1024;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > MAX_FILE_SIZE) {
-      toast({ title: t("files.tooLarge"), variant: "destructive" });
+      if (serverBoostLevel !== undefined) {
+        const limitMB = getBoostPerks(serverBoostLevel).maxUploadSizeMB;
+        toast({
+          title: t("serverBoost.uploadTooLarge"),
+          description: t("serverBoost.uploadTooLargeDesc", { sizeMB: limitMB, level: serverBoostLevel + 1 }),
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: t("files.tooLarge"), variant: "destructive" });
+      }
       if (inputRef.current) inputRef.current.value = "";
       return;
     }

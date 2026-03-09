@@ -55,6 +55,7 @@ interface Server {
   owner_id: string;
   icon_url: string | null;
   banner_url: string | null;
+  boost_level: number | null;
   server_tag_name: string | null;
   server_tag_badge: string | null;
   server_tag_color: string | null;
@@ -696,7 +697,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   return (
     <>
       <div className="w-[240px] max-md:w-full max-md:max-w-full h-full flex flex-col border-e border-sidebar-border shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
-        {server?.banner_url && (
+        {server?.banner_url && (server.boost_level ?? 0) >= 1 && (
           <img
             src={server.banner_url}
             alt=""

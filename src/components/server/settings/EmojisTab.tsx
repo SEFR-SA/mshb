@@ -2,14 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useServerOwnerIsPro } from "@/hooks/useServerOwnerIsPro";
+import { getBoostPerks } from "@/config/boostPerks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Trash2, Upload } from "lucide-react";
+import { Loader2, Trash2, Upload, Zap } from "lucide-react";
 
 // Limit is dynamic based on server owner's Pro status — set inside component
 
@@ -25,13 +25,13 @@ interface EmojiItem {
 interface Props {
   serverId: string;
   canEdit: boolean;
+  boostLevel: number;
 }
 
-const EmojisTab = ({ serverId, canEdit }: Props) => {
+const EmojisTab = ({ serverId, canEdit, boostLevel }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const ownerIsPro = useServerOwnerIsPro(serverId);
-  const EMOJI_LIMIT = ownerIsPro ? 250 : 50;
+  const EMOJI_LIMIT = getBoostPerks(boostLevel).maxEmojis;
 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -158,8 +158,11 @@ const EmojisTab = ({ serverId, canEdit }: Props) => {
               )}
               {uploading ? t("serverSettings.uploading") : t("serverSettings.uploadEmoji")}
             </Button>
-            {items.length >= EMOJI_LIMIT && !ownerIsPro && (
-              <p className="text-xs text-muted-foreground">{t("pro.upgradeForMore")}</p>
+            {items.length >= EMOJI_LIMIT && boostLevel < 3 && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Zap className="h-3 w-3 text-pink-500" />
+                {t("serverBoost.upgradeForMoreEmojis", { next: boostLevel + 1 })}
+              </p>
             )}
           </div>
         )}

@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { X, Zap } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,8 @@ interface Member {
   user_id: string;
   role: string;
   joined_at: string;
+  is_booster: boolean;
+  boosted_at: string | null;
   profile?: {
     display_name: string | null;
     username: string | null;
@@ -83,7 +85,7 @@ const ServerMemberList = ({ serverId }: Props) => {
   useEffect(() => {
     const load = async () => {
       const [{ data }, { data: memberRolesData }] = await Promise.all([
-        supabase.from("server_members" as any).select("user_id, role, joined_at").eq("server_id", serverId),
+        supabase.from("server_members" as any).select("user_id, role, joined_at, is_booster, boosted_at").eq("server_id", serverId),
         supabase.from("member_roles" as any).select("user_id, server_roles(id, name, color, icon_url, position)").eq("server_id", serverId),
       ]);
       if (!data) return;
@@ -386,6 +388,9 @@ const ServerMemberList = ({ serverId }: Props) => {
                             badgeColor: (p as any).active_server_tag.server_tag_color,
                           } : null}
                         />
+                        {m.is_booster && (
+                          <Zap className="h-3 w-3 text-pink-500 shrink-0" aria-label={t("serverBoost.boosterBadge")} />
+                        )}
                         {highestRole?.icon_url && (
                           <img src={highestRole.icon_url} className="h-4 w-4 rounded shrink-0" alt={highestRole.name} />
                         )}

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "@/hooks/use-toast";
-import { Menu, Trash2, User, Tag, Sparkles, Smile, StickerIcon, Volume2, Users, ShieldCheck, ScrollText, X } from "lucide-react";
+import { Menu, Trash2, User, Tag, Sparkles, Smile, StickerIcon, Volume2, Users, ShieldCheck, ScrollText, X, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AuditLogView from "./AuditLogView";
 import ServerProfileTab from "./settings/ServerProfileTab";
@@ -22,6 +22,7 @@ import StickersTab from "./settings/StickersTab";
 import SoundboardTab from "./settings/SoundboardTab";
 import MembersTab from "./settings/MembersTab";
 import RolesTab from "./settings/RolesTab";
+import ServerBoostsTab from "./settings/ServerBoostsTab";
 
 interface Member {
   user_id: string;
@@ -41,7 +42,7 @@ interface Props {
   initialTab?: TabId;
 }
 
-export type TabId = "profile" | "tag" | "engagement" | "emojis" | "stickers" | "soundboard" | "members" | "roles" | "auditlogs";
+export type TabId = "profile" | "tag" | "engagement" | "emojis" | "stickers" | "soundboard" | "members" | "roles" | "serverBoosts" | "auditlogs";
 
 const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Props) => {
   const { t } = useTranslation();
@@ -56,6 +57,7 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
   const [iconUrl, setIconUrl] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
   const [ownerId, setOwnerId] = useState("");
+  const [boostLevel, setBoostLevel] = useState(0);
   const [members, setMembers] = useState<Member[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
@@ -75,6 +77,7 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
       setIconUrl((s as any).icon_url || "");
       setBannerUrl((s as any).banner_url || "");
       setOwnerId((s as any).owner_id);
+      setBoostLevel((s as any).boost_level ?? 0);
     }
     const { data: mems } = await supabase.from("server_members" as any).select("user_id, role").eq("server_id", serverId);
     if (mems) {
@@ -145,6 +148,22 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
           </button>
         ))}
 
+        {canEdit && (
+          <>
+            <Separator className="my-2" />
+            <button
+              onClick={() => handleTabClick("serverBoosts")}
+              className={cn(
+                "flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-medium transition-colors text-start",
+                activeTab === "serverBoosts" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              )}
+            >
+              <Zap className="h-4 w-4" />
+              {t("serverBoost.serverBoostStatus")}
+            </button>
+          </>
+        )}
+
         {canViewAuditLogs && (
           <>
             <Separator className="my-2" />
@@ -193,6 +212,7 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
             setBannerUrl={setBannerUrl}
             canEdit={canEdit}
             userId={user?.id}
+            boostLevel={boostLevel}
           />
         );
       case "members":
@@ -202,13 +222,15 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
       case "tag":
         return <ServerTagTab serverId={serverId} canEdit={canEdit} />;
       case "emojis":
-        return <EmojisTab serverId={serverId} canEdit={canEdit} />;
+        return <EmojisTab serverId={serverId} canEdit={canEdit} boostLevel={boostLevel} />;
       case "stickers":
-        return <StickersTab serverId={serverId} canEdit={canEdit} />;
+        return <StickersTab serverId={serverId} canEdit={canEdit} boostLevel={boostLevel} />;
       case "soundboard":
         return <SoundboardTab serverId={serverId} canEdit={canEdit} />;
       case "roles":
         return <RolesTab serverId={serverId} canEdit={canEdit} />;
+      case "serverBoosts":
+        return canEdit ? <ServerBoostsTab serverId={serverId} /> : null;
       case "auditlogs":
         return canViewAuditLogs ? <AuditLogView serverId={serverId} /> : null;
       default:

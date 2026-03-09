@@ -7,7 +7,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2, CheckCheck, ShieldCheck, ScrollText, User, FolderPlus, Tag, TrendingUp, Smile, Sticker, Bell } from "lucide-react";
+import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2, CheckCheck, ShieldCheck, ScrollText, User, FolderPlus, Tag, TrendingUp, Smile, Sticker, Bell, Zap } from "lucide-react";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent, ContextMenuCheckboxItem } from "@/components/ui/context-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -20,6 +20,7 @@ import JoinServerDialog from "./JoinServerDialog";
 import ServerSettingsDialog from "./ServerSettingsDialog";
 import ServerFolderDialog from "./ServerFolderDialog";
 import ServerFolder from "./ServerFolder";
+import ServerBoostModal from "./ServerBoostModal";
 import { getAppBaseUrl } from "@/lib/inviteUtils";
 import { copyToClipboard } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -90,6 +91,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const [draggedServerId, setDraggedServerId] = useState<string | null>(null);
   const [userRoles, setUserRoles] = useState<Map<string, string>>(new Map());
   const [mobileSheetServerId, setMobileSheetServerId] = useState<string | null>(null);
+  const [boostModal, setBoostModal] = useState<{ open: boolean; serverId: string; serverName: string }>({ open: false, serverId: "", serverName: "" });
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
 
@@ -508,6 +510,11 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                       <Copy className="h-4 w-4 me-2" />
                       {t("servers.copyInvite")}
                     </ContextMenuItem>
+                    <ContextMenuItem onClick={() => setBoostModal({ open: true, serverId: s.id, serverName: s.name })}>
+                      <Zap className="h-4 w-4 me-2 text-pink-500" />
+                      {t("serverBoost.boostServer")}
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
                     <ContextMenuSub>
                       <ContextMenuSubTrigger>
                         <Settings className="h-4 w-4 me-2" />
@@ -611,6 +618,12 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
 
       <CreateServerDialog open={createOpen} onOpenChange={setCreateOpen} />
       <JoinServerDialog open={joinOpen} onOpenChange={setJoinOpen} />
+      <ServerBoostModal
+        open={boostModal.open}
+        onOpenChange={(o) => setBoostModal((prev) => ({ ...prev, open: o }))}
+        serverId={boostModal.serverId}
+        serverName={boostModal.serverName}
+      />
       {settingsServerId && (
         <ServerSettingsDialog
           serverId={settingsServerId}
