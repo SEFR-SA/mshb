@@ -51,6 +51,7 @@ Read these files for specific details — do NOT rely on memory alone:
 | Full tech stack versions and config | `.planning/codebase/STACK.md` |
 | Known bugs, tech debt, performance concerns | `.planning/codebase/CONCERNS.md` |
 | Testing patterns and Vitest config | `.planning/codebase/TESTING.md` |
+| Standard operating procedures for components, migrations, cosmetics | `.planning/skills/` |
 
 ## Cosmetic Asset Specs
 Per-asset guides with exact dimensions, config files, and wrapper usage:

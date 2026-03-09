@@ -1039,24 +1039,30 @@ export type Database = {
       }
       server_members: {
         Row: {
+          boosted_at: string | null
           entrance_sound_id: string | null
           id: string
+          is_booster: boolean
           joined_at: string
           role: string
           server_id: string
           user_id: string
         }
         Insert: {
+          boosted_at?: string | null
           entrance_sound_id?: string | null
           id?: string
+          is_booster?: boolean
           joined_at?: string
           role?: string
           server_id: string
           user_id: string
         }
         Update: {
+          boosted_at?: string | null
           entrance_sound_id?: string | null
           id?: string
+          is_booster?: boolean
           joined_at?: string
           role?: string
           server_id?: string
@@ -1214,6 +1220,8 @@ export type Database = {
       servers: {
         Row: {
           banner_url: string | null
+          boost_count: number
+          boost_level: number
           created_at: string
           default_notification_level: string
           description: string | null
@@ -1233,6 +1241,8 @@ export type Database = {
         }
         Insert: {
           banner_url?: string | null
+          boost_count?: number
+          boost_level?: number
           created_at?: string
           default_notification_level?: string
           description?: string | null
@@ -1252,6 +1262,8 @@ export type Database = {
         }
         Update: {
           banner_url?: string | null
+          boost_count?: number
+          boost_level?: number
           created_at?: string
           default_notification_level?: string
           description?: string | null
@@ -1381,6 +1393,51 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_boosts: {
+        Row: {
+          canceled_at: string | null
+          id: string
+          server_id: string | null
+          started_at: string
+          status: string
+          streampay_transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          id?: string
+          server_id?: string | null
+          started_at?: string
+          status?: string
+          streampay_transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          canceled_at?: string | null
+          id?: string
+          server_id?: string | null
+          started_at?: string
+          status?: string
+          streampay_transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_boosts_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_boosts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_purchases: {
         Row: {

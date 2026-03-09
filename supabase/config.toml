@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.resolve-device-location]
 verify_jwt = false
+
+[functions.create-streampay-checkout]
+verify_jwt = false
+
+[functions.streampay-webhook]
+verify_jwt = false
