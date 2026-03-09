@@ -42,7 +42,7 @@ import { useMessageKeybinds } from "@/hooks/useMessageKeybinds";
 import { getBoostPerks } from "@/config/boostPerks";
 
 // Default to 200 MB; overridden by server boost level once fetched
-const DEFAULT_MAX_FILE_SIZE = 200 * 1024 * 1024;
+
 // Stable empty array reference — avoids creating new [] on every render for reactions-free messages
 const EMPTY_REACTIONS: any[] = [];
 
