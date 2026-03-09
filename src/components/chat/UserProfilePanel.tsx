@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import type { Tables } from "@/integrations/supabase/types";
 import { format } from "date-fns";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MoreHorizontal, UserPlus, Ban, Flag } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
@@ -15,6 +15,20 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useBlockUser } from "@/hooks/useBlockUser";
+import { getAppBaseUrl } from "@/lib/inviteUtils";
+import { toast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import ReportUserDialog from "./ReportUserDialog";
 
 type Profile = Tables<"profiles">;
 
@@ -37,14 +51,24 @@ interface MutualFriend {
   avatar_url: string | null;
 }
 
+interface MyServer {
+  id: string;
+  name: string;
+  icon_url: string | null;
+}
+
 const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { openProfile } = useUserProfile();
+  const { blockUser, unblockUser, isBlocked } = useBlockUser();
+
   const [mutualServers, setMutualServers] = useState<MutualServer[]>([]);
   const [mutualFriends, setMutualFriends] = useState<MutualFriend[]>([]);
+  const [myServers, setMyServers] = useState<MyServer[]>([]);
   const [serversOpen, setServersOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const currentUserId = user?.id;
   const targetUserId = userId || profile?.user_id;
@@ -54,12 +78,12 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
     if (!currentUserId || !targetUserId || isSelf) return;
 
     const fetchMutualServers = async () => {
-      const [{ data: myServers }, { data: theirServers }] = await Promise.all([
+      const [{ data: myServersData }, { data: theirServers }] = await Promise.all([
         supabase.from("server_members").select("server_id").eq("user_id", currentUserId),
         supabase.from("server_members").select("server_id").eq("user_id", targetUserId),
       ]);
-      if (!myServers || !theirServers) return;
-      const myIds = new Set(myServers.map((s) => s.server_id));
+      if (!myServersData || !theirServers) return;
+      const myIds = new Set(myServersData.map((s) => s.server_id));
       const commonIds = theirServers.map((s) => s.server_id).filter((id) => myIds.has(id));
       if (commonIds.length === 0) { setMutualServers([]); return; }
       const { data: servers } = await supabase
@@ -87,9 +111,75 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
       setMutualFriends((profiles as MutualFriend[]) || []);
     };
 
+    const fetchMyServers = async () => {
+      const { data } = await supabase
+        .from("server_members" as any)
+        .select("servers(id, name, icon_url)")
+        .eq("user_id", currentUserId);
+      if (data) {
+        setMyServers((data as any[]).map((m) => m.servers).filter(Boolean));
+      }
+    };
+
     fetchMutualServers();
     fetchMutualFriends();
+    fetchMyServers();
   }, [currentUserId, targetUserId, isSelf]);
+
+  const handleSendInvite = async (serverId: string, serverName: string) => {
+    if (!user || !targetUserId) return;
+
+    // Reuse a non-expired invite or create a new one
+    const { data: existing } = await supabase
+      .from("invites" as any)
+      .select("code")
+      .eq("server_id", serverId)
+      .eq("creator_id", user.id)
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let code = (existing as any)?.code as string | undefined;
+    if (!code) {
+      const { data: newInvite, error } = await supabase
+        .from("invites" as any)
+        .insert({ server_id: serverId, creator_id: user.id } as any)
+        .select("code")
+        .single();
+      if (error) { toast({ title: t("common.error"), variant: "destructive" }); return; }
+      code = (newInvite as any).code as string;
+    }
+
+    // Find or create a DM thread with the target user
+    const { data: thread } = await supabase
+      .from("dm_threads")
+      .select("id")
+      .or(`and(user1_id.eq.${user.id},user2_id.eq.${targetUserId}),and(user1_id.eq.${targetUserId},user2_id.eq.${user.id})`)
+      .maybeSingle();
+
+    let threadId: string | undefined = (thread as any)?.id;
+    if (!threadId) {
+      const { data: newThread } = await supabase
+        .from("dm_threads")
+        .insert({ user1_id: user.id, user2_id: targetUserId })
+        .select("id")
+        .single();
+      threadId = (newThread as any)?.id;
+    }
+    if (!threadId) { toast({ title: t("common.error"), variant: "destructive" }); return; }
+
+    const baseUrl = getAppBaseUrl();
+    await supabase.from("messages").insert({
+      thread_id: threadId,
+      author_id: user.id,
+      content:   `${baseUrl}/invite/${code}`,
+      type:      "server_invite",
+      metadata:  { server_id: serverId, invite_code: code, server_name: serverName },
+    } as any);
+
+    toast({ title: t("inviteToServer.sent") });
+  };
 
   if (!profile) return null;
 
@@ -105,137 +195,208 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
       className="w-72 border-s border-border/50 glass h-full flex flex-col"
     >
       <div className="flex-1 overflow-y-auto min-h-0">
-      {/* Banner area */}
-      {p.banner_url ? (
-        <img src={p.banner_url} alt="" className="h-24 w-full object-cover rounded-b-lg" />
-      ) : (
-        <div className="h-24 bg-primary/20 rounded-b-lg" />
-      )}
+        {/* Banner area — relative wrapper for the three-dots button */}
+        <div className="relative">
+          {p.banner_url ? (
+            <img src={p.banner_url} alt="" className="h-24 w-full object-cover rounded-b-lg" />
+          ) : (
+            <div className="h-24 bg-primary/20 rounded-b-lg" />
+          )}
 
-      {/* Avatar + Status Bubble row */}
-      <div className="px-4 -mt-16 flex items-end gap-2">
-        <AvatarDecorationWrapper
-          decorationUrl={p?.avatar_decoration_url}
-          isPro={p?.is_pro}
-          size={90}
-          className="shrink-0"
-        >
-          <Avatar className="h-[80px] w-[80px] border-4 border-background">
-            <AvatarImage src={profile.avatar_url || ""} />
-            <AvatarFallback className="bg-primary/20 text-primary text-2xl">
-              {(profile.display_name || profile.username || "?").charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <StatusBadge status={status} size="md" className="absolute bottom-1 end-1 z-20" />
-        </AvatarDecorationWrapper>
-        <StatusBubble statusText={effectiveStatusText} />
-      </div>
+          {/* Three-dots menu — only shown for other users */}
+          {!isSelf && targetUserId && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 end-2 h-8 w-8 bg-background/60 backdrop-blur-sm hover:bg-background/80"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
 
-      {/* Profile card */}
-      <div className="mx-4 mt-3 p-3 rounded-lg bg-card/80 border border-border/50 space-y-3">
-        <div>
-          <StyledDisplayName
-            displayName={profile.display_name || profile.username || "User"}
-            fontStyle={p?.name_font}
-            effect={p?.name_effect}
-            gradientStart={p?.name_gradient_start}
-            gradientEnd={p?.name_gradient_end}
-            className="text-lg font-bold"
-            serverTag={
-              p?.active_server_tag
-                ? {
-                    name: p.active_server_tag.server_tag_name,
-                    badge: p.active_server_tag.server_tag_badge,
-                    color:
-                      (p.active_server_tag as any).server_tag_container_color ?? p.active_server_tag.server_tag_color,
-                    badgeColor: p.active_server_tag.server_tag_color,
+                {/* Invite to Server submenu */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <UserPlus className="h-4 w-4 me-2" />
+                    {t("inviteToServer.title")}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {myServers.length === 0 ? (
+                      <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                        {t("inviteToServer.noServers")}
+                      </p>
+                    ) : (
+                      myServers.map((s) => (
+                        <DropdownMenuItem
+                          key={s.id}
+                          onClick={() => handleSendInvite(s.id, s.name)}
+                        >
+                          <Avatar className="h-5 w-5 me-2 shrink-0">
+                            <AvatarImage src={s.icon_url || ""} />
+                            <AvatarFallback className="text-[10px]">
+                              {s.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate">{s.name}</span>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
+                <DropdownMenuSeparator />
+
+                {/* Block / Unblock */}
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() =>
+                    isBlocked(targetUserId) ? unblockUser(targetUserId) : blockUser(targetUserId)
                   }
-                : null
-            }
-          />
-          {profile.username && <p className="text-sm text-muted-foreground">@{profile.username}</p>}
+                >
+                  <Ban className="h-4 w-4 me-2" />
+                  {isBlocked(targetUserId) ? t("common.unblock") : t("common.block")}
+                </DropdownMenuItem>
+
+                {/* Report */}
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setReportOpen(true)}
+                >
+                  <Flag className="h-4 w-4 me-2" />
+                  {t("report.user.menuItem")}
+                </DropdownMenuItem>
+
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
-        {/* Status */}
-        <div className="flex items-center gap-2">
-          <StatusBadge status={status} size="sm" />
-          <span className="text-sm capitalize">
-            {t(`status.${statusLabel !== "offline" ? statusLabel : "invisible"}`)}
-          </span>
+        {/* Avatar + Status Bubble row */}
+        <div className="px-4 -mt-16 flex items-end gap-2">
+          <AvatarDecorationWrapper
+            decorationUrl={p?.avatar_decoration_url}
+            isPro={p?.is_pro}
+            size={90}
+            className="shrink-0"
+          >
+            <Avatar className="h-[80px] w-[80px] border-4 border-background">
+              <AvatarImage src={profile.avatar_url || ""} />
+              <AvatarFallback className="bg-primary/20 text-primary text-2xl">
+                {(profile.display_name || profile.username || "?").charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <StatusBadge status={status} size="md" className="absolute bottom-1 end-1 z-20" />
+          </AvatarDecorationWrapper>
+          <StatusBubble statusText={effectiveStatusText} />
         </div>
 
-        {/* About Me */}
-        {p.about_me && (
-          <>
-            <Separator />
-            <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">{t("profile.aboutMe")}</h4>
-              <p className="text-sm whitespace-pre-wrap">{p.about_me}</p>
-            </div>
-          </>
-        )}
+        {/* Profile card */}
+        <div className="mx-4 mt-3 p-3 rounded-lg bg-card/80 border border-border/50 space-y-3">
+          <div>
+            <StyledDisplayName
+              displayName={profile.display_name || profile.username || "User"}
+              fontStyle={p?.name_font}
+              effect={p?.name_effect}
+              gradientStart={p?.name_gradient_start}
+              gradientEnd={p?.name_gradient_end}
+              className="text-lg font-bold"
+              serverTag={
+                p?.active_server_tag
+                  ? {
+                      name: p.active_server_tag.server_tag_name,
+                      badge: p.active_server_tag.server_tag_badge,
+                      color:
+                        (p.active_server_tag as any).server_tag_container_color ?? p.active_server_tag.server_tag_color,
+                      badgeColor: p.active_server_tag.server_tag_color,
+                    }
+                  : null
+              }
+            />
+            {profile.username && <p className="text-sm text-muted-foreground">@{profile.username}</p>}
+          </div>
 
-        <Separator />
+          {/* Status */}
+          <div className="flex items-center gap-2">
+            <StatusBadge status={status} size="sm" />
+            <span className="text-sm capitalize">
+              {t(`status.${statusLabel !== "offline" ? statusLabel : "invisible"}`)}
+            </span>
+          </div>
 
-        {/* Member Since */}
-        <div>
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">{t("profile.memberSince")}</h4>
-          <p className="text-sm">{format(new Date(profile.created_at), "MMM d, yyyy")}</p>
+          {/* About Me */}
+          {p.about_me && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">{t("profile.aboutMe")}</h4>
+                <p className="text-sm whitespace-pre-wrap">{p.about_me}</p>
+              </div>
+            </>
+          )}
+
+          <Separator />
+
+          {/* Member Since */}
+          <div>
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">{t("profile.memberSince")}</h4>
+            <p className="text-sm">{format(new Date(profile.created_at), "MMM d, yyyy")}</p>
+          </div>
+
+          {/* Mutual Servers */}
+          {!isSelf && (
+            <>
+              <Separator />
+              <Collapsible open={serversOpen} onOpenChange={setServersOpen}>
+                <CollapsibleTrigger className="flex w-full items-center justify-between py-1 text-xs font-semibold text-muted-foreground uppercase cursor-pointer hover:text-foreground transition-colors">
+                  <span>{t("profile.mutualServers", "Mutual Servers")} — {mutualServers.length}</span>
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${serversOpen ? "rotate-180" : ""}`} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1.5 pt-1.5">
+                  {mutualServers.map((server) => (
+                    <div key={server.id} className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent/50 transition-colors">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={server.icon_url || ""} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
+                          {server.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm truncate">{server.name}</span>
+                    </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </>
+          )}
+
+          {/* Mutual Friends */}
+          {!isSelf && (
+            <>
+              <Separator />
+              <Collapsible open={friendsOpen} onOpenChange={setFriendsOpen}>
+                <CollapsibleTrigger className="flex w-full items-center justify-between py-1 text-xs font-semibold text-muted-foreground uppercase cursor-pointer hover:text-foreground transition-colors">
+                  <span>{t("profile.mutualFriends", "Mutual Friends")} — {mutualFriends.length}</span>
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${friendsOpen ? "rotate-180" : ""}`} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1.5 pt-1.5">
+                  {mutualFriends.map((friend) => (
+                    <div key={friend.user_id} className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent/50 transition-colors">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={friend.avatar_url || ""} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
+                          {(friend.display_name || friend.username || "?").charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm truncate">{friend.display_name || friend.username}</span>
+                    </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </>
+          )}
         </div>
-
-        {/* Mutual Servers */}
-        {!isSelf && (
-          <>
-            <Separator />
-            <Collapsible open={serversOpen} onOpenChange={setServersOpen}>
-              <CollapsibleTrigger className="flex w-full items-center justify-between py-1 text-xs font-semibold text-muted-foreground uppercase cursor-pointer hover:text-foreground transition-colors">
-                <span>{t("profile.mutualServers", "Mutual Servers")} — {mutualServers.length}</span>
-                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${serversOpen ? "rotate-180" : ""}`} />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1.5 pt-1.5">
-                {mutualServers.map((server) => (
-                  <div key={server.id} className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent/50 transition-colors">
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={server.icon_url || ""} />
-                      <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
-                        {server.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm truncate">{server.name}</span>
-                  </div>
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
-          </>
-        )}
-
-        {/* Mutual Friends */}
-        {!isSelf && (
-          <>
-            <Separator />
-            <Collapsible open={friendsOpen} onOpenChange={setFriendsOpen}>
-              <CollapsibleTrigger className="flex w-full items-center justify-between py-1 text-xs font-semibold text-muted-foreground uppercase cursor-pointer hover:text-foreground transition-colors">
-                <span>{t("profile.mutualFriends", "Mutual Friends")} — {mutualFriends.length}</span>
-                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${friendsOpen ? "rotate-180" : ""}`} />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1.5 pt-1.5">
-                {mutualFriends.map((friend) => (
-                  <div key={friend.user_id} className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent/50 transition-colors">
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={friend.avatar_url || ""} />
-                      <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
-                        {(friend.display_name || friend.username || "?").charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm truncate">{friend.display_name || friend.username}</span>
-                  </div>
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
-          </>
-        )}
-
-      </div>
       </div>
 
       {/* View Full Profile — pinned footer */}
@@ -249,6 +410,20 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
             {t("profile.viewFullProfile", "View Full Profile")}
           </Button>
         </div>
+      )}
+
+      {/* Report Dialog */}
+      {!isSelf && targetUserId && (
+        <ReportUserDialog
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          targetUserId={targetUserId}
+          targetProfile={{
+            display_name: profile.display_name,
+            username: profile.username,
+            avatar_url: profile.avatar_url,
+          }}
+        />
       )}
     </ProfileEffectWrapper>
   );
