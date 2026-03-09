@@ -1337,6 +1337,44 @@ export type Database = {
           },
         ]
       }
+      user_boosts: {
+        Row: {
+          canceled_at: string | null
+          id: string
+          server_id: string | null
+          started_at: string
+          status: string
+          streampay_transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          id?: string
+          server_id?: string | null
+          started_at?: string
+          status?: string
+          streampay_transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          canceled_at?: string | null
+          id?: string
+          server_id?: string | null
+          started_at?: string
+          status?: string
+          streampay_transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_boosts_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_devices: {
         Row: {
           browser: string
@@ -1393,51 +1431,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      user_boosts: {
-        Row: {
-          canceled_at: string | null
-          id: string
-          server_id: string | null
-          started_at: string
-          status: string
-          streampay_transaction_id: string | null
-          user_id: string
-        }
-        Insert: {
-          canceled_at?: string | null
-          id?: string
-          server_id?: string | null
-          started_at?: string
-          status?: string
-          streampay_transaction_id?: string | null
-          user_id: string
-        }
-        Update: {
-          canceled_at?: string | null
-          id?: string
-          server_id?: string | null
-          started_at?: string
-          status?: string
-          streampay_transaction_id?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_boosts_server_id_fkey"
-            columns: ["server_id"]
-            isOneToOne: false
-            referencedRelation: "servers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_boosts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       user_purchases: {
         Row: {
@@ -1509,6 +1502,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_server_boost_stats: {
+        Args: { p_server_id: string }
+        Returns: undefined
+      }
       check_username_available: {
         Args: { p_username: string }
         Returns: boolean
@@ -1535,6 +1532,16 @@ export type Database = {
           use_count: number
         }[]
       }
+      insert_boost_audit_log: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_changes: Json
+          p_server_id: string
+          p_target_id: string
+        }
+        Returns: undefined
+      }
       is_channel_member: {
         Args: { _channel_id: string; _user_id: string }
         Returns: boolean
@@ -1555,6 +1562,10 @@ export type Database = {
       is_server_member: {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean
+      }
+      recalculate_server_boost: {
+        Args: { p_server_id: string }
+        Returns: undefined
       }
       toggle_message_pin: { Args: { p_message_id: string }; Returns: boolean }
       update_entrance_sound: {
