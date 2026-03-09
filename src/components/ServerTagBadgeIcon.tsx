@@ -1,11 +1,14 @@
 import React from "react";
-import { Skull, FlaskConical, Star, Flame, Zap, Shield, LucideIcon } from "lucide-react";
-import { OrbBadge } from "@/components/ui/badges/OrbBadge";
-import { CrownBadge } from "@/components/ui/badges/CrownBadge";
-import SwordBadge from "@/components/ui/badges/SwordBadge";
-import TwistedMindsBadge from "@/components/ui/badges/TwistedMindsBadge";
-import FalconsBadge from "@/components/ui/badges/FalconsBadge";
-import PeaksBadge from "@/components/ui/badges/PeaksBadge";
+import CactusBadge from "@/components/ui/badges/CactusBadge";
+import CrystalBadge from "@/components/ui/badges/CrystalBadge";
+import HeartBadge from "@/components/ui/badges/HeartBadge";
+import FlameBadge from "@/components/ui/badges/FlameBadge";
+import DropBadge from "@/components/ui/badges/DropBadge";
+import RobotBadge from "@/components/ui/badges/RobotBadge";
+import SpiritBadge from "@/components/ui/badges/SpiritBadge";
+import StarBadge from "@/components/ui/badges/StarBadge";
+import CompassBadge from "@/components/ui/badges/CompassBadge";
+import BannerBadge from "@/components/ui/badges/BannerBadge";
 
 interface Props {
     badgeName?: string | null;
@@ -13,39 +16,28 @@ interface Props {
     className?: string;
 }
 
-// Lucide icon placeholders — color applied via style.color (CSS currentColor inheritance)
-const LUCIDE_BADGE_COMPONENTS: Record<string, LucideIcon> = {
-    skull:  Skull,
-    potion: FlaskConical,
-    star:   Star,
-    flame:  Flame,
-    zap:    Zap,
-    shield: Shield,
-};
-
-// Custom SVG badge components — color applied via the `color` prop
+// Custom SVG badge components — color prop accepted for API compatibility
 type CustomBadgeComponent = React.ComponentType<{ color?: string; className?: string }>;
 const CUSTOM_BADGE_COMPONENTS: Record<string, CustomBadgeComponent> = {
-    crown: CrownBadge,
-    orb:   OrbBadge,
-    sword: SwordBadge,
-    twistedminds: TwistedMindsBadge,
-    falcons: FalconsBadge,
-    peaks: PeaksBadge,
+    cactus:  CactusBadge,
+    crystal: CrystalBadge,
+    heart:   HeartBadge,
+    flame:   FlameBadge,
+    drop:    DropBadge,
+    robot:   RobotBadge,
+    spirit:  SpiritBadge,
+    star:    StarBadge,
+    compass: CompassBadge,
+    banner:  BannerBadge,
 };
 
 const ServerTagBadgeIcon = ({ badgeName, color, className = "h-4 w-4" }: Props) => {
     if (!badgeName) return null;
 
     const CustomComp = CUSTOM_BADGE_COMPONENTS[badgeName];
-    if (CustomComp) {
-        return <CustomComp color={color} className={className} />;
-    }
+    if (!CustomComp) return null;
 
-    const Icon = LUCIDE_BADGE_COMPONENTS[badgeName];
-    if (!Icon) return null;
-
-    return <Icon className={className} style={{ color }} />;
+    return <CustomComp color={color} className={className} />;
 };
 
 export default ServerTagBadgeIcon;

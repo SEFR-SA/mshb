@@ -7,13 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { Sword, Skull, FlaskConical, Star, Flame, Zap, Shield, Loader2, Lock } from "lucide-react";
-import { OrbBadge } from "@/components/ui/badges/OrbBadge";
-import { CrownBadge } from "@/components/ui/badges/CrownBadge";
-import SwordBadge from "@/components/ui/badges/SwordBadge";
-import TwistedMindsBadge from "@/components/ui/badges/TwistedMindsBadge";
-import FalconsBadge from "@/components/ui/badges/FalconsBadge";
-import PeaksBadge from "@/components/ui/badges/PeaksBadge";
+import { Loader2, Lock } from "lucide-react";
+import CactusBadge from "@/components/ui/badges/CactusBadge";
+import CrystalBadge from "@/components/ui/badges/CrystalBadge";
+import HeartBadge from "@/components/ui/badges/HeartBadge";
+import FlameBadge from "@/components/ui/badges/FlameBadge";
+import DropBadge from "@/components/ui/badges/DropBadge";
+import RobotBadge from "@/components/ui/badges/RobotBadge";
+import SpiritBadge from "@/components/ui/badges/SpiritBadge";
+import StarBadge from "@/components/ui/badges/StarBadge";
+import CompassBadge from "@/components/ui/badges/CompassBadge";
+import BannerBadge from "@/components/ui/badges/BannerBadge";
 import { cn } from "@/lib/utils";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 
@@ -38,18 +42,16 @@ const DEFAULT_CONTAINER_COLOR = "#1e293b";
 const HEX_REGEX = /^#[0-9a-fA-F]{6}$/;
 
 const BADGE_OPTIONS = [
-  { id: "crown",  Icon: CrownBadge,   label: "Crown",  custom: true },
-  { id: "sword",  Icon: SwordBadge,   label: "Sword",  custom: true },
-  { id: "skull",  Icon: Skull,        label: "Skull"  },
-  { id: "potion", Icon: FlaskConical, label: "Potion" },
-  { id: "star",   Icon: Star,         label: "Star"   },
-  { id: "flame",  Icon: Flame,        label: "Flame"  },
-  { id: "zap",    Icon: Zap,          label: "Zap"    },
-  { id: "shield", Icon: Shield,       label: "Shield" },
-  { id: "orb",    Icon: OrbBadge,     label: "Orb",   custom: true },
-  { id: "twistedminds", Icon: TwistedMindsBadge, label: "Twisted Minds", custom: true },
-  { id: "falcons", Icon: FalconsBadge, label: "Falcons", custom: true },
-  { id: "peaks", Icon: PeaksBadge, label: "Peaks", custom: true },
+  { id: "cactus",  Icon: CactusBadge,  label: "Cactus",  custom: true },
+  { id: "crystal", Icon: CrystalBadge, label: "Crystal", custom: true },
+  { id: "heart",   Icon: HeartBadge,   label: "Heart",   custom: true },
+  { id: "flame",   Icon: FlameBadge,   label: "Flame",   custom: true },
+  { id: "drop",    Icon: DropBadge,    label: "Drop",    custom: true },
+  { id: "robot",   Icon: RobotBadge,   label: "Robot",   custom: true },
+  { id: "spirit",  Icon: SpiritBadge,  label: "Spirit",  custom: true },
+  { id: "star",    Icon: StarBadge,    label: "Star",    custom: true },
+  { id: "compass", Icon: CompassBadge, label: "Compass", custom: true },
+  { id: "banner",  Icon: BannerBadge,  label: "Banner",  custom: true },
 ];
 
 const ServerTagTab = ({ serverId, canEdit }: Props) => {
@@ -61,7 +63,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
   const [saving, setSaving] = useState(false);
 
   const [tagName, setTagName] = useState("");
-  const [tagBadge, setTagBadge] = useState("crown");
+  const [tagBadge, setTagBadge] = useState("cactus");
   const [tagColor, setTagColor] = useState(DEFAULT_COLOR);
   const [hexInput, setHexInput] = useState(DEFAULT_COLOR);
   const [tagContainerColor, setTagContainerColor] = useState(DEFAULT_CONTAINER_COLOR);
@@ -82,7 +84,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       if (s) {
         setTagName((s as any).server_tag_name ?? "");
-        setTagBadge((s as any).server_tag_badge ?? "crown");
+        setTagBadge((s as any).server_tag_badge ?? "cactus");
         const badgeColor = (s as any).server_tag_color ?? DEFAULT_COLOR;
         setTagColor(badgeColor);
         setHexInput(badgeColor);
