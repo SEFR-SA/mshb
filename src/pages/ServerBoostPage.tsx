@@ -178,6 +178,16 @@ const ServerBoostPage = () => {
 
   const handleBoost = useCallback(async () => {
     if (!serverId) return;
+    // If user has inventory boosts, show dialog instead
+    if (availableBoosts > 0) {
+      setShowInventoryDialog(true);
+      return;
+    }
+    await openCheckout();
+  }, [serverId, availableBoosts]);
+
+  const openCheckout = useCallback(async () => {
+    if (!serverId) return;
     setBoosting(true);
     const res = await supabase.functions.invoke("create-streampay-checkout", {
       body: {
@@ -203,6 +213,31 @@ const ServerBoostPage = () => {
       }, 500);
     }
   }, [serverId, t]);
+
+  const handleApplyInventoryBoost = useCallback(async () => {
+    if (!serverId) return;
+    setApplyingBoost(true);
+    try {
+      const { data, error } = await supabase.rpc("apply_inventory_boost", {
+        p_server_id: serverId,
+      });
+      if (error) throw error;
+      if (data) {
+        toast({
+          title: t("serverBoost.boostSuccess", "Server successfully boosted!"),
+          description: t("serverBoost.inventoryBoostUsed", "Used an inventory boost from your Mshb Pro subscription."),
+        });
+        fetchData();
+      } else {
+        toast({ title: t("common.error"), description: t("serverBoost.noInventoryBoosts", "No available boosts"), variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: t("common.error"), variant: "destructive" });
+    } finally {
+      setApplyingBoost(false);
+      setShowInventoryDialog(false);
+    }
+  }, [serverId, t, fetchData]);
 
   if (loading || !server) {
     return (
