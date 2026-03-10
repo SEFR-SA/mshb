@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.streampay-webhook]
 verify_jwt = false
+
+[functions.create-pro-checkout]
+verify_jwt = false

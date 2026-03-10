@@ -1,9 +1,14 @@
-import React from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Check, X, Sparkles, Crown } from "lucide-react";
+import { Check, X, Sparkles, Crown, Loader2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+
+const PROD_BASE = "https://mshb.vercel.app";
 
 interface FeatureRow {
   label: string;
@@ -24,6 +29,7 @@ const FEATURES: FeatureRow[] = [
   { label: "Server Media",       free: "50 Emojis, 5 Stickers",        pro: "250 Emojis, 50 Stickers" },
   { label: "Soundboard",         free: "4 Custom Sounds",              pro: "48 Custom Sounds" },
   { label: "Server Banner",      free: "Static image",                 pro: "Animated Banners" },
+  { label: "Included Boosts",    free: false,                          pro: "2 Server Boosts" },
 ];
 
 const Cell = ({ value, isPro }: { value: string | boolean; isPro: boolean }) => {
@@ -41,9 +47,115 @@ const Cell = ({ value, isPro }: { value: string | boolean; isPro: boolean }) => 
 
 const SubscriptionsTab = () => {
   const { t } = useTranslation();
+  const { user, profile } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [subscribing, setSubscribing] = useState(false);
+  const [awaitingPayment, setAwaitingPayment] = useState(false);
+  const [subscription, setSubscription] = useState<{
+    id: string;
+    tier: string;
+    status: string;
+    started_at: string;
+  } | null>(null);
 
-  const onSubscribe = () =>
-    toast({ title: t("pro.billingComingSoon") });
+  const windowCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchSubscription = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("user_subscriptions" as any)
+      .select("id, tier, status, started_at")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setSubscription(data as any);
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => {
+    fetchSubscription();
+  }, [fetchSubscription]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (windowCheckRef.current) clearInterval(windowCheckRef.current);
+    };
+  }, []);
+
+  // Realtime listener for instant UI update after payment
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`pro-sub-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "user_subscriptions",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          if (windowCheckRef.current) {
+            clearInterval(windowCheckRef.current);
+            windowCheckRef.current = null;
+          }
+          toast({
+            title: t("pro.subscribeSuccess", "Welcome to Mshb Pro!"),
+            description: t("pro.subscribeSuccessDesc", "Your premium features are now active."),
+          });
+          setAwaitingPayment(false);
+          setSubscribing(false);
+          fetchSubscription();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, fetchSubscription, t]);
+
+  const handleSubscribe = async () => {
+    setSubscribing(true);
+    const res = await supabase.functions.invoke("create-pro-checkout", {
+      body: {
+        success_url: `${PROD_BASE}/#/settings`,
+        cancel_url: `${PROD_BASE}/#/settings`,
+      },
+    });
+
+    if (res.error || res.data?.error) {
+      setSubscribing(false);
+      toast({ title: t("common.error"), description: res.data?.error || res.error?.message, variant: "destructive" });
+    } else {
+      const paymentWindow = window.open(res.data.payment_url, "_blank");
+      setSubscribing(false);
+      setAwaitingPayment(true);
+      windowCheckRef.current = setInterval(() => {
+        if (paymentWindow?.closed) {
+          clearInterval(windowCheckRef.current!);
+          windowCheckRef.current = null;
+          setAwaitingPayment(false);
+          toast({ title: t("serverBoost.paymentWindowClosed", "Payment window closed") });
+        }
+      }, 500);
+    }
+  };
+
+  const isActive = !!subscription || profile?.is_pro;
+  const isButtonDisabled = subscribing || awaitingPayment;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -56,22 +168,58 @@ const SubscriptionsTab = () => {
               <Crown className="h-7 w-7 text-primary" />
             </div>
           </div>
-          <h2 className="text-2xl font-extrabold text-foreground leading-tight">
-            Unlock the Ultimate Experience
-            <br />
-            <span className="text-primary">with Mshb Pro</span>
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            Premium themes, animated avatars, higher upload limits, and much more — all in one subscription.
-          </p>
-          <Button
-            size="lg"
-            className="mt-2 gap-2 font-bold"
-            onClick={onSubscribe}
-          >
-            <Sparkles className="h-4 w-4" />
-            {t("pro.subscribeButton")}
-          </Button>
+
+          {isActive ? (
+            <>
+              <h2 className="text-2xl font-extrabold text-foreground leading-tight">
+                {t("pro.activeTitle", "You're a Pro Member!")}
+              </h2>
+              <div className="flex items-center justify-center gap-2">
+                <Badge className="bg-primary/20 text-primary border-primary/30 gap-1">
+                  <Zap className="h-3 w-3" /> {t("pro.active", "Active")}
+                </Badge>
+                {subscription && (
+                  <span className="text-xs text-muted-foreground">
+                    {t("pro.since", "Since")} {new Date(subscription.started_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                {t("pro.activeDesc", "You have access to all premium features including 2 server boosts.")}
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-extrabold text-foreground leading-tight">
+                Unlock the Ultimate Experience
+                <br />
+                <span className="text-primary">with Mshb Pro</span>
+              </h2>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                Premium themes, animated avatars, higher upload limits, 2 server boosts, and much more — all in one subscription.
+              </p>
+              <Button
+                size="lg"
+                className="mt-2 gap-2 font-bold"
+                onClick={handleSubscribe}
+                disabled={isButtonDisabled}
+              >
+                {(subscribing || awaitingPayment) ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {awaitingPayment
+                  ? t("serverBoost.awaitingPayment", "Awaiting Payment...")
+                  : t("pro.subscribeButton")}
+              </Button>
+              {awaitingPayment && (
+                <p className="text-sm text-muted-foreground animate-pulse mt-1">
+                  {t("serverBoost.awaitingPaymentHint", "A payment window has opened. This page will automatically update once your payment is complete.")}
+                </p>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -115,13 +263,25 @@ const SubscriptionsTab = () => {
       </div>
 
       {/* CTA Footer */}
-      <div className="text-center space-y-2">
-        <Button size="lg" className="gap-2 font-bold w-full sm:w-auto" onClick={onSubscribe}>
-          <Sparkles className="h-4 w-4" />
-          {t("pro.subscribeButton")}
-        </Button>
-        <p className="text-xs text-muted-foreground">{t("pro.billingComingSoon")}</p>
-      </div>
+      {!isActive && (
+        <div className="text-center space-y-2">
+          <Button
+            size="lg"
+            className="gap-2 font-bold w-full sm:w-auto"
+            onClick={handleSubscribe}
+            disabled={isButtonDisabled}
+          >
+            {(subscribing || awaitingPayment) ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            {awaitingPayment
+              ? t("serverBoost.awaitingPayment", "Awaiting Payment...")
+              : t("pro.subscribeButton")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
