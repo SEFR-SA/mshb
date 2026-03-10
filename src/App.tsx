@@ -25,6 +25,7 @@ import Chat from "@/pages/Chat";
 import GroupChat from "@/pages/GroupChat";
 import SettingsModal from "@/components/settings/SettingsModal";
 import ServerView from "@/pages/ServerView";
+import ServerBoostPage from "@/pages/ServerBoostPage";
 import InviteJoin from "@/pages/InviteJoin";
 import BoostSuccess from "@/pages/BoostSuccess";
 import BoostCancel from "@/pages/BoostCancel";
@@ -210,6 +211,7 @@ const App = () => (
                     </Route>
                     <Route path="server/:serverId" element={<ServerView />} />
                     <Route path="server/:serverId/channel/:channelId" element={<ServerView />} />
+                    <Route path="server/:serverId/boost" element={<ServerBoostPage />} />
                     <Route path="settings" element={<SettingsModal />} />
                   </Route>
                   <Route path="/invite/:code" element={<InviteJoin />} />
