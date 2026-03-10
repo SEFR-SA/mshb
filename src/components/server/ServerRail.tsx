@@ -618,12 +618,6 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
 
       <CreateServerDialog open={createOpen} onOpenChange={setCreateOpen} />
       <JoinServerDialog open={joinOpen} onOpenChange={setJoinOpen} />
-      <ServerBoostModal
-        open={boostModal.open}
-        onOpenChange={(o) => setBoostModal((prev) => ({ ...prev, open: o }))}
-        serverId={boostModal.serverId}
-        serverName={boostModal.serverName}
-      />
       {settingsServerId && (
         <ServerSettingsDialog
           serverId={settingsServerId}

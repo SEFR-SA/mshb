@@ -211,6 +211,7 @@ const App = () => (
                     </Route>
                     <Route path="server/:serverId" element={<ServerView />} />
                     <Route path="server/:serverId/channel/:channelId" element={<ServerView />} />
+                    <Route path="server/:serverId/boost" element={<ServerBoostPage />} />
                     <Route path="settings" element={<SettingsModal />} />
                   </Route>
                   <Route path="/invite/:code" element={<InviteJoin />} />
