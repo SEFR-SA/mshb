@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 const BoostCancel = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const serverId = searchParams.get("server_id");
 
   return (
     <div className="flex h-screen items-center justify-center bg-background p-4">
