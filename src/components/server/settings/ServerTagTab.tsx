@@ -231,10 +231,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
               )}
               title={label}
             >
-              {custom
-                ? <Icon color={tagBadge === id ? tagColor : undefined} className="h-5 w-5" />
-                : <Icon className="h-5 w-5" style={tagBadge === id ? { color: tagColor } : undefined} />
-              }
+              <Icon color={tagBadge === id ? tagColor : undefined} className="h-5 w-5" />
               <span>{label}</span>
             </button>
           ))}
