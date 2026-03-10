@@ -103,13 +103,13 @@ const AppLayout = () => {
       {/* Main content row — fills all remaining height below the title bar */}
       <div className="flex flex-1 overflow-hidden min-h-0 relative">
         {/* ServerRail is rendered by child views (HomeView, ServerView) on mobile, not here */}
-        {!isMobile && <ServerRail />}
+        {!isMobile && !isBoostPage && <ServerRail />}
 
         {/* Floating user panel */}
-        {!isMobile && (
+        {!isMobile && !isBoostPage && (
           <UserPanel className="absolute bottom-0 left-0 z-50 m-2 w-[calc(72px+240px-16px)] bg-background border border-border/50 rounded-lg shadow-lg" />
         )}
-        {isMobile && !isFullPageView && !isFriendsDashboard && (
+        {isMobile && !isFullPageView && !isFriendsDashboard && !isBoostPage && (
           <UserPanel className="fixed bottom-[60px] left-2 right-2 z-50 bg-background border border-border/50 rounded-lg" />
         )}
 
