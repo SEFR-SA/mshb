@@ -1,75 +1,79 @@
-# CLAUDE.md — MSHB Project Guide
+## Server Boost Page — Implementation Plan
 
-## Project Purpose
+### Overview
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+Replace the small `ServerBoostModal` with a full-page, immersive boost experience at `/server/:serverId/boost`, inspired by the Discord reference screenshot.
 
-## Tech Stack
+---
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+### Step 1: Create `src/pages/ServerBoostPage.tsx`
 
-## Core Directives (CRITICAL — Always Enforce)
+A new page component that:
 
-### 1. Plan First
+- Reads `serverId` from `useParams`, fetches server data (name, avatar, boost_count, boost_level) and the current user's personal boost count for that server from `user_boosts`
+- Uses `useNavigate` for the back button and `useAuth` for the current user
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+**Sections inside the page (single scrollable container):**
 
-### 2. Single Source of Truth (SSOT)
+**A. Hero Section**
 
-Never duplicate display logic. Always use the canonical shared components:
+- Animated background orbs using absolute-positioned divs with `blur-[120px]` and purple/pink gradient colors
+- Centered server avatar + server name
+- Pill badge: "🔮 X Boosts"
+- Muted line: "(You've Boosted this server X times!)"
+- Large bold heading: "BOOST THIS SERVER & UNLOCK PERKS FOR EVERYONE"
+- Two buttons: primary gradient "Boost This Server" (with `ref` for IntersectionObserver), outline "Gift Mshb Pro"
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+**B. Level Cards (3-column, stacks on mobile)**
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+- A continuous horizontal progress line across the top of all 3 cards
+- Circular gem badges at each card's top-left intersecting the line
+- Dynamic coloring: if `boostCount >= threshold`, the circle + line segment lights up with `bg-primary`; otherwise `bg-muted`
+- Glassmorphic cards (`bg-card/50 backdrop-blur-md border border-border/40 rounded-xl`)
+- Card content per the spec (Level 1: 2 boosts, Level 2: 7 boosts, Level 3: 14 boosts) with specific perks listed
 
-### 3. Pro Gating
+**C. Comparison Table**
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+- Title: "Uplevel this server with the best perks"
+- Responsive grid/table with columns: Perks, Unboosted, Level 1, Level 2, Level 3
+- Level 2 column highlighted with a pink/primary border and "RECOMMENDED" badge
+- Rows: Emoji Slots, Sticker Slots, Soundboard Slots, Stream Quality, Audio Quality, Upload Size Limit, Video Stage Seats, Animated Server Icon, Server Invite Background, Server Banner, Custom Role Icons, Custom Invite Link
+- Values use numbers or `<Check />`/`<X />` icons from lucide-react
 
-### 4. No Hallucinations
+**E. Floating Sticky Action Bar**
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+- `IntersectionObserver` on the hero "Boost This Server" button ref
+- When that button scrolls out of view, a `fixed bottom-0` bar slides up with server avatar, server name, and "Boost This Server" button
+- Uses `backdrop-blur-xl bg-background/90 border-t`
 
-### 5. No Over-Engineering
+---
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+### Step 2: Route in `App.tsx`
 
-## Documentation Directory
+Add inside the protected `<Route path="/">` block, alongside existing server routes:
 
-Read these files for specific details — do NOT rely on memory alone:
+```
+<Route path="server/:serverId/boost" element={<ServerBoostPage />} />
+```
 
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+---
 
-## Cosmetic Asset Specs
+### Step 3: Update `ServerRail.tsx` Context Menu
 
-Per-asset guides with exact dimensions, config files, and wrapper usage:
+Change the "Boost Server" context menu item (line ~513) from opening `setBoostModal(...)` to `navigate(`/server/${s.id}/boost`)`. Remove the `ServerBoostModal` component and its state from `ServerRail.tsx`.
 
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
+---
+
+### Step 4: i18n additions in `en.ts` and `ar.ts`
+
+Add new keys under `serverBoost` for the new page content (hero title, comparison table headers, recognition cards, etc.).
+
+---
+
+### Files to modify
+
+- **Create**: `src/pages/ServerBoostPage.tsx` — the full-page component
+- **Edit**: `src/App.tsx` — add route (line ~211)
+- **Edit**: `src/components/server/ServerRail.tsx` — replace modal open with navigate, remove modal
+- **Edit**: `src/i18n/en.ts` — add new i18n keys
+- **Edit**: `src/i18n/ar.ts` — add Arabic translations for new keys
