@@ -102,6 +102,15 @@ const ServerBoostPage = () => {
     fetchData();
   }, [fetchData]);
 
+  const windowCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup window polling on unmount
+  useEffect(() => {
+    return () => {
+      if (windowCheckRef.current) clearInterval(windowCheckRef.current);
+    };
+  }, []);
+
   // Realtime subscription on user_boosts for instant UI sync
   useEffect(() => {
     if (!user?.id || !serverId) return;
@@ -118,13 +127,16 @@ const ServerBoostPage = () => {
         (payload) => {
           const newRow = payload.new as { server_id?: string };
           if (newRow.server_id === serverId) {
+            if (windowCheckRef.current) {
+              clearInterval(windowCheckRef.current);
+              windowCheckRef.current = null;
+            }
             toast({
               title: t("serverBoost.boostSuccess", "Server successfully boosted!"),
               description: t("serverBoost.boostSuccessDesc", "Thank you for boosting this server!"),
             });
             setAwaitingPayment(false);
             setBoosting(false);
-            // Refetch data to update counts
             fetchData();
           }
         }
