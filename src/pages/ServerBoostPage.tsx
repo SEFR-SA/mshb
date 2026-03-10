@@ -154,7 +154,7 @@ const ServerBoostPage = () => {
       </button>
 
       {/* ===== HERO SECTION ===== */}
-      <section className="relative flex flex-col items-center justify-center px-6 pt-20 pb-16 text-center overflow-hidden">
+      <section className="relative flex flex-col items-center justify-center px-6 pt-20 pb-16 text-center">
         {/* Animated background orbs */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-purple-600/20 blur-[120px] animate-pulse" />
