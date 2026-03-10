@@ -72,6 +72,10 @@ const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) =
         (payload) => {
           const newRow = payload.new as { server_id?: string };
           if (newRow.server_id === serverId) {
+            if (windowCheckRef.current) {
+              clearInterval(windowCheckRef.current);
+              windowCheckRef.current = null;
+            }
             toast({
               title: t("serverBoost.boostSuccess", "Server successfully boosted!"),
               description: t("serverBoost.boostSuccessDesc", "Thank you for boosting this server!"),
