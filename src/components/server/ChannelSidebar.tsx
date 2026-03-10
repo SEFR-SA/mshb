@@ -215,6 +215,13 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [currentUserRole, setCurrentUserRole] = useState<string>("member");
   const [goLiveOpen, setGoLiveOpen] = useState(false);
   const [streamCardOpen, setStreamCardOpen] = useState<string | null>(null);
+
+  // Listen for "open-go-live" event from UserPanel share-screen button
+  useEffect(() => {
+    const handler = () => setGoLiveOpen(true);
+    window.addEventListener("open-go-live", handler);
+    return () => window.removeEventListener("open-go-live", handler);
+  }, []);
   // speakingUsers state removed — now driven by p.is_speaking from DB
 
   // Edit/Delete/Manage members state
