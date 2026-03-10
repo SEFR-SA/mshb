@@ -98,11 +98,11 @@ Deno.serve(async (req) => {
     }
 
     // ── 4. Create StreamPay checkout session ──────────────────────────────
-    const STREAMPAY_SECRET_KEY = Deno.env.get("STREAMPAY_SECRET_KEY");
+    const STREAMPAY_X_API_KEY = Deno.env.get("STREAMPAY_X_API_KEY");
     const STREAMPAY_API_BASE_URL =
-      Deno.env.get("STREAMPAY_API_BASE_URL") ?? "https://api.streampay.sa";
+      Deno.env.get("STREAMPAY_API_BASE_URL") ?? "https://stream-app-service.streampay.sa";
 
-    if (!STREAMPAY_SECRET_KEY) {
+    if (!STREAMPAY_X_API_KEY) {
       return new Response(
         JSON.stringify({ error: "Payment gateway not configured" }),
         {
@@ -113,11 +113,11 @@ Deno.serve(async (req) => {
     }
 
     const streampayResponse = await fetch(
-      `${STREAMPAY_API_BASE_URL}/v1/payments`,
+      `${STREAMPAY_API_BASE_URL}/api/v2/payments`,
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${STREAMPAY_SECRET_KEY}`,
+          "x-api-key": STREAMPAY_X_API_KEY,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
