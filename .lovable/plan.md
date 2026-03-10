@@ -1,75 +1,62 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Root Cause Analysis
 
-## Tech Stack
+From the webhook logs, StreamPay's actual webhook format is completely different from what our code expects. Here's what StreamPay actually sends:
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+**Actual StreamPay headers:**
+- `x-webhook-event: PAYMENT_SUCCEEDED` (not in body as `event.type`)
+- `x-webhook-signature: t=1773106882,v1=4cedf355...` (not `X-StreamPay-Signature` with raw HMAC)
+- `x-webhook-entity-type: PAYMENT`
+- `x-webhook-entity-id: b3e78a7a-...`
+- `x-webhook-timestamp: 1773106882`
+- User-Agent: `StreamApp-Webhook/1.0`
+- No `x-api-key` header sent by StreamPay on webhooks
 
-## Core Directives (CRITICAL — Always Enforce)
+**Three critical mismatches:**
 
-### 1. Plan First
+1. **Authentication fails** — Our code looks for `X-StreamPay-Signature` (raw hex HMAC) or `x-api-key`. StreamPay sends `x-webhook-signature` with format `t=<timestamp>,v1=<hash>` (Stripe-style signed payload). Neither auth path matches, so every webhook gets 403'd.
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+2. **Event type routing fails** — Our code reads `event.type` from the JSON body expecting `"payment.paid"`. StreamPay puts the event type in the `x-webhook-event` header as `"PAYMENT_SUCCEEDED"`.
 
-### 2. Single Source of Truth (SSOT)
+3. **Payload structure mismatch** — Our code expects `event.data.id` and `event.data.metadata.userId/serverId`. The actual body structure likely differs (entity ID is in `x-webhook-entity-id` header, and metadata may be under `custom_metadata`).
 
-Never duplicate display logic. Always use the canonical shared components:
+## Plan
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+### 1. Fix webhook signature verification
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+Rewrite `isRequestAuthentic` to handle StreamPay's actual signature format:
+- Read `x-webhook-signature` header (not `X-StreamPay-Signature`)
+- Parse the `t=<timestamp>,v1=<hash>` format
+- Compute HMAC-SHA256 over `<timestamp>.<rawBody>` using `STREAMPAY_SECRET_KEY`
+- Compare the computed hash against `v1`
+- Optional: reject if timestamp is too old (replay protection)
 
-### 3. Pro Gating
+### 2. Fix event type routing
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+- Read `x-webhook-event` header instead of `event.type` from body
+- Map `PAYMENT_SUCCEEDED` → insert boost (was `payment.paid`)
+- Map `PAYMENT_FAILED` → mark past_due
+- Map `PAYMENT_REFUNDED` → mark canceled
 
-### 4. No Hallucinations
+### 3. Fix payload data extraction
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+- Use `x-webhook-entity-id` header as the transaction/payment ID
+- Parse body for `custom_metadata.userId` and `custom_metadata.serverId` (the fields we passed when creating the payment link)
+- Add detailed logging of the parsed body on first successful webhook to confirm structure
 
-### 5. No Over-Engineering
+### 4. Verify database triggers exist
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+The logs show `<db-triggers>There are no triggers in the database.</db-triggers>` — this is suspicious. The `handle_boost_change` and `trigger_user_boost_change` functions exist but may not be attached as triggers. We need to verify and create the trigger if missing:
+```sql
+CREATE TRIGGER on_user_boost_change
+  AFTER INSERT OR UPDATE OR DELETE ON user_boosts
+  FOR EACH ROW EXECUTE FUNCTION handle_boost_change();
+```
 
-## Documentation Directory
+Without this trigger, even if the webhook successfully inserts into `user_boosts`, the `servers.boost_count`/`boost_level` and `server_members.is_booster` fields will never update.
 
-Read these files for specific details — do NOT rely on memory alone:
+### Files to modify
+- `supabase/functions/streampay-webhook/index.ts` — complete rewrite of auth + event handling
+- Database migration — create missing trigger on `user_boosts` table
 
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
