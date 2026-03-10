@@ -50,6 +50,7 @@ const AppLayout = () => {
 
   // Hide the floating UserPanel on the Friends Dashboard to avoid overlapping the FAB
   const isFriendsDashboard = location.pathname === "/" || location.pathname === "/friends";
+  const isBoostPage = /\/server\/[^/]+\/boost/.test(location.pathname);
 
   return (
     <div className={`flex flex-col h-screen overflow-hidden ${colorTheme === "default" ? "bg-background" : ""}`} style={colorTheme !== "default" ? gradientStyle : undefined}>
