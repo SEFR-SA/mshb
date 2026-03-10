@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_roles: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       blocked_users: {
         Row: {
           blocked_id: string
@@ -821,6 +845,8 @@ export type Database = {
           active_server_tag_id: string | null
           avatar_decoration_url: string | null
           avatar_url: string | null
+          ban_reason: string | null
+          banned_until: string | null
           banner_url: string | null
           color_theme: string | null
           created_at: string
@@ -828,6 +854,7 @@ export type Database = {
           display_name: string | null
           gender: string | null
           id: string
+          is_banned: boolean
           is_pro: boolean
           language: string | null
           last_seen: string | null
@@ -850,6 +877,8 @@ export type Database = {
           active_server_tag_id?: string | null
           avatar_decoration_url?: string | null
           avatar_url?: string | null
+          ban_reason?: string | null
+          banned_until?: string | null
           banner_url?: string | null
           color_theme?: string | null
           created_at?: string
@@ -857,6 +886,7 @@ export type Database = {
           display_name?: string | null
           gender?: string | null
           id?: string
+          is_banned?: boolean
           is_pro?: boolean
           language?: string | null
           last_seen?: string | null
@@ -879,6 +909,8 @@ export type Database = {
           active_server_tag_id?: string | null
           avatar_decoration_url?: string | null
           avatar_url?: string | null
+          ban_reason?: string | null
+          banned_until?: string | null
           banner_url?: string | null
           color_theme?: string | null
           created_at?: string
@@ -886,6 +918,7 @@ export type Database = {
           display_name?: string | null
           gender?: string | null
           id?: string
+          is_banned?: boolean
           is_pro?: boolean
           language?: string | null
           last_seen?: string | null
@@ -912,6 +945,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles_reports: {
+        Row: {
+          created_at: string
+          id: string
+          main_reason: string
+          reported_elements: string[]
+          reported_id: string
+          reporter_id: string
+          status: string
+          sub_reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          main_reason: string
+          reported_elements?: string[]
+          reported_id: string
+          reporter_id: string
+          status?: string
+          sub_reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          main_reason?: string
+          reported_elements?: string[]
+          reported_id?: string
+          reporter_id?: string
+          status?: string
+          sub_reason?: string | null
+        }
+        Relationships: []
       }
       server_audit_logs: {
         Row: {
@@ -1511,6 +1577,16 @@ export type Database = {
         Returns: boolean
       }
       generate_invite_code: { Args: never; Returns: string }
+      get_admin_role_for: {
+        Args: { p_user_id: string }
+        Returns: {
+          created_at: string
+          granted_by: string
+          id: string
+          role: string
+          user_id: string
+        }[]
+      }
       get_email_by_username: { Args: { p_username: string }; Returns: string }
       get_server_id_by_invite: { Args: { p_code: string }; Returns: string }
       get_server_id_by_invite_link: {
@@ -1555,6 +1631,7 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      is_platform_admin: { Args: { p_user_id: string }; Returns: boolean }
       is_server_admin: {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean
