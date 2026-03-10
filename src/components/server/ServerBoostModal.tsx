@@ -29,6 +29,14 @@ const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) =
   const [fetching, setFetching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
+  const windowCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup window polling on unmount
+  useEffect(() => {
+    return () => {
+      if (windowCheckRef.current) clearInterval(windowCheckRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open || !serverId) return;
