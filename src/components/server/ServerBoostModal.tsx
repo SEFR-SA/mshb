@@ -71,7 +71,7 @@ const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) =
         variant: "destructive",
       });
     } else {
-      window.location.href = res.data.payment_url;
+      window.open(res.data.payment_url, '_blank');
     }
   };
 
