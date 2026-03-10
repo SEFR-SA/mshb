@@ -1,75 +1,45 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Root Cause
 
-## Tech Stack
+Two issues are preventing boosts from working:
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+### Issue 1: `custom_metadata` extraction path is wrong
 
-## Core Directives (CRITICAL — Always Enforce)
+The edge function logs prove this clearly:
 
-### 1. Plan First
+```
+Body keys: ["data", "status", "entity_id", "timestamp", "entity_url", "event_type", "entity_type"]
+userId: undefined, serverId: undefined
+```
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+The code reads `body.custom_metadata` (top-level), but StreamPay nests it inside `body.data`. The fix is to look for metadata in `body.data.custom_metadata` (and fall back to `body.data.metadata` in case StreamPay uses either key).
 
-### 2. Single Source of Truth (SSOT)
+Line 107 currently:
+```typescript
+const customMetadata = body.custom_metadata as Record<string, string> | undefined;
+```
+Should be:
+```typescript
+const data = body.data as Record<string, unknown> | undefined;
+const customMetadata = (data?.custom_metadata ?? data?.metadata) as Record<string, string> | undefined;
+```
 
-Never duplicate display logic. Always use the canonical shared components:
+Additionally, add a `console.log("Body.data keys:", Object.keys(data ?? {}))` to confirm the structure on the next webhook.
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+### Issue 2: Database trigger is still missing
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+The context shows `<db-triggers>There are no triggers in the database.</db-triggers>`. The previous migration to create `on_user_boost_change` either failed or wasn't applied. Without this trigger, even if the insert succeeds, `servers.boost_count`/`boost_level` and `server_members.is_booster` are never updated.
 
-### 3. Pro Gating
+Need to create a new migration:
+```sql
+DROP TRIGGER IF EXISTS on_user_boost_change ON public.user_boosts;
+CREATE TRIGGER on_user_boost_change
+  AFTER INSERT OR UPDATE OR DELETE ON public.user_boosts
+  FOR EACH ROW EXECUTE FUNCTION public.handle_boost_change();
+```
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+### Files to modify
+- `supabase/functions/streampay-webhook/index.ts` — fix `custom_metadata` extraction path (line 107-109)
+- Database migration — re-create the missing trigger
 
-### 4. No Hallucinations
-
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
-
-### 5. No Over-Engineering
-
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
-
-## Documentation Directory
-
-Read these files for specific details — do NOT rely on memory alone:
-
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
