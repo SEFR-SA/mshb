@@ -127,7 +127,7 @@ const ServerBoostPage = () => {
     if (res.error || res.data?.error) {
       toast({ title: t("common.error"), description: res.data?.error || res.error?.message, variant: "destructive" });
     } else {
-      window.location.href = res.data.payment_url;
+      window.open(res.data.payment_url, '_blank');
     }
   }, [serverId, t]);
 
