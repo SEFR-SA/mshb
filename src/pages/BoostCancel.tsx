@@ -1,12 +1,14 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const BoostCancel = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const serverId = searchParams.get("server_id");
 
   return (
     <div className="flex h-screen items-center justify-center bg-background p-4">
@@ -22,7 +24,7 @@ const BoostCancel = () => {
             <h2 className="text-xl font-bold">{t("serverBoost.cancelTitle")}</h2>
             <p className="text-sm text-muted-foreground mt-1">{t("serverBoost.cancelMessage")}</p>
           </div>
-          <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
+          <Button variant="outline" className="w-full" onClick={() => navigate(serverId ? `/server/${serverId}/boost` : "/")}>
             {t("serverBoost.returnToApp")}
           </Button>
         </div>
