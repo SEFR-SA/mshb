@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Zap, Check, Lock, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -29,6 +29,14 @@ const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) =
   const [fetching, setFetching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
+  const windowCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup window polling on unmount
+  useEffect(() => {
+    return () => {
+      if (windowCheckRef.current) clearInterval(windowCheckRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open || !serverId) return;
@@ -64,6 +72,10 @@ const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) =
         (payload) => {
           const newRow = payload.new as { server_id?: string };
           if (newRow.server_id === serverId) {
+            if (windowCheckRef.current) {
+              clearInterval(windowCheckRef.current);
+              windowCheckRef.current = null;
+            }
             toast({
               title: t("serverBoost.boostSuccess", "Server successfully boosted!"),
               description: t("serverBoost.boostSuccessDesc", "Thank you for boosting this server!"),
@@ -119,9 +131,17 @@ const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) =
         variant: "destructive",
       });
     } else {
-      window.open(res.data.payment_url, '_blank');
+      const paymentWindow = window.open(res.data.payment_url, '_blank');
       setLoading(false);
       setAwaitingPayment(true);
+      windowCheckRef.current = setInterval(() => {
+        if (paymentWindow?.closed) {
+          clearInterval(windowCheckRef.current!);
+          windowCheckRef.current = null;
+          setAwaitingPayment(false);
+          toast({ title: t("serverBoost.paymentWindowClosed", "Payment window closed") });
+        }
+      }, 500);
     }
   };
 

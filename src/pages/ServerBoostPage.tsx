@@ -102,6 +102,15 @@ const ServerBoostPage = () => {
     fetchData();
   }, [fetchData]);
 
+  const windowCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup window polling on unmount
+  useEffect(() => {
+    return () => {
+      if (windowCheckRef.current) clearInterval(windowCheckRef.current);
+    };
+  }, []);
+
   // Realtime subscription on user_boosts for instant UI sync
   useEffect(() => {
     if (!user?.id || !serverId) return;
@@ -118,13 +127,16 @@ const ServerBoostPage = () => {
         (payload) => {
           const newRow = payload.new as { server_id?: string };
           if (newRow.server_id === serverId) {
+            if (windowCheckRef.current) {
+              clearInterval(windowCheckRef.current);
+              windowCheckRef.current = null;
+            }
             toast({
               title: t("serverBoost.boostSuccess", "Server successfully boosted!"),
               description: t("serverBoost.boostSuccessDesc", "Thank you for boosting this server!"),
             });
             setAwaitingPayment(false);
             setBoosting(false);
-            // Refetch data to update counts
             fetchData();
           }
         }
@@ -162,9 +174,17 @@ const ServerBoostPage = () => {
       setBoosting(false);
       toast({ title: t("common.error"), description: res.data?.error || res.error?.message, variant: "destructive" });
     } else {
-      window.open(res.data.payment_url, '_blank');
+      const paymentWindow = window.open(res.data.payment_url, '_blank');
       setBoosting(false);
       setAwaitingPayment(true);
+      windowCheckRef.current = setInterval(() => {
+        if (paymentWindow?.closed) {
+          clearInterval(windowCheckRef.current!);
+          windowCheckRef.current = null;
+          setAwaitingPayment(false);
+          toast({ title: t("serverBoost.paymentWindowClosed", "Payment window closed") });
+        }
+      }, 500);
     }
   }, [serverId, t]);
 
