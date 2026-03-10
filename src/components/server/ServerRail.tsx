@@ -91,7 +91,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const [draggedServerId, setDraggedServerId] = useState<string | null>(null);
   const [userRoles, setUserRoles] = useState<Map<string, string>>(new Map());
   const [mobileSheetServerId, setMobileSheetServerId] = useState<string | null>(null);
-  const [boostModal, setBoostModal] = useState<{ open: boolean; serverId: string; serverName: string }>({ open: false, serverId: "", serverName: "" });
+  
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
 
