@@ -143,7 +143,7 @@ const ServerBoostPage = () => {
   const boostLevel = server.boost_level;
 
   return (
-    <div className="relative flex flex-col min-h-screen w-full bg-background overflow-y-auto">
+    <div className="relative flex flex-col min-h-full h-full w-full bg-background overflow-y-auto">
       {/* Back button */}
       <button
         onClick={() => navigate(-1)}
