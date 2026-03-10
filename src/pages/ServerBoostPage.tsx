@@ -456,6 +456,15 @@ const ServerBoostPage = () => {
           </table>
         </div>
       </section>
+      {/* Inventory Badge */}
+      {availableBoosts > 0 && (
+        <div className="absolute top-4 right-4 z-30">
+          <Badge className="bg-primary/20 text-primary border-primary/30 gap-1.5 px-3 py-1.5">
+            <Package className="h-3.5 w-3.5" />
+            {t("serverBoost.inventoryCount", "{{count}} boost available", { count: availableBoosts })}
+          </Badge>
+        </div>
+      )}
 
 
       {/* Bottom spacer for sticky bar */}
