@@ -20,7 +20,7 @@ import JoinServerDialog from "./JoinServerDialog";
 import ServerSettingsDialog from "./ServerSettingsDialog";
 import ServerFolderDialog from "./ServerFolderDialog";
 import ServerFolder from "./ServerFolder";
-import ServerBoostModal from "./ServerBoostModal";
+
 import { getAppBaseUrl } from "@/lib/inviteUtils";
 import { copyToClipboard } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
