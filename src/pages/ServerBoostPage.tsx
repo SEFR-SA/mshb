@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Zap, Check, X, Gem, Users, Award, Shield, Heart } from "lucide-react";
+import { ArrowLeft, Zap, Check, X, Gem } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -154,7 +154,7 @@ const ServerBoostPage = () => {
       </button>
 
       {/* ===== HERO SECTION ===== */}
-      <section className="relative flex flex-col items-center justify-center px-6 pt-20 pb-16 text-center overflow-hidden">
+      <section className="relative flex flex-col items-center justify-center px-6 pt-20 pb-16 text-center">
         {/* Animated background orbs */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-purple-600/20 blur-[120px] animate-pulse" />
@@ -314,7 +314,7 @@ const ServerBoostPage = () => {
                   {values.map((val, idx) => (
                     <td
                       key={idx}
-                      className={`px-4 py-3 text-center ${idx === 1 ? "border-x border-pink-500/30" : ""}`}
+                      className={`px-4 py-3 text-center ${idx === 2 ? "border-x border-pink-500/30" : ""}`}
                     >
                       {val === "yes" ? (
                         <Check className="h-4 w-4 text-green-500 mx-auto" />
@@ -332,31 +332,6 @@ const ServerBoostPage = () => {
         </div>
       </section>
 
-      {/* ===== RECOGNITION SECTION ===== */}
-      <section className="px-6 py-12 max-w-5xl mx-auto w-full">
-        <h2 className="text-2xl font-bold text-foreground mb-8 text-center">
-          {t("serverBoostPage.recognitionTitle")}
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { icon: Users, title: t("serverBoostPage.recMemberList"), desc: t("serverBoostPage.recMemberListDesc") },
-            { icon: Award, title: t("serverBoostPage.recBadge"), desc: t("serverBoostPage.recBadgeDesc") },
-            { icon: Shield, title: t("serverBoostPage.recRole"), desc: t("serverBoostPage.recRoleDesc") },
-            { icon: Heart, title: t("serverBoostPage.recSupport"), desc: t("serverBoostPage.recSupportDesc") },
-          ].map(({ icon: Icon, title, desc }) => (
-            <div
-              key={title}
-              className="flex flex-col items-center gap-3 rounded-xl border border-border/40 bg-card/50 backdrop-blur-md p-6 text-center"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <Icon className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="font-semibold text-foreground text-sm">{title}</h3>
-              <p className="text-xs text-muted-foreground">{desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* Bottom spacer for sticky bar */}
       <div className="h-20" />
