@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Zap, Check, X, Gem } from "lucide-react";
+import { ArrowLeft, Zap, Check, X, Gem, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 
+const PROD_BASE = "https://mshb.vercel.app";
 const THRESHOLDS = [2, 7, 14];
 
 interface ServerData {
@@ -78,27 +79,62 @@ const ServerBoostPage = () => {
   const [userBoostCount, setUserBoostCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [boosting, setBoosting] = useState(false);
+  const [awaitingPayment, setAwaitingPayment] = useState(false);
   const [showStickyBar, setShowStickyBar] = useState(false);
 
   const heroButtonRef = useRef<HTMLButtonElement>(null);
 
   // Fetch server + user boost data
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!serverId || !user) return;
-    const fetchData = async () => {
-      setLoading(true);
-      const [serverRes, boostRes] = await Promise.all([
-        supabase.from("servers").select("id, name, icon_url, boost_count, boost_level").eq("id", serverId).single(),
-        supabase.from("user_boosts").select("id").eq("server_id", serverId).eq("user_id", user.id).eq("status", "active"),
-      ]);
-      if (serverRes.data) {
-        setServer(serverRes.data as ServerData);
-      }
-      setUserBoostCount(boostRes.data?.length ?? 0);
-      setLoading(false);
-    };
-    fetchData();
+    const [serverRes, boostRes] = await Promise.all([
+      supabase.from("servers").select("id, name, icon_url, boost_count, boost_level").eq("id", serverId).single(),
+      supabase.from("user_boosts").select("id").eq("server_id", serverId).eq("user_id", user.id).eq("status", "active"),
+    ]);
+    if (serverRes.data) {
+      setServer(serverRes.data as ServerData);
+    }
+    setUserBoostCount(boostRes.data?.length ?? 0);
+    setLoading(false);
   }, [serverId, user]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Realtime subscription on user_boosts for instant UI sync
+  useEffect(() => {
+    if (!user?.id || !serverId) return;
+    const channel = supabase
+      .channel(`boost-listen-${serverId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "user_boosts",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newRow = payload.new as { server_id?: string };
+          if (newRow.server_id === serverId) {
+            toast({
+              title: t("serverBoost.boostSuccess", "Server successfully boosted!"),
+              description: t("serverBoost.boostSuccessDesc", "Thank you for boosting this server!"),
+            });
+            setAwaitingPayment(false);
+            setBoosting(false);
+            // Refetch data to update counts
+            fetchData();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, serverId, fetchData, t]);
 
   // Intersection Observer for sticky bar
   useEffect(() => {
@@ -115,19 +151,20 @@ const ServerBoostPage = () => {
   const handleBoost = useCallback(async () => {
     if (!serverId) return;
     setBoosting(true);
-    const base = window.location.href.split("#")[0];
     const res = await supabase.functions.invoke("create-streampay-checkout", {
       body: {
         server_id: serverId,
-        success_url: `${base}#/boost/success?server_id=${serverId}`,
-        cancel_url: `${base}#/boost/cancel?server_id=${serverId}`,
+        success_url: `${PROD_BASE}/#/boost/success?server_id=${serverId}`,
+        cancel_url: `${PROD_BASE}/#/boost/cancel?server_id=${serverId}`,
       },
     });
-    setBoosting(false);
     if (res.error || res.data?.error) {
+      setBoosting(false);
       toast({ title: t("common.error"), description: res.data?.error || res.error?.message, variant: "destructive" });
     } else {
       window.open(res.data.payment_url, '_blank');
+      setBoosting(false);
+      setAwaitingPayment(true);
     }
   }, [serverId, t]);
 
@@ -141,6 +178,12 @@ const ServerBoostPage = () => {
 
   const boostCount = server.boost_count;
   const boostLevel = server.boost_level;
+  const isButtonDisabled = boosting || awaitingPayment;
+  const buttonLabel = boosting
+    ? t("serverBoost.boosting")
+    : awaitingPayment
+      ? t("serverBoost.awaitingPayment", "Awaiting Payment...")
+      : t("serverBoost.boostThisServer");
 
   return (
     <div className="relative flex flex-col min-h-full h-full w-full bg-background overflow-y-auto">
@@ -185,19 +228,30 @@ const ServerBoostPage = () => {
         </h1>
 
         {/* CTA Buttons */}
-        <div className="relative z-10 mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Button
-            ref={heroButtonRef}
-            onClick={handleBoost}
-            disabled={boosting}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 px-8 h-12 text-base font-semibold shadow-lg shadow-purple-500/25"
-          >
-            <Zap className="h-5 w-5 me-2" />
-            {boosting ? t("serverBoost.boosting") : t("serverBoost.boostThisServer")}
-          </Button>
-          <Button variant="outline" className="h-12 px-8 text-base">
-            {t("serverBoostPage.giftPro")}
-          </Button>
+        <div className="relative z-10 mt-8 flex flex-col items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Button
+              ref={heroButtonRef}
+              onClick={handleBoost}
+              disabled={isButtonDisabled}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 px-8 h-12 text-base font-semibold shadow-lg shadow-purple-500/25"
+            >
+              {(boosting || awaitingPayment) ? (
+                <Loader2 className="h-5 w-5 me-2 animate-spin" />
+              ) : (
+                <Zap className="h-5 w-5 me-2" />
+              )}
+              {buttonLabel}
+            </Button>
+            <Button variant="outline" className="h-12 px-8 text-base">
+              {t("serverBoostPage.giftPro")}
+            </Button>
+          </div>
+          {awaitingPayment && (
+            <p className="text-sm text-muted-foreground animate-pulse">
+              {t("serverBoost.awaitingPaymentHint", "A payment window has opened. This page will automatically update once your payment is complete.")}
+            </p>
+          )}
         </div>
       </section>
 
@@ -351,15 +405,26 @@ const ServerBoostPage = () => {
                 <AvatarImage src={server.icon_url ?? undefined} />
                 <AvatarFallback className="text-xs bg-muted">{server.name[0]}</AvatarFallback>
               </Avatar>
-              <span className="font-semibold text-foreground truncate">{server.name}</span>
+              <div className="min-w-0">
+                <span className="font-semibold text-foreground truncate block">{server.name}</span>
+                {awaitingPayment && (
+                  <span className="text-xs text-muted-foreground animate-pulse">
+                    {t("serverBoost.awaitingPayment", "Awaiting Payment...")}
+                  </span>
+                )}
+              </div>
             </div>
             <Button
               onClick={handleBoost}
-              disabled={boosting}
+              disabled={isButtonDisabled}
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 px-6 shrink-0"
             >
-              <Zap className="h-4 w-4 me-2" />
-              {boosting ? t("serverBoost.boosting") : t("serverBoost.boostThisServer")}
+              {(boosting || awaitingPayment) ? (
+                <Loader2 className="h-4 w-4 me-2 animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4 me-2" />
+              )}
+              {buttonLabel}
             </Button>
           </div>
         </div>

@@ -1,39 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-## Plan: Desktop-First Polling/Realtime Pattern for Server Boost
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-### Overview
-Three changes across two files to fix the Electron white-page issue and add realtime UI sync.
+## Tech Stack
 
-### Step 1: Hardcode Production URL for Success/Cancel URLs
-In both `ServerBoostPage.tsx` (line 118-123) and `ServerBoostModal.tsx` (line 58-63), replace `window.location.href.split("#")[0]` with the production URL `https://mshb.vercel.app`.
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-```typescript
-const PROD_BASE = "https://mshb.vercel.app";
-// ...
-success_url: `${PROD_BASE}/#/boost/success?server_id=${serverId}`,
-cancel_url: `${PROD_BASE}/#/boost/cancel?server_id=${serverId}`,
-```
+## Core Directives (CRITICAL — Always Enforce)
 
-### Step 2: "Awaiting Payment" State in ServerBoostPage.tsx
-Add a new `awaitingPayment` state. After `window.open` succeeds, set it to `true` instead of resetting `boosting`. The button shows "Awaiting Payment..." and helper text appears below it. Same treatment for the sticky bar button.
+### 1. Plan First
 
-### Step 3: Realtime Subscription on `user_boosts` Table
-Add a `useEffect` in `ServerBoostPage.tsx` that subscribes to `postgres_changes` on the `user_boosts` table filtered by the current user's ID. On `INSERT` events where `server_id` matches:
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-1. Show a success toast
-2. Refetch server boost data (boost_count, boost_level) and user boost count
-3. Reset `awaitingPayment` to `false`
+### 2. Single Source of Truth (SSOT)
 
-The subscription cleans up on unmount. This makes the UI update instantly when the webhook fires, regardless of popup window behavior.
+Never duplicate display logic. Always use the canonical shared components:
 
-### Step 4: Same Realtime + URL Fix in ServerBoostModal.tsx
-Apply the production URL fix. Add a simpler realtime listener that shows a toast and closes the modal on boost completion.
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-### Files Modified
-- `src/pages/ServerBoostPage.tsx` — all three steps
-- `src/components/server/ServerBoostModal.tsx` — production URL + basic realtime
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-### No Database Changes Required
-The `user_boosts` table already has realtime enabled and appropriate RLS policies for SELECT.
+### 3. Pro Gating
 
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+
+### 4. No Hallucinations
+
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+
+### 5. No Over-Engineering
+
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+
+## Documentation Directory
+
+Read these files for specific details — do NOT rely on memory alone:
+
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+
+## Cosmetic Asset Specs
+
+Per-asset guides with exact dimensions, config files, and wrapper usage:
+
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

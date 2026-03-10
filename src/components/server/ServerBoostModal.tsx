@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+
+const PROD_BASE = "https://mshb.vercel.app";
 
 interface Props {
   open: boolean;
@@ -20,10 +23,12 @@ const THRESHOLDS = [2, 7, 14]; // index 0 = threshold for Level 1, etc.
 
 const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [boostCount, setBoostCount] = useState(0);
   const [boostLevel, setBoostLevel] = useState(0);
   const [fetching, setFetching] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [awaitingPayment, setAwaitingPayment] = useState(false);
 
   useEffect(() => {
     if (!open || !serverId) return;
@@ -43,6 +48,50 @@ const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) =
     fetchBoostData();
   }, [open, serverId]);
 
+  // Realtime subscription for instant UI sync
+  useEffect(() => {
+    if (!open || !user?.id || !serverId) return;
+    const channel = supabase
+      .channel(`boost-modal-${serverId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "user_boosts",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newRow = payload.new as { server_id?: string };
+          if (newRow.server_id === serverId) {
+            toast({
+              title: t("serverBoost.boostSuccess", "Server successfully boosted!"),
+              description: t("serverBoost.boostSuccessDesc", "Thank you for boosting this server!"),
+            });
+            setAwaitingPayment(false);
+            setLoading(false);
+            // Refetch boost data
+            supabase
+              .from("servers")
+              .select("boost_count, boost_level")
+              .eq("id", serverId)
+              .single()
+              .then(({ data }) => {
+                if (data) {
+                  setBoostCount((data as any).boost_count ?? 0);
+                  setBoostLevel((data as any).boost_level ?? 0);
+                }
+              });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, user?.id, serverId, t]);
+
   const nextThreshold = boostLevel < 3 ? THRESHOLDS[boostLevel] : 14;
   const progress = boostLevel === 3 ? 100 : Math.round((boostCount / nextThreshold) * 100);
   const remaining = boostLevel === 3 ? 0 : Math.max(0, nextThreshold - boostCount);
@@ -55,16 +104,15 @@ const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) =
 
   const handleBoost = async () => {
     setLoading(true);
-    const base = window.location.href.split("#")[0];
     const res = await supabase.functions.invoke("create-streampay-checkout", {
       body: {
         server_id: serverId,
-        success_url: `${base}#/boost/success?server_id=${serverId}`,
-        cancel_url: `${base}#/boost/cancel?server_id=${serverId}`,
+        success_url: `${PROD_BASE}/#/boost/success?server_id=${serverId}`,
+        cancel_url: `${PROD_BASE}/#/boost/cancel?server_id=${serverId}`,
       },
     });
-    setLoading(false);
     if (res.error || res.data?.error) {
+      setLoading(false);
       toast({
         title: t("common.error"),
         description: res.data?.error || res.error?.message,
@@ -72,8 +120,17 @@ const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) =
       });
     } else {
       window.open(res.data.payment_url, '_blank');
+      setLoading(false);
+      setAwaitingPayment(true);
     }
   };
+
+  const isButtonDisabled = loading || fetching || awaitingPayment;
+  const buttonLabel = loading
+    ? t("serverBoost.boosting")
+    : awaitingPayment
+      ? t("serverBoost.awaitingPayment", "Awaiting Payment...")
+      : t("serverBoost.boostThisServer");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -147,21 +204,27 @@ const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) =
             <Button
               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0"
               onClick={handleBoost}
-              disabled={loading || fetching}
+              disabled={isButtonDisabled}
             >
-              {loading ? (
+              {(loading || awaitingPayment) ? (
                 <>
                   <Loader2 className="h-4 w-4 me-2 animate-spin" />
-                  {t("serverBoost.boosting")}
+                  {buttonLabel}
                 </>
               ) : (
                 <>
                   <Zap className="h-4 w-4 me-2" />
-                  {t("serverBoost.boostThisServer")}
+                  {buttonLabel}
                 </>
               )}
             </Button>
-            <p className="text-center text-xs text-muted-foreground">{t("serverBoost.priceNote")}</p>
+            {awaitingPayment ? (
+              <p className="text-center text-xs text-muted-foreground animate-pulse">
+                {t("serverBoost.awaitingPaymentHint", "A payment window has opened. This page will automatically update once your payment is complete.")}
+              </p>
+            ) : (
+              <p className="text-center text-xs text-muted-foreground">{t("serverBoost.priceNote")}</p>
+            )}
           </div>
         </div>
       </DialogContent>
