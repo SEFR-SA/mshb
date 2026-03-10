@@ -1,13 +1,23 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Zap, Check, X, Gem, Loader2 } from "lucide-react";
+import { ArrowLeft, Zap, Check, X, Gem, Loader2, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const PROD_BASE = "https://mshb.vercel.app";
 const THRESHOLDS = [2, 7, 14];
@@ -82,19 +92,25 @@ const ServerBoostPage = () => {
   const [awaitingPayment, setAwaitingPayment] = useState(false);
   const [showStickyBar, setShowStickyBar] = useState(false);
 
+  const [availableBoosts, setAvailableBoosts] = useState(0);
+  const [showInventoryDialog, setShowInventoryDialog] = useState(false);
+  const [applyingBoost, setApplyingBoost] = useState(false);
+
   const heroButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Fetch server + user boost data
+  // Fetch server + user boost data + inventory
   const fetchData = useCallback(async () => {
     if (!serverId || !user) return;
-    const [serverRes, boostRes] = await Promise.all([
+    const [serverRes, boostRes, inventoryRes] = await Promise.all([
       supabase.from("servers").select("id, name, icon_url, boost_count, boost_level").eq("id", serverId).single(),
       supabase.from("user_boosts").select("id").eq("server_id", serverId).eq("user_id", user.id).eq("status", "active"),
+      supabase.from("user_boosts" as any).select("id").eq("user_id", user.id).is("server_id", null).eq("status", "active"),
     ]);
     if (serverRes.data) {
       setServer(serverRes.data as ServerData);
     }
     setUserBoostCount(boostRes.data?.length ?? 0);
+    setAvailableBoosts((inventoryRes.data as any[])?.length ?? 0);
     setLoading(false);
   }, [serverId, user]);
 
@@ -162,6 +178,16 @@ const ServerBoostPage = () => {
 
   const handleBoost = useCallback(async () => {
     if (!serverId) return;
+    // If user has inventory boosts, show dialog instead
+    if (availableBoosts > 0) {
+      setShowInventoryDialog(true);
+      return;
+    }
+    await openCheckout();
+  }, [serverId, availableBoosts]);
+
+  const openCheckout = useCallback(async () => {
+    if (!serverId) return;
     setBoosting(true);
     const res = await supabase.functions.invoke("create-streampay-checkout", {
       body: {
@@ -187,6 +213,31 @@ const ServerBoostPage = () => {
       }, 500);
     }
   }, [serverId, t]);
+
+  const handleApplyInventoryBoost = useCallback(async () => {
+    if (!serverId) return;
+    setApplyingBoost(true);
+    try {
+      const { data, error } = await supabase.rpc("apply_inventory_boost", {
+        p_server_id: serverId,
+      });
+      if (error) throw error;
+      if (data) {
+        toast({
+          title: t("serverBoost.boostSuccess", "Server successfully boosted!"),
+          description: t("serverBoost.inventoryBoostUsed", "Used an inventory boost from your Mshb Pro subscription."),
+        });
+        fetchData();
+      } else {
+        toast({ title: t("common.error"), description: t("serverBoost.noInventoryBoosts", "No available boosts"), variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: t("common.error"), variant: "destructive" });
+    } finally {
+      setApplyingBoost(false);
+      setShowInventoryDialog(false);
+    }
+  }, [serverId, t, fetchData]);
 
   if (loading || !server) {
     return (
@@ -405,6 +456,15 @@ const ServerBoostPage = () => {
           </table>
         </div>
       </section>
+      {/* Inventory Badge */}
+      {availableBoosts > 0 && (
+        <div className="absolute top-4 right-4 z-30">
+          <Badge className="bg-primary/20 text-primary border-primary/30 gap-1.5 px-3 py-1.5">
+            <Package className="h-3.5 w-3.5" />
+            {t("serverBoost.inventoryCount", "{{count}} boost available", { count: availableBoosts })}
+          </Badge>
+        </div>
+      )}
 
 
       {/* Bottom spacer for sticky bar */}
@@ -449,6 +509,46 @@ const ServerBoostPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Inventory Boost Dialog */}
+      <AlertDialog open={showInventoryDialog} onOpenChange={setShowInventoryDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              {t("serverBoost.useInventoryTitle", "Use Inventory Boost")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("serverBoost.useInventoryDesc", "You have {{count}} available boost(s) from your Mshb Pro subscription. Use one to boost {{server}}?", {
+                count: availableBoosts,
+                server: server.name,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={applyingBoost}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleApplyInventoryBoost}
+              disabled={applyingBoost}
+              className="gap-1.5"
+            >
+              {applyingBoost && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Zap className="h-4 w-4" />
+              {t("serverBoost.useBoost", "Use Boost")}
+            </AlertDialogAction>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowInventoryDialog(false);
+                openCheckout();
+              }}
+              disabled={applyingBoost}
+            >
+              {t("serverBoost.buyInstead", "Buy Another Boost")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

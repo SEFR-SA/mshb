@@ -1,113 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-## Mshb Pro Subscription + Boost Inventory System
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-This is a large multi-step feature spanning database, edge functions, and UI. Here is the implementation plan.
+## Tech Stack
 
----
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-### Pre-requisite: Add Secret
+## Core Directives (CRITICAL — Always Enforce)
 
-We need to add a `STREAMPAY_PRO_PRODUCT_ID` secret via the secrets tool so the edge function knows which StreamPay product corresponds to the Pro subscription.
+### 1. Plan First
 
----
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-### Step 1: Database Migration
+### 2. Single Source of Truth (SSOT)
 
-**New table: `user_subscriptions`**
-- `id` (uuid, PK)
-- `user_id` (uuid, NOT NULL)
-- `tier` (text, default `'pro'`)
-- `status` (text, default `'active'`)
-- `started_at` (timestamptz, default `now()`)
-- `expires_at` (timestamptz, nullable)
-- `streampay_transaction_id` (text, nullable)
-- RLS: Users can SELECT own rows only. No client INSERT/UPDATE/DELETE (webhook handles it).
-- Enable realtime: `ALTER PUBLICATION supabase_realtime ADD TABLE public.user_subscriptions;`
+Never duplicate display logic. Always use the canonical shared components:
 
-**New RPC: `apply_inventory_boost(p_server_id uuid)`**
-- Finds ONE `user_boosts` row where `user_id = auth.uid()` AND `server_id IS NULL` AND `status = 'active'`
-- Updates it to set `server_id = p_server_id`
-- Returns boolean success
-- Uses `SECURITY DEFINER` so it bypasses RLS (user_boosts has no UPDATE policy)
-- Validates the user is a member of the target server
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-**Profile update trigger**: When a row is inserted into `user_subscriptions` with `status = 'active'`, set `profiles.is_pro = true` for that user. When status changes away from `'active'`, check if they still have any active subscription before setting `is_pro = false`.
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
----
+### 3. Pro Gating
 
-### Step 2: Update `streampay-webhook` Edge Function
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
 
-Add a branch in the `PAYMENT_SUCCEEDED` handler:
+### 4. No Hallucinations
 
-- Check `customMetadata.type` (we'll pass `type: 'pro'` or `type: 'boost'` from checkout)
-- **If `type === 'pro'`:**
-  1. Upsert into `user_subscriptions` (user_id, tier='pro', status='active', streampay_transaction_id)
-  2. Insert 2 rows into `user_boosts` with `server_id = NULL`, `status = 'active'` (inventory boosts)
-  3. Set `profiles.is_pro = true`
-- **If `type === 'boost'` (or no type — backward compat):** Keep existing logic
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
 
----
+### 5. No Over-Engineering
 
-### Step 3: New Edge Function `create-pro-checkout`
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
 
-Similar to `create-streampay-checkout` but for the Pro subscription:
-- Authenticated endpoint
-- Uses `STREAMPAY_PRO_PRODUCT_ID` instead of boost product
-- Passes `custom_metadata: { userId, type: 'pro' }` (no `serverId`)
-- Returns `payment_url`
-- Config: `verify_jwt = false` in config.toml
+## Documentation Directory
 
----
+Read these files for specific details — do NOT rely on memory alone:
 
-### Step 4: Update `SubscriptionsTab.tsx`
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
 
-Transform the placeholder "Subscribe" button into a real checkout flow:
-- Fetch `user_subscriptions` to check if user already has active Pro
-- If active: show "You're a Pro member!" with status and expiry
-- If not: "Subscribe to Mshb Pro" button triggers the checkout flow
-- **Electron-safe patterns:**
-  - `window.open(url, '_blank')` for checkout
-  - `setInterval` polling for `paymentWindow.closed`
-  - Supabase Realtime subscription on `user_subscriptions` for instant UI update
-  - "Awaiting Payment..." state with helper text
+## Cosmetic Asset Specs
 
----
+Per-asset guides with exact dimensions, config files, and wrapper usage:
 
-### Step 5: Update `ServerBoostPage.tsx` — Inventory Check
-
-Before opening StreamPay:
-1. Query `user_boosts` where `user_id = user.id` AND `server_id IS NULL` AND `status = 'active'` → count as `availableBoosts`
-2. **If `availableBoosts > 0`:** Show an AlertDialog: "You have {n} available boosts from Mshb Pro! Use one to boost this server?"
-   - "Confirm" calls `supabase.rpc('apply_inventory_boost', { p_server_id: serverId })`
-   - On success: toast, refetch data
-3. **If `availableBoosts === 0`:** Current StreamPay flow unchanged
-
-Also display inventory stats (Available / Spent / Total) in a small summary card above the boost button.
-
----
-
-### Step 6: Update `BoostsTab.tsx` — Show Inventory
-
-Add an inventory summary section at the top:
-- **Total:** All `user_boosts` count
-- **Spent:** Where `server_id IS NOT NULL`
-- **Available:** Where `server_id IS NULL` AND `status = 'active'`
-
-Show unassigned boosts in the list with a "Use Boost" button that navigates to server selection or opens a server picker.
-
----
-
-### Files Modified
-1. **Migration SQL** — `user_subscriptions` table + `apply_inventory_boost` RPC + subscription trigger
-2. **`supabase/functions/streampay-webhook/index.ts`** — Pro subscription handling branch
-3. **`supabase/functions/create-pro-checkout/index.ts`** — New edge function
-4. **`supabase/config.toml`** — Add `create-pro-checkout` entry
-5. **`src/components/settings/tabs/SubscriptionsTab.tsx`** — Real checkout + realtime
-6. **`src/pages/ServerBoostPage.tsx`** — Inventory check + AlertDialog
-7. **`src/components/settings/tabs/BoostsTab.tsx`** — Inventory summary display
-
-### No Breaking Changes
-- Existing boost flow remains intact for `type === 'boost'` or missing type metadata (backward compatible)
-- `is_pro` flag already used throughout the app for gating
-
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

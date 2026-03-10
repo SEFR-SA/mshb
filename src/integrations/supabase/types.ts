@@ -1522,6 +1522,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscriptions: {
+        Row: {
+          expires_at: string | null
+          id: string
+          started_at: string
+          status: string
+          streampay_transaction_id: string | null
+          tier: string
+          user_id: string
+        }
+        Insert: {
+          expires_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          streampay_transaction_id?: string | null
+          tier?: string
+          user_id: string
+        }
+        Update: {
+          expires_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          streampay_transaction_id?: string | null
+          tier?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       voice_channel_participants: {
         Row: {
           channel_id: string
@@ -1572,6 +1602,7 @@ export type Database = {
         Args: { p_server_id?: string; p_user_id: string }
         Returns: undefined
       }
+      apply_inventory_boost: { Args: { p_server_id: string }; Returns: boolean }
       calculate_server_boost_stats: {
         Args: { p_server_id: string }
         Returns: undefined

@@ -122,78 +122,137 @@ Deno.serve(async (req) => {
     // ── 5. Route on event type ──────────────────────────────────────────────
 
     if (eventType === "PAYMENT_SUCCEEDED") {
-      if (!transactionId || !userId || !serverId) {
-        console.error("PAYMENT_SUCCEEDED missing required fields:", {
-          transactionId, userId, serverId,
-        });
-        return new Response(JSON.stringify({ received: true }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      const paymentType = customMetadata?.type; // 'pro' or 'boost' (or undefined for legacy)
 
-      // Idempotency: skip if already recorded
-      const { data: existing } = await supabase
-        .from("user_boosts")
-        .select("id")
-        .eq("streampay_transaction_id", transactionId)
-        .maybeSingle();
-
-      if (existing) {
-        console.log(`Duplicate webhook for tx=${transactionId} — skipping`);
-        return new Response(JSON.stringify({ received: true }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Insert boost — DB trigger handles boost_count/level/is_booster
-      const { error: insertError } = await supabase.from("user_boosts").insert({
-        user_id: userId,
-        server_id: serverId,
-        status: "active",
-        streampay_transaction_id: transactionId,
-      });
-
-      if (insertError) {
-        console.error("Failed to insert user_boost:", insertError);
-        return new Response(
-          JSON.stringify({ error: "Failed to record boost" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      console.log(`Boost recorded: user=${userId} server=${serverId} tx=${transactionId}`);
-
-      // Insert boost announcement (non-fatal)
-      try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("display_name, username")
-          .eq("user_id", userId)
-          .maybeSingle();
-        const displayName =
-          (profile as any)?.display_name || (profile as any)?.username || "Someone";
-
-        const { data: channel } = await supabase
-          .from("channels")
-          .select("id")
-          .eq("server_id", serverId)
-          .eq("type", "text")
-          .order("position")
-          .limit(1)
-          .maybeSingle();
-
-        if (channel) {
-          await supabase.from("messages").insert({
-            channel_id: channel.id,
-            author_id: userId,
-            content: displayName,
-            type: "boost",
+      if (paymentType === "pro") {
+        // ── PRO SUBSCRIPTION FLOW ─────────────────────────────────────
+        if (!transactionId || !userId) {
+          console.error("PAYMENT_SUCCEEDED (pro) missing required fields:", { transactionId, userId });
+          return new Response(JSON.stringify({ received: true }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-      } catch (msgErr) {
-        console.error("Failed to insert boost announcement:", msgErr);
+
+        // Idempotency check on user_subscriptions
+        const { data: existingSub } = await supabase
+          .from("user_subscriptions")
+          .select("id")
+          .eq("streampay_transaction_id", transactionId)
+          .maybeSingle();
+
+        if (existingSub) {
+          console.log(`Duplicate pro webhook for tx=${transactionId} — skipping`);
+          return new Response(JSON.stringify({ received: true }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Insert subscription
+        const { error: subError } = await supabase.from("user_subscriptions").insert({
+          user_id: userId,
+          tier: "pro",
+          status: "active",
+          streampay_transaction_id: transactionId,
+        });
+
+        if (subError) {
+          console.error("Failed to insert user_subscription:", subError);
+          return new Response(
+            JSON.stringify({ error: "Failed to record subscription" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Grant 2 inventory boosts (server_id = NULL)
+        const boostInserts = [
+          { user_id: userId, server_id: null, status: "active", streampay_transaction_id: transactionId },
+          { user_id: userId, server_id: null, status: "active", streampay_transaction_id: transactionId },
+        ];
+        const { error: boostErr } = await supabase.from("user_boosts").insert(boostInserts);
+        if (boostErr) {
+          console.error("Failed to insert inventory boosts:", boostErr);
+          // Non-fatal — subscription was already recorded
+        }
+
+        console.log(`Pro subscription recorded: user=${userId} tx=${transactionId} (+2 inventory boosts)`);
+
+      } else {
+        // ── SERVER BOOST FLOW (legacy / type=boost) ──────────────────
+        if (!transactionId || !userId || !serverId) {
+          console.error("PAYMENT_SUCCEEDED missing required fields:", {
+            transactionId, userId, serverId,
+          });
+          return new Response(JSON.stringify({ received: true }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Idempotency: skip if already recorded
+        const { data: existing } = await supabase
+          .from("user_boosts")
+          .select("id")
+          .eq("streampay_transaction_id", transactionId)
+          .maybeSingle();
+
+        if (existing) {
+          console.log(`Duplicate webhook for tx=${transactionId} — skipping`);
+          return new Response(JSON.stringify({ received: true }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Insert boost — DB trigger handles boost_count/level/is_booster
+        const { error: insertError } = await supabase.from("user_boosts").insert({
+          user_id: userId,
+          server_id: serverId,
+          status: "active",
+          streampay_transaction_id: transactionId,
+        });
+
+        if (insertError) {
+          console.error("Failed to insert user_boost:", insertError);
+          return new Response(
+            JSON.stringify({ error: "Failed to record boost" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        console.log(`Boost recorded: user=${userId} server=${serverId} tx=${transactionId}`);
+
+        // Insert boost announcement (non-fatal)
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name, username")
+            .eq("user_id", userId)
+            .maybeSingle();
+          const displayName =
+            (profile as any)?.display_name || (profile as any)?.username || "Someone";
+
+          const { data: channel } = await supabase
+            .from("channels")
+            .select("id")
+            .eq("server_id", serverId)
+            .eq("type", "text")
+            .order("position")
+            .limit(1)
+            .maybeSingle();
+
+          if (channel) {
+            await supabase.from("messages").insert({
+              channel_id: channel.id,
+              author_id: userId,
+              content: displayName,
+              type: "boost",
+            });
+          }
+        } catch (msgErr) {
+          console.error("Failed to insert boost announcement:", msgErr);
+        }
       }
 
     } else if (eventType === "PAYMENT_FAILED" || eventType === "PAYMENT_REFUNDED") {
