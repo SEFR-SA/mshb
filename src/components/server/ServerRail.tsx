@@ -510,7 +510,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                       <Copy className="h-4 w-4 me-2" />
                       {t("servers.copyInvite")}
                     </ContextMenuItem>
-                    <ContextMenuItem onClick={() => setBoostModal({ open: true, serverId: s.id, serverName: s.name })}>
+                    <ContextMenuItem onClick={() => navigate(`/server/${s.id}/boost`)}>
                       <Zap className="h-4 w-4 me-2 text-pink-500" />
                       {t("serverBoost.boostServer")}
                     </ContextMenuItem>
