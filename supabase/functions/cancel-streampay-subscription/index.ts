@@ -87,52 +87,14 @@ Deno.serve(async (req) => {
 
     const transactionId = (boost as any).streampay_transaction_id as string | null;
 
-    // ── 4. Call StreamPay cancel endpoint ─────────────────────────────────
-    const STREAMPAY_SECRET_KEY = Deno.env.get("STREAMPAY_SECRET_KEY");
-    const STREAMPAY_API_BASE_URL =
-      Deno.env.get("STREAMPAY_API_BASE_URL") ?? "https://api.streampay.sa";
-
-    if (!STREAMPAY_SECRET_KEY) {
-      return new Response(
-        JSON.stringify({ error: "Payment gateway not configured" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
+    // ── 4. Cancel note ──────────────────────────────────────────────────
+    // Boosts are one-time payments (max_number_of_payments: 1) via StreamPay
+    // payment links — there is no recurring subscription to cancel on the
+    // gateway side. We simply mark the boost as canceled in our DB.
     if (transactionId) {
-      const cancelResponse = await fetch(
-        `${STREAMPAY_API_BASE_URL}/v1/payments/${transactionId}/cancel`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${STREAMPAY_SECRET_KEY}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!cancelResponse.ok) {
-        const errText = await cancelResponse.text();
-        console.error(
-          `StreamPay cancel API error [${cancelResponse.status}]:`,
-          errText
-        );
-        return new Response(
-          JSON.stringify({ error: "Failed to cancel subscription with payment provider" }),
-          {
-            status: 502,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-
-      console.log(`StreamPay cancel confirmed for tx=${transactionId}`);
+      console.log(`Boost ${boost_id} has streampay tx=${transactionId} — one-time payment, no gateway cancel needed`);
     } else {
-      // No transaction ID recorded (e.g. manual/test boost) — skip gateway call
-      console.warn(`Boost ${boost_id} has no streampay_transaction_id — skipping gateway cancel`);
+      console.log(`Boost ${boost_id} has no streampay_transaction_id`);
     }
 
     // ── 5. Update the DB row ──────────────────────────────────────────────
