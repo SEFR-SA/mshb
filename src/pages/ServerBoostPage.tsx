@@ -509,6 +509,46 @@ const ServerBoostPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Inventory Boost Dialog */}
+      <AlertDialog open={showInventoryDialog} onOpenChange={setShowInventoryDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              {t("serverBoost.useInventoryTitle", "Use Inventory Boost")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("serverBoost.useInventoryDesc", "You have {{count}} available boost(s) from your Mshb Pro subscription. Use one to boost {{server}}?", {
+                count: availableBoosts,
+                server: server.name,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={applyingBoost}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleApplyInventoryBoost}
+              disabled={applyingBoost}
+              className="gap-1.5"
+            >
+              {applyingBoost && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Zap className="h-4 w-4" />
+              {t("serverBoost.useBoost", "Use Boost")}
+            </AlertDialogAction>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowInventoryDialog(false);
+                openCheckout();
+              }}
+              disabled={applyingBoost}
+            >
+              {t("serverBoost.buyInstead", "Buy Another Boost")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
