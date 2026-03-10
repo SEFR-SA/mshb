@@ -143,7 +143,7 @@ const ServerBoostPage = () => {
   const boostLevel = server.boost_level;
 
   return (
-    <div className="relative flex flex-col min-h-screen w-full bg-background overflow-y-auto">
+    <div className="relative flex flex-col min-h-full h-full w-full bg-background overflow-y-auto">
       {/* Back button */}
       <button
         onClick={() => navigate(-1)}
@@ -170,7 +170,7 @@ const ServerBoostPage = () => {
           </Avatar>
           <h2 className="text-xl font-bold text-foreground">{server.name}</h2>
           <Badge variant="secondary" className="bg-purple-500/20 text-purple-400 border border-purple-500/30 gap-1.5">
-            🔮 {boostCount} {t("serverBoost.boostCount", { count: boostCount })}
+            🔮 {t("serverBoost.boostCount", { count: boostCount })}
           </Badge>
           {userBoostCount > 0 && (
             <p className="text-sm text-muted-foreground">
