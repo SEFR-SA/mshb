@@ -104,9 +104,13 @@ Deno.serve(async (req) => {
     console.log("Webhook verified — event:", eventType, "entity:", entityId);
     console.log("Body keys:", Object.keys(body));
 
-    const customMetadata = body.custom_metadata as Record<string, string> | undefined;
+    const data = body.data as Record<string, unknown> | undefined;
+    console.log("Body.data keys:", Object.keys(data ?? {}));
+    const customMetadata = (data?.custom_metadata ?? data?.metadata) as Record<string, string> | undefined;
+    console.log("customMetadata:", JSON.stringify(customMetadata));
     const userId = customMetadata?.userId;
     const serverId = customMetadata?.serverId;
+    console.log("Extracted userId:", userId, "serverId:", serverId);
     const transactionId = entityId || (body.id as string | undefined);
 
     // ── 4. Init service-role Supabase client ────────────────────────────────
