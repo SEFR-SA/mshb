@@ -92,19 +92,25 @@ const ServerBoostPage = () => {
   const [awaitingPayment, setAwaitingPayment] = useState(false);
   const [showStickyBar, setShowStickyBar] = useState(false);
 
+  const [availableBoosts, setAvailableBoosts] = useState(0);
+  const [showInventoryDialog, setShowInventoryDialog] = useState(false);
+  const [applyingBoost, setApplyingBoost] = useState(false);
+
   const heroButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Fetch server + user boost data
+  // Fetch server + user boost data + inventory
   const fetchData = useCallback(async () => {
     if (!serverId || !user) return;
-    const [serverRes, boostRes] = await Promise.all([
+    const [serverRes, boostRes, inventoryRes] = await Promise.all([
       supabase.from("servers").select("id, name, icon_url, boost_count, boost_level").eq("id", serverId).single(),
       supabase.from("user_boosts").select("id").eq("server_id", serverId).eq("user_id", user.id).eq("status", "active"),
+      supabase.from("user_boosts" as any).select("id").eq("user_id", user.id).is("server_id", null).eq("status", "active"),
     ]);
     if (serverRes.data) {
       setServer(serverRes.data as ServerData);
     }
     setUserBoostCount(boostRes.data?.length ?? 0);
+    setAvailableBoosts((inventoryRes.data as any[])?.length ?? 0);
     setLoading(false);
   }, [serverId, user]);
 
