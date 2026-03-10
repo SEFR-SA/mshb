@@ -25,6 +25,7 @@ import Chat from "@/pages/Chat";
 import GroupChat from "@/pages/GroupChat";
 import SettingsModal from "@/components/settings/SettingsModal";
 import ServerView from "@/pages/ServerView";
+import ServerBoostPage from "@/pages/ServerBoostPage";
 import InviteJoin from "@/pages/InviteJoin";
 import BoostSuccess from "@/pages/BoostSuccess";
 import BoostCancel from "@/pages/BoostCancel";
