@@ -332,31 +332,6 @@ const ServerBoostPage = () => {
         </div>
       </section>
 
-      {/* ===== RECOGNITION SECTION ===== */}
-      <section className="px-6 py-12 max-w-5xl mx-auto w-full">
-        <h2 className="text-2xl font-bold text-foreground mb-8 text-center">
-          {t("serverBoostPage.recognitionTitle")}
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { icon: Users, title: t("serverBoostPage.recMemberList"), desc: t("serverBoostPage.recMemberListDesc") },
-            { icon: Award, title: t("serverBoostPage.recBadge"), desc: t("serverBoostPage.recBadgeDesc") },
-            { icon: Shield, title: t("serverBoostPage.recRole"), desc: t("serverBoostPage.recRoleDesc") },
-            { icon: Heart, title: t("serverBoostPage.recSupport"), desc: t("serverBoostPage.recSupportDesc") },
-          ].map(({ icon: Icon, title, desc }) => (
-            <div
-              key={title}
-              className="flex flex-col items-center gap-3 rounded-xl border border-border/40 bg-card/50 backdrop-blur-md p-6 text-center"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <Icon className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="font-semibold text-foreground text-sm">{title}</h3>
-              <p className="text-xs text-muted-foreground">{desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* Bottom spacer for sticky bar */}
       <div className="h-20" />
