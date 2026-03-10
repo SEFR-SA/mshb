@@ -174,9 +174,17 @@ const ServerBoostPage = () => {
       setBoosting(false);
       toast({ title: t("common.error"), description: res.data?.error || res.error?.message, variant: "destructive" });
     } else {
-      window.open(res.data.payment_url, '_blank');
+      const paymentWindow = window.open(res.data.payment_url, '_blank');
       setBoosting(false);
       setAwaitingPayment(true);
+      windowCheckRef.current = setInterval(() => {
+        if (paymentWindow?.closed) {
+          clearInterval(windowCheckRef.current!);
+          windowCheckRef.current = null;
+          setAwaitingPayment(false);
+          toast({ title: t("serverBoost.paymentWindowClosed", "Payment window closed") });
+        }
+      }, 500);
     }
   }, [serverId, t]);
 

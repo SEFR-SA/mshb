@@ -131,9 +131,17 @@ const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) =
         variant: "destructive",
       });
     } else {
-      window.open(res.data.payment_url, '_blank');
+      const paymentWindow = window.open(res.data.payment_url, '_blank');
       setLoading(false);
       setAwaitingPayment(true);
+      windowCheckRef.current = setInterval(() => {
+        if (paymentWindow?.closed) {
+          clearInterval(windowCheckRef.current!);
+          windowCheckRef.current = null;
+          setAwaitingPayment(false);
+          toast({ title: t("serverBoost.paymentWindowClosed", "Payment window closed") });
+        }
+      }, 500);
     }
   };
 
