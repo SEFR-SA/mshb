@@ -228,7 +228,7 @@ const BillingTab = () => {
               const basePrice = +(totalPrice / 1.15).toFixed(2);
               const vat = +(totalPrice - basePrice).toFixed(2);
               const isOpen = expandedTx === tx.id;
-              const hasAmount = basePrice > 0;
+              const hasAmount = totalPrice > 0;
               return (
                 <div key={tx.id}>
                   <button
