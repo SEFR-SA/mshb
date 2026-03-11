@@ -22,7 +22,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const { globalMuted, globalDeafened, setGlobalMuted, setGlobalDeafened } = useAudioSettings();
   const {
     isScreenSharing, setIsScreenSharing,
-    setRemoteScreenStream, setScreenSharerName,
+    setRemoteScreenStreams,
     isCameraOn, setIsCameraOn,
     setLocalCameraStream, setRemoteCameraStream,
     voiceChannel, setVoiceChannel, setNativeResolutionLabel,
