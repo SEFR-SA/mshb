@@ -191,6 +191,22 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
           <>
             <Separator className="my-2" />
             <button
+              onClick={() => handleTabClick("community")}
+              className={cn(
+                "flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-medium transition-colors text-start",
+                activeTab === "community" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              )}
+            >
+              <Crown className="h-4 w-4" />
+              {isCommunity ? t("community.settingsTitle") : t("community.enableButton")}
+            </button>
+          </>
+        )}
+
+        {isOwner && (
+          <>
+            <Separator className="my-2" />
+            <button
               onClick={() => setShowDeleteConfirm(true)}
               className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors text-start"
             >
