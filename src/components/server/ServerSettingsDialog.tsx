@@ -82,6 +82,9 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
       setBannerUrl((s as any).banner_url || "");
       setOwnerId((s as any).owner_id);
       setBoostLevel((s as any).boost_level ?? 0);
+      setIsCommunity((s as any).is_community ?? false);
+      setRulesChannelId((s as any).rules_channel_id ?? null);
+      setUpdatesChannelId((s as any).public_updates_channel_id ?? null);
     }
     const { data: mems } = await supabase.from("server_members" as any).select("user_id, role").eq("server_id", serverId);
     if (mems) {
