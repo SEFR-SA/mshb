@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.create-pro-checkout]
 verify_jwt = false
+
+[functions.cancel-streampay-subscription]
+verify_jwt = false
+
+[functions.cancel-pro-subscription]
+verify_jwt = false
