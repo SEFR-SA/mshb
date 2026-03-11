@@ -54,6 +54,7 @@ interface Props {
   serverId?: string;
   isAnnouncement?: boolean;
   isRules?: boolean;
+  channelType?: string;
 }
 
 const renderMessageContent = (
