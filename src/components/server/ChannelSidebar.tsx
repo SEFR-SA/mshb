@@ -982,10 +982,12 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                     </VoiceUserContextMenu>
                                     <PopoverContent side="right" align="start" sideOffset={8} className="w-[280px] p-0 overflow-hidden rounded-lg">
                                       <div className="aspect-video bg-black flex items-center justify-center">
-                                        {remoteScreenStream
-                                          ? <StreamPreviewVideo stream={remoteScreenStream} />
-                                          : <Monitor className="h-8 w-8 text-muted-foreground" />
-                                        }
+                                        {(() => {
+                                          const userStream = remoteScreenStreams.find(s => s.identity === p.user_id)?.stream ?? remoteScreenStream;
+                                          return userStream
+                                            ? <StreamPreviewVideo stream={userStream} />
+                                            : <Monitor className="h-8 w-8 text-muted-foreground" />;
+                                        })()}
                                       </div>
                                       <div className="p-3 flex flex-col items-center gap-2.5">
                                         <p className="text-xs font-semibold text-foreground text-center">
