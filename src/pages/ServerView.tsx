@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import ChannelSidebar from "@/components/server/ChannelSidebar";
 import ServerChannelChat from "@/components/server/ServerChannelChat";
 import ServerMemberList from "@/components/server/ServerMemberList";
-import ScreenShareViewer from "@/components/server/ScreenShareViewer";
+import StreamGrid from "@/components/server/StreamGrid";
 import CameraViewer from "@/components/server/CameraViewer";
 import ServerRail from "@/components/server/ServerRail";
 import SupportChannelView from "@/components/server/SupportChannelView";
