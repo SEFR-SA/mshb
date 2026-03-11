@@ -385,8 +385,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   useEffect(() => {
     return () => {
       setIsScreenSharing(false);
-      setRemoteScreenStream(null);
-      setScreenSharerName(null);
+      setRemoteScreenStreams([]);
       setIsCameraOn(false);
       setLocalCameraStream(null);
       setRemoteCameraStream(null);
