@@ -217,6 +217,7 @@ export type Database = {
           name: string
           position: number
           server_id: string
+          support_role_ids: string[] | null
           type: string
         }
         Insert: {
@@ -229,6 +230,7 @@ export type Database = {
           name: string
           position?: number
           server_id: string
+          support_role_ids?: string[] | null
           type?: string
         }
         Update: {
@@ -241,6 +243,7 @@ export type Database = {
           name?: string
           position?: number
           server_id?: string
+          support_role_ids?: string[] | null
           type?: string
         }
         Relationships: [
@@ -1406,6 +1409,75 @@ export type Database = {
           },
         ]
       }
+      ticket_sequences: {
+        Row: {
+          last_ticket_number: number
+          server_id: string
+        }
+        Insert: {
+          last_ticket_number?: number
+          server_id: string
+        }
+        Update: {
+          last_ticket_number?: number
+          server_id?: string
+        }
+        Relationships: []
+      }
+      tickets: {
+        Row: {
+          channel_id: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          id: string
+          owner_id: string
+          server_id: string
+          status: string
+          support_channel_id: string | null
+          ticket_number: number
+        }
+        Insert: {
+          channel_id: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          id?: string
+          owner_id: string
+          server_id: string
+          status?: string
+          support_channel_id?: string | null
+          ticket_number: number
+        }
+        Update: {
+          channel_id?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          id?: string
+          owner_id?: string
+          server_id?: string
+          status?: string
+          support_channel_id?: string | null
+          ticket_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_support_channel_id_fkey"
+            columns: ["support_channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_boosts: {
         Row: {
           auto_renew: boolean
@@ -1623,6 +1695,14 @@ export type Database = {
         Args: { p_username: string }
         Returns: boolean
       }
+      close_ticket: { Args: { p_ticket_id: string }; Returns: undefined }
+      create_ticket: {
+        Args: { p_server_id: string; p_support_channel_id: string }
+        Returns: {
+          channel_id: string
+          ticket_number: number
+        }[]
+      }
       generate_invite_code: { Args: never; Returns: string }
       get_admin_role_for: {
         Args: { p_user_id: string }
@@ -1691,6 +1771,7 @@ export type Database = {
         Args: { p_server_id: string }
         Returns: undefined
       }
+      reopen_ticket: { Args: { p_ticket_id: string }; Returns: undefined }
       toggle_message_pin: { Args: { p_message_id: string }; Returns: boolean }
       transfer_boost: {
         Args: { p_boost_id: string; p_new_server_id: string }
