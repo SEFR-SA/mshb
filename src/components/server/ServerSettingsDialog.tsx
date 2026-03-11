@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "@/hooks/use-toast";
-import { Menu, Trash2, User, Tag, Sparkles, Smile, StickerIcon, Volume2, Users, ShieldCheck, ScrollText, X, Zap } from "lucide-react";
+import { Menu, Trash2, User, Tag, Sparkles, Smile, StickerIcon, Volume2, Users, ShieldCheck, ScrollText, X, Zap, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AuditLogView from "./AuditLogView";
 import ServerProfileTab from "./settings/ServerProfileTab";
