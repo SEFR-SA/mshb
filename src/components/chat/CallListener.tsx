@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
-import { useWebRTC } from "@/hooks/useWebRTC";
+import { useLiveKitCall } from "@/hooks/useLiveKitCall";
 import { useNavigate } from "react-router-dom";
 import { startLoop, stopLoop, stopAllLoops, playSound } from "@/lib/soundManager";
 
