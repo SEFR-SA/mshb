@@ -110,7 +110,7 @@ const CallListener = () => {
     setOtherAvatar(undefined);
   }, [user]);
 
-  const { callState, isMuted, isDeafened, callDuration, isScreenSharing, remoteScreenStream, isCameraOn, localCameraStream, remoteCameraStream, startCall, answerCall, endCall, toggleMute, toggleDeafen, startScreenShare, stopScreenShare, startCamera, stopCamera } = useWebRTC({
+  const { callState, isMuted, isDeafened, callDuration, isScreenSharing, remoteScreenStream, isCameraOn, localCameraStream, remoteCameraStream, startCall, answerCall, endCall, toggleMute, toggleDeafen, startScreenShare, stopScreenShare, startCamera, stopCamera } = useLiveKitCall({
     sessionId: activeSession,
     isCaller,
     onEnded: handleCallEnded,
