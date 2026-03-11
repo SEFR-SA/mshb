@@ -11,7 +11,7 @@ import { useForwardMessage } from "@/contexts/ForwardMessageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, ChevronDown, Rocket, Ticket, Unlock, FileText, Trash2 } from "lucide-react";
+import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, ChevronDown, Rocket, Ticket, Unlock, FileText, Trash2, Info } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
@@ -169,6 +169,20 @@ const MessageItem = React.memo(({
             className="font-bold"
           />{" "}
           {t("servers.joinedServer")}
+        </span>
+        <div className="flex-1 border-t border-border" />
+      </div>
+    );
+  }
+
+  // System ticket event message
+  if (msgAny.type === "system") {
+    return (
+      <div className="flex items-center gap-3 py-2 px-1 text-sm text-muted-foreground select-none">
+        <div className="flex-1 border-t border-border" />
+        <span className="shrink-0 inline-flex items-center gap-2 rounded-md bg-muted/40 px-3 py-1">
+          <Info className="h-4 w-4 text-primary" />
+          <span>{msg.content}</span>
         </span>
         <div className="flex-1 border-t border-border" />
       </div>

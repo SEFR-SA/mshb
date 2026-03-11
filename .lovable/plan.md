@@ -1,74 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-# Bug Fix Plan: Ticketing System — 3 Critical Fixes
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-## Bug 1: Server Owner Access to Tickets
+## Tech Stack
 
-**Root cause**: `create_ticket` RPC only adds the ticket owner and users with support roles to `channel_members`. The server owner is not included.
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-**Fix**: Update the `create_ticket` RPC via migration. After inserting channel members for support roles, fetch `owner_id` from the `servers` table and insert them into `channel_members` (with `ON CONFLICT DO NOTHING` in case the owner already has a support role).
+## Core Directives (CRITICAL — Always Enforce)
 
-```sql
--- Add after the support role member loop:
-INSERT INTO public.channel_members (channel_id, user_id)
-SELECT v_channel_id, s.owner_id FROM public.servers s WHERE s.id = p_server_id
-ON CONFLICT DO NOTHING;
-```
+### 1. Plan First
 
----
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-## Bug 2: Private Channels Visible in Sidebar
+### 2. Single Source of Truth (SSOT)
 
-**Root cause**: The `channels` SELECT RLS policy only checks `is_server_member()` — it does not filter private channels by `channel_members` membership.
+Never duplicate display logic. Always use the canonical shared components:
 
-**Fix**: Replace the existing SELECT policy on `channels` with a stricter one:
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-```sql
-DROP POLICY "Members can view channels" ON public.channels;
-CREATE POLICY "Members can view channels" ON public.channels
-FOR SELECT USING (
-  is_server_member(auth.uid(), server_id)
-  AND (
-    is_private = false
-    OR is_server_admin(auth.uid(), server_id)
-    OR is_channel_member(auth.uid(), id)
-  )
-);
-```
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-This means private channels (including tickets) are only visible to admins/owners or explicit channel members. No frontend changes needed — the query in `ChannelSidebar.tsx` already fetches all channels; RLS will now correctly filter.
+### 3. Pro Gating
 
----
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
 
-## Bug 3: System Message Formatting
+### 4. No Hallucinations
 
-**Backend fix**: Update all three RPCs (`create_ticket`, `close_ticket`, `reopen_ticket`) to use `display_name` instead of `username` for friendlier text, and set `type = 'system'` on the inserted message (the `type` column already exists on `messages`).
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
 
-```sql
--- In each RPC, change:
-SELECT p.username INTO v_username ...
--- To:
-SELECT COALESCE(p.display_name, p.username) INTO v_display_name ...
+### 5. No Over-Engineering
 
--- And insert with type = 'system':
-INSERT INTO public.messages (channel_id, author_id, content, type)
-VALUES (v_channel_id, v_user_id, 'Ticket created by ' || v_display_name, 'system');
-```
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
 
-**Frontend fix**: In `ServerChannelChat.tsx`, the `MessageItem` component already handles special message types (`welcome`, `boost`). Add a handler for `type === 'system'`:
+## Documentation Directory
 
-- Render centered, muted text with a divider line pattern (matching the existing `welcome` style)
-- Use an `Info` icon instead of an emoji
-- Skip author avatar/name rendering entirely
+Read these files for specific details — do NOT rely on memory alone:
 
----
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
 
-## Files Modified
+## Cosmetic Asset Specs
 
-1. **Migration SQL** — Updated `create_ticket`, `close_ticket`, `reopen_ticket` RPCs + replaced `channels` SELECT RLS policy
-2. `src/components/server/ServerChannelChat.tsx` — Add system message rendering in `MessageItem`
+Per-asset guides with exact dimensions, config files, and wrapper usage:
 
-## No Breaking Changes
-- Existing channels unaffected (non-private channels still visible to all members)
-- Existing messages with `type = 'system'` will render with the new style
-
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
