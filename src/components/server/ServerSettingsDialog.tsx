@@ -23,6 +23,7 @@ import SoundboardTab from "./settings/SoundboardTab";
 import MembersTab from "./settings/MembersTab";
 import RolesTab from "./settings/RolesTab";
 import ServerBoostsTab from "./settings/ServerBoostsTab";
+import CommunityTab from "./settings/CommunityTab";
 
 interface Member {
   user_id: string;
