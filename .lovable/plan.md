@@ -1,75 +1,99 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+# Phase 3: Transcripts, Reopen, Delete, Auto-Delete & Realtime
 
-## Tech Stack
+## Current State
+- `tickets` table exists with: `id, server_id, channel_id, owner_id, support_channel_id, ticket_number, status, created_at, closed_at, closed_by`. No `transcript_url` column.
+- Closed ticket UI has three disabled buttons: Reopen, Transcript, Delete.
+- `reopen_ticket` RPC exists as a stub (`RAISE EXCEPTION 'Not implemented yet'`).
+- No realtime subscription on `tickets` table.
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+---
 
-## Core Directives (CRITICAL — Always Enforce)
+## Step 1: Database Migration
 
-### 1. Plan First
+Single migration covering all schema changes:
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+```sql
+-- Add transcript_url to tickets
+ALTER TABLE public.tickets ADD COLUMN transcript_url TEXT;
 
-### 2. Single Source of Truth (SSOT)
+-- Create storage bucket for transcripts
+INSERT INTO storage.buckets (id, name, public) VALUES ('ticket_transcripts', 'ticket_transcripts', true);
 
-Never duplicate display logic. Always use the canonical shared components:
+-- Storage RLS: anyone can read, only service role inserts (edge function uses service role)
+CREATE POLICY "Public read transcripts" ON storage.objects FOR SELECT USING (bucket_id = 'ticket_transcripts');
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+-- Enable realtime for tickets table
+ALTER PUBLICATION supabase_realtime ADD TABLE public.tickets;
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+-- Replace reopen_ticket stub with real implementation
+CREATE OR REPLACE FUNCTION public.reopen_ticket(p_ticket_id UUID) ...
+  -- Set status='open', clear closed_at/closed_by
+  -- Rename channel back to ticket-XXXX
+  -- Re-add owner to channel_members
+  -- Insert system message "Ticket reopened by @user"
 
-### 3. Pro Gating
+-- New delete_ticket RPC
+CREATE OR REPLACE FUNCTION public.delete_ticket(p_ticket_id UUID) ...
+  -- Verify caller is owner or support role or admin
+  -- Delete channel (cascades messages via FK or manual delete)
+  -- Delete ticket record
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+-- Cron job: hourly cleanup of tickets closed >24h
+SELECT cron.schedule('cleanup-closed-tickets', '0 * * * *', $$
+  DELETE FROM public.channels WHERE id IN (
+    SELECT channel_id FROM public.tickets
+    WHERE status = 'closed' AND closed_at < now() - interval '24 hours'
+  );
+  DELETE FROM public.tickets
+  WHERE status = 'closed' AND closed_at < now() - interval '24 hours';
+$$);
+```
 
-### 4. No Hallucinations
+## Step 2: Edge Function — `generate-transcript`
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+New file: `supabase/functions/generate-transcript/index.ts`
 
-### 5. No Over-Engineering
+- Accepts `{ ticket_id }` in POST body
+- Auth: validates JWT via `getClaims()`, verifies caller is server member
+- Fetches ticket record, checks if `transcript_url` already exists (return it if so)
+- Fetches all messages for that channel_id, joined with profiles for author names
+- Formats as HTML: timestamp, author, content per message
+- Uploads to `ticket_transcripts/{server_id}/{ticket_id}.html`
+- Updates `tickets.transcript_url` with the public URL
+- Returns the URL
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+Config addition in `supabase/config.toml`:
+```toml
+[functions.generate-transcript]
+verify_jwt = false
+```
 
-## Documentation Directory
+## Step 3: UI Updates — `ServerChannelChat.tsx`
 
-Read these files for specific details — do NOT rely on memory alone:
+Wire up the three closed-state buttons:
 
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+**Reopen**: Call `supabase.rpc("reopen_ticket", { p_ticket_id })`. On success, update local state.
 
-## Cosmetic Asset Specs
+**Transcript**: Call `supabase.functions.invoke("generate-transcript", { body: { ticket_id } })`. Show loading spinner on button. On success, `window.open(url, "_blank")`.
 
-Per-asset guides with exact dimensions, config files, and wrapper usage:
+**Delete**: Open AlertDialog confirmation. On confirm, call `supabase.rpc("delete_ticket", { p_ticket_id })`. On success, navigate back to the server's first channel.
 
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
+**Realtime subscription**: Add a `useEffect` subscribing to `postgres_changes` on the `tickets` table filtered by `channel_id=eq.${channelId}`. On UPDATE events, sync `ticketInfo` state so close/reopen actions from other users are reflected instantly.
+
+## Step 4: Translations
+
+Add keys to `en.ts` and `ar.ts`:
+- `tickets.reopenConfirm`, `tickets.reopenSuccess`, `tickets.deleteConfirmTitle`, `tickets.deleteConfirmDesc`, `tickets.deleteSuccess`, `tickets.generatingTranscript`, `tickets.transcriptReady`
+
+---
+
+## Files Modified/Created
+
+1. **Migration SQL** — `transcript_url` column, storage bucket, reopen/delete RPCs, cron job, realtime
+2. `supabase/functions/generate-transcript/index.ts` — new edge function
+3. `supabase/config.toml` — add generate-transcript entry
+4. `src/components/server/ServerChannelChat.tsx` — wire buttons + realtime subscription
+5. `src/i18n/en.ts` + `src/i18n/ar.ts` — new translation keys
+
