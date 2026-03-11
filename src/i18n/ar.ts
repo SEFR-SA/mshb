@@ -459,6 +459,7 @@ export default {
     support: "قناة الدعم",
     supportDesc: "حدد الأدوار التي تتعامل مع تذاكر الدعم المنشأة من هذه القناة.",
     selectSupportRoles: "أدوار فريق الدعم",
+    communityOnly: "فعّل سيرفر المجتمع في الإعدادات لفتح هذه الميزة.",
   },
   tickets: {
     title: "تذاكر الدعم",

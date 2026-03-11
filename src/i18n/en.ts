@@ -459,6 +459,7 @@ export default {
     support: "Support Channel",
     supportDesc: "Designate which roles handle support tickets created from this channel.",
     selectSupportRoles: "Support Team Roles",
+    communityOnly: "Enable Community Server in Settings to unlock this feature.",
   },
   tickets: {
     title: "Support Tickets",
