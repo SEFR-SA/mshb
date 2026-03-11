@@ -12,7 +12,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ── 1. Verify caller is authenticated ─────────────────────────────────
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -40,8 +39,7 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub as string;
 
-    // ── 2. Parse request body ──────────────────────────────────────────────
-    let body: { boost_id?: string };
+    let body: { boost_id?: string; resume?: boolean };
     try {
       body = await req.json();
     } catch {
@@ -51,7 +49,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { boost_id } = body;
+    const { boost_id, resume } = body;
     if (!boost_id) {
       return new Response(JSON.stringify({ error: "boost_id is required" }), {
         status: 400,
@@ -59,9 +57,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── 3. Verify ownership and active status ─────────────────────────────
-    // Service role bypasses RLS — needed because authenticated users cannot
-    // UPDATE user_boosts (intentional, prevents self-service fraud).
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -69,7 +64,7 @@ Deno.serve(async (req) => {
 
     const { data: boost, error: fetchError } = await supabase
       .from("user_boosts")
-      .select("id, user_id, status, streampay_transaction_id")
+      .select("id, user_id, status, started_at, auto_renew, expires_at, streampay_transaction_id")
       .eq("id", boost_id)
       .eq("user_id", userId)
       .eq("status", "active")
@@ -77,51 +72,58 @@ Deno.serve(async (req) => {
 
     if (fetchError || !boost) {
       return new Response(
-        JSON.stringify({ error: "Boost not found or not cancellable" }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ error: "Boost not found or not manageable" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const transactionId = (boost as any).streampay_transaction_id as string | null;
+    if (resume) {
+      // Resume auto-renew: clear expires_at, set auto_renew = true
+      const { error: updateError } = await supabase
+        .from("user_boosts")
+        .update({ auto_renew: true, expires_at: null })
+        .eq("id", boost_id);
 
-    // ── 4. Cancel note ──────────────────────────────────────────────────
-    // Boosts are one-time payments (max_number_of_payments: 1) via StreamPay
-    // payment links — there is no recurring subscription to cancel on the
-    // gateway side. We simply mark the boost as canceled in our DB.
-    if (transactionId) {
-      console.log(`Boost ${boost_id} has streampay tx=${transactionId} — one-time payment, no gateway cancel needed`);
-    } else {
-      console.log(`Boost ${boost_id} has no streampay_transaction_id`);
+      if (updateError) {
+        console.error("Failed to resume auto-renew:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to resume" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`Boost auto-renew resumed: id=${boost_id} user=${userId}`);
+      return new Response(JSON.stringify({ success: true, auto_renew: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // ── 5. Update the DB row ──────────────────────────────────────────────
-    // The Phase 1 DB trigger (handle_boost_change → recalculate_server_boost)
-    // fires automatically on this UPDATE, decrementing boost_count/level.
+    // Cancel auto-renew: set auto_renew = false, set expires_at 30 days from started_at
+    const startedAt = new Date(boost.started_at);
+    const expiresAt = boost.expires_at
+      ? new Date(boost.expires_at)
+      : new Date(startedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+
     const { error: updateError } = await supabase
       .from("user_boosts")
       .update({
-        status: "canceled",
-        canceled_at: new Date().toISOString(),
+        auto_renew: false,
+        expires_at: expiresAt.toISOString(),
       })
       .eq("id", boost_id);
 
     if (updateError) {
-      console.error("Failed to update boost status after StreamPay cancel:", updateError);
+      console.error("Failed to cancel auto-renew:", updateError);
       return new Response(
         JSON.stringify({ error: "Failed to record cancellation" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Boost canceled: id=${boost_id} user=${userId}`);
+    console.log(`Boost auto-renew canceled: id=${boost_id} user=${userId} expires_at=${expiresAt.toISOString()}`);
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, auto_renew: false, expires_at: expiresAt.toISOString() }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
