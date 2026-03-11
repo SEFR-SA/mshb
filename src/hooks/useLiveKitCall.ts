@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLiveKitRoom } from "@/hooks/useLiveKitRoom";
 import { dmCallRoom } from "@/lib/livekit";
+import { Track } from "livekit-client";
 
 export type CallState = "idle" | "ringing" | "connecting" | "connected" | "ended";
 
@@ -16,7 +17,7 @@ interface UseLiveKitCallOptions {
 
 /**
  * DM call hook powered by LiveKit.
- * API-compatible with the old useWebRTC so consumers (Chat.tsx, CallListener.tsx) need minimal changes.
+ * API-compatible drop-in replacement for the old useWebRTC hook.
  */
 export function useLiveKitCall({
   sessionId,
@@ -26,11 +27,16 @@ export function useLiveKitCall({
   initialDeafened = false,
 }: UseLiveKitCallOptions) {
   const { user } = useAuth();
-  const displayName = (user as any)?.user_metadata?.display_name ?? user?.email?.split("@")[0] ?? "User";
+  const displayName =
+    (user as any)?.user_metadata?.display_name ??
+    user?.email?.split("@")[0] ??
+    "User";
 
   const [callState, setCallState] = useState<CallState>("idle");
   const hasConnectedRef = useRef(false);
   const endedRef = useRef(false);
+  const sessionIdRef = useRef(sessionId);
+  sessionIdRef.current = sessionId;
 
   const lk = useLiveKitRoom({
     roomName: sessionId ? dmCallRoom(sessionId) : "",
@@ -47,7 +53,8 @@ export function useLiveKitCall({
     },
   });
 
-  // Sync LiveKit callState → local callState
+  // ── Sync LiveKit connected → local state ──────────────────────────────────
+
   useEffect(() => {
     if (lk.callState === "connected" && !hasConnectedRef.current) {
       hasConnectedRef.current = true;
@@ -55,30 +62,85 @@ export function useLiveKitCall({
     }
   }, [lk.callState]);
 
-  // ── Start call (caller) ─────────────────────────────────────────────────────
+  // ── Monitor call_sessions for remote hangup/cancel ────────────────────────
 
-  const startCall = useCallback(async (overrideSessionId?: string) => {
-    const sid = overrideSessionId || sessionId;
-    if (!sid || !user) return;
-    endedRef.current = false;
-    hasConnectedRef.current = false;
-    setCallState("ringing");
+  useEffect(() => {
+    if (!sessionId) return;
 
-    // Connect to LiveKit room — both parties connect to the same room name
-    await lk.connect();
-  }, [sessionId, user, lk]);
+    const channel = supabase
+      .channel(`call-session-${sessionId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "call_sessions",
+          filter: `id=eq.${sessionId}`,
+        },
+        (payload) => {
+          const newStatus = (payload.new as any)?.status;
+          if (
+            newStatus === "ended" ||
+            newStatus === "declined" ||
+            newStatus === "missed"
+          ) {
+            if (!endedRef.current) {
+              endedRef.current = true;
+              lk.disconnect();
+              setCallState("ended");
+              onEnded?.();
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [sessionId, lk, onEnded]);
+
+  // ── Reset state when sessionId changes (new call or cleared) ──────────────
+
+  useEffect(() => {
+    if (!sessionId) {
+      // Session cleared — reset to idle
+      if (callState !== "idle" && callState !== "ended") {
+        lk.disconnect();
+      }
+      setCallState("idle");
+      hasConnectedRef.current = false;
+      endedRef.current = false;
+    }
+  }, [sessionId]);
+
+  // ── Start call (caller) ───────────────────────────────────────────────────
+
+  const startCall = useCallback(
+    async (overrideSessionId?: string) => {
+      const sid = overrideSessionId || sessionId;
+      if (!sid || !user) return;
+      endedRef.current = false;
+      hasConnectedRef.current = false;
+      setCallState("ringing");
+      await lk.connect();
+    },
+    [sessionId, user, lk]
+  );
 
   // ── Answer call (callee) ──────────────────────────────────────────────────
 
-  const answerCall = useCallback(async (overrideSessionId?: string) => {
-    const sid = overrideSessionId || sessionId;
-    if (!sid || !user) return;
-    endedRef.current = false;
-    hasConnectedRef.current = false;
-    setCallState("ringing");
-
-    await lk.connect();
-  }, [sessionId, user, lk]);
+  const answerCall = useCallback(
+    async (overrideSessionId?: string) => {
+      const sid = overrideSessionId || sessionId;
+      if (!sid || !user) return;
+      endedRef.current = false;
+      hasConnectedRef.current = false;
+      setCallState("ringing");
+      await lk.connect();
+    },
+    [sessionId, user, lk]
+  );
 
   // ── End call ──────────────────────────────────────────────────────────────
 
@@ -89,20 +151,23 @@ export function useLiveKitCall({
     onEnded?.();
   }, [lk, onEnded]);
 
-  // ── Screen share (delegate to LiveKit) ────────────────────────────────────
+  // ── Screen share ──────────────────────────────────────────────────────────
 
-  const startScreenShare = useCallback(async (settings?: {
-    resolution?: "720p" | "1080p" | "source";
-    fps?: 30 | 60;
-    sourceId?: string;
-    isPro?: boolean;
-  }) => {
-    await lk.startScreenShare({
-      resolution: settings?.resolution,
-      fps: settings?.fps,
-      sourceId: settings?.sourceId,
-    });
-  }, [lk]);
+  const startScreenShare = useCallback(
+    async (settings?: {
+      resolution?: "720p" | "1080p" | "source";
+      fps?: 30 | 60;
+      sourceId?: string;
+      isPro?: boolean;
+    }) => {
+      await lk.startScreenShare({
+        resolution: settings?.resolution,
+        fps: settings?.fps,
+        sourceId: settings?.sourceId,
+      });
+    },
+    [lk]
+  );
 
   const stopScreenShare = useCallback(async () => {
     await lk.stopScreenShare();
@@ -118,7 +183,7 @@ export function useLiveKitCall({
     await lk.stopCamera();
   }, [lk]);
 
-  // ── Local screen stream (from LiveKit local track) ────────────────────────
+  // ── Local screen stream ───────────────────────────────────────────────────
 
   const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
 
@@ -129,16 +194,18 @@ export function useLiveKitCall({
     }
     const room = lk.room.current;
     if (!room) return;
-    const pub = room.localParticipant.getTrackPublication("screen_share" as any);
+    const pub = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
     if (pub?.track?.mediaStream) {
       setLocalScreenStream(pub.track.mediaStream);
     }
   }, [lk.isScreenSharing, lk.room]);
 
-  // ── Remote screen/camera streams ──────────────────────────────────────────
+  // ── Remote streams ────────────────────────────────────────────────────────
 
-  const remoteScreenStream = lk.remoteScreenStreams.length > 0 ? lk.remoteScreenStreams[0].stream : null;
-  const remoteCameraStream = lk.remoteCameraStreams.length > 0 ? lk.remoteCameraStreams[0].stream : null;
+  const remoteScreenStream =
+    lk.remoteScreenStreams.length > 0 ? lk.remoteScreenStreams[0].stream : null;
+  const remoteCameraStream =
+    lk.remoteCameraStreams.length > 0 ? lk.remoteCameraStreams[0].stream : null;
 
   // ── Local camera stream ───────────────────────────────────────────────────
 
@@ -151,7 +218,7 @@ export function useLiveKitCall({
     }
     const room = lk.room.current;
     if (!room) return;
-    const pub = room.localParticipant.getTrackPublication("camera" as any);
+    const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
     if (pub?.track?.mediaStream) {
       setLocalCameraStream(pub.track.mediaStream);
     }
