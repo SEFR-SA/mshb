@@ -285,9 +285,9 @@ export function useLiveKitRoom({
     const p = room.remoteParticipants.get(identity);
     if (!p) return;
     const pub = p.getTrackPublication(Track.Source.Microphone);
-    if (pub) {
+    if (pub?.track) {
       // LiveKit volume: 0-1 (we accept 0-200 and normalize)
-      (pub as RemoteTrackPublication).setVolume?.(volume / 100);
+      (pub.track as any).setVolume?.(volume / 100);
     }
   }, []);
 
