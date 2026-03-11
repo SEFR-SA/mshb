@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLiveKitRoom, type CallState } from "@/hooks/useLiveKitRoom";
+import { useLiveKitRoom } from "@/hooks/useLiveKitRoom";
 import { dmCallRoom } from "@/lib/livekit";
 
-export type { CallState };
+export type CallState = "idle" | "ringing" | "connecting" | "connected" | "ended";
 
 interface UseLiveKitCallOptions {
   sessionId: string | null;
