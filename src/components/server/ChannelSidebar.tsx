@@ -1029,7 +1029,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       {/* Create Channel Dialog */}
       <Dialog open={createOpen} onOpenChange={(open) => {
         setCreateOpen(open);
-        if (!open) { setIsPrivate(false); setIsAnnouncement(false); setSelectedMembers([]); setUseCustomCategory(false); setCustomCategory(""); }
+        if (!open) { setIsPrivate(false); setIsAnnouncement(false); setIsRules(false); setSupportRoleIds([]); setSelectedMembers([]); setUseCustomCategory(false); setCustomCategory(""); }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
