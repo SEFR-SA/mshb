@@ -266,6 +266,22 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     }
   }, [pendingMode, consumeRequest]);
 
+  // Fetch server roles for support channel creation
+  const fetchServerRoles = useCallback(async () => {
+    const { data } = await supabase
+      .from("server_roles" as any)
+      .select("id, name, color")
+      .eq("server_id", serverId)
+      .order("position");
+    setServerRoles((data as any[]) || []);
+  }, [serverId]);
+
+  useEffect(() => {
+    if (newType === "support" && serverRoles.length === 0) {
+      fetchServerRoles();
+    }
+  }, [newType, fetchServerRoles, serverRoles.length]);
+
   useEffect(() => {
     if (!voiceChannel?.serverId) { setServerSounds([]); return; }
     supabase
