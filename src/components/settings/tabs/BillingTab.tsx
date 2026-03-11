@@ -94,7 +94,7 @@ const BillingTab = () => {
           id: s.id,
           date: new Date(s.started_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }),
           description: `Mshb Pro — ${s.tier === "pro" ? "Monthly" : s.tier}`,
-          amount: "19.99 SAR",
+          amount: "24.99 SAR",
           type: "pro",
         });
       }
