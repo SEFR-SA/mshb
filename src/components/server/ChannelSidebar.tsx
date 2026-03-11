@@ -314,14 +314,22 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const textChannelIds = useMemo(() => channels.filter((c) => c.type === "text").map((c) => c.id), [channels]);
   const unreadSet = useChannelUnread(textChannelIds);
   useEffect(() => {
+    let isActive = true;
+    let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+    let pollInterval = 2000;
+
     const load = async () => {
-      const { data: s } = await supabase.from("servers" as any).select("*").eq("id", serverId).maybeSingle();
+      const [{ data: s }, { data: ch }] = await Promise.all([
+        supabase.from("servers" as any).select("*").eq("id", serverId).maybeSingle(),
+        supabase.from("channels" as any).select("*").eq("server_id", serverId).order("position"),
+      ]);
+
+      if (!isActive) return;
+
       setServer(s as any);
-      const { data: ch } = await supabase.from("channels" as any).select("*").eq("server_id", serverId).order("position");
       setChannels((ch as any) || []);
       setChannelsLoading(false);
 
-      // Fetch current user's role
       if (user) {
         const { data: memberData } = await supabase
           .from("server_members" as any)
@@ -329,21 +337,43 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
           .eq("server_id", serverId)
           .eq("user_id", user.id)
           .maybeSingle();
+        if (!isActive) return;
         if (memberData) setCurrentUserRole((memberData as any).role);
       }
     };
+
+    const schedulePoll = () => {
+      pollTimeout = setTimeout(async () => {
+        try {
+          await load();
+          pollInterval = Math.min(Math.floor(pollInterval * 1.5), 30000);
+        } finally {
+          if (isActive) schedulePoll();
+        }
+      }, pollInterval);
+    };
+
     load();
 
     const channel = supabase
       .channel(`channels-${serverId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "channels", filter: `server_id=eq.${serverId}` }, () => load())
-      // Realtime: server info changes (name, icon, banner, etc.)
+      .on("postgres_changes", { event: "*", schema: "public", table: "channels", filter: `server_id=eq.${serverId}` }, () => {
+        pollInterval = 2000;
+        load();
+      })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "servers", filter: `id=eq.${serverId}` }, (payload) => {
         setServer(payload.new as any);
       })
       .subscribe();
-    return () => { channel.unsubscribe(); };
-  }, [serverId]);
+
+    schedulePoll();
+
+    return () => {
+      isActive = false;
+      if (pollTimeout) clearTimeout(pollTimeout);
+      channel.unsubscribe();
+    };
+  }, [serverId, user?.id]);
 
   // Realtime: soundboard changes
   useEffect(() => {

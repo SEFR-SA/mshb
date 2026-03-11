@@ -50,12 +50,76 @@ const ServerView = () => {
     if (!serverId) return;
     if (channelId) {
       supabase.from("channels" as any).select("id, name, type, is_private, is_announcement, is_rules").eq("id", channelId).maybeSingle()
-        .then(({ data }) => { if (data) setActiveChannel(data as any); });
+        .then(({ data }) => {
+          if (data) {
+            setActiveChannel(data as any);
+          } else {
+            setActiveChannel(null);
+            navigate(`/server/${serverId}`, { replace: true });
+          }
+        });
       return;
     }
     // No channelId — show channel list without auto-selecting any channel
     setActiveChannel(null);
-  }, [serverId, channelId]);
+  }, [serverId, channelId, navigate]);
+
+  // Realtime + polling fallback for deleted/missing channels
+  useEffect(() => {
+    if (!serverId || !channelId) return;
+
+    let isActive = true;
+    let pollInterval = 2000;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const ensureChannelExists = async () => {
+      const { data } = await supabase
+        .from("channels" as any)
+        .select("id, name, type, is_private, is_announcement, is_rules")
+        .eq("id", channelId)
+        .maybeSingle();
+
+      if (!isActive) return;
+
+      if (!data) {
+        setActiveChannel(null);
+        navigate(`/server/${serverId}`, { replace: true });
+        return;
+      }
+
+      setActiveChannel(data as any);
+    };
+
+    const schedulePoll = () => {
+      timeoutId = setTimeout(async () => {
+        await ensureChannelExists();
+        if (!isActive) return;
+        pollInterval = Math.min(Math.floor(pollInterval * 1.5), 30000);
+        schedulePoll();
+      }, pollInterval);
+    };
+
+    const realtime = supabase
+      .channel(`server-view-channel-${channelId}`)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "channels",
+        filter: `id=eq.${channelId}`,
+      }, () => {
+        pollInterval = 2000;
+        ensureChannelExists();
+      })
+      .subscribe();
+
+    schedulePoll();
+
+    return () => {
+      isActive = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      realtime.unsubscribe();
+    };
+  }, [serverId, channelId, navigate]);
 
   const handleChannelSelect = (channel: { id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean }) => {
     if (channel.type !== "voice") {
