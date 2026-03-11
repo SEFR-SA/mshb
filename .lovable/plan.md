@@ -1,129 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-# Ticketing System — Phase 1 & 2 Plan
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-## Overview
+## Tech Stack
 
-Add a Discord-style ticketing system: a "Support" channel type with a create-ticket button, and auto-generated private "Ticket" channels with open/close controls.
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
----
+## Core Directives (CRITICAL — Always Enforce)
 
-## Step 1: Database Migration
+### 1. Plan First
 
-**New tables:**
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-```sql
--- Ticket number sequences per server
-CREATE TABLE public.ticket_sequences (
-  server_id UUID PRIMARY KEY,
-  last_ticket_number INT NOT NULL DEFAULT 0
-);
-ALTER TABLE public.ticket_sequences ENABLE ROW LEVEL SECURITY;
+### 2. Single Source of Truth (SSOT)
 
--- Tickets metadata
-CREATE TABLE public.tickets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  server_id UUID NOT NULL,
-  channel_id UUID NOT NULL,
-  owner_id UUID NOT NULL,
-  status TEXT NOT NULL DEFAULT 'open',
-  ticket_number INT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  closed_at TIMESTAMPTZ,
-  closed_by UUID
-);
-ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
-```
+Never duplicate display logic. Always use the canonical shared components:
 
-**RLS policies:** Server members can SELECT tickets for their server. No direct INSERT/UPDATE/DELETE from clients (handled by RPCs).
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-**Channel table additions:**
-- `support_role_ids UUID[] DEFAULT '{}'` — stores which server_roles can access tickets created from this support channel.
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-No new `type` enum needed — the existing `type TEXT` column already accepts any value. We add `'support'` and `'ticket'` as new type values.
+### 3. Pro Gating
 
----
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
 
-## Step 2: Database RPCs (SECURITY DEFINER)
+### 4. No Hallucinations
 
-**`create_ticket(p_server_id, p_support_channel_id)`:**
-1. Verify caller is a server member
-2. Check caller has no existing open ticket for this support channel
-3. Atomically increment `ticket_sequences` (INSERT ON CONFLICT UPDATE + RETURNING)
-4. Get `support_role_ids` from the support channel
-5. Create a private channel: name = `ticket-XXXX`, type = `'ticket'`, category = same as support channel, is_private = true
-6. Add channel_members: owner + all users who have any of the `support_role_ids`
-7. Insert into `tickets` table
-8. Insert a system message: "Ticket created by @username"
-9. Return the new channel_id and ticket_number
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
 
-**`close_ticket(p_ticket_id)`:**
-1. Verify caller is ticket owner or has a support role
-2. Update ticket: status = 'closed', closed_at = now(), closed_by = auth.uid()
-3. Rename channel to `closed-XXXX`
-4. Remove owner from channel_members (makes it read-only for them)
-5. Insert system message: "Ticket closed by @username"
+### 5. No Over-Engineering
 
-**`reopen_ticket(p_ticket_id)`:** (stub for Phase 3, but we'll create the RPC signature)
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
 
----
+## Documentation Directory
 
-## Step 3: Channel Creation UI Updates (ChannelSidebar.tsx)
+Read these files for specific details — do NOT rely on memory alone:
 
-- Add `'support'` to the channel type Select dropdown (alongside text/voice)
-- When `support` is selected, show a **role picker** to select which server_roles are the support team (`support_role_ids`)
-- Hide announcement/rules toggles when type is `support`
-- Pass `support_role_ids` in the channel insert
-- Render support channels with a `LifeBuoy` icon (from lucide-react)
-- Ticket channels (`type === 'ticket'`) render with a `Ticket` icon
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
 
----
+## Cosmetic Asset Specs
 
-## Step 4: Support Channel View (new SupportChannelView.tsx)
+Per-asset guides with exact dimensions, config files, and wrapper usage:
 
-When `activeChannel.type === 'support'`:
-- Render a centered embed card instead of the chat feed
-- Title: "Support Tickets" with LifeBuoy icon
-- Description text explaining ticket creation
-- Green "Create Ticket" button with `Mail` icon
-- On click: call `create_ticket` RPC
-- On success: show ephemeral toast "Ticket Created: #ticket-XXXX" with a link to navigate to the new channel
-- On error (already has open ticket): show error toast
-
----
-
-## Step 5: Ticket Channel Controls (ServerChannelChat.tsx)
-
-When channel type is `'ticket'`:
-- Fetch the ticket record from `tickets` table
-- At the top of the message feed, render a **Ticket Controls** card:
-  - **If status = 'open'**: Red "Close" button with Lock icon. Clicking opens AlertDialog confirmation. On confirm → call `close_ticket` RPC.
-  - **If status = 'closed'**: Hide chat input entirely. Show three buttons: "Reopen" (Unlock), "Transcript" (FileText), "Delete" (Trash2) — UI-only for now, Phase 3 backend.
-
----
-
-## Step 6: ServerView.tsx Routing
-
-- Update `activeChannel` type to include `type: string` values `'support'` and `'ticket'`
-- In `renderMainContent()`: if `activeChannel.type === 'support'`, render `<SupportChannelView>` instead of `<ServerChannelChat>`
-- Pass ticket-related props through for ticket channels
-
----
-
-## Step 7: Translations (en.ts + ar.ts)
-
-Add keys under `channels` and new `tickets` namespace:
-- `channels.support`, `channels.supportDesc`, `channels.selectSupportRoles`
-- `tickets.title`, `tickets.description`, `tickets.createButton`, `tickets.created`, `tickets.closeConfirmTitle`, `tickets.closeConfirmDesc`, `tickets.closedBy`, `tickets.reopen`, `tickets.transcript`, `tickets.delete`, `tickets.alreadyOpen`
-
----
-
-## Files Modified/Created
-
-1. **Migration SQL** — new tables, RLS, RPCs, column addition
-2. `src/components/server/ChannelSidebar.tsx` — support type in creation, icon rendering
-3. `src/components/server/SupportChannelView.tsx` — **new file**, embed card UI
-4. `src/components/server/ServerChannelChat.tsx` — ticket controls card, closed state
-5. `src/pages/ServerView.tsx` — routing for support/ticket channel types
-6. `src/i18n/en.ts` + `src/i18n/ar.ts` — translation keys
-
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

@@ -11,6 +11,7 @@ import ServerMemberList from "@/components/server/ServerMemberList";
 import ScreenShareViewer from "@/components/server/ScreenShareViewer";
 import CameraViewer from "@/components/server/CameraViewer";
 import ServerRail from "@/components/server/ServerRail";
+import SupportChannelView from "@/components/server/SupportChannelView";
 
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,10 @@ const ServerView = () => {
     if (!activeChannel) {
       return <div className="flex-1 flex items-center justify-center text-muted-foreground">Select a channel</div>;
     }
-    return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} isPrivate={activeChannel.is_private} hasAccess={hasAccess} serverId={serverId} isAnnouncement={activeChannel.is_announcement} isRules={activeChannel.is_rules} />;
+    if (activeChannel.type === "support") {
+      return <SupportChannelView serverId={serverId} channelId={activeChannel.id} channelName={activeChannel.name} />;
+    }
+    return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} isPrivate={activeChannel.is_private} hasAccess={hasAccess} serverId={serverId} isAnnouncement={activeChannel.is_announcement} isRules={activeChannel.is_rules} channelType={activeChannel.type} />;
   };
 
   const switchDialog = (

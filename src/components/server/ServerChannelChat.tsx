@@ -11,9 +11,10 @@ import { useForwardMessage } from "@/contexts/ForwardMessageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, ChevronDown, Rocket } from "lucide-react";
+import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, ChevronDown, Rocket, Ticket, Unlock, FileText, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import MarkdownToolbar from "@/components/chat/MarkdownToolbar";
 import { toast } from "@/hooks/use-toast";
 import { uploadChatFile } from "@/lib/uploadChatFile";
@@ -54,6 +55,7 @@ interface Props {
   serverId?: string;
   isAnnouncement?: boolean;
   isRules?: boolean;
+  channelType?: string;
 }
 
 const renderMessageContent = (
@@ -362,7 +364,7 @@ const MessageItem = React.memo(({
 
 // ─── ServerChannelChat ───────────────────────────────────────────────────────
 
-const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement, isRules }: Props) => {
+const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement, isRules, channelType }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { serverId: serverIdParam } = useParams<{ serverId: string }>();
@@ -389,6 +391,9 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const isLocked = isPrivate && hasAccess === false;
   const [userRole, setUserRole] = useState<string>("member");
   const [userRoleColorMap, setUserRoleColorMap] = useState<Map<string, { color: string; iconUrl: string | null }>>(new Map());
+  const [ticketInfo, setTicketInfo] = useState<{ id: string; status: string; ticket_number: number } | null>(null);
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [closingTicket, setClosingTicket] = useState(false);
 
   // Infinite scrolling messages
   const {
@@ -528,7 +533,34 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     return () => { channel.unsubscribe(); };
   }, [serverId]);
 
-  const canPost = (!isAnnouncement && !isRules) || userRole === "admin" || userRole === "owner";
+  const canPost = channelType === "ticket" ? (ticketInfo?.status !== "closed") : ((!isAnnouncement && !isRules) || userRole === "admin" || userRole === "owner");
+
+  // Fetch ticket info for ticket channels
+  useEffect(() => {
+    if (channelType !== "ticket" || !channelId) return;
+    supabase
+      .from("tickets" as any)
+      .select("id, status, ticket_number")
+      .eq("channel_id", channelId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setTicketInfo(data as any);
+      });
+  }, [channelType, channelId]);
+
+  const handleCloseTicket = async () => {
+    if (!ticketInfo) return;
+    setClosingTicket(true);
+    const { error } = await supabase.rpc("close_ticket", { p_ticket_id: ticketInfo.id } as any);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    } else {
+      setTicketInfo({ ...ticketInfo, status: "closed" });
+      toast({ title: t("tickets.closedSuccess") });
+    }
+    setClosingTicket(false);
+    setCloseDialogOpen(false);
+  };
 
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
@@ -781,14 +813,51 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       )}
 
       <header className="flex items-center gap-2 p-3 glass border-b border-border/50">
-        {isPrivate ? <Lock className="h-5 w-5 text-muted-foreground" /> : isRules ? <BookOpen className="h-5 w-5 text-muted-foreground" /> : isAnnouncement ? <Megaphone className="h-5 w-5 text-muted-foreground" /> : <Hash className="h-5 w-5 text-muted-foreground" />}
+        {channelType === "ticket" ? <Ticket className="h-5 w-5 text-muted-foreground" /> : isPrivate ? <Lock className="h-5 w-5 text-muted-foreground" /> : isRules ? <BookOpen className="h-5 w-5 text-muted-foreground" /> : isAnnouncement ? <Megaphone className="h-5 w-5 text-muted-foreground" /> : <Hash className="h-5 w-5 text-muted-foreground" />}
         <h2 className="font-semibold">{channelName}</h2>
         {isAnnouncement && <span className="ms-1 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("channels.announcementBadge")}</span>}
         {isRules && <span className="ms-1 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("channels.rulesBadge")}</span>}
+        {channelType === "ticket" && ticketInfo && (
+          <span className={`ms-1 text-xs font-medium px-1.5 py-0.5 rounded ${ticketInfo.status === "open" ? "bg-green-500/20 text-green-500" : "bg-muted text-muted-foreground"}`}>
+            {ticketInfo.status === "open" ? t("tickets.statusOpen") : t("tickets.statusClosed")}
+          </span>
+        )}
         <div className="ms-auto">
           <PinnedMessagesDrawer channelId={channelId} />
         </div>
       </header>
+
+      {/* Ticket Controls Card */}
+      {channelType === "ticket" && ticketInfo && (
+        <div className="px-4 py-3 border-b border-border/50 bg-muted/10">
+          {ticketInfo.status === "open" ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setCloseDialogOpen(true)}
+              disabled={closingTicket}
+            >
+              <Lock className="h-3.5 w-3.5 me-1.5" />
+              {t("tickets.close")}
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled>
+                <Unlock className="h-3.5 w-3.5 me-1.5" />
+                {t("tickets.reopen")}
+              </Button>
+              <Button variant="outline" size="sm" disabled>
+                <FileText className="h-3.5 w-3.5 me-1.5" />
+                {t("tickets.transcript")}
+              </Button>
+              <Button variant="destructive" size="sm" disabled>
+                <Trash2 className="h-3.5 w-3.5 me-1.5" />
+                {t("tickets.delete")}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="relative flex-1 overflow-hidden">
       <div ref={scrollRef} className="absolute inset-0 overflow-y-auto p-4">
@@ -865,7 +934,12 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       )}
       </div>
 
-      {isRules && !canPost ? (
+      {channelType === "ticket" && ticketInfo?.status === "closed" ? (
+        <div className="px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 border-t border-border/40">
+          <Lock className="h-4 w-4 shrink-0" />
+          {t("tickets.closedReadOnly")}
+        </div>
+      ) : isRules && !canPost ? (
         <div className="px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 border-t border-border/40">
           <BookOpen className="h-4 w-4 shrink-0" />
           {t("channels.rulesReadOnly")}
@@ -954,6 +1028,22 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
           </div>
         </>
       )}
+
+      {/* Close Ticket Confirmation Dialog */}
+      <AlertDialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("tickets.closeConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("tickets.closeConfirmDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCloseTicket} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {t("tickets.close")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone, BookOpen, Music, Bell, BellOff } from "lucide-react";
+import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone, BookOpen, Music, Bell, BellOff, LifeBuoy, Ticket } from "lucide-react";
 import VoiceUserContextMenu from "./VoiceUserContextMenu";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
@@ -211,6 +211,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [isPrivate, setIsPrivate] = useState(false);
   const [isAnnouncement, setIsAnnouncement] = useState(false);
   const [isRules, setIsRules] = useState(false);
+  const [supportRoleIds, setSupportRoleIds] = useState<string[]>([]);
+  const [serverRoles, setServerRoles] = useState<{ id: string; name: string; color: string }[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [serverMembers, setServerMembers] = useState<ServerMember[]>([]);
   const [voiceParticipants, setVoiceParticipants] = useState<Map<string, VoiceParticipant[]>>(new Map());
@@ -263,6 +265,22 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       setCreateOpen(true);
     }
   }, [pendingMode, consumeRequest]);
+
+  // Fetch server roles for support channel creation
+  const fetchServerRoles = useCallback(async () => {
+    const { data } = await supabase
+      .from("server_roles" as any)
+      .select("id, name, color")
+      .eq("server_id", serverId)
+      .order("position");
+    setServerRoles((data as any[]) || []);
+  }, [serverId]);
+
+  useEffect(() => {
+    if (newType === "support" && serverRoles.length === 0) {
+      fetchServerRoles();
+    }
+  }, [newType, fetchServerRoles, serverRoles.length]);
 
   useEffect(() => {
     if (!voiceChannel?.serverId) { setServerSounds([]); return; }
@@ -434,9 +452,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       name: newName.trim().toLowerCase().replace(/\s+/g, "-"),
       type: newType,
       category: categoryToSave,
-      is_private: isPrivate,
+      is_private: newType === "support" ? false : isPrivate,
       is_announcement: newType === "text" ? isAnnouncement : false,
       is_rules: newType === "text" ? isRules : false,
+      ...(newType === "support" ? { support_role_ids: supportRoleIds } : {}),
     } as any).select().maybeSingle();
 
     if (newChannel && isPrivate) {
@@ -466,6 +485,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setIsPrivate(false);
     setIsAnnouncement(false);
     setIsRules(false);
+    setSupportRoleIds([]);
     setSelectedMembers([]);
     setUseCustomCategory(false);
     setCustomCategory("");
@@ -818,7 +838,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   </div>
                   <CollapsibleContent>
                     {chs.map((ch) => {
-                      const ChannelIcon = ch.is_private ? Lock : (ch.type === "voice" ? Volume2 : (ch.is_rules ? BookOpen : (ch.is_announcement ? Megaphone : Hash)));
+                      const ChannelIcon = ch.is_private && ch.type !== "ticket" ? Lock : ch.type === "support" ? LifeBuoy : ch.type === "ticket" ? Ticket : ch.type === "voice" ? Volume2 : ch.is_rules ? BookOpen : ch.is_announcement ? Megaphone : Hash;
 
                       if (ch.type === "voice") {
                         const participants = voiceParticipants.get(ch.id) || [];
@@ -1025,7 +1045,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       {/* Create Channel Dialog */}
       <Dialog open={createOpen} onOpenChange={(open) => {
         setCreateOpen(open);
-        if (!open) { setIsPrivate(false); setIsAnnouncement(false); setSelectedMembers([]); setUseCustomCategory(false); setCustomCategory(""); }
+        if (!open) { setIsPrivate(false); setIsAnnouncement(false); setIsRules(false); setSupportRoleIds([]); setSelectedMembers([]); setUseCustomCategory(false); setCustomCategory(""); }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -1077,11 +1097,12 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
               />
               <p className="text-xs text-muted-foreground mt-1 text-end">{newName.length}/17</p>
             </div>
-            <Select value={newType} onValueChange={setNewType}>
+            <Select value={newType} onValueChange={(val) => { setNewType(val); if (val === "support") { setIsAnnouncement(false); setIsRules(false); setIsPrivate(false); } }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="text">{t("channels.text")}</SelectItem>
                 <SelectItem value="voice">{t("channels.voice")}</SelectItem>
+                <SelectItem value="support">{t("channels.support")}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -1127,6 +1148,32 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   />
                 </div>
               </>
+            )}
+
+            {newType === "support" && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("channels.selectSupportRoles")}</Label>
+                <p className="text-xs text-muted-foreground">{t("channels.supportDesc")}</p>
+                <ScrollArea className="h-[160px] border border-border rounded-md p-2">
+                  {serverRoles.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">{t("common.loading")}</p>
+                  ) : (
+                    serverRoles.map((role) => (
+                      <label key={role.id} className="flex items-center gap-3 py-1.5 px-1 rounded hover:bg-muted/50 cursor-pointer">
+                        <Checkbox
+                          checked={supportRoleIds.includes(role.id)}
+                          onCheckedChange={() => {
+                            setSupportRoleIds((prev) =>
+                              prev.includes(role.id) ? prev.filter((id) => id !== role.id) : [...prev, role.id]
+                            );
+                          }}
+                        />
+                        <span className="text-sm font-medium" style={{ color: role.color || undefined }}>{role.name}</span>
+                      </label>
+                    ))
+                  )}
+                </ScrollArea>
+              </div>
             )}
 
             <Button onClick={handleCreateChannel} disabled={!newName.trim()} className="w-full">
