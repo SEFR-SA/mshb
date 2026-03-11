@@ -257,7 +257,7 @@ const BillingTab = () => {
                         </div>
                         <div className="flex justify-between font-semibold border-t border-border/50 pt-2">
                           <span>{t("settings.total")}</span>
-                          <span>{total.toFixed(2)} SAR</span>
+                          <span>{totalPrice.toFixed(2)} SAR</span>
                         </div>
                       </div>
                     </div>
