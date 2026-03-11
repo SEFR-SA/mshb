@@ -256,6 +256,8 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
         return canEdit ? <ServerBoostsTab serverId={serverId} /> : null;
       case "auditlogs":
         return canViewAuditLogs ? <AuditLogView serverId={serverId} /> : null;
+      case "community":
+        return isOwner ? <CommunityTab serverId={serverId} isCommunity={isCommunity} rulesChannelId={rulesChannelId} updatesChannelId={updatesChannelId} onRefresh={loadServerData} /> : null;
       default:
         return (
           <div className="flex items-center justify-center h-64">
