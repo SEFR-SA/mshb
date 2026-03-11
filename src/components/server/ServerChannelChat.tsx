@@ -923,15 +923,15 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
             </Button>
           ) : (
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled>
-                <Unlock className="h-3.5 w-3.5 me-1.5" />
+              <Button variant="outline" size="sm" onClick={handleReopenTicket} disabled={reopeningTicket}>
+                {reopeningTicket ? <Loader2 className="h-3.5 w-3.5 me-1.5 animate-spin" /> : <Unlock className="h-3.5 w-3.5 me-1.5" />}
                 {t("tickets.reopen")}
               </Button>
-              <Button variant="outline" size="sm" disabled>
-                <FileText className="h-3.5 w-3.5 me-1.5" />
+              <Button variant="outline" size="sm" onClick={handleGenerateTranscript} disabled={generatingTranscript}>
+                {generatingTranscript ? <Loader2 className="h-3.5 w-3.5 me-1.5 animate-spin" /> : <FileText className="h-3.5 w-3.5 me-1.5" />}
                 {t("tickets.transcript")}
               </Button>
-              <Button variant="destructive" size="sm" disabled>
+              <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)} disabled={deletingTicket}>
                 <Trash2 className="h-3.5 w-3.5 me-1.5" />
                 {t("tickets.delete")}
               </Button>
