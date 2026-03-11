@@ -218,8 +218,8 @@ const ServerView = () => {
                 </SheetContent>
               </Sheet>
             </header>
-            {remoteScreenStream && isWatchingStream && (
-              <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
+            {remoteScreenStreams.length > 0 && isWatchingStream && (
+              <StreamGrid streams={remoteScreenStreams} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
             )}
             <div className="flex-1 min-h-0">{renderMainContent()}</div>
           </div>
