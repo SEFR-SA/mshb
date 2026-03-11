@@ -702,8 +702,18 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                   <ShieldCheck className="h-4 w-4" />{t("serverSettings.roles")}
                 </button>
                 {isAdminOrOwner && (
-                  <button className={btnClass} onClick={() => { openSettings(s.id, "auditlogs"); close(); }}>
-                    <ScrollText className="h-4 w-4" />{t("auditLog.title")}
+                  <>
+                    <button className={btnClass} onClick={() => { openSettings(s.id, "serverBoosts"); close(); }}>
+                      <Zap className="h-4 w-4" />{t("serverBoost.serverBoostStatus")}
+                    </button>
+                    <button className={btnClass} onClick={() => { openSettings(s.id, "auditlogs"); close(); }}>
+                      <ScrollText className="h-4 w-4" />{t("auditLog.title")}
+                    </button>
+                  </>
+                )}
+                {s.owner_id === user?.id && (
+                  <button className={btnClass} onClick={() => { openSettings(s.id, "community"); close(); }}>
+                    <Crown className="h-4 w-4" />{t("community.settingsTitle")}
                   </button>
                 )}
                 <div className="border-t my-2" />
