@@ -56,7 +56,7 @@ const ServerView = () => {
     setActiveChannel(null);
   }, [serverId, channelId]);
 
-  const handleChannelSelect = (channel: { id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean }) => {
+  const handleChannelSelect = (channel: { id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean }) => {
     if (channel.type !== "voice") {
       setActiveChannel(channel);
       // On mobile, navigate to the channel route for full-page chat
