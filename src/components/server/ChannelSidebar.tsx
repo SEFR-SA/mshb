@@ -436,9 +436,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       name: newName.trim().toLowerCase().replace(/\s+/g, "-"),
       type: newType,
       category: categoryToSave,
-      is_private: isPrivate,
+      is_private: newType === "support" ? false : isPrivate,
       is_announcement: newType === "text" ? isAnnouncement : false,
       is_rules: newType === "text" ? isRules : false,
+      ...(newType === "support" ? { support_role_ids: supportRoleIds } : {}),
     } as any).select().maybeSingle();
 
     if (newChannel && isPrivate) {
