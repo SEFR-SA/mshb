@@ -934,7 +934,12 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       )}
       </div>
 
-      {isRules && !canPost ? (
+      {channelType === "ticket" && ticketInfo?.status === "closed" ? (
+        <div className="px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 border-t border-border/40">
+          <Lock className="h-4 w-4 shrink-0" />
+          {t("tickets.closedReadOnly")}
+        </div>
+      ) : isRules && !canPost ? (
         <div className="px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 border-t border-border/40">
           <BookOpen className="h-4 w-4 shrink-0" />
           {t("channels.rulesReadOnly")}
@@ -1023,6 +1028,22 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
           </div>
         </>
       )}
+
+      {/* Close Ticket Confirmation Dialog */}
+      <AlertDialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("tickets.closeConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("tickets.closeConfirmDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCloseTicket} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {t("tickets.close")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
