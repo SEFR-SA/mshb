@@ -469,6 +469,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setIsPrivate(false);
     setIsAnnouncement(false);
     setIsRules(false);
+    setSupportRoleIds([]);
     setSelectedMembers([]);
     setUseCustomCategory(false);
     setCustomCategory("");
