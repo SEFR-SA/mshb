@@ -94,7 +94,7 @@ const BillingTab = () => {
           id: s.id,
           date: new Date(s.started_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }),
           description: `Mshb Pro — ${s.tier === "pro" ? "Monthly" : s.tier}`,
-          amount: "19.99 SAR",
+          amount: "24.99 SAR",
           type: "pro",
         });
       }
@@ -224,11 +224,11 @@ const BillingTab = () => {
         ) : (
           <div className="divide-y divide-border/50">
             {transactions.map((tx) => {
-              const basePrice = parseFloat(tx.amount) || 0;
-              const vat = +(basePrice * 0.15).toFixed(2);
-              const total = +(basePrice + vat).toFixed(2);
+              const totalPrice = parseFloat(tx.amount) || 0;
+              const basePrice = +(totalPrice / 1.15).toFixed(2);
+              const vat = +(totalPrice - basePrice).toFixed(2);
               const isOpen = expandedTx === tx.id;
-              const hasAmount = basePrice > 0;
+              const hasAmount = totalPrice > 0;
               return (
                 <div key={tx.id}>
                   <button
@@ -257,7 +257,7 @@ const BillingTab = () => {
                         </div>
                         <div className="flex justify-between font-semibold border-t border-border/50 pt-2">
                           <span>{t("settings.total")}</span>
-                          <span>{total.toFixed(2)} SAR</span>
+                          <span>{totalPrice.toFixed(2)} SAR</span>
                         </div>
                       </div>
                     </div>
