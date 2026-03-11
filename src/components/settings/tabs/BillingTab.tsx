@@ -224,9 +224,9 @@ const BillingTab = () => {
         ) : (
           <div className="divide-y divide-border/50">
             {transactions.map((tx) => {
-              const basePrice = parseFloat(tx.amount) || 0;
-              const vat = +(basePrice * 0.15).toFixed(2);
-              const total = +(basePrice + vat).toFixed(2);
+              const totalPrice = parseFloat(tx.amount) || 0;
+              const basePrice = +(totalPrice / 1.15).toFixed(2);
+              const vat = +(totalPrice - basePrice).toFixed(2);
               const isOpen = expandedTx === tx.id;
               const hasAmount = basePrice > 0;
               return (
