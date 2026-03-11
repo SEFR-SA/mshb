@@ -7,18 +7,31 @@ interface VoiceChannel {
   serverId: string;
 }
 
+export interface RemoteScreenShareInfo {
+  identity: string;
+  name: string;
+  stream: MediaStream;
+}
+
 interface VoiceChannelContextType {
   voiceChannel: VoiceChannel | null;
   setVoiceChannel: (channel: VoiceChannel | null) => void;
   disconnectVoice: () => void;
   isScreenSharing: boolean;
   setIsScreenSharing: (v: boolean) => void;
+  /** @deprecated Use remoteScreenStreams instead */
   remoteScreenStream: MediaStream | null;
   setRemoteScreenStream: (s: MediaStream | null) => void;
+  /** All remote screen shares (multi-stream support). */
+  remoteScreenStreams: RemoteScreenShareInfo[];
+  setRemoteScreenStreams: (s: RemoteScreenShareInfo[]) => void;
   screenSharerName: string | null;
   setScreenSharerName: (n: string | null) => void;
   isWatchingStream: boolean;
   setIsWatchingStream: (v: boolean) => void;
+  /** Identity of the focused stream (for spotlight mode). Null = show grid. */
+  focusedStreamIdentity: string | null;
+  setFocusedStreamIdentity: (id: string | null) => void;
   isCameraOn: boolean;
   setIsCameraOn: (v: boolean) => void;
   localCameraStream: MediaStream | null;
@@ -39,10 +52,14 @@ const VoiceChannelContext = createContext<VoiceChannelContextType>({
   setIsScreenSharing: () => {},
   remoteScreenStream: null,
   setRemoteScreenStream: () => {},
+  remoteScreenStreams: [],
+  setRemoteScreenStreams: () => {},
   screenSharerName: null,
   setScreenSharerName: () => {},
   isWatchingStream: false,
   setIsWatchingStream: () => {},
+  focusedStreamIdentity: null,
+  setFocusedStreamIdentity: () => {},
   isCameraOn: false,
   setIsCameraOn: () => {},
   localCameraStream: null,
@@ -61,13 +78,29 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
   const [voiceChannel, setVoiceChannel] = useState<VoiceChannel | null>(null);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [remoteScreenStream, setRemoteScreenStream] = useState<MediaStream | null>(null);
+  const [remoteScreenStreams, setRemoteScreenStreams] = useState<RemoteScreenShareInfo[]>([]);
   const [screenSharerName, setScreenSharerName] = useState<string | null>(null);
   const [isWatchingStream, setIsWatchingStream] = useState(false);
+  const [focusedStreamIdentity, setFocusedStreamIdentity] = useState<string | null>(null);
 
-  // Auto-reset watching state when the remote stream disappears
+  // Auto-reset watching state when all remote streams disappear
   useEffect(() => {
-    if (!remoteScreenStream) setIsWatchingStream(false);
-  }, [remoteScreenStream]);
+    if (remoteScreenStreams.length === 0) {
+      setIsWatchingStream(false);
+      setFocusedStreamIdentity(null);
+    }
+  }, [remoteScreenStreams]);
+
+  // Keep legacy single-stream in sync with array (first stream)
+  useEffect(() => {
+    if (remoteScreenStreams.length > 0) {
+      setRemoteScreenStream(remoteScreenStreams[0].stream);
+      setScreenSharerName(remoteScreenStreams[0].name);
+    } else {
+      setRemoteScreenStream(null);
+      setScreenSharerName(null);
+    }
+  }, [remoteScreenStreams]);
 
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [localCameraStream, setLocalCameraStream] = useState<MediaStream | null>(null);
@@ -85,17 +118,14 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
       supabase.from("voice_channel_participants").delete().eq("user_id", userId);
     };
 
-    // 1. Startup wipe — user already has a persisted session on app restart
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user?.id) cleanup(session.user.id);
     });
 
-    // 2. Post-login wipe — session not ready yet at mount (cold start / first login)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session?.user?.id) cleanup(session.user.id);
     });
 
-    // 3. Graceful close (best-effort fire-and-forget; may not complete before unload)
     const handleBeforeUnload = () => {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user?.id) cleanup(session.user.id);
@@ -113,8 +143,10 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
     setVoiceChannel(null);
     setIsScreenSharing(false);
     setRemoteScreenStream(null);
+    setRemoteScreenStreams([]);
     setScreenSharerName(null);
     setIsWatchingStream(false);
+    setFocusedStreamIdentity(null);
     setIsCameraOn(false);
     setLocalCameraStream(null);
     setRemoteCameraStream(null);
@@ -123,7 +155,20 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
   }, []);
 
   return (
-    <VoiceChannelContext.Provider value={{ voiceChannel, setVoiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, screenSharerName, setScreenSharerName, isWatchingStream, setIsWatchingStream, isCameraOn, setIsCameraOn, localCameraStream, setLocalCameraStream, remoteCameraStream, setRemoteCameraStream, userVolumes, setUserVolume, nativeResolutionLabel, setNativeResolutionLabel }}>
+    <VoiceChannelContext.Provider value={{
+      voiceChannel, setVoiceChannel, disconnectVoice,
+      isScreenSharing, setIsScreenSharing,
+      remoteScreenStream, setRemoteScreenStream,
+      remoteScreenStreams, setRemoteScreenStreams,
+      screenSharerName, setScreenSharerName,
+      isWatchingStream, setIsWatchingStream,
+      focusedStreamIdentity, setFocusedStreamIdentity,
+      isCameraOn, setIsCameraOn,
+      localCameraStream, setLocalCameraStream,
+      remoteCameraStream, setRemoteCameraStream,
+      userVolumes, setUserVolume,
+      nativeResolutionLabel, setNativeResolutionLabel,
+    }}>
       {children}
     </VoiceChannelContext.Provider>
   );
