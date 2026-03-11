@@ -53,6 +53,7 @@ interface Props {
   hasAccess?: boolean;
   serverId?: string;
   isAnnouncement?: boolean;
+  isRules?: boolean;
 }
 
 const renderMessageContent = (
