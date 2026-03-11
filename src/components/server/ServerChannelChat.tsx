@@ -11,7 +11,7 @@ import { useForwardMessage } from "@/contexts/ForwardMessageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, ChevronDown, Rocket } from "lucide-react";
+import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, ChevronDown, Rocket, Ticket, Unlock, FileText, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import MarkdownToolbar from "@/components/chat/MarkdownToolbar";
