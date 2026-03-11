@@ -92,7 +92,7 @@ interface ServerMember {
 interface Props {
   serverId: string;
   activeChannelId?: string;
-  onChannelSelect?: (channel: { id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean }) => void;
+  onChannelSelect?: (channel: { id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean }) => void;
   onVoiceChannelSelect?: (channel: { id: string; name: string }) => void;
   activeVoiceChannelId?: string;
 }
