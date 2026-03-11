@@ -532,7 +532,34 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     return () => { channel.unsubscribe(); };
   }, [serverId]);
 
-  const canPost = (!isAnnouncement && !isRules) || userRole === "admin" || userRole === "owner";
+  const canPost = channelType === "ticket" ? (ticketInfo?.status !== "closed") : ((!isAnnouncement && !isRules) || userRole === "admin" || userRole === "owner");
+
+  // Fetch ticket info for ticket channels
+  useEffect(() => {
+    if (channelType !== "ticket" || !channelId) return;
+    supabase
+      .from("tickets" as any)
+      .select("id, status, ticket_number")
+      .eq("channel_id", channelId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setTicketInfo(data as any);
+      });
+  }, [channelType, channelId]);
+
+  const handleCloseTicket = async () => {
+    if (!ticketInfo) return;
+    setClosingTicket(true);
+    const { error } = await supabase.rpc("close_ticket", { p_ticket_id: ticketInfo.id } as any);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    } else {
+      setTicketInfo({ ...ticketInfo, status: "closed" });
+      toast({ title: t("tickets.closedSuccess") });
+    }
+    setClosingTicket(false);
+    setCloseDialogOpen(false);
+  };
 
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
