@@ -22,7 +22,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const { globalMuted, globalDeafened, setGlobalMuted, setGlobalDeafened } = useAudioSettings();
   const {
     isScreenSharing, setIsScreenSharing,
-    setRemoteScreenStream, setScreenSharerName,
+    setRemoteScreenStreams,
     isCameraOn, setIsCameraOn,
     setLocalCameraStream, setRemoteCameraStream,
     voiceChannel, setVoiceChannel, setNativeResolutionLabel,
@@ -190,16 +190,8 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   // ── Sync remote screen shares to VoiceChannelContext ──────────────────────
 
   useEffect(() => {
-    if (lk.remoteScreenStreams.length > 0) {
-      // For now, show the first remote screen share (multi-stream grid comes in Phase 4 UI)
-      const first = lk.remoteScreenStreams[0];
-      setRemoteScreenStream(first.stream);
-      setScreenSharerName(first.name);
-    } else {
-      setRemoteScreenStream(null);
-      setScreenSharerName(null);
-    }
-  }, [lk.remoteScreenStreams, setRemoteScreenStream, setScreenSharerName]);
+    setRemoteScreenStreams(lk.remoteScreenStreams);
+  }, [lk.remoteScreenStreams, setRemoteScreenStreams]);
 
   // ── Sync remote cameras to VoiceChannelContext ────────────────────────────
 
@@ -393,8 +385,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   useEffect(() => {
     return () => {
       setIsScreenSharing(false);
-      setRemoteScreenStream(null);
-      setScreenSharerName(null);
+      setRemoteScreenStreams([]);
       setIsCameraOn(false);
       setLocalCameraStream(null);
       setRemoteCameraStream(null);

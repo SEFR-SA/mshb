@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import ChannelSidebar from "@/components/server/ChannelSidebar";
 import ServerChannelChat from "@/components/server/ServerChannelChat";
 import ServerMemberList from "@/components/server/ServerMemberList";
-import ScreenShareViewer from "@/components/server/ScreenShareViewer";
+import StreamGrid from "@/components/server/StreamGrid";
 import CameraViewer from "@/components/server/CameraViewer";
 import ServerRail from "@/components/server/ServerRail";
 import SupportChannelView from "@/components/server/SupportChannelView";
@@ -24,7 +24,7 @@ const ServerView = () => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const { t } = useTranslation();
-  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStream, screenSharerName, remoteCameraStream, isWatchingStream, setIsWatchingStream } = useVoiceChannel();
+  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStreams, remoteCameraStream, isWatchingStream, setIsWatchingStream } = useVoiceChannel();
   const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean } | null>(null);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [showMembers, setShowMembers] = useState(!isMobile);
@@ -218,8 +218,8 @@ const ServerView = () => {
                 </SheetContent>
               </Sheet>
             </header>
-            {remoteScreenStream && isWatchingStream && (
-              <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
+            {remoteScreenStreams.length > 0 && isWatchingStream && (
+              <StreamGrid streams={remoteScreenStreams} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
             )}
             <div className="flex-1 min-h-0">{renderMainContent()}</div>
           </div>
@@ -234,8 +234,8 @@ const ServerView = () => {
         <div className="flex h-full w-full max-w-full overflow-x-hidden bg-background">
           <ServerRail />
           <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col bg-surface rounded-tl-[16px]">
-            {remoteScreenStream && isWatchingStream && (
-              <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
+            {remoteScreenStreams.length > 0 && isWatchingStream && (
+              <StreamGrid streams={remoteScreenStreams} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
             )}
             <div className="flex-1 min-h-0 overflow-hidden">
               <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
@@ -253,8 +253,8 @@ const ServerView = () => {
       <div className="flex h-full">
         <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
         <div className="flex-1 flex flex-col min-h-0">
-          {remoteScreenStream && isWatchingStream && (
-            <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
+          {remoteScreenStreams.length > 0 && isWatchingStream && (
+            <StreamGrid streams={remoteScreenStreams} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
           )}
           {remoteCameraStream && (
             <CameraViewer stream={remoteCameraStream} />
