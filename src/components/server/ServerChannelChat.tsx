@@ -528,7 +528,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     return () => { channel.unsubscribe(); };
   }, [serverId]);
 
-  const canPost = !isAnnouncement || userRole === "admin" || userRole === "owner";
+  const canPost = (!isAnnouncement && !isRules) || userRole === "admin" || userRole === "owner";
 
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
