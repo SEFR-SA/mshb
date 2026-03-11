@@ -391,9 +391,13 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const isLocked = isPrivate && hasAccess === false;
   const [userRole, setUserRole] = useState<string>("member");
   const [userRoleColorMap, setUserRoleColorMap] = useState<Map<string, { color: string; iconUrl: string | null }>>(new Map());
-  const [ticketInfo, setTicketInfo] = useState<{ id: string; status: string; ticket_number: number } | null>(null);
+  const [ticketInfo, setTicketInfo] = useState<{ id: string; status: string; ticket_number: number; transcript_url?: string } | null>(null);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [closingTicket, setClosingTicket] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingTicket, setDeletingTicket] = useState(false);
+  const [reopeningTicket, setReopeningTicket] = useState(false);
+  const [generatingTranscript, setGeneratingTranscript] = useState(false);
 
   // Infinite scrolling messages
   const {
