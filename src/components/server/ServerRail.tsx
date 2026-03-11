@@ -554,9 +554,21 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                           {t("serverSettings.soundboard")}
                         </ContextMenuItem>
                         {(s.owner_id === user?.id || userRoles.get(s.id) === "admin") && (
-                          <ContextMenuItem onClick={() => openSettings(s.id, "auditlogs")}>
-                            <ScrollText className="h-4 w-4 me-2" />
-                            {t("auditLog.title")}
+                          <>
+                            <ContextMenuItem onClick={() => openSettings(s.id, "serverBoosts")}>
+                              <Zap className="h-4 w-4 me-2" />
+                              {t("serverBoost.serverBoostStatus")}
+                            </ContextMenuItem>
+                            <ContextMenuItem onClick={() => openSettings(s.id, "auditlogs")}>
+                              <ScrollText className="h-4 w-4 me-2" />
+                              {t("auditLog.title")}
+                            </ContextMenuItem>
+                          </>
+                        )}
+                        {s.owner_id === user?.id && (
+                          <ContextMenuItem onClick={() => openSettings(s.id, "community")}>
+                            <Crown className="h-4 w-4 me-2" />
+                            {t("community.settingsTitle")}
                           </ContextMenuItem>
                         )}
                       </ContextMenuSubContent>
