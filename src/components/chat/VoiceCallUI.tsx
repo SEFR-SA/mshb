@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PhoneOff, Mic, MicOff, Volume2, HeadphoneOff, Monitor, MonitorOff, Video, VideoOff, PictureInPicture2, Maximize, Minimize } from "lucide-react";
-import type { CallState } from "@/hooks/useWebRTC";
+import type { CallState } from "@/hooks/useLiveKitCall";
 import GoLiveModal, { type GoLiveSettings } from "@/components/GoLiveModal";
 import ScreenShareViewer from "@/components/server/ScreenShareViewer";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
