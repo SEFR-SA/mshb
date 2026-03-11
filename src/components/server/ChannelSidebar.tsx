@@ -46,6 +46,7 @@ interface Channel {
   position: number;
   is_private: boolean;
   is_announcement?: boolean;
+  is_rules?: boolean;
 }
 
 interface Server {
