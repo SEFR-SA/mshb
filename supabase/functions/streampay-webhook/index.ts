@@ -280,6 +280,20 @@ Deno.serve(async (req) => {
       }
 
       console.log(`Boost ${newStatus}: tx=${transactionId}`);
+
+      // Also revoke Pro subscription if this tx belongs to one
+      const subStatus = eventType === "PAYMENT_REFUNDED" ? "refunded" : "past_due";
+      const { error: subUpdateError } = await supabase
+        .from("user_subscriptions")
+        .update({
+          status: subStatus,
+          expires_at: new Date().toISOString(),
+        })
+        .eq("streampay_transaction_id", transactionId);
+
+      if (subUpdateError) {
+        console.error(`Failed to update subscription for tx=${transactionId}:`, subUpdateError);
+      }
     } else {
       console.log(`Unhandled event type: ${eventType}`);
     }
