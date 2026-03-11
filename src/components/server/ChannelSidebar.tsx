@@ -982,7 +982,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                           >
                             <NavLink
                               to={`/server/${serverId}/channel/${ch.id}`}
-                              onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private, is_announcement: ch.is_announcement })}
+                              onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private, is_announcement: ch.is_announcement, is_rules: ch.is_rules })}
                               className={({ isActive }) =>
                                 `flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${isActive || ch.id === activeChannelId
                                   ? "bg-primary/10 border-s-2 border-primary text-primary font-bold"
