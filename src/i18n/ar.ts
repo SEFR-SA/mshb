@@ -648,6 +648,8 @@ export default {
     paymentMethods: "طرق الدفع",
     addPaymentMethod: "إضافة طريقة دفع",
     transactionHistory: "سجل المعاملات",
+    billingDesc: "عرض حالة اشتراكك وسجل المعاملات.",
+    subscriptionStatus: "الاشتراك",
     noTransactions: "لا توجد معاملات بعد",
     basePrice: "السعر الأساسي",
     vat: "ضريبة القيمة المضافة 15%",

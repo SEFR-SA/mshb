@@ -648,6 +648,8 @@ export default {
     paymentMethods: "Payment Methods",
     addPaymentMethod: "Add Payment Method",
     transactionHistory: "Transaction History",
+    billingDesc: "View your subscription status and transaction history.",
+    subscriptionStatus: "Subscription",
     noTransactions: "No transactions yet",
     basePrice: "Base Price",
     vat: "15% VAT",
