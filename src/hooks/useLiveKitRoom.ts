@@ -209,8 +209,20 @@ export function useLiveKitRoom({
       // Connect
       await room.connect(wsUrl, token);
 
-      // Publish microphone (respecting initial mute)
-      await room.localParticipant.setMicrophoneEnabled(!initialMuted);
+      // Publish microphone (respecting initial mute) with boost-level audio bitrate
+      const localMeta = room.localParticipant.metadata;
+      let audioBitrate = 96_000; // default 96kbps
+      if (localMeta) {
+        try {
+          const m = JSON.parse(localMeta);
+          const bl = Math.min(Math.max(Math.floor(m.boostLevel ?? 0), 0), 3) as 0 | 1 | 2 | 3;
+          audioBitrate = BOOST_PERKS[bl].audioQualityKbps * 1000;
+        } catch {}
+      }
+
+      await room.localParticipant.setMicrophoneEnabled(!initialMuted, undefined, {
+        audioPreset: { maxBitrate: audioBitrate },
+      } as TrackPublishOptions);
 
       syncParticipants();
     } catch (err) {
