@@ -43,7 +43,7 @@ interface Props {
   initialTab?: TabId;
 }
 
-export type TabId = "profile" | "tag" | "engagement" | "emojis" | "stickers" | "soundboard" | "members" | "roles" | "serverBoosts" | "auditlogs";
+export type TabId = "profile" | "tag" | "engagement" | "emojis" | "stickers" | "soundboard" | "members" | "roles" | "serverBoosts" | "auditlogs" | "community";
 
 const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Props) => {
   const { t } = useTranslation();
