@@ -1103,17 +1103,30 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             {isPrivate && renderMemberPicker(selectedMembers, toggleMember)}
 
             {newType === "text" && (
-              <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
-                <div className="space-y-0.5">
-                  <Label htmlFor="announcement-toggle" className="text-sm font-medium">{t("channels.announcement")}</Label>
-                  <p className="text-xs text-muted-foreground">{t("channels.announcementDesc")}</p>
+              <>
+                <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="announcement-toggle" className="text-sm font-medium">{t("channels.announcement")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("channels.announcementDesc")}</p>
+                  </div>
+                  <Switch
+                    id="announcement-toggle"
+                    checked={isAnnouncement}
+                    onCheckedChange={(checked) => { setIsAnnouncement(checked); if (checked) setIsRules(false); }}
+                  />
                 </div>
-                <Switch
-                  id="announcement-toggle"
-                  checked={isAnnouncement}
-                  onCheckedChange={setIsAnnouncement}
-                />
-              </div>
+                <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="rules-toggle" className="text-sm font-medium">{t("channels.rules")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("channels.rulesDesc")}</p>
+                  </div>
+                  <Switch
+                    id="rules-toggle"
+                    checked={isRules}
+                    onCheckedChange={(checked) => { setIsRules(checked); if (checked) setIsAnnouncement(false); }}
+                  />
+                </div>
+              </>
             )}
 
             <Button onClick={handleCreateChannel} disabled={!newName.trim()} className="w-full">

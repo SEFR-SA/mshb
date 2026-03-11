@@ -865,13 +865,18 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       )}
       </div>
 
-      {isAnnouncement && !canPost ? (
+      {isRules && !canPost ? (
+        <div className="px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 border-t border-border/40">
+          <BookOpen className="h-4 w-4 shrink-0" />
+          {t("channels.rulesReadOnly")}
+        </div>
+      ) : isAnnouncement && !canPost ? (
         <div className="px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 border-t border-border/40">
           <Megaphone className="h-4 w-4 shrink-0" />
           {t("channels.announcementReadOnly")}
         </div>
-      ) : isAnnouncement && canPost ? (
-        /* Markdown toolbar for admins/owners in announcement channels */
+      ) : (isAnnouncement || isRules) && canPost ? (
+        /* Markdown toolbar for admins/owners in announcement/rules channels */
         <div className="px-4 pb-2 pt-2 bg-transparent shrink-0">
           {replyingTo && (
             <div className="pb-2">

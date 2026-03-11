@@ -105,7 +105,7 @@ const ServerView = () => {
     if (!activeChannel) {
       return <div className="flex-1 flex items-center justify-center text-muted-foreground">Select a channel</div>;
     }
-    return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} isPrivate={activeChannel.is_private} hasAccess={hasAccess} serverId={serverId} isAnnouncement={activeChannel.is_announcement} />;
+    return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} isPrivate={activeChannel.is_private} hasAccess={hasAccess} serverId={serverId} isAnnouncement={activeChannel.is_announcement} isRules={activeChannel.is_rules} />;
   };
 
   const switchDialog = (
