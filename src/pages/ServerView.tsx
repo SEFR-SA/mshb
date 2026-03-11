@@ -24,7 +24,7 @@ const ServerView = () => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const { t } = useTranslation();
-  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStream, screenSharerName, remoteCameraStream, isWatchingStream, setIsWatchingStream } = useVoiceChannel();
+  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStreams, remoteCameraStream, isWatchingStream, setIsWatchingStream } = useVoiceChannel();
   const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean } | null>(null);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [showMembers, setShowMembers] = useState(!isMobile);
