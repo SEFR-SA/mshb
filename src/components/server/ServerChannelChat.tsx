@@ -362,7 +362,7 @@ const MessageItem = React.memo(({
 
 // ─── ServerChannelChat ───────────────────────────────────────────────────────
 
-const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement }: Props) => {
+const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement, isRules }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { serverId: serverIdParam } = useParams<{ serverId: string }>();
