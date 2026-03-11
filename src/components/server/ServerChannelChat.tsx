@@ -781,9 +781,10 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       )}
 
       <header className="flex items-center gap-2 p-3 glass border-b border-border/50">
-        {isPrivate ? <Lock className="h-5 w-5 text-muted-foreground" /> : isAnnouncement ? <Megaphone className="h-5 w-5 text-muted-foreground" /> : <Hash className="h-5 w-5 text-muted-foreground" />}
+        {isPrivate ? <Lock className="h-5 w-5 text-muted-foreground" /> : isRules ? <BookOpen className="h-5 w-5 text-muted-foreground" /> : isAnnouncement ? <Megaphone className="h-5 w-5 text-muted-foreground" /> : <Hash className="h-5 w-5 text-muted-foreground" />}
         <h2 className="font-semibold">{channelName}</h2>
         {isAnnouncement && <span className="ms-1 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("channels.announcementBadge")}</span>}
+        {isRules && <span className="ms-1 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("channels.rulesBadge")}</span>}
         <div className="ms-auto">
           <PinnedMessagesDrawer channelId={channelId} />
         </div>
