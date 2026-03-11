@@ -1,75 +1,43 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+# Fix: `enable_community` RPC Blocked by Own Trigger
 
-## Tech Stack
+## Root Cause
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+The `enable_community` function creates channels with `is_rules=true` / `is_announcement=true` **before** setting `is_community=true` on the server. The `validate_community_channel` trigger fires on channel INSERT, sees `is_community=false`, and rejects the operation.
 
-## Core Directives (CRITICAL — Always Enforce)
+## Fix
 
-### 1. Plan First
+Single migration to replace the `enable_community` function, reordering operations:
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+1. Set `is_community = true` on the server **first**
+2. Then create the rules/announcements channels
+3. Then update the channel ID references
 
-### 2. Single Source of Truth (SSOT)
+This way the trigger check passes because the server is already flagged as community when the channels are inserted.
 
-Never duplicate display logic. Always use the canonical shared components:
+```sql
+-- Reordered: set is_community FIRST, then create channels
+UPDATE public.servers SET is_community = true WHERE id = p_server_id;
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+-- Now channel inserts pass the trigger
+IF v_rules_id IS NULL THEN
+  INSERT INTO public.channels (...) VALUES (...) RETURNING id INTO v_rules_id;
+END IF;
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+IF v_updates_id IS NULL THEN
+  INSERT INTO public.channels (...) VALUES (...) RETURNING id INTO v_updates_id;
+END IF;
 
-### 3. Pro Gating
+-- Set channel references
+UPDATE public.servers
+SET rules_channel_id = v_rules_id, public_updates_channel_id = v_updates_id
+WHERE id = p_server_id;
+```
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+## Files
 
-### 4. No Hallucinations
+1. **Migration SQL** — `CREATE OR REPLACE FUNCTION enable_community` with reordered operations
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+No frontend changes needed.
 
-### 5. No Over-Engineering
-
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
-
-## Documentation Directory
-
-Read these files for specific details — do NOT rely on memory alone:
-
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
