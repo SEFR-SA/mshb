@@ -210,6 +210,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [newCategory, setNewCategory] = useState("Text Channels");
   const [isPrivate, setIsPrivate] = useState(false);
   const [isAnnouncement, setIsAnnouncement] = useState(false);
+  const [isRules, setIsRules] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [serverMembers, setServerMembers] = useState<ServerMember[]>([]);
   const [voiceParticipants, setVoiceParticipants] = useState<Map<string, VoiceParticipant[]>>(new Map());
