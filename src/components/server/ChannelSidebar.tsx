@@ -1081,11 +1081,12 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
               />
               <p className="text-xs text-muted-foreground mt-1 text-end">{newName.length}/17</p>
             </div>
-            <Select value={newType} onValueChange={setNewType}>
+            <Select value={newType} onValueChange={(val) => { setNewType(val); if (val === "support") { setIsAnnouncement(false); setIsRules(false); setIsPrivate(false); } }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="text">{t("channels.text")}</SelectItem>
                 <SelectItem value="voice">{t("channels.voice")}</SelectItem>
+                <SelectItem value="support">{t("channels.support")}</SelectItem>
               </SelectContent>
             </Select>
 
