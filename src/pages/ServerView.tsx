@@ -253,8 +253,8 @@ const ServerView = () => {
       <div className="flex h-full">
         <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
         <div className="flex-1 flex flex-col min-h-0">
-          {remoteScreenStream && isWatchingStream && (
-            <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
+          {remoteScreenStreams.length > 0 && isWatchingStream && (
+            <StreamGrid streams={remoteScreenStreams} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
           )}
           {remoteCameraStream && (
             <CameraViewer stream={remoteCameraStream} />
