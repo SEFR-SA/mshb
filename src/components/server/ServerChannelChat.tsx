@@ -544,12 +544,39 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     if (channelType !== "ticket" || !channelId) return;
     supabase
       .from("tickets" as any)
-      .select("id, status, ticket_number")
+      .select("id, status, ticket_number, transcript_url")
       .eq("channel_id", channelId)
       .maybeSingle()
       .then(({ data }) => {
         if (data) setTicketInfo(data as any);
       });
+  }, [channelType, channelId]);
+
+  // Realtime subscription for ticket state changes
+  useEffect(() => {
+    if (channelType !== "ticket" || !channelId) return;
+    const channel = supabase
+      .channel(`ticket-status-${channelId}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "tickets",
+        filter: `channel_id=eq.${channelId}`,
+      }, (payload) => {
+        const updated = payload.new as any;
+        setTicketInfo(prev => prev ? { ...prev, status: updated.status, transcript_url: updated.transcript_url } : prev);
+      })
+      .on("postgres_changes", {
+        event: "DELETE",
+        schema: "public",
+        table: "tickets",
+        filter: `channel_id=eq.${channelId}`,
+      }, () => {
+        // Ticket was deleted (e.g. auto-cleanup), navigate away
+        setTicketInfo(null);
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
   }, [channelType, channelId]);
 
   const handleCloseTicket = async () => {
@@ -564,6 +591,56 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     }
     setClosingTicket(false);
     setCloseDialogOpen(false);
+  };
+
+  const handleReopenTicket = async () => {
+    if (!ticketInfo) return;
+    setReopeningTicket(true);
+    const { error } = await supabase.rpc("reopen_ticket", { p_ticket_id: ticketInfo.id } as any);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    } else {
+      setTicketInfo({ ...ticketInfo, status: "open" });
+      toast({ title: t("tickets.reopenSuccess") });
+    }
+    setReopeningTicket(false);
+  };
+
+  const handleGenerateTranscript = async () => {
+    if (!ticketInfo) return;
+    if (ticketInfo.transcript_url) {
+      window.open(ticketInfo.transcript_url, "_blank");
+      return;
+    }
+    setGeneratingTranscript(true);
+    const { data, error } = await supabase.functions.invoke("generate-transcript", {
+      body: { ticket_id: ticketInfo.id },
+    });
+    if (error || !data?.url) {
+      toast({ title: t("common.error"), description: error?.message || "Failed", variant: "destructive" });
+    } else {
+      setTicketInfo({ ...ticketInfo, transcript_url: data.url });
+      toast({ title: t("tickets.transcriptReady") });
+      window.open(data.url, "_blank");
+    }
+    setGeneratingTranscript(false);
+  };
+
+  const handleDeleteTicket = async () => {
+    if (!ticketInfo) return;
+    setDeletingTicket(true);
+    const { error } = await supabase.rpc("delete_ticket", { p_ticket_id: ticketInfo.id } as any);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: t("tickets.deleteSuccess") });
+      // Navigate to server root by changing hash
+      if (serverId) {
+        window.location.hash = `#/server/${serverId}`;
+      }
+    }
+    setDeletingTicket(false);
+    setDeleteDialogOpen(false);
   };
 
   const loadProfiles = useCallback(async (authorIds: string[]) => {
