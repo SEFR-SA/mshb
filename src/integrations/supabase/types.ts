@@ -1436,6 +1436,7 @@ export type Database = {
           status: string
           support_channel_id: string | null
           ticket_number: number
+          transcript_url: string | null
         }
         Insert: {
           channel_id: string
@@ -1448,6 +1449,7 @@ export type Database = {
           status?: string
           support_channel_id?: string | null
           ticket_number: number
+          transcript_url?: string | null
         }
         Update: {
           channel_id?: string
@@ -1460,6 +1462,7 @@ export type Database = {
           status?: string
           support_channel_id?: string | null
           ticket_number?: number
+          transcript_url?: string | null
         }
         Relationships: [
           {
@@ -1695,6 +1698,7 @@ export type Database = {
         Args: { p_username: string }
         Returns: boolean
       }
+      cleanup_closed_tickets: { Args: never; Returns: number }
       close_ticket: { Args: { p_ticket_id: string }; Returns: undefined }
       create_ticket: {
         Args: { p_server_id: string; p_support_channel_id: string }
@@ -1703,6 +1707,7 @@ export type Database = {
           ticket_number: number
         }[]
       }
+      delete_ticket: { Args: { p_ticket_id: string }; Returns: undefined }
       generate_invite_code: { Args: never; Returns: string }
       get_admin_role_for: {
         Args: { p_user_id: string }
