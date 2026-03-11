@@ -11,6 +11,7 @@ import ServerMemberList from "@/components/server/ServerMemberList";
 import ScreenShareViewer from "@/components/server/ScreenShareViewer";
 import CameraViewer from "@/components/server/CameraViewer";
 import ServerRail from "@/components/server/ServerRail";
+import SupportChannelView from "@/components/server/SupportChannelView";
 
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
