@@ -827,6 +827,38 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
         </div>
       </header>
 
+      {/* Ticket Controls Card */}
+      {channelType === "ticket" && ticketInfo && (
+        <div className="px-4 py-3 border-b border-border/50 bg-muted/10">
+          {ticketInfo.status === "open" ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setCloseDialogOpen(true)}
+              disabled={closingTicket}
+            >
+              <Lock className="h-3.5 w-3.5 me-1.5" />
+              {t("tickets.close")}
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled>
+                <Unlock className="h-3.5 w-3.5 me-1.5" />
+                {t("tickets.reopen")}
+              </Button>
+              <Button variant="outline" size="sm" disabled>
+                <FileText className="h-3.5 w-3.5 me-1.5" />
+                {t("tickets.transcript")}
+              </Button>
+              <Button variant="destructive" size="sm" disabled>
+                <Trash2 className="h-3.5 w-3.5 me-1.5" />
+                {t("tickets.delete")}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="relative flex-1 overflow-hidden">
       <div ref={scrollRef} className="absolute inset-0 overflow-y-auto p-4">
         {messagesLoading ? (
