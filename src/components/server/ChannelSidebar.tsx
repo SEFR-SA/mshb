@@ -822,7 +822,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   </div>
                   <CollapsibleContent>
                     {chs.map((ch) => {
-                      const ChannelIcon = ch.is_private ? Lock : (ch.type === "voice" ? Volume2 : (ch.is_rules ? BookOpen : (ch.is_announcement ? Megaphone : Hash)));
+                      const ChannelIcon = ch.is_private && ch.type !== "ticket" ? Lock : ch.type === "support" ? LifeBuoy : ch.type === "ticket" ? Ticket : ch.type === "voice" ? Volume2 : ch.is_rules ? BookOpen : ch.is_announcement ? Megaphone : Hash;
 
                       if (ch.type === "voice") {
                         const participants = voiceParticipants.get(ch.id) || [];
