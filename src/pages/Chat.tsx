@@ -25,7 +25,7 @@ import MessageFilePreview from "@/components/chat/MessageFilePreview";
 import { Progress } from "@/components/ui/progress";
 import { uploadChatFile } from "@/lib/uploadChatFile";
 import VoiceCallUI from "@/components/chat/VoiceCallUI";
-import { useWebRTC } from "@/hooks/useWebRTC";
+import { useLiveKitCall } from "@/hooks/useLiveKitCall";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import EmojiPicker from "@/components/chat/EmojiPicker";
 import GifPicker from "@/components/chat/GifPicker";
