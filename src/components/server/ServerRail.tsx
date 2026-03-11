@@ -7,7 +7,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2, CheckCheck, ShieldCheck, ScrollText, User, FolderPlus, Tag, TrendingUp, Smile, Sticker, Bell, Zap } from "lucide-react";
+import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2, CheckCheck, ShieldCheck, ScrollText, User, FolderPlus, Tag, TrendingUp, Smile, Sticker, Bell, Zap, Crown } from "lucide-react";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent, ContextMenuCheckboxItem } from "@/components/ui/context-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -554,9 +554,21 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                           {t("serverSettings.soundboard")}
                         </ContextMenuItem>
                         {(s.owner_id === user?.id || userRoles.get(s.id) === "admin") && (
-                          <ContextMenuItem onClick={() => openSettings(s.id, "auditlogs")}>
-                            <ScrollText className="h-4 w-4 me-2" />
-                            {t("auditLog.title")}
+                          <>
+                            <ContextMenuItem onClick={() => openSettings(s.id, "serverBoosts")}>
+                              <Zap className="h-4 w-4 me-2" />
+                              {t("serverBoost.serverBoostStatus")}
+                            </ContextMenuItem>
+                            <ContextMenuItem onClick={() => openSettings(s.id, "auditlogs")}>
+                              <ScrollText className="h-4 w-4 me-2" />
+                              {t("auditLog.title")}
+                            </ContextMenuItem>
+                          </>
+                        )}
+                        {s.owner_id === user?.id && (
+                          <ContextMenuItem onClick={() => openSettings(s.id, "community")}>
+                            <Crown className="h-4 w-4 me-2" />
+                            {t("community.settingsTitle")}
                           </ContextMenuItem>
                         )}
                       </ContextMenuSubContent>
@@ -690,8 +702,18 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                   <ShieldCheck className="h-4 w-4" />{t("serverSettings.roles")}
                 </button>
                 {isAdminOrOwner && (
-                  <button className={btnClass} onClick={() => { openSettings(s.id, "auditlogs"); close(); }}>
-                    <ScrollText className="h-4 w-4" />{t("auditLog.title")}
+                  <>
+                    <button className={btnClass} onClick={() => { openSettings(s.id, "serverBoosts"); close(); }}>
+                      <Zap className="h-4 w-4" />{t("serverBoost.serverBoostStatus")}
+                    </button>
+                    <button className={btnClass} onClick={() => { openSettings(s.id, "auditlogs"); close(); }}>
+                      <ScrollText className="h-4 w-4" />{t("auditLog.title")}
+                    </button>
+                  </>
+                )}
+                {s.owner_id === user?.id && (
+                  <button className={btnClass} onClick={() => { openSettings(s.id, "community"); close(); }}>
+                    <Crown className="h-4 w-4" />{t("community.settingsTitle")}
                   </button>
                 )}
                 <div className="border-t my-2" />
