@@ -1302,8 +1302,11 @@ export type Database = {
           inactive_channel_id: string | null
           inactive_timeout: number | null
           invite_code: string
+          is_community: boolean
           name: string
           owner_id: string
+          public_updates_channel_id: string | null
+          rules_channel_id: string | null
           server_tag_badge: string | null
           server_tag_color: string | null
           server_tag_container_color: string | null
@@ -1323,8 +1326,11 @@ export type Database = {
           inactive_channel_id?: string | null
           inactive_timeout?: number | null
           invite_code?: string
+          is_community?: boolean
           name: string
           owner_id: string
+          public_updates_channel_id?: string | null
+          rules_channel_id?: string | null
           server_tag_badge?: string | null
           server_tag_color?: string | null
           server_tag_container_color?: string | null
@@ -1344,8 +1350,11 @@ export type Database = {
           inactive_channel_id?: string | null
           inactive_timeout?: number | null
           invite_code?: string
+          is_community?: boolean
           name?: string
           owner_id?: string
+          public_updates_channel_id?: string | null
+          rules_channel_id?: string | null
           server_tag_badge?: string | null
           server_tag_color?: string | null
           server_tag_container_color?: string | null
@@ -1357,6 +1366,20 @@ export type Database = {
           {
             foreignKeyName: "servers_inactive_channel_id_fkey"
             columns: ["inactive_channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "servers_public_updates_channel_id_fkey"
+            columns: ["public_updates_channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "servers_rules_channel_id_fkey"
+            columns: ["rules_channel_id"]
             isOneToOne: false
             referencedRelation: "channels"
             referencedColumns: ["id"]
@@ -1708,6 +1731,15 @@ export type Database = {
         }[]
       }
       delete_ticket: { Args: { p_ticket_id: string }; Returns: undefined }
+      disable_community: { Args: { p_server_id: string }; Returns: undefined }
+      enable_community: {
+        Args: {
+          p_rules_channel_id?: string
+          p_server_id: string
+          p_updates_channel_id?: string
+        }
+        Returns: undefined
+      }
       generate_invite_code: { Args: never; Returns: string }
       get_admin_role_for: {
         Args: { p_user_id: string }

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "@/hooks/use-toast";
-import { Menu, Trash2, User, Tag, Sparkles, Smile, StickerIcon, Volume2, Users, ShieldCheck, ScrollText, X, Zap } from "lucide-react";
+import { Menu, Trash2, User, Tag, Sparkles, Smile, StickerIcon, Volume2, Users, ShieldCheck, ScrollText, X, Zap, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AuditLogView from "./AuditLogView";
 import ServerProfileTab from "./settings/ServerProfileTab";
@@ -23,6 +23,7 @@ import SoundboardTab from "./settings/SoundboardTab";
 import MembersTab from "./settings/MembersTab";
 import RolesTab from "./settings/RolesTab";
 import ServerBoostsTab from "./settings/ServerBoostsTab";
+import CommunityTab from "./settings/CommunityTab";
 
 interface Member {
   user_id: string;
@@ -42,7 +43,7 @@ interface Props {
   initialTab?: TabId;
 }
 
-export type TabId = "profile" | "tag" | "engagement" | "emojis" | "stickers" | "soundboard" | "members" | "roles" | "serverBoosts" | "auditlogs";
+export type TabId = "profile" | "tag" | "engagement" | "emojis" | "stickers" | "soundboard" | "members" | "roles" | "serverBoosts" | "auditlogs" | "community";
 
 const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Props) => {
   const { t } = useTranslation();
@@ -58,6 +59,9 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
   const [bannerUrl, setBannerUrl] = useState("");
   const [ownerId, setOwnerId] = useState("");
   const [boostLevel, setBoostLevel] = useState(0);
+  const [isCommunity, setIsCommunity] = useState(false);
+  const [rulesChannelId, setRulesChannelId] = useState<string | null>(null);
+  const [updatesChannelId, setUpdatesChannelId] = useState<string | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
@@ -78,6 +82,9 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
       setBannerUrl((s as any).banner_url || "");
       setOwnerId((s as any).owner_id);
       setBoostLevel((s as any).boost_level ?? 0);
+      setIsCommunity((s as any).is_community ?? false);
+      setRulesChannelId((s as any).rules_channel_id ?? null);
+      setUpdatesChannelId((s as any).public_updates_channel_id ?? null);
     }
     const { data: mems } = await supabase.from("server_members" as any).select("user_id, role").eq("server_id", serverId);
     if (mems) {
@@ -184,6 +191,22 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
           <>
             <Separator className="my-2" />
             <button
+              onClick={() => handleTabClick("community")}
+              className={cn(
+                "flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-medium transition-colors text-start",
+                activeTab === "community" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              )}
+            >
+              <Crown className="h-4 w-4" />
+              {isCommunity ? t("community.settingsTitle") : t("community.enableButton")}
+            </button>
+          </>
+        )}
+
+        {isOwner && (
+          <>
+            <Separator className="my-2" />
+            <button
               onClick={() => setShowDeleteConfirm(true)}
               className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors text-start"
             >
@@ -233,6 +256,8 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
         return canEdit ? <ServerBoostsTab serverId={serverId} /> : null;
       case "auditlogs":
         return canViewAuditLogs ? <AuditLogView serverId={serverId} /> : null;
+      case "community":
+        return isOwner ? <CommunityTab serverId={serverId} isCommunity={isCommunity} rulesChannelId={rulesChannelId} updatesChannelId={updatesChannelId} onRefresh={loadServerData} /> : null;
       default:
         return (
           <div className="flex items-center justify-center h-64">
