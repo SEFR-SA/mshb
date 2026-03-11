@@ -57,6 +57,7 @@ interface Server {
   icon_url: string | null;
   banner_url: string | null;
   boost_level: number | null;
+  is_community?: boolean;
   server_tag_name: string | null;
   server_tag_badge: string | null;
   server_tag_color: string | null;
@@ -1127,14 +1128,25 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
               />
               <p className="text-xs text-muted-foreground mt-1 text-end">{newName.length}/17</p>
             </div>
-            <Select value={newType} onValueChange={(val) => { setNewType(val); if (val === "support") { setIsAnnouncement(false); setIsRules(false); setIsPrivate(false); } }}>
+            <Select value={newType} onValueChange={(val) => { if (val === "support" && !server?.is_community) return; setNewType(val); if (val === "support") { setIsAnnouncement(false); setIsRules(false); setIsPrivate(false); } }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="text">{t("channels.text")}</SelectItem>
                 <SelectItem value="voice">{t("channels.voice")}</SelectItem>
-                <SelectItem value="support">{t("channels.support")}</SelectItem>
+                <SelectItem value="support" disabled={!server?.is_community}>
+                  <span className="flex items-center gap-2">
+                    {t("channels.support")}
+                    {!server?.is_community && <Lock className="h-3 w-3 text-muted-foreground" />}
+                  </span>
+                </SelectItem>
               </SelectContent>
             </Select>
+            {!server?.is_community && newType === "text" && (
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                <Lock className="h-3 w-3 shrink-0" />
+                {t("channels.communityOnly")}
+              </p>
+            )}
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
@@ -1155,26 +1167,34 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
             {newType === "text" && (
               <>
-                <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                <div className={`flex items-center justify-between rounded-lg border border-border/50 p-3 ${!server?.is_community ? 'opacity-50' : ''}`}>
                   <div className="space-y-0.5">
-                    <Label htmlFor="announcement-toggle" className="text-sm font-medium">{t("channels.announcement")}</Label>
+                    <Label htmlFor="announcement-toggle" className="text-sm font-medium flex items-center gap-1.5">
+                      {t("channels.announcement")}
+                      {!server?.is_community && <Lock className="h-3 w-3 text-muted-foreground" />}
+                    </Label>
                     <p className="text-xs text-muted-foreground">{t("channels.announcementDesc")}</p>
                   </div>
                   <Switch
                     id="announcement-toggle"
                     checked={isAnnouncement}
                     onCheckedChange={(checked) => { setIsAnnouncement(checked); if (checked) setIsRules(false); }}
+                    disabled={!server?.is_community}
                   />
                 </div>
-                <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                <div className={`flex items-center justify-between rounded-lg border border-border/50 p-3 ${!server?.is_community ? 'opacity-50' : ''}`}>
                   <div className="space-y-0.5">
-                    <Label htmlFor="rules-toggle" className="text-sm font-medium">{t("channels.rules")}</Label>
+                    <Label htmlFor="rules-toggle" className="text-sm font-medium flex items-center gap-1.5">
+                      {t("channels.rules")}
+                      {!server?.is_community && <Lock className="h-3 w-3 text-muted-foreground" />}
+                    </Label>
                     <p className="text-xs text-muted-foreground">{t("channels.rulesDesc")}</p>
                   </div>
                   <Switch
                     id="rules-toggle"
                     checked={isRules}
                     onCheckedChange={(checked) => { setIsRules(checked); if (checked) setIsAnnouncement(false); }}
+                    disabled={!server?.is_community}
                   />
                 </div>
               </>
