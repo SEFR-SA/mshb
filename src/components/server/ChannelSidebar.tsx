@@ -1134,6 +1134,32 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
               </>
             )}
 
+            {newType === "support" && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("channels.selectSupportRoles")}</Label>
+                <p className="text-xs text-muted-foreground">{t("channels.supportDesc")}</p>
+                <ScrollArea className="h-[160px] border border-border rounded-md p-2">
+                  {serverRoles.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">{t("common.loading")}</p>
+                  ) : (
+                    serverRoles.map((role) => (
+                      <label key={role.id} className="flex items-center gap-3 py-1.5 px-1 rounded hover:bg-muted/50 cursor-pointer">
+                        <Checkbox
+                          checked={supportRoleIds.includes(role.id)}
+                          onCheckedChange={() => {
+                            setSupportRoleIds((prev) =>
+                              prev.includes(role.id) ? prev.filter((id) => id !== role.id) : [...prev, role.id]
+                            );
+                          }}
+                        />
+                        <span className="text-sm font-medium" style={{ color: role.color || undefined }}>{role.name}</span>
+                      </label>
+                    ))
+                  )}
+                </ScrollArea>
+              </div>
+            )}
+
             <Button onClick={handleCreateChannel} disabled={!newName.trim()} className="w-full">
               {t("channels.create")}
             </Button>
