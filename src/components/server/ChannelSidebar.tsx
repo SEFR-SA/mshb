@@ -57,6 +57,7 @@ interface Server {
   icon_url: string | null;
   banner_url: string | null;
   boost_level: number | null;
+  is_community?: boolean;
   server_tag_name: string | null;
   server_tag_badge: string | null;
   server_tag_color: string | null;
