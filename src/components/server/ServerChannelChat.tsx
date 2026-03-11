@@ -11,7 +11,7 @@ import { useForwardMessage } from "@/contexts/ForwardMessageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload, Lock, Megaphone, Pin, Forward, Loader2, ChevronDown, Rocket } from "lucide-react";
+import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, ChevronDown, Rocket } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import MarkdownToolbar from "@/components/chat/MarkdownToolbar";
@@ -53,6 +53,7 @@ interface Props {
   hasAccess?: boolean;
   serverId?: string;
   isAnnouncement?: boolean;
+  isRules?: boolean;
 }
 
 const renderMessageContent = (
@@ -361,7 +362,7 @@ const MessageItem = React.memo(({
 
 // ─── ServerChannelChat ───────────────────────────────────────────────────────
 
-const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement }: Props) => {
+const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement, isRules }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { serverId: serverIdParam } = useParams<{ serverId: string }>();
@@ -527,7 +528,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     return () => { channel.unsubscribe(); };
   }, [serverId]);
 
-  const canPost = !isAnnouncement || userRole === "admin" || userRole === "owner";
+  const canPost = (!isAnnouncement && !isRules) || userRole === "admin" || userRole === "owner";
 
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
@@ -780,9 +781,10 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       )}
 
       <header className="flex items-center gap-2 p-3 glass border-b border-border/50">
-        {isPrivate ? <Lock className="h-5 w-5 text-muted-foreground" /> : isAnnouncement ? <Megaphone className="h-5 w-5 text-muted-foreground" /> : <Hash className="h-5 w-5 text-muted-foreground" />}
+        {isPrivate ? <Lock className="h-5 w-5 text-muted-foreground" /> : isRules ? <BookOpen className="h-5 w-5 text-muted-foreground" /> : isAnnouncement ? <Megaphone className="h-5 w-5 text-muted-foreground" /> : <Hash className="h-5 w-5 text-muted-foreground" />}
         <h2 className="font-semibold">{channelName}</h2>
         {isAnnouncement && <span className="ms-1 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("channels.announcementBadge")}</span>}
+        {isRules && <span className="ms-1 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("channels.rulesBadge")}</span>}
         <div className="ms-auto">
           <PinnedMessagesDrawer channelId={channelId} />
         </div>
@@ -823,7 +825,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                     serverEmojis={serverEmojis}
                     serverId={serverId}
                     channelId={channelId}
-                    isAnnouncement={isAnnouncement}
+                    isAnnouncement={isAnnouncement || isRules}
                     isFirstMessage={idx === 0}
                     isHighlighted={highlightedMsgId === msg.id}
                     reactions={reactions.get(msg.id) || EMPTY_REACTIONS}
@@ -863,13 +865,18 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       )}
       </div>
 
-      {isAnnouncement && !canPost ? (
+      {isRules && !canPost ? (
+        <div className="px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 border-t border-border/40">
+          <BookOpen className="h-4 w-4 shrink-0" />
+          {t("channels.rulesReadOnly")}
+        </div>
+      ) : isAnnouncement && !canPost ? (
         <div className="px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 border-t border-border/40">
           <Megaphone className="h-4 w-4 shrink-0" />
           {t("channels.announcementReadOnly")}
         </div>
-      ) : isAnnouncement && canPost ? (
-        /* Markdown toolbar for admins/owners in announcement channels */
+      ) : (isAnnouncement || isRules) && canPost ? (
+        /* Markdown toolbar for admins/owners in announcement/rules channels */
         <div className="px-4 pb-2 pt-2 bg-transparent shrink-0">
           {replyingTo && (
             <div className="pb-2">

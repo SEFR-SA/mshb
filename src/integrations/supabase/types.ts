@@ -213,6 +213,7 @@ export type Database = {
           id: string
           is_announcement: boolean
           is_private: boolean
+          is_rules: boolean
           name: string
           position: number
           server_id: string
@@ -224,6 +225,7 @@ export type Database = {
           id?: string
           is_announcement?: boolean
           is_private?: boolean
+          is_rules?: boolean
           name: string
           position?: number
           server_id: string
@@ -235,6 +237,7 @@ export type Database = {
           id?: string
           is_announcement?: boolean
           is_private?: boolean
+          is_rules?: boolean
           name?: string
           position?: number
           server_id?: string

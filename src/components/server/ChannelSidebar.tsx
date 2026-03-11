@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone, Music, Bell, BellOff } from "lucide-react";
+import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone, BookOpen, Music, Bell, BellOff } from "lucide-react";
 import VoiceUserContextMenu from "./VoiceUserContextMenu";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
@@ -46,6 +46,7 @@ interface Channel {
   position: number;
   is_private: boolean;
   is_announcement?: boolean;
+  is_rules?: boolean;
 }
 
 interface Server {
@@ -91,7 +92,7 @@ interface ServerMember {
 interface Props {
   serverId: string;
   activeChannelId?: string;
-  onChannelSelect?: (channel: { id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean }) => void;
+  onChannelSelect?: (channel: { id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean }) => void;
   onVoiceChannelSelect?: (channel: { id: string; name: string }) => void;
   activeVoiceChannelId?: string;
 }
@@ -209,6 +210,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [newCategory, setNewCategory] = useState("Text Channels");
   const [isPrivate, setIsPrivate] = useState(false);
   const [isAnnouncement, setIsAnnouncement] = useState(false);
+  const [isRules, setIsRules] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [serverMembers, setServerMembers] = useState<ServerMember[]>([]);
   const [voiceParticipants, setVoiceParticipants] = useState<Map<string, VoiceParticipant[]>>(new Map());
@@ -434,6 +436,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       category: categoryToSave,
       is_private: isPrivate,
       is_announcement: newType === "text" ? isAnnouncement : false,
+      is_rules: newType === "text" ? isRules : false,
     } as any).select().maybeSingle();
 
     if (newChannel && isPrivate) {
@@ -462,6 +465,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setNewName("");
     setIsPrivate(false);
     setIsAnnouncement(false);
+    setIsRules(false);
     setSelectedMembers([]);
     setUseCustomCategory(false);
     setCustomCategory("");
@@ -814,7 +818,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   </div>
                   <CollapsibleContent>
                     {chs.map((ch) => {
-                      const ChannelIcon = ch.is_private ? Lock : (ch.type === "voice" ? Volume2 : (ch.is_announcement ? Megaphone : Hash));
+                      const ChannelIcon = ch.is_private ? Lock : (ch.type === "voice" ? Volume2 : (ch.is_rules ? BookOpen : (ch.is_announcement ? Megaphone : Hash)));
 
                       if (ch.type === "voice") {
                         const participants = voiceParticipants.get(ch.id) || [];
@@ -978,7 +982,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                           >
                             <NavLink
                               to={`/server/${serverId}/channel/${ch.id}`}
-                              onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private, is_announcement: ch.is_announcement })}
+                              onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private, is_announcement: ch.is_announcement, is_rules: ch.is_rules })}
                               className={({ isActive }) =>
                                 `flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${isActive || ch.id === activeChannelId
                                   ? "bg-primary/10 border-s-2 border-primary text-primary font-bold"
@@ -1099,17 +1103,30 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             {isPrivate && renderMemberPicker(selectedMembers, toggleMember)}
 
             {newType === "text" && (
-              <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
-                <div className="space-y-0.5">
-                  <Label htmlFor="announcement-toggle" className="text-sm font-medium">{t("channels.announcement")}</Label>
-                  <p className="text-xs text-muted-foreground">{t("channels.announcementDesc")}</p>
+              <>
+                <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="announcement-toggle" className="text-sm font-medium">{t("channels.announcement")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("channels.announcementDesc")}</p>
+                  </div>
+                  <Switch
+                    id="announcement-toggle"
+                    checked={isAnnouncement}
+                    onCheckedChange={(checked) => { setIsAnnouncement(checked); if (checked) setIsRules(false); }}
+                  />
                 </div>
-                <Switch
-                  id="announcement-toggle"
-                  checked={isAnnouncement}
-                  onCheckedChange={setIsAnnouncement}
-                />
-              </div>
+                <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="rules-toggle" className="text-sm font-medium">{t("channels.rules")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("channels.rulesDesc")}</p>
+                  </div>
+                  <Switch
+                    id="rules-toggle"
+                    checked={isRules}
+                    onCheckedChange={(checked) => { setIsRules(checked); if (checked) setIsAnnouncement(false); }}
+                  />
+                </div>
+              </>
             )}
 
             <Button onClick={handleCreateChannel} disabled={!newName.trim()} className="w-full">
