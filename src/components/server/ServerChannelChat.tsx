@@ -825,7 +825,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                     serverEmojis={serverEmojis}
                     serverId={serverId}
                     channelId={channelId}
-                    isAnnouncement={isAnnouncement}
+                    isAnnouncement={isAnnouncement || isRules}
                     isFirstMessage={idx === 0}
                     isHighlighted={highlightedMsgId === msg.id}
                     reactions={reactions.get(msg.id) || EMPTY_REACTIONS}
