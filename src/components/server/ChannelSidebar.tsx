@@ -465,6 +465,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setNewName("");
     setIsPrivate(false);
     setIsAnnouncement(false);
+    setIsRules(false);
     setSelectedMembers([]);
     setUseCustomCategory(false);
     setCustomCategory("");
