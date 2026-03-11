@@ -234,8 +234,8 @@ const ServerView = () => {
         <div className="flex h-full w-full max-w-full overflow-x-hidden bg-background">
           <ServerRail />
           <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col bg-surface rounded-tl-[16px]">
-            {remoteScreenStream && isWatchingStream && (
-              <ScreenShareViewer stream={remoteScreenStream} sharerName={screenSharerName || "User"} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
+            {remoteScreenStreams.length > 0 && isWatchingStream && (
+              <StreamGrid streams={remoteScreenStreams} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
             )}
             <div className="flex-1 min-h-0 overflow-hidden">
               <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
