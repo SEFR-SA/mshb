@@ -78,7 +78,7 @@ const ServerView = () => {
   const joinVoiceChannel = (channel: { id: string; name: string }) => {
     setVoiceCtx({ id: channel.id, name: channel.name, serverId: serverId! });
     if (!activeChannel && serverId && !isMobile) {
-      supabase.from("channels" as any).select("id, name, type, is_private, is_announcement").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
+      supabase.from("channels" as any).select("id, name, type, is_private, is_announcement, is_rules").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
         .then(({ data }) => {
           if (data && (data as any[]).length > 0) {
             const ch = (data as any[])[0];
