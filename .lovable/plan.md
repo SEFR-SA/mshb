@@ -1,75 +1,100 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## Mshb Pro Subscription Management + Boost Cancel Fix
 
-## Tech Stack
+This is a multi-layered fix spanning database schema, edge functions, and 3 UI components.
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+---
 
-## Core Directives (CRITICAL — Always Enforce)
+### Problem Summary
 
-### 1. Plan First
+1. **Cancel auto-renew instantly removes boost** — The `cancel-streampay-subscription` edge function sets `status = 'canceled'`, which triggers `handle_boost_change` → `recalculate_server_boost`, immediately decrementing the server's boost count.
+2. **No boost management UI** — No gear icon, no transfer, no toggle auto-renew.
+3. **No Pro subscription cancellation** — Users cannot cancel their Mshb Pro subscription.
+4. **BillingTab has hardcoded mock data** and a payment methods section that is no longer needed.
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+---
 
-### 2. Single Source of Truth (SSOT)
+### Step 1: Database Migration
 
-Never duplicate display logic. Always use the canonical shared components:
+Add columns to `user_boosts` and `user_subscriptions`:
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+```sql
+ALTER TABLE user_boosts ADD COLUMN auto_renew boolean NOT NULL DEFAULT true;
+ALTER TABLE user_boosts ADD COLUMN expires_at timestamptz;
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+ALTER TABLE user_subscriptions ADD COLUMN auto_renew boolean NOT NULL DEFAULT true;
+```
 
-### 3. Pro Gating
+Create a new RPC `transfer_boost(p_boost_id uuid, p_new_server_id uuid)`:
+- Verifies `auth.uid()` owns the boost and it is active
+- Verifies user is a member of the new server
+- Updates `server_id` to the new server (triggers will handle old/new server recalculation)
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+Update `recalculate_server_boost` / `handle_boost_change` trigger logic:
+- Only count boosts where `status = 'active'` AND (`expires_at IS NULL` OR `expires_at > now()`)
+- This ensures expired boosts (canceled auto-renew that ran out) are excluded
 
-### 4. No Hallucinations
+---
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+### Step 2: Update `cancel-streampay-subscription` Edge Function
 
-### 5. No Over-Engineering
+**Current behavior:** Sets `status = 'canceled'` → triggers immediate boost removal.
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+**New behavior:**
+- Instead of `status = 'canceled'`, set `auto_renew = false` and keep `status = 'active'`
+- Set `expires_at` to the end of the current billing period (30 days from `started_at` if not already set)
+- The boost remains active on the server until `expires_at` passes
+- Rename the function conceptually to handle "cancel auto-renew" (keep the same endpoint for backward compatibility)
 
-## Documentation Directory
+---
 
-Read these files for specific details — do NOT rely on memory alone:
+### Step 3: New Edge Function `cancel-pro-subscription`
 
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+- Authenticated endpoint
+- Finds the user's active `user_subscriptions` row
+- Sets `auto_renew = false`, `status = 'canceling'`
+- Sets `expires_at` on the subscription (30 days from `started_at`)
+- Also sets `expires_at` on the 2 linked inventory/assigned boosts (same `streampay_transaction_id`) to the same date
+- Register in `config.toml` with `verify_jwt = false`
 
-## Cosmetic Asset Specs
+---
 
-Per-asset guides with exact dimensions, config files, and wrapper usage:
+### Step 4: Update `BoostsTab.tsx` — Manage Gear Icon
 
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
+For each active assigned boost:
+- Replace the "Cancel auto-renew" text button with a **gear icon** (`Settings2` from lucide)
+- Clicking opens a `DropdownMenu` with two options:
+  - **Transfer Boost** — Opens a modal listing user's servers (fetched from `server_members`), select one, calls `transfer_boost` RPC
+  - **Cancel Auto-Renew** / **Resume Auto-Renew** — Toggles `auto_renew` via the edge function. If `auto_renew` is already false, show "Resume Auto-Renew" instead
+- Display `expires_at` date on boosts where `auto_renew = false` (e.g., "Expires Mar 30, 2026")
+- Fetch the new `auto_renew` and `expires_at` fields in the query
+
+---
+
+### Step 5: Rewrite `BillingTab.tsx`
+
+Remove:
+- Hardcoded `MOCK_TRANSACTIONS`
+- Payment methods section (add card dialog, logos)
+
+Add:
+- **Subscription Status Card** — Fetch from `user_subscriptions`. Show tier, status, renewal date (`expires_at` or "Renews on [started_at + 30d]"), auto-renew status
+- **Cancel Subscription Button** — Calls `cancel-pro-subscription` edge function. Shows confirmation dialog first. Updates UI to show "Canceling — active until [date]"
+- **Transaction History from DB** — Query `user_boosts` and `user_subscriptions` with `streampay_transaction_id IS NOT NULL` to build real transaction list. Display date, description (boost vs pro), and transaction ID. Keep the expandable row pattern for VAT breakdown.
+
+---
+
+### Files Modified
+
+1. **Migration SQL** — `auto_renew`, `expires_at` columns + `transfer_boost` RPC + updated trigger logic
+2. **`supabase/functions/cancel-streampay-subscription/index.ts`** — Set `auto_renew = false` instead of `status = 'canceled'`
+3. **`supabase/functions/cancel-pro-subscription/index.ts`** — New edge function
+4. **`supabase/config.toml`** — Register `cancel-pro-subscription`
+5. **`src/components/settings/tabs/BoostsTab.tsx`** — Gear icon, dropdown, transfer modal, auto-renew toggle
+6. **`src/components/settings/tabs/BillingTab.tsx`** — Real subscription status, cancel button, real transaction history
+
+### No Breaking Changes
+- Existing boosts with `auto_renew = true` (default) and `expires_at = NULL` behave identically to before
+- The trigger only adds an extra condition; existing active boosts without expiry continue to count
+
