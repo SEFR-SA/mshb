@@ -48,7 +48,7 @@ const ServerView = () => {
   useEffect(() => {
     if (!serverId) return;
     if (channelId) {
-      supabase.from("channels" as any).select("id, name, type, is_private, is_announcement").eq("id", channelId).maybeSingle()
+      supabase.from("channels" as any).select("id, name, type, is_private, is_announcement, is_rules").eq("id", channelId).maybeSingle()
         .then(({ data }) => { if (data) setActiveChannel(data as any); });
       return;
     }
