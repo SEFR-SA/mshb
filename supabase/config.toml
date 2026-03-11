@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.generate-transcript]
 verify_jwt = false
+
+[functions.livekit-token]
+verify_jwt = false
