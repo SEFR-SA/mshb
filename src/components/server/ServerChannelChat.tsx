@@ -15,7 +15,6 @@ import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, C
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
-import remarkGfm from "remark-gfm";
 import MarkdownToolbar from "@/components/chat/MarkdownToolbar";
 import { toast } from "@/hooks/use-toast";
 import { uploadChatFile } from "@/lib/uploadChatFile";
