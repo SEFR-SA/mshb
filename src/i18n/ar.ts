@@ -477,6 +477,12 @@ export default {
     alreadyOpen: "لديك تذكرة مفتوحة بالفعل.",
     statusOpen: "مفتوحة",
     statusClosed: "مغلقة",
+    reopenSuccess: "تم إعادة فتح التذكرة",
+    deleteConfirmTitle: "حذف التذكرة؟",
+    deleteConfirmDesc: "هل أنت متأكد أنك تريد حذف هذه التذكرة نهائياً؟ سيتم فقدان جميع الرسائل.",
+    deleteSuccess: "تم حذف التذكرة",
+    generatingTranscript: "جارٍ إنشاء النسخة...",
+    transcriptReady: "النسخة جاهزة",
   },
   audio: {
     mute: "كتم الميكروفون",

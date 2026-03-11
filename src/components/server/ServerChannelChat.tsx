@@ -391,9 +391,13 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const isLocked = isPrivate && hasAccess === false;
   const [userRole, setUserRole] = useState<string>("member");
   const [userRoleColorMap, setUserRoleColorMap] = useState<Map<string, { color: string; iconUrl: string | null }>>(new Map());
-  const [ticketInfo, setTicketInfo] = useState<{ id: string; status: string; ticket_number: number } | null>(null);
+  const [ticketInfo, setTicketInfo] = useState<{ id: string; status: string; ticket_number: number; transcript_url?: string } | null>(null);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [closingTicket, setClosingTicket] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingTicket, setDeletingTicket] = useState(false);
+  const [reopeningTicket, setReopeningTicket] = useState(false);
+  const [generatingTranscript, setGeneratingTranscript] = useState(false);
 
   // Infinite scrolling messages
   const {
@@ -540,12 +544,39 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     if (channelType !== "ticket" || !channelId) return;
     supabase
       .from("tickets" as any)
-      .select("id, status, ticket_number")
+      .select("id, status, ticket_number, transcript_url")
       .eq("channel_id", channelId)
       .maybeSingle()
       .then(({ data }) => {
         if (data) setTicketInfo(data as any);
       });
+  }, [channelType, channelId]);
+
+  // Realtime subscription for ticket state changes
+  useEffect(() => {
+    if (channelType !== "ticket" || !channelId) return;
+    const channel = supabase
+      .channel(`ticket-status-${channelId}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "tickets",
+        filter: `channel_id=eq.${channelId}`,
+      }, (payload) => {
+        const updated = payload.new as any;
+        setTicketInfo(prev => prev ? { ...prev, status: updated.status, transcript_url: updated.transcript_url } : prev);
+      })
+      .on("postgres_changes", {
+        event: "DELETE",
+        schema: "public",
+        table: "tickets",
+        filter: `channel_id=eq.${channelId}`,
+      }, () => {
+        // Ticket was deleted (e.g. auto-cleanup), navigate away
+        setTicketInfo(null);
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
   }, [channelType, channelId]);
 
   const handleCloseTicket = async () => {
@@ -560,6 +591,56 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     }
     setClosingTicket(false);
     setCloseDialogOpen(false);
+  };
+
+  const handleReopenTicket = async () => {
+    if (!ticketInfo) return;
+    setReopeningTicket(true);
+    const { error } = await supabase.rpc("reopen_ticket", { p_ticket_id: ticketInfo.id } as any);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    } else {
+      setTicketInfo({ ...ticketInfo, status: "open" });
+      toast({ title: t("tickets.reopenSuccess") });
+    }
+    setReopeningTicket(false);
+  };
+
+  const handleGenerateTranscript = async () => {
+    if (!ticketInfo) return;
+    if (ticketInfo.transcript_url) {
+      window.open(ticketInfo.transcript_url, "_blank");
+      return;
+    }
+    setGeneratingTranscript(true);
+    const { data, error } = await supabase.functions.invoke("generate-transcript", {
+      body: { ticket_id: ticketInfo.id },
+    });
+    if (error || !data?.url) {
+      toast({ title: t("common.error"), description: error?.message || "Failed", variant: "destructive" });
+    } else {
+      setTicketInfo({ ...ticketInfo, transcript_url: data.url });
+      toast({ title: t("tickets.transcriptReady") });
+      window.open(data.url, "_blank");
+    }
+    setGeneratingTranscript(false);
+  };
+
+  const handleDeleteTicket = async () => {
+    if (!ticketInfo) return;
+    setDeletingTicket(true);
+    const { error } = await supabase.rpc("delete_ticket", { p_ticket_id: ticketInfo.id } as any);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: t("tickets.deleteSuccess") });
+      // Navigate to server root by changing hash
+      if (serverId) {
+        window.location.hash = `#/server/${serverId}`;
+      }
+    }
+    setDeletingTicket(false);
+    setDeleteDialogOpen(false);
   };
 
   const loadProfiles = useCallback(async (authorIds: string[]) => {
@@ -842,15 +923,15 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
             </Button>
           ) : (
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled>
-                <Unlock className="h-3.5 w-3.5 me-1.5" />
+              <Button variant="outline" size="sm" onClick={handleReopenTicket} disabled={reopeningTicket}>
+                {reopeningTicket ? <Loader2 className="h-3.5 w-3.5 me-1.5 animate-spin" /> : <Unlock className="h-3.5 w-3.5 me-1.5" />}
                 {t("tickets.reopen")}
               </Button>
-              <Button variant="outline" size="sm" disabled>
-                <FileText className="h-3.5 w-3.5 me-1.5" />
+              <Button variant="outline" size="sm" onClick={handleGenerateTranscript} disabled={generatingTranscript}>
+                {generatingTranscript ? <Loader2 className="h-3.5 w-3.5 me-1.5 animate-spin" /> : <FileText className="h-3.5 w-3.5 me-1.5" />}
                 {t("tickets.transcript")}
               </Button>
-              <Button variant="destructive" size="sm" disabled>
+              <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)} disabled={deletingTicket}>
                 <Trash2 className="h-3.5 w-3.5 me-1.5" />
                 {t("tickets.delete")}
               </Button>
@@ -1040,6 +1121,22 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleCloseTicket} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {t("tickets.close")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Ticket Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("tickets.deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("tickets.deleteConfirmDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTicket} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {t("tickets.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

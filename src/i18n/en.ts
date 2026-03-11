@@ -477,6 +477,12 @@ export default {
     alreadyOpen: "You already have an open ticket.",
     statusOpen: "Open",
     statusClosed: "Closed",
+    reopenSuccess: "Ticket reopened",
+    deleteConfirmTitle: "Delete Ticket?",
+    deleteConfirmDesc: "Are you sure you want to permanently delete this ticket? All messages will be lost.",
+    deleteSuccess: "Ticket deleted",
+    generatingTranscript: "Generating transcript...",
+    transcriptReady: "Transcript ready",
   },
   audio: {
     mute: "Mute",
