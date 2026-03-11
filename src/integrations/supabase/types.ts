@@ -1405,7 +1405,9 @@ export type Database = {
       }
       user_boosts: {
         Row: {
+          auto_renew: boolean
           canceled_at: string | null
+          expires_at: string | null
           id: string
           server_id: string | null
           started_at: string
@@ -1414,7 +1416,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auto_renew?: boolean
           canceled_at?: string | null
+          expires_at?: string | null
           id?: string
           server_id?: string | null
           started_at?: string
@@ -1423,7 +1427,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auto_renew?: boolean
           canceled_at?: string | null
+          expires_at?: string | null
           id?: string
           server_id?: string | null
           started_at?: string
@@ -1524,6 +1530,7 @@ export type Database = {
       }
       user_subscriptions: {
         Row: {
+          auto_renew: boolean
           expires_at: string | null
           id: string
           started_at: string
@@ -1533,6 +1540,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auto_renew?: boolean
           expires_at?: string | null
           id?: string
           started_at?: string
@@ -1542,6 +1550,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auto_renew?: boolean
           expires_at?: string | null
           id?: string
           started_at?: string
@@ -1680,6 +1689,10 @@ export type Database = {
         Returns: undefined
       }
       toggle_message_pin: { Args: { p_message_id: string }; Returns: boolean }
+      transfer_boost: {
+        Args: { p_boost_id: string; p_new_server_id: string }
+        Returns: boolean
+      }
       update_entrance_sound: {
         Args: { p_server_id: string; p_sound_id: string }
         Returns: undefined
