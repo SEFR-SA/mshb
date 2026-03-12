@@ -1,80 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-# LiveKit Migration Audit — Analysis Complete
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-## Summary
+## Tech Stack
 
-After thorough analysis of all files involved in the 7-phase LiveKit migration, the implementation is **solid overall**. Zero references to legacy P2P code remain (`RTCPeerConnection`, `optimizeSDPForGaming`, `createVolumeMonitor`, `pcRef`, `screenSenderRef`, `cameraSenderRef` — all confirmed absent). The `useWebRTC.ts` file has been deleted.
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-However, I identified **3 issues** that should be addressed:
+## Core Directives (CRITICAL — Always Enforce)
 
----
+### 1. Plan First
 
-## Issue 1: Triple Realtime Subscription on `call_sessions` (DM Calls)
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-**Severity: Medium — causes redundant event handling and potential double `endCall()` invocations**
+### 2. Single Source of Truth (SSOT)
 
-When a DM call is active, three separate Realtime channels subscribe to the same `call_sessions` row:
+Never duplicate display logic. Always use the canonical shared components:
 
-1. **`useLiveKitCall.ts` line 67-101** — `call-session-{sessionId}` — calls `lk.disconnect()` + `endCall` on status change
-2. **`CallListener.tsx` line 208-240** — `call-status-caller-{activeSession}` — calls `endCall()` on status change (caller side)
-3. **`CallListener.tsx` line 242-260** — `call-status-callee-{activeSession}` — calls `endCall()` on status change (callee side)
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-When a call ends, **both** `useLiveKitCall`'s internal listener AND `CallListener`'s listener fire. The `endedRef` guard in `useLiveKitCall` prevents the double-disconnect at the LiveKit level, but `onEnded` callback may fire twice — once from `useLiveKitCall`'s internal listener and once from `CallListener`'s explicit `endCall()`. This causes `handleCallEnded` to run twice (double "Call ended" system messages, double sound effects).
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-**Fix:** Remove the internal Realtime subscription from `useLiveKitCall.ts` (lines 67-101) since `CallListener.tsx` already handles all status-change logic with proper sound effects and system messages. The hook should only manage LiveKit connection state, not duplicate the call-session monitoring.
+### 3. Pro Gating
 
----
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
 
-## Issue 2: `useLiveKitRoom` Stale Closure in `syncParticipants`
+### 4. No Hallucinations
 
-**Severity: Low — cosmetic, may cause brief stale speaking indicators**
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
 
-`syncParticipants` (line 85) depends on `activeSpeakers` state, but this creates a stale closure issue. When `activeSpeakers` updates, `syncParticipants` is recreated, but the Room event handlers (registered at connect time on lines 182-207) still reference the old `syncParticipants`. The effect on line 455-457 partially mitigates this by re-syncing when `activeSpeakers` changes, but event-driven syncs (e.g., `ParticipantConnected`) still use stale speaker data.
+### 5. No Over-Engineering
 
-**Fix:** Use a ref for `activeSpeakers` inside `syncParticipants` instead of direct state dependency, or move the speaking check to use the ref at read time.
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
 
----
+## Documentation Directory
 
-## Issue 3: `useLiveKitCall` Creates Room Even With Empty `roomName`
+Read these files for specific details — do NOT rely on memory alone:
 
-**Severity: Low — no crash, but wasteful**
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
 
-When `sessionId` is null, `useLiveKitRoom` is called with `roomName: ""`. The `connect()` function would try to fetch a token with an empty room name if accidentally invoked. The guards in `startCall`/`answerCall` prevent this in practice, but a defensive check in `connect()` would be cleaner.
+## Cosmetic Asset Specs
 
-**Fix:** Add `if (!roomName) return;` at the top of `useLiveKitRoom.connect()`.
+Per-asset guides with exact dimensions, config files, and wrapper usage:
 
----
-
-## Verified Working Correctly
-
-- **Server voice channels**: `VoiceConnectionBar` correctly uses `useLiveKitRoom`, syncs speaking/mute/deafen to DB, handles screen share and camera via custom events, manages AFK timers, and cleans up on unmount.
-- **DM calls (Chat.tsx)**: Correctly uses `useLiveKitCall` for initiating calls from the chat page.
-- **DM calls (CallListener.tsx)**: Correctly handles incoming calls, ringtones, accept/decline, auto-timeout, system messages, and navigation.
-- **Multi-stream grid (StreamGrid.tsx)**: Properly renders single/multi/spotlight modes.
-- **VoiceChannelContext**: Legacy single-stream fields auto-sync from the array. Cleanup on disconnect is thorough.
-- **Audio bitrate enforcement**: Boost level is correctly read from participant metadata and applied during mic publish.
-- **Data channel**: Soundboard and entrance sounds work via LiveKit data messages.
-- **No legacy P2P code remains**: Zero references to WebRTC signaling, ICE candidates, or peer connections.
-
----
-
-## Recommended Plan
-
-1. **Remove duplicate Realtime subscription** from `useLiveKitCall.ts` (lines 67-101) — the `CallListener` already handles all call-session status monitoring with proper UX (sounds, messages).
-
-2. **Fix stale closure** in `useLiveKitRoom.syncParticipants` — use a ref for `activeSpeakers`.
-
-3. **Add guard** for empty `roomName` in `useLiveKitRoom.connect()`.
-
-### Technical Details
-
-**File: `src/hooks/useLiveKitCall.ts`**
-- Remove the `useEffect` block (lines 65-101) that subscribes to `call-session-{sessionId}` Realtime channel
-- This eliminates the double `onEnded` firing issue
-
-**File: `src/hooks/useLiveKitRoom.ts`**
-- Add `const activeSpeakersRef = useRef(activeSpeakers)` and keep it synced
-- Use the ref inside `syncParticipants` instead of direct state
-- Add `if (!roomName) return;` at the top of `connect()`
-
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

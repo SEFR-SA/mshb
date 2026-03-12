@@ -63,6 +63,7 @@ export function useLiveKitRoom({
   const [callDuration, setCallDuration] = useState(0);
   const [participants, setParticipants] = useState<ParticipantInfo[]>([]);
   const [activeSpeakers, setActiveSpeakers] = useState<Set<string>>(new Set());
+  const activeSpeakersRef = useRef<Set<string>>(new Set());
   const [metadata, setMetadata] = useState<{ isPro: boolean; boostLevel: number } | null>(null);
 
   // Screen share state
@@ -79,6 +80,11 @@ export function useLiveKitRoom({
 
   const durationRef = useRef<ReturnType<typeof setInterval>>();
 
+  // Keep ref in sync with state
+  useEffect(() => {
+    activeSpeakersRef.current = activeSpeakers;
+  }, [activeSpeakers]);
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   /** Rebuild the participants list from the current room state. */
@@ -86,18 +92,19 @@ export function useLiveKitRoom({
     const room = roomRef.current;
     if (!room) return;
 
+    const speakers = activeSpeakersRef.current;
     const list: ParticipantInfo[] = [];
     room.remoteParticipants.forEach((p) => {
       list.push({
         identity: p.identity,
         name: p.name ?? p.identity,
-        isSpeaking: activeSpeakers.has(p.identity),
+        isSpeaking: speakers.has(p.identity),
         isMuted: p.getTrackPublication(Track.Source.Microphone)?.isMuted ?? true,
         participant: p,
       });
     });
     setParticipants(list);
-  }, [activeSpeakers]);
+  }, []);
 
   /** Rebuild remote screen share streams from current room. */
   const syncScreenShares = useCallback(() => {
@@ -135,7 +142,7 @@ export function useLiveKitRoom({
 
   const connect = useCallback(async () => {
     if (roomRef.current) return; // already connected
-
+    if (!roomName) return; // no room to connect to
     setCallState("connecting");
 
     try {
