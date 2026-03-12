@@ -49,6 +49,8 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     initialMuted: globalMuted,
     initialDeafened: globalDeafened,
     onDisconnected: () => {
+      // Only fire cleanup on terminal disconnect, not during reconnection
+      if (lk.callState === "reconnecting") return;
       cleanupDb();
       onDisconnect();
     },
