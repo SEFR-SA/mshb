@@ -1069,6 +1069,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       <GoLiveModal
         open={goLiveOpen}
         onOpenChange={setGoLiveOpen}
+        boostLevel={server?.boost_level ?? 0}
         onGoLive={(settings) => {
           setGoLiveOpen(false);
           window.dispatchEvent(new CustomEvent("start-screen-share", { detail: settings }));
