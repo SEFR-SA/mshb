@@ -54,45 +54,54 @@ const InviteToServerModal = () => {
 
   const sendInvite = async (server: ServerItem) => {
     if (!user || !targetUserId) return;
-    const [u1, u2] = [user.id, targetUserId].sort();
-    const { data: existing } = await supabase
-      .from("dm_threads")
-      .select("id")
-      .eq("user1_id", u1)
-      .eq("user2_id", u2)
-      .maybeSingle();
-    let threadId = existing?.id;
-    if (!threadId) {
-      const { data: newThread } = await supabase
-        .from("dm_threads")
-        .insert({ user1_id: u1, user2_id: u2 })
-        .select("id")
-        .single();
-      threadId = newThread?.id;
-    }
-    if (!threadId) return;
 
-    await supabase.from("messages").insert({
-      thread_id: threadId,
-      author_id: user.id,
-      content: "",
-      type: "server_invite",
-      metadata: {
-        server_id: server.id,
-        invite_code: server.invite_code,
-        server_name: server.name,
-        server_icon_url: server.icon_url || "",
-        server_banner_url: server.banner_url || undefined,
-      },
-    } as any);
-
-    await supabase
-      .from("dm_threads")
-      .update({ last_message_at: new Date().toISOString() })
-      .eq("id", threadId);
-
+    // Optimistic: mark as sent immediately
     setSentTo((prev) => new Set(prev).add(server.id));
     toast({ title: t("inviteToServer.sent") });
+
+    try {
+      const [u1, u2] = [user.id, targetUserId].sort();
+      const { data: existing } = await supabase
+        .from("dm_threads")
+        .select("id")
+        .eq("user1_id", u1)
+        .eq("user2_id", u2)
+        .maybeSingle();
+      let threadId = existing?.id;
+      if (!threadId) {
+        const { data: newThread } = await supabase
+          .from("dm_threads")
+          .insert({ user1_id: u1, user2_id: u2 })
+          .select("id")
+          .single();
+        threadId = newThread?.id;
+      }
+      if (!threadId) {
+        setSentTo((prev) => { const next = new Set(prev); next.delete(server.id); return next; });
+        return;
+      }
+
+      await supabase.from("messages").insert({
+        thread_id: threadId,
+        author_id: user.id,
+        content: "",
+        type: "server_invite",
+        metadata: {
+          server_id: server.id,
+          invite_code: server.invite_code,
+          server_name: server.name,
+          server_icon_url: server.icon_url || "",
+          server_banner_url: server.banner_url || undefined,
+        },
+      } as any);
+
+      await supabase
+        .from("dm_threads")
+        .update({ last_message_at: new Date().toISOString() })
+        .eq("id", threadId);
+    } catch {
+      setSentTo((prev) => { const next = new Set(prev); next.delete(server.id); return next; });
+    }
   };
 
   const filtered = servers.filter((s) => {
