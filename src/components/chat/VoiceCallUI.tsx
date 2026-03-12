@@ -267,6 +267,7 @@ const VoiceCallUI = ({ callState, isMuted, isDeafened, callDuration, otherName, 
       <GoLiveModal
         open={goLiveOpen}
         onOpenChange={setGoLiveOpen}
+        boostLevel={0}
         onGoLive={(settings) => {
           setGoLiveOpen(false);
           onStartScreenShare?.(settings);

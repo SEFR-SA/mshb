@@ -9,6 +9,7 @@ import {
   ConnectionState,
   DisconnectReason,
   VideoPresets,
+  VideoPreset,
   type AudioCaptureOptions,
   type VideoCaptureOptions,
   type ScreenShareCaptureOptions,
@@ -16,6 +17,7 @@ import {
 } from "livekit-client";
 import { fetchLiveKitToken } from "@/lib/livekit";
 import { BOOST_PERKS } from "@/config/boostPerks";
+import type { StreamResolution } from "@/components/GoLiveModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +45,40 @@ export interface LiveKitRoomOptions {
   initialDeafened?: boolean;
   /** Called when disconnected (by server or network loss). */
   onDisconnected?: (reason?: DisconnectReason) => void;
+}
+
+// ─── Screen Share Resolution Config ─────────────────────────────────────────
+
+interface ScreenSharePreset {
+  width: number;
+  height: number;
+  maxFps: number;
+  maxBitrate: number; // bps
+}
+
+const SCREEN_SHARE_PRESETS: Record<StreamResolution, ScreenSharePreset> = {
+  "720p":  { width: 1280, height: 720,  maxFps: 30, maxBitrate: 2_500_000 },
+  "1080p": { width: 1920, height: 1080, maxFps: 60, maxBitrate: 8_000_000 },
+  "1440p": { width: 2560, height: 1440, maxFps: 60, maxBitrate: 18_000_000 },
+  "source": { width: 3840, height: 2160, maxFps: 60, maxBitrate: 40_000_000 },
+};
+
+/** Build simulcast layers for screen share based on selected resolution. */
+function getScreenShareSimulcastLayers(resolution: StreamResolution): VideoPreset[] {
+  // 720p: single layer, no simulcast needed
+  if (resolution === "720p") return [];
+
+  const layers: VideoPreset[] = [];
+  // Always include a 720p fallback layer
+  layers.push(new VideoPreset(1280, 720, 2_500_000, 30));
+
+  if (resolution === "1440p" || resolution === "source") {
+    // Include 1080p mid layer
+    layers.push(new VideoPreset(1920, 1080, 8_000_000, 60));
+  }
+
+  // The top layer is handled by the primary encoding, not in simulcast layers
+  return layers;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -155,7 +191,6 @@ export function useLiveKitRoom({
       const room = new Room({
         adaptiveStream: true,
         dynacast: true,
-        // Audio output will respect per-user volume set via setVolume()
       });
 
       roomRef.current = room;
@@ -314,60 +349,45 @@ export function useLiveKitRoom({
 
   const startScreenShare = useCallback(
     async (opts?: {
-      resolution?: "720p" | "1080p" | "source";
+      resolution?: StreamResolution;
       fps?: 30 | 60;
       sourceId?: string;
     }) => {
       const room = roomRef.current;
       if (!room) return;
 
-      const isPro = metadata?.isPro ?? false;
-
-      // Build capture options with tier enforcement
-      let width = 1920;
-      let height = 1080;
-      let maxFramerate = 30;
-
-      if (opts?.resolution === "720p") {
-        width = 1280;
-        height = 720;
-      } else if (opts?.resolution === "source") {
-        if (isPro) {
-          width = 3840;
-          height = 2160;
-        }
-        // Free users are capped at 1080p regardless
-      }
-
-      if (opts?.fps === 60) {
-        // Free users can only do 60fps at 720p
-        if (isPro || opts?.resolution === "720p") {
-          maxFramerate = 60;
-        }
-      }
+      const res = opts?.resolution ?? "1080p";
+      const preset = SCREEN_SHARE_PRESETS[res];
+      const maxFramerate = Math.min(opts?.fps ?? 30, preset.maxFps);
 
       const captureOptions: ScreenShareCaptureOptions = {
-        resolution: { width, height, frameRate: maxFramerate },
+        resolution: { width: preset.width, height: preset.height, frameRate: maxFramerate },
       };
 
       // Electron: use desktopCapturer sourceId
       if (opts?.sourceId) {
         (captureOptions as any).preferCurrentTab = false;
-        // For Electron, we pass a custom constraint via mandatory
         (captureOptions as any).mandatory = {
           chromeMediaSource: "desktop",
           chromeMediaSourceId: opts.sourceId,
         };
       }
 
+      // Build simulcast layers
+      const simulcastLayers = getScreenShareSimulcastLayers(res);
+      const useSimulcast = simulcastLayers.length > 0;
+
       try {
         await room.localParticipant.setScreenShareEnabled(true, captureOptions, {
-          videoCodec: "vp8",
+          videoCodec: "vp9",
+          backupCodec: { codec: "vp8" },
+          simulcast: useSimulcast,
+          ...(useSimulcast ? { videoSimulcastLayers: simulcastLayers } : {}),
           videoEncoding: {
-            maxBitrate: isPro ? 8_000_000 : 4_000_000,
+            maxBitrate: preset.maxBitrate,
             maxFramerate,
           },
-        });
+        } as TrackPublishOptions);
         setIsScreenSharing(true);
 
         // Listen for the screen share track ending (user clicks "Stop sharing")
@@ -400,7 +420,13 @@ export function useLiveKitRoom({
     await room.localParticipant.setCameraEnabled(true, {
       resolution: VideoPresets.h720.resolution,
       facingMode: "user",
-    });
+    }, {
+      simulcast: true,
+      videoSimulcastLayers: [
+        new VideoPreset(640, 360, 400_000, 30),
+        new VideoPreset(1280, 720, 1_500_000, 30),
+      ],
+    } as TrackPublishOptions);
     setIsCameraOn(true);
   }, []);
 
