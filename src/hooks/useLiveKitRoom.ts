@@ -142,7 +142,7 @@ export function useLiveKitRoom({
 
   const connect = useCallback(async () => {
     if (roomRef.current) return; // already connected
-
+    if (!roomName) return; // no room to connect to
     setCallState("connecting");
 
     try {
