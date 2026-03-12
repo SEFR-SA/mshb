@@ -12,7 +12,6 @@ import {
   VideoPreset,
   type AudioCaptureOptions,
   type VideoCaptureOptions,
-  type ScreenShareCaptureOptions,
   type TrackPublishOptions,
 } from "livekit-client";
 import { fetchLiveKitToken } from "@/lib/livekit";
