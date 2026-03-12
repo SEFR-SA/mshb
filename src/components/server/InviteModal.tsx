@@ -133,49 +133,57 @@ const InviteModal = ({ open, onOpenChange, serverId, serverName }: Props) => {
   const sendInvite = async (friend: Friend) => {
     if (!user || !inviteCode) return;
 
-    const { data: existing } = await supabase
-      .from("dm_threads")
-      .select("id")
-      .or(
-        `and(user1_id.eq.${user.id},user2_id.eq.${friend.user_id}),and(user1_id.eq.${friend.user_id},user2_id.eq.${user.id})`
-      )
-      .maybeSingle();
-
-    let threadId = existing?.id;
-    if (!threadId) {
-      const { data: newThread } = await supabase
-        .from("dm_threads")
-        .insert({ user1_id: user.id, user2_id: friend.user_id })
-        .select("id")
-        .single();
-      threadId = newThread?.id;
-    }
-
-    if (!threadId) return;
-
-    // Fetch server icon + banner
-    const { data: serverData } = await supabase
-      .from("servers")
-      .select("icon_url, banner_url")
-      .eq("id", serverId)
-      .maybeSingle();
-
-    await supabase.from("messages").insert({
-      thread_id: threadId,
-      author_id: user.id,
-      content: "",
-      type: "server_invite",
-      metadata: {
-        server_id: serverId,
-        invite_code: inviteCode,
-        server_name: serverName,
-        server_icon_url: (serverData as any)?.icon_url || "",
-        server_banner_url: (serverData as any)?.banner_url || undefined,
-        expires_at: generatedExpiresAt,
-      },
-    } as any);
-
+    // Optimistic: mark as sent immediately
     setSentTo((prev) => new Set(prev).add(friend.user_id));
+
+    try {
+      const { data: existing } = await supabase
+        .from("dm_threads")
+        .select("id")
+        .or(
+          `and(user1_id.eq.${user.id},user2_id.eq.${friend.user_id}),and(user1_id.eq.${friend.user_id},user2_id.eq.${user.id})`
+        )
+        .maybeSingle();
+
+      let threadId = existing?.id;
+      if (!threadId) {
+        const { data: newThread } = await supabase
+          .from("dm_threads")
+          .insert({ user1_id: user.id, user2_id: friend.user_id })
+          .select("id")
+          .single();
+        threadId = newThread?.id;
+      }
+
+      if (!threadId) {
+        setSentTo((prev) => { const next = new Set(prev); next.delete(friend.user_id); return next; });
+        return;
+      }
+
+      const { data: serverData } = await supabase
+        .from("servers")
+        .select("icon_url, banner_url")
+        .eq("id", serverId)
+        .maybeSingle();
+
+      await supabase.from("messages").insert({
+        thread_id: threadId,
+        author_id: user.id,
+        content: "",
+        type: "server_invite",
+        metadata: {
+          server_id: serverId,
+          invite_code: inviteCode,
+          server_name: serverName,
+          server_icon_url: (serverData as any)?.icon_url || "",
+          server_banner_url: (serverData as any)?.banner_url || undefined,
+          expires_at: generatedExpiresAt,
+        },
+      } as any);
+    } catch {
+      // Revert on failure
+      setSentTo((prev) => { const next = new Set(prev); next.delete(friend.user_id); return next; });
+    }
   };
 
   const handleSettingsBack = async () => {
