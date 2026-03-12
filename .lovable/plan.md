@@ -1,125 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-# Screen Share Performance Fix — Custom Track Publishing with HW Acceleration
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-## Problem
-Chromium's `getDisplayMedia` defaults to `contentHint: "detail"` (text/slides mode), which aggressively drops FPS to preserve resolution. Combined with VP9 software encoding at 2K+, this causes streams to lock at ~8fps despite sufficient bandwidth.
+## Tech Stack
 
-## Root Cause (3 factors)
-1. **No `contentHint`** set on the track — Chromium defaults to "detail" mode which deprioritizes framerate
-2. **VP9 software encoding** at 2K/60fps overwhelms the CPU — VP9 has poor hardware encoder support on most GPUs
-3. **`setScreenShareEnabled()` helper** internally calls `getDisplayMedia` without strict `minFrameRate` constraints, and in Electron it may ignore `desktopCapturer` source IDs
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-## Solution — 4 Changes in `src/hooks/useLiveKitRoom.ts`
+## Core Directives (CRITICAL — Always Enforce)
 
-### 1. Manual Track Acquisition with Strict FPS Constraints
+### 1. Plan First
 
-Replace `setScreenShareEnabled(true, captureOptions, publishOptions)` with manual track creation. This gives us full control over `getUserMedia` constraints.
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-**For Electron** (when `sourceId` is provided):
-```typescript
-const stream = await navigator.mediaDevices.getUserMedia({
-  audio: false,
-  video: {
-    mandatory: {
-      chromeMediaSource: "desktop",
-      chromeMediaSourceId: sourceId,
-      minWidth: preset.width,
-      maxWidth: preset.width,
-      minHeight: preset.height,
-      maxHeight: preset.height,
-      minFrameRate: maxFramerate,
-      maxFrameRate: maxFramerate,
-    },
-  } as any,
-});
-```
+### 2. Single Source of Truth (SSOT)
 
-**For browser** (no sourceId):
-```typescript
-const stream = await navigator.mediaDevices.getDisplayMedia({
-  video: {
-    width: { ideal: preset.width },
-    height: { ideal: preset.height },
-    frameRate: { min: maxFramerate, ideal: maxFramerate, max: maxFramerate },
-  },
-  audio: false,
-});
-```
+Never duplicate display logic. Always use the canonical shared components:
 
-### 2. Set `contentHint = "motion"` on the Track
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-After acquiring the `MediaStreamTrack`, explicitly set:
-```typescript
-track.contentHint = "motion";
-```
-This tells Chromium's WebRTC encoder to prioritize framerate over sharpness — the same approach Discord uses for game streaming. Without this, Chromium treats screen shares as "detail" (text/slides) and aggressively drops FPS.
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-### 3. Codec: H264 Primary, VP8 Fallback (Hardware Acceleration)
+### 3. Pro Gating
 
-Change from `vp9` to `h264` as the primary codec. H264 has near-universal hardware encoder support (NVENC, QuickSync, AMD VCE), which eliminates the CPU bottleneck at 2K/4K resolutions. VP8 as backup ensures compatibility with older clients.
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
 
-```typescript
-videoCodec: "h264",
-backupCodec: { codec: "vp8" },
-```
+### 4. No Hallucinations
 
-VP9 is superior compression but software-only on most desktop GPUs in Chromium's WebRTC stack, making it unsuitable for high-res/high-fps screen sharing.
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
 
-### 4. Publish via `publishTrack()` with `degradationPreference`
+### 5. No Over-Engineering
 
-Instead of `setScreenShareEnabled()`, use `room.localParticipant.publishTrack(track, options)` to publish the manually-acquired track with full control:
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
 
-```typescript
-await room.localParticipant.publishTrack(track, {
-  source: Track.Source.ScreenShare,
-  videoCodec: "h264",
-  backupCodec: { codec: "vp8" },
-  degradationPreference: "balanced",
-  simulcast: useSimulcast,
-  videoSimulcastLayers: simulcastLayers,
-  videoEncoding: {
-    maxBitrate: preset.maxBitrate,
-    maxFramerate,
-  },
-});
-```
+## Documentation Directory
 
-Setting `degradationPreference: "balanced"` combined with the strict `minFrameRate` constraint ensures WebRTC won't unilaterally sacrifice framerate.
+Read these files for specific details — do NOT rely on memory alone:
 
-### 5. Update `stopScreenShare`
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
 
-Since we're no longer using `setScreenShareEnabled`, stopping must manually unpublish the track and stop the underlying `MediaStreamTrack`:
+## Cosmetic Asset Specs
 
-```typescript
-const stopScreenShare = useCallback(async () => {
-  const room = roomRef.current;
-  if (!room) return;
-  const pub = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
-  if (pub?.track) {
-    pub.track.mediaStreamTrack.stop();
-    await room.localParticipant.unpublishTrack(pub.track);
-  }
-  setIsScreenSharing(false);
-}, []);
-```
+Per-asset guides with exact dimensions, config files, and wrapper usage:
 
-## Files Modified
-
-| File | Change |
-|---|---|
-| `src/hooks/useLiveKitRoom.ts` | Rewrite `startScreenShare` to manually acquire track, set `contentHint`, publish with H264 + `degradationPreference`; update `stopScreenShare` to manually unpublish |
-
-No other files need changes — `GoLiveModal`, `VoiceConnectionBar`, and `useLiveKitCall` all pass settings through to this function unchanged.
-
-## Technical Summary
-
-| Setting | Before | After |
-|---|---|---|
-| Track acquisition | `setScreenShareEnabled()` helper | Manual `getUserMedia`/`getDisplayMedia` |
-| FPS constraint | `frameRate` only (no min) | `minFrameRate` + `maxFrameRate` (Electron) or `min/ideal/max` (browser) |
-| `contentHint` | Not set (defaults to "detail") | Explicitly `"motion"` |
-| Codec | VP9 (software-only on most GPUs) | H264 (hardware-accelerated) with VP8 backup |
-| `degradationPreference` | Not set | `"balanced"` |
-| Stop method | `setScreenShareEnabled(false)` | Manual unpublish + track.stop() |
-
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

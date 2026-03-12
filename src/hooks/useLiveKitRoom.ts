@@ -12,7 +12,6 @@ import {
   VideoPreset,
   type AudioCaptureOptions,
   type VideoCaptureOptions,
-  type ScreenShareCaptureOptions,
   type TrackPublishOptions,
 } from "livekit-client";
 import { fetchLiveKitToken } from "@/lib/livekit";
@@ -360,27 +359,58 @@ export function useLiveKitRoom({
       const preset = SCREEN_SHARE_PRESETS[res];
       const maxFramerate = Math.min(opts?.fps ?? 30, preset.maxFps);
 
-      const captureOptions: ScreenShareCaptureOptions = {
-        resolution: { width: preset.width, height: preset.height, frameRate: maxFramerate },
-      };
-
-      // Electron: use desktopCapturer sourceId
-      if (opts?.sourceId) {
-        (captureOptions as any).preferCurrentTab = false;
-        (captureOptions as any).mandatory = {
-          chromeMediaSource: "desktop",
-          chromeMediaSourceId: opts.sourceId,
-        };
-      }
-
-      // Build simulcast layers
-      const simulcastLayers = getScreenShareSimulcastLayers(res);
-      const useSimulcast = simulcastLayers.length > 0;
-
       try {
-        await room.localParticipant.setScreenShareEnabled(true, captureOptions, {
-          videoCodec: "vp9",
+        // ── 1. Manual track acquisition with strict FPS constraints ──────
+        let stream: MediaStream;
+
+        if (opts?.sourceId) {
+          // Electron: use desktopCapturer sourceId with mandatory constraints
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+              mandatory: {
+                chromeMediaSource: "desktop",
+                chromeMediaSourceId: opts.sourceId,
+                minWidth: preset.width,
+                maxWidth: preset.width,
+                minHeight: preset.height,
+                maxHeight: preset.height,
+                minFrameRate: maxFramerate,
+                maxFrameRate: maxFramerate,
+              },
+            } as any,
+          });
+        } else {
+          // Browser: use getDisplayMedia with strict min/ideal/max FPS
+          stream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+              width: { ideal: preset.width },
+              height: { ideal: preset.height },
+              frameRate: { min: maxFramerate, ideal: maxFramerate, max: maxFramerate },
+            },
+            audio: false,
+          });
+        }
+
+        const videoTrack = stream.getVideoTracks()[0];
+        if (!videoTrack) {
+          console.error("[LiveKit] no video track acquired for screen share");
+          return;
+        }
+
+        // ── 2. Set contentHint to "motion" for high-FPS priority ─────────
+        videoTrack.contentHint = "motion";
+
+        // ── 3. Build simulcast layers ────────────────────────────────────
+        const simulcastLayers = getScreenShareSimulcastLayers(res);
+        const useSimulcast = simulcastLayers.length > 0;
+
+        // ── 4. Publish with H264 (HW-accelerated) + degradationPreference
+        await room.localParticipant.publishTrack(videoTrack, {
+          source: Track.Source.ScreenShare,
+          videoCodec: "h264",
           backupCodec: { codec: "vp8" },
+          degradationPreference: "balanced",
           simulcast: useSimulcast,
           ...(useSimulcast ? { videoSimulcastLayers: simulcastLayers } : {}),
           videoEncoding: {
@@ -388,16 +418,17 @@ export function useLiveKitRoom({
             maxFramerate,
           },
         } as TrackPublishOptions);
+
         setIsScreenSharing(true);
 
-        // Listen for the screen share track ending (user clicks "Stop sharing")
-        const pub = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
-        if (pub?.track) {
-          pub.track.mediaStreamTrack.addEventListener("ended", () => {
-            room.localParticipant.setScreenShareEnabled(false);
-            setIsScreenSharing(false);
-          });
-        }
+        // Listen for the track ending (user clicks browser "Stop sharing")
+        videoTrack.addEventListener("ended", () => {
+          const pub = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
+          if (pub?.track) {
+            room.localParticipant.unpublishTrack(pub.track);
+          }
+          setIsScreenSharing(false);
+        });
       } catch (err) {
         console.error("[LiveKit] screen share failed:", err);
       }
@@ -408,7 +439,11 @@ export function useLiveKitRoom({
   const stopScreenShare = useCallback(async () => {
     const room = roomRef.current;
     if (!room) return;
-    await room.localParticipant.setScreenShareEnabled(false);
+    const pub = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
+    if (pub?.track) {
+      pub.track.mediaStreamTrack.stop();
+      await room.localParticipant.unpublishTrack(pub.track);
+    }
     setIsScreenSharing(false);
   }, []);
 
