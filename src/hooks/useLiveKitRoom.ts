@@ -20,7 +20,7 @@ import type { StreamResolution } from "@/components/GoLiveModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type CallState = "idle" | "connecting" | "connected" | "ended";
+export type CallState = "idle" | "connecting" | "connected" | "reconnecting" | "ended";
 
 export interface ParticipantInfo {
   identity: string;
