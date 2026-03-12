@@ -62,43 +62,8 @@ export function useLiveKitCall({
     }
   }, [lk.callState]);
 
-  // ── Monitor call_sessions for remote hangup/cancel ────────────────────────
-
-  useEffect(() => {
-    if (!sessionId) return;
-
-    const channel = supabase
-      .channel(`call-session-${sessionId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "call_sessions",
-          filter: `id=eq.${sessionId}`,
-        },
-        (payload) => {
-          const newStatus = (payload.new as any)?.status;
-          if (
-            newStatus === "ended" ||
-            newStatus === "declined" ||
-            newStatus === "missed"
-          ) {
-            if (!endedRef.current) {
-              endedRef.current = true;
-              lk.disconnect();
-              setCallState("ended");
-              onEnded?.();
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [sessionId, lk, onEnded]);
+  // Note: call_sessions status monitoring is handled by CallListener.tsx
+  // to avoid duplicate onEnded callbacks and double system messages.
 
   // ── Reset state when sessionId changes (new call or cleared) ──────────────
 
