@@ -120,7 +120,7 @@ export function useLiveKitCall({
 
   const startScreenShare = useCallback(
     async (settings?: {
-      resolution?: "720p" | "1080p" | "source";
+      resolution?: "720p" | "1080p" | "1440p" | "source";
       fps?: 30 | 60;
       sourceId?: string;
       isPro?: boolean;

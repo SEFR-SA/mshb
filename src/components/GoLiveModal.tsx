@@ -7,10 +7,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { getBoostPerks } from "@/config/boostPerks";
 import { cn } from "@/lib/utils";
 
+export type StreamResolution = "720p" | "1080p" | "1440p" | "source";
+
 export interface GoLiveSettings {
-  resolution: "720p" | "1080p" | "source";
+  resolution: StreamResolution;
   fps: 30 | 60;
   surface: "monitor" | "window";
   sourceId?: string;
@@ -27,6 +30,8 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGoLive: (settings: GoLiveSettings) => void;
+  /** Server boost level (0-3). Omit or 0 for DM calls. */
+  boostLevel?: number;
 }
 
 const isElectron = () => !!(window as any).electronAPI?.getDisplaySources;
@@ -37,13 +42,39 @@ const ProBadge = () => (
   </span>
 );
 
-const GoLiveModal = ({ open, onOpenChange, onGoLive }: Props) => {
+const BoostBadge = ({ level }: { level: number }) => (
+  <span className="ms-1 text-[9px] font-bold bg-accent text-accent-foreground px-1 py-0.5 rounded leading-none">
+    LV{level}+
+  </span>
+);
+
+/** Check if a resolution is allowed for the user given their tier and boost level. */
+function isResolutionAllowed(
+  res: StreamResolution,
+  isPro: boolean,
+  boostLevel: number
+): boolean {
+  if (isPro) return true;
+  const perks = getBoostPerks(boostLevel);
+  const order: Record<string, number> = { "720p": 0, "1080p": 1, "1440p": 2, "4k": 3, source: 3 };
+  const resRank = order[res] ?? 0;
+  const maxRank = order[perks.maxScreenShareRes] ?? 1;
+  return resRank <= maxRank;
+}
+
+/** Check if 60fps is allowed. */
+function isFpsAllowed(isPro: boolean, boostLevel: number): boolean {
+  if (isPro) return true;
+  return getBoostPerks(boostLevel).maxScreenShareFps >= 60;
+}
+
+const GoLiveModal = ({ open, onOpenChange, onGoLive, boostLevel = 0 }: Props) => {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const isPro = (profile as any)?.is_pro ?? false;
 
   const [surface, setSurface] = useState<"monitor" | "window">("monitor");
-  const [resolution, setResolution] = useState<"720p" | "1080p" | "source">("1080p");
+  const [resolution, setResolution] = useState<StreamResolution>("1080p");
   const [fps, setFps] = useState<30 | 60>(30);
   const [sources, setSources] = useState<DesktopSource[]>([]);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
@@ -68,37 +99,45 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive }: Props) => {
   const visibleSources = surface === "monitor" ? screensources : windowSources;
 
   const handleGoLive = () => {
-    onGoLive({
-      resolution,
-      fps,
-      surface,
-      sourceId: selectedSourceId ?? undefined,
-    });
+    onGoLive({ resolution, fps, surface, sourceId: selectedSourceId ?? undefined });
   };
 
   const canGoLive = !isElectron() || selectedSourceId !== null;
 
   const handleResolutionChange = (v: string) => {
     if (!v) return;
-    if (v === "source" && !isPro) {
+    const res = v as StreamResolution;
+    if (!isResolutionAllowed(res, isPro, boostLevel)) {
       toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
-      setResolution("1080p");
       return;
     }
-    setResolution(v as "720p" | "1080p" | "source");
-    // If free user leaves 720p while at 60fps, reset to 30fps (60fps is only free at 720p)
-    if (v !== "720p" && !isPro && fps === 60) {
+    setResolution(res);
+    // If selected resolution doesn't allow 60fps for this tier, reset to 30
+    if (fps === 60 && !isFpsAllowed(isPro, boostLevel)) {
       setFps(30);
     }
   };
 
   const handleFpsChange = (v: string) => {
     if (!v) return;
-    if (v === "60" && !isPro && resolution !== "720p") {
+    if (v === "60" && !isFpsAllowed(isPro, boostLevel)) {
       toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
       return;
     }
     setFps(Number(v) as 30 | 60);
+  };
+
+  // Derived: which options need badges
+  const needs1440Badge = !isPro && boostLevel < 2;
+  const needsSourceBadge = !isPro && boostLevel < 3;
+  const needs60fpsBadge = !isPro && !isFpsAllowed(isPro, boostLevel);
+
+  // Badge helper: show boost level needed or PRO
+  const resolutionBadge = (res: StreamResolution) => {
+    if (isPro) return null;
+    if (res === "1440p" && boostLevel < 2) return boostLevel >= 1 ? <BoostBadge level={2} /> : <ProBadge />;
+    if (res === "source" && boostLevel < 3) return boostLevel >= 1 ? <BoostBadge level={3} /> : <ProBadge />;
+    return null;
   };
 
   return (
@@ -166,7 +205,6 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive }: Props) => {
                       </div>
                     )
                   ) : (
-                    /* Web fallback — no source enumeration available */
                     <p className="text-xs text-muted-foreground">{t("streaming.sourceTabDesc")}</p>
                   )}
                 </TabsContent>
@@ -186,10 +224,16 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive }: Props) => {
               <ToggleGroupItem value="720p" className="flex-1 text-xs">720p</ToggleGroupItem>
               <ToggleGroupItem value="1080p" className="flex-1 text-xs">1080p</ToggleGroupItem>
               <ToggleGroupItem
-                value="source"
-                className={cn("flex-1 text-xs", !isPro && "opacity-60")}
+                value="1440p"
+                className={cn("flex-1 text-xs", needs1440Badge && "opacity-60")}
               >
-                {t("streaming.sourceRes")}<ProBadge />
+                1440p{resolutionBadge("1440p")}
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="source"
+                className={cn("flex-1 text-xs", needsSourceBadge && "opacity-60")}
+              >
+                {t("streaming.sourceRes")}{resolutionBadge("source")}
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
@@ -206,9 +250,9 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive }: Props) => {
               <ToggleGroupItem value="30" className="flex-1 text-xs">{t("streaming.fps30")}</ToggleGroupItem>
               <ToggleGroupItem
                 value="60"
-                className={cn("flex-1 text-xs", !isPro && resolution !== "720p" && "opacity-60")}
+                className={cn("flex-1 text-xs", needs60fpsBadge && "opacity-60")}
               >
-                {t("streaming.fps60")}{!isPro && resolution !== "720p" && <ProBadge />}
+                {t("streaming.fps60")}{needs60fpsBadge && <ProBadge />}
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
