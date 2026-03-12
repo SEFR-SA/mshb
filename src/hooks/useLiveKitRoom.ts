@@ -222,6 +222,23 @@ export function useLiveKitRoom({
         }, 1000);
       });
 
+      room.on(RoomEvent.Reconnecting, () => {
+        console.warn("[LiveKit] reconnecting…");
+        setCallState("reconnecting");
+      });
+
+      room.on(RoomEvent.Reconnected, () => {
+        console.log("[LiveKit] reconnected");
+        setCallState("connected");
+        syncParticipants();
+        syncScreenShares();
+        syncCameras();
+      });
+
+      room.on(RoomEvent.SignalReconnecting, () => {
+        console.warn("[LiveKit] signal layer reconnecting…");
+      });
+
       room.on(RoomEvent.Disconnected, (reason) => {
         setCallState("ended");
         onDisconnected?.(reason);
