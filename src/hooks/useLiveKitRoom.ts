@@ -190,6 +190,13 @@ export function useLiveKitRoom({
       const room = new Room({
         adaptiveStream: true,
         dynacast: true,
+        reconnectPolicy: {
+          nextRetryDelayInMs: (context: { retryCount: number; elapsedMs: number }) => {
+            if (context.retryCount >= 7) return null; // give up after 7 retries
+            const delay = Math.min(300 * Math.pow(2, context.retryCount), 10_000);
+            return delay;
+          },
+        },
       });
 
       roomRef.current = room;
