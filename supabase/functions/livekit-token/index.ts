@@ -57,40 +57,41 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch user's Pro status
-    const { data: profile } = await supabase
+    // Fetch user's Pro status and boost level in parallel
+    const profilePromise = supabase
       .from("profiles")
       .select("is_pro")
       .eq("user_id", userId)
       .single();
 
-    const isPro = profile?.is_pro ?? false;
-
-    // If this is a server voice channel room, fetch boost level
-    let boostLevel = 0;
+    let boostPromise: Promise<number> = Promise.resolve(0);
     if (roomName.startsWith("server-voice:")) {
       const channelId = roomName.replace("server-voice:", "");
-      const { data: channel } = await supabase
+      boostPromise = supabase
         .from("channels")
         .select("server_id")
         .eq("id", channelId)
-        .single();
-
-      if (channel?.server_id) {
-        const { data: server } = await supabase
-          .from("servers")
-          .select("boost_level")
-          .eq("id", channel.server_id)
-          .single();
-        boostLevel = server?.boost_level ?? 0;
-      }
+        .single()
+        .then(async ({ data: channel }) => {
+          if (!channel?.server_id) return 0;
+          const { data: server } = await supabase
+            .from("servers")
+            .select("boost_level")
+            .eq("id", channel.server_id)
+            .single();
+          return server?.boost_level ?? 0;
+        });
     }
+
+    const [{ data: profile }, boostLevel] = await Promise.all([profilePromise, boostPromise]);
+    const isPro = profile?.is_pro ?? false;
 
     // Generate LiveKit access token
     const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
       identity: participantIdentity || userId,
       name: participantName,
       metadata: JSON.stringify({ isPro, boostLevel, userId }),
+      ttl: "24h",
     });
 
     at.addGrant({

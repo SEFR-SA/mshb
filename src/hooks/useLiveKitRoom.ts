@@ -20,7 +20,7 @@ import type { StreamResolution } from "@/components/GoLiveModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type CallState = "idle" | "connecting" | "connected" | "ended";
+export type CallState = "idle" | "connecting" | "connected" | "reconnecting" | "ended";
 
 export interface ParticipantInfo {
   identity: string;
@@ -190,6 +190,13 @@ export function useLiveKitRoom({
       const room = new Room({
         adaptiveStream: true,
         dynacast: true,
+        reconnectPolicy: {
+          nextRetryDelayInMs: (context: { retryCount: number; elapsedMs: number }) => {
+            if (context.retryCount >= 7) return null; // give up after 7 retries
+            const delay = Math.min(300 * Math.pow(2, context.retryCount), 10_000);
+            return delay;
+          },
+        },
       });
 
       roomRef.current = room;
@@ -213,6 +220,23 @@ export function useLiveKitRoom({
         durationRef.current = setInterval(() => {
           setCallDuration(Math.floor((Date.now() - start) / 1000));
         }, 1000);
+      });
+
+      room.on(RoomEvent.Reconnecting, () => {
+        console.warn("[LiveKit] reconnecting…");
+        setCallState("reconnecting");
+      });
+
+      room.on(RoomEvent.Reconnected, () => {
+        console.log("[LiveKit] reconnected");
+        setCallState("connected");
+        syncParticipants();
+        syncScreenShares();
+        syncCameras();
+      });
+
+      room.on(RoomEvent.SignalReconnecting, () => {
+        console.warn("[LiveKit] signal layer reconnecting…");
       });
 
       room.on(RoomEvent.Disconnected, (reason) => {
