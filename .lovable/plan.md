@@ -1,58 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-# Fix Screen Share Downscaling to 360p/270p on Viewer Side
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-## Problem
-Screen shares published at 2K/60fps are being downscaled to 360p/15fps on the viewer side. Three causes:
+## Tech Stack
 
-1. **`adaptiveStream: true`** tells the LiveKit SDK to automatically reduce the subscribed video quality based on the rendered `<video>` element's viewport size. Since `ScreenShareViewer` renders at `h-[360px]` (non-fullscreen), the SDK sees a ~360px tall container and requests the lowest simulcast layer.
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-2. **No `VideoQuality.HIGH` override** — `syncScreenShares` grabs the track's `mediaStream` but never forces the subscription quality. The SDK defaults to adaptive (low layer for small viewports).
+## Core Directives (CRITICAL — Always Enforce)
 
-3. **`degradationPreference: "balanced"`** on the publisher allows WebRTC to reduce both resolution and framerate under load. For gaming/text screen shares, this should be `"maintain-resolution"`.
+### 1. Plan First
 
-## Changes
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-### File 1: `src/hooks/useLiveKitRoom.ts`
+### 2. Single Source of Truth (SSOT)
 
-**A. Configure `adaptiveStream` to use screen pixel density**
+Never duplicate display logic. Always use the canonical shared components:
 
-Change `adaptiveStream: true` to `adaptiveStream: { pixelDensity: 'screen' }`. This tells the SDK to factor in the device's actual screen pixel density rather than CSS pixels when deciding quality, which significantly raises the quality threshold on high-DPI displays.
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-**B. Force `VideoQuality.HIGH` on screen share subscriptions**
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-In `syncScreenShares`, after finding a screen share publication, call `pub.setVideoQuality(VideoQuality.HIGH)` to override adaptive downscaling. This forces the SFU to send the highest available simulcast layer for screen shares regardless of viewport size.
+### 3. Pro Gating
 
-```typescript
-const pub = p.getTrackPublication(Track.Source.ScreenShare);
-if (pub?.track?.mediaStream) {
-  // Force highest quality for screen shares
-  (pub as RemoteTrackPublication).setVideoQuality(VideoQuality.HIGH);
-  streams.push({ ... });
-}
-```
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
 
-Add `VideoQuality` to the livekit-client imports.
+### 4. No Hallucinations
 
-**C. Change `degradationPreference` from `"balanced"` to `"maintain-resolution"`**
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
 
-In `startScreenShare`, line 437, change `degradationPreference: "balanced"` to `degradationPreference: "maintain-resolution"`. This prevents WebRTC from scaling down the resolution under CPU/bandwidth pressure — the `minFrameRate` constraint already handles FPS, so we prioritize keeping the full 2K/4K resolution intact.
+### 5. No Over-Engineering
 
-### File 2: `src/components/server/ScreenShareViewer.tsx`
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
 
-**D. Force video element dimensions for adaptive stream hinting**
+## Documentation Directory
 
-The `<video>` element is rendered at `h-[360px]` in non-fullscreen mode. Even with `pixelDensity: 'screen'`, the SDK may still see a small element. Add `width` and `height` attributes matching the source resolution to hint the SDK that full-quality is needed:
+Read these files for specific details — do NOT rely on memory alone:
 
-No changes needed here if we're forcing `VideoQuality.HIGH` in the hook (Step B), which bypasses adaptive stream entirely for screen shares. The `VideoQuality.HIGH` override is the definitive fix.
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
 
-## Summary
+## Cosmetic Asset Specs
 
-| Change | Location | Effect |
-|---|---|---|
-| `adaptiveStream: { pixelDensity: 'screen' }` | Room constructor | SDK uses physical pixels, raises quality threshold |
-| `pub.setVideoQuality(VideoQuality.HIGH)` | `syncScreenShares` | Forces SFU to send highest simulcast layer for screen shares |
-| `degradationPreference: "maintain-resolution"` | `startScreenShare` publish opts | Publisher never downscales resolution under pressure |
+Per-asset guides with exact dimensions, config files, and wrapper usage:
 
-Three targeted changes in one file (`useLiveKitRoom.ts`). No other files affected.
-
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

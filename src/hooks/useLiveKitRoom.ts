@@ -10,6 +10,7 @@ import {
   DisconnectReason,
   VideoPresets,
   VideoPreset,
+  VideoQuality,
   type AudioCaptureOptions,
   type VideoCaptureOptions,
   type TrackPublishOptions,
@@ -149,6 +150,8 @@ export function useLiveKitRoom({
     room.remoteParticipants.forEach((p) => {
       const pub = p.getTrackPublication(Track.Source.ScreenShare);
       if (pub?.track?.mediaStream) {
+        // Force highest simulcast layer for screen shares — bypass adaptive downscaling
+        (pub as RemoteTrackPublication).setVideoQuality(VideoQuality.HIGH);
         streams.push({
           identity: p.identity,
           name: p.name ?? p.identity,
@@ -188,7 +191,7 @@ export function useLiveKitRoom({
       );
 
       const room = new Room({
-        adaptiveStream: true,
+        adaptiveStream: { pixelDensity: 'screen' },
         dynacast: true,
         reconnectPolicy: {
           nextRetryDelayInMs: (context: { retryCount: number; elapsedMs: number }) => {
@@ -434,7 +437,7 @@ export function useLiveKitRoom({
           source: Track.Source.ScreenShare,
           videoCodec: "h264",
           backupCodec: { codec: "vp8" },
-          degradationPreference: "balanced",
+          degradationPreference: "maintain-resolution",
           simulcast: useSimulcast,
           ...(useSimulcast ? { videoSimulcastLayers: simulcastLayers } : {}),
           videoEncoding: {
