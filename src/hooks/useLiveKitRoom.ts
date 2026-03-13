@@ -10,6 +10,7 @@ import {
   DisconnectReason,
   VideoPresets,
   VideoPreset,
+  VideoQuality,
   type AudioCaptureOptions,
   type VideoCaptureOptions,
   type TrackPublishOptions,
