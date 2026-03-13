@@ -61,18 +61,16 @@ if (process.env.MSHB_DISABLE_GPU === '1') {
 } else {
   app.commandLine.appendSwitch('ignore-gpu-blocklist');
   app.commandLine.appendSwitch('enable-gpu-rasterization');
-  // enable-zero-copy REMOVED — triggers GPU process crash when screen capture starts
+  app.commandLine.appendSwitch('enable-zero-copy'); // Zero-copy GPU frame capture for screen sharing
   app.commandLine.appendSwitch('enable-accelerated-video-decode');
-  // disable-software-rasterizer REMOVED — prevents software fallback when GPU fails → white screen
-  // enable-native-gpu-memory-buffers REMOVED — GPU OOM during capture on some hardware
+  app.commandLine.appendSwitch('enable-accelerated-video-encode'); // Hardware video encoding (NVENC/QuickSync/VCE)
   app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
   app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
   app.commandLine.appendSwitch('disable-renderer-backgrounding');
   app.commandLine.appendSwitch('enable-features',
     'WebRTCPipeWireCapturer,CanvasOopRasterization,' +
-    'PlatformHEVCEncoderSupport,PlatformHEVCDecoderSupport'
-    // VaapiVideoDecoder/Encoder/IgnoreDriverChecks REMOVED — Linux-only VAAPI flags that
-    // destabilise the GPU process on Windows when video encoding starts
+    'PlatformHEVCEncoderSupport,PlatformHEVCDecoderSupport,' +
+    'WebRTCHWH264Encoding' // Force hardware H264 encoder for WebRTC screen sharing
   );
 }
 
