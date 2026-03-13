@@ -1,75 +1,55 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+# Fix 15fps Screen Share Cap
 
-## Tech Stack
+## Current State
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+After reviewing both files, the code is **already correctly implementing** most of the requested fixes. Here's the status:
 
-## Core Directives (CRITICAL — Always Enforce)
+### Already Correct — No Changes Needed
+- **`useLiveKitRoom.ts`**: Electron `mandatory` constraints already include `minFrameRate: maxFramerate` and `maxFrameRate: maxFramerate` (lines 405-406)
+- **`useLiveKitRoom.ts`**: `contentHint = "motion"` is already set (line 429)
+- **`useLiveKitRoom.ts`**: H264 codec, `degradationPreference: "maintain-resolution"`, and `maxFramerate` in `videoEncoding` are all present (lines 436-447)
+- **`main.cjs`**: `ignore-gpu-blocklist` and `enable-gpu-rasterization` already set (lines 62-63)
+- **`main.cjs`**: `disableHardwareAcceleration()` is only called under an explicit env flag, not by default
 
-### 1. Plan First
+### The Actual Problem: `enable-zero-copy`
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+The comment on line 64 says `enable-zero-copy` was **removed** because it "triggers GPU process crash when screen capture starts." However, this flag is critical for desktop capture performance — it allows the GPU to share frame buffers directly with the encoder instead of copying through CPU memory. Without it, Chromium falls back to a CPU-bound capture pipeline that caps at 15fps for desktop sources.
 
-### 2. Single Source of Truth (SSOT)
+The original crash was likely caused by combining `enable-zero-copy` with the now-removed `enable-native-gpu-memory-buffers` and VAAPI flags. With those gone, `enable-zero-copy` should be safe to re-enable.
 
-Never duplicate display logic. Always use the canonical shared components:
+Additionally, we should add `enable-accelerated-video-encode` — the current flags only have `enable-accelerated-video-**decode**`, but encoding is the bottleneck for screen sharing.
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+## Plan — 1 File Change
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+### `main.cjs` (lines 62-75)
 
-### 3. Pro Gating
+1. **Re-enable `enable-zero-copy`** — required for zero-copy GPU frame capture. The flags that previously caused crashes alongside it (`enable-native-gpu-memory-buffers`, VAAPI flags) have already been removed.
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+2. **Add `enable-accelerated-video-encode`** — currently only video *decode* is accelerated. This explicitly enables hardware video encoding (NVENC/QuickSync/VCE), which is the actual bottleneck causing the 15fps cap.
 
-### 4. No Hallucinations
+3. **Add `WebRTCHWH264Encoding` to `enable-features`** — forces Chromium's WebRTC stack to use the hardware H264 encoder path instead of falling back to OpenH264 software encoding (which caps at 15fps for 2K).
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+```
+Before:
+  ignore-gpu-blocklist
+  enable-gpu-rasterization
+  // enable-zero-copy REMOVED
+  enable-accelerated-video-decode
+  features: WebRTCPipeWireCapturer,CanvasOopRasterization,
+            PlatformHEVCEncoderSupport,PlatformHEVCDecoderSupport
 
-### 5. No Over-Engineering
+After:
+  ignore-gpu-blocklist
+  enable-gpu-rasterization
+  enable-zero-copy                    ← RE-ENABLED
+  enable-accelerated-video-decode
+  enable-accelerated-video-encode     ← NEW
+  features: WebRTCPipeWireCapturer,CanvasOopRasterization,
+            PlatformHEVCEncoderSupport,PlatformHEVCDecoderSupport,
+            WebRTCHWH264Encoding      ← NEW
+```
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+No changes to `useLiveKitRoom.ts` — the frontend code is already correct. The 15fps cap is entirely caused by Chromium's GPU process not using hardware encoding.
 
-## Documentation Directory
-
-Read these files for specific details — do NOT rely on memory alone:
-
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
-
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
