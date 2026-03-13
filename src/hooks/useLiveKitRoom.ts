@@ -150,6 +150,8 @@ export function useLiveKitRoom({
     room.remoteParticipants.forEach((p) => {
       const pub = p.getTrackPublication(Track.Source.ScreenShare);
       if (pub?.track?.mediaStream) {
+        // Force highest simulcast layer for screen shares — bypass adaptive downscaling
+        (pub as RemoteTrackPublication).setVideoQuality(VideoQuality.HIGH);
         streams.push({
           identity: p.identity,
           name: p.name ?? p.identity,
