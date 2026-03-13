@@ -437,12 +437,13 @@ export function useLiveKitRoom({
           source: Track.Source.ScreenShare,
           videoCodec: "h264",
           backupCodec: { codec: "vp8" },
-          degradationPreference: "maintain-resolution",
+          degradationPreference: "balanced",
           simulcast: useSimulcast,
           ...(useSimulcast ? { videoSimulcastLayers: simulcastLayers } : {}),
           videoEncoding: {
             maxBitrate: preset.maxBitrate,
             maxFramerate,
+            priority: "high",
           },
         } as TrackPublishOptions);
 

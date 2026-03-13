@@ -61,7 +61,7 @@ if (process.env.MSHB_DISABLE_GPU === '1') {
 } else {
   app.commandLine.appendSwitch('ignore-gpu-blocklist');
   app.commandLine.appendSwitch('enable-gpu-rasterization');
-  app.commandLine.appendSwitch('enable-zero-copy'); // Zero-copy GPU frame capture for screen sharing
+  // enable-zero-copy removed — causes GPU memory stalls with Electron desktop capture on some hardware
   app.commandLine.appendSwitch('enable-accelerated-video-decode');
   app.commandLine.appendSwitch('enable-accelerated-video-encode'); // Hardware video encoding (NVENC/QuickSync/VCE)
   app.commandLine.appendSwitch('webrtc-max-cpu-consumption-percentage', '100');
