@@ -189,7 +189,7 @@ export function useLiveKitRoom({
       );
 
       const room = new Room({
-        adaptiveStream: true,
+        adaptiveStream: { pixelDensity: 'screen' },
         dynacast: true,
         reconnectPolicy: {
           nextRetryDelayInMs: (context: { retryCount: number; elapsedMs: number }) => {
