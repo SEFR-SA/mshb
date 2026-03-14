@@ -1720,6 +1720,10 @@ export type Database = {
         Args: { p_server_id: string }
         Returns: undefined
       }
+      change_username: {
+        Args: { p_new_username: string; p_password: string }
+        Returns: Json
+      }
       check_username_available: {
         Args: { p_username: string }
         Returns: boolean
