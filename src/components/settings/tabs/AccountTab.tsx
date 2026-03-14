@@ -68,7 +68,10 @@ const AccountTab = () => {
   const p = profile as any;
   const initials = (profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase();
 
-  const toggleField = (field: EditField) => setEditField((prev) => (prev === field ? null : field));
+  const toggleField = (field: EditField) => {
+    setEditField((prev) => (prev === field ? null : field));
+    if (field === "username") setUsernamePassword("");
+  };
 
   const saveDisplayName = async () => {
     if (!user) return;
