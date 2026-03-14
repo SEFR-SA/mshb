@@ -53,16 +53,25 @@ const AccountTab = () => {
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
   // Username edit
   const [username, setUsername] = useState(profile?.username || "");
+  const [usernamePassword, setUsernamePassword] = useState("");
   // Email edit
   const [newEmail, setNewEmail] = useState("");
   // Password edit
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const p_profile = profile as any;
+  const usernameChangedAt = p_profile?.username_changed_at ? new Date(p_profile.username_changed_at) : null;
+  const cooldownEnd = usernameChangedAt ? new Date(usernameChangedAt.getTime() + 6 * 30 * 24 * 60 * 60 * 1000) : null;
+  const isUsernameCoolingDown = cooldownEnd ? cooldownEnd > new Date() : false;
+
   const p = profile as any;
   const initials = (profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase();
 
-  const toggleField = (field: EditField) => setEditField((prev) => (prev === field ? null : field));
+  const toggleField = (field: EditField) => {
+    setEditField((prev) => (prev === field ? null : field));
+    if (field === "username") setUsernamePassword("");
+  };
 
   const saveDisplayName = async () => {
     if (!user) return;
@@ -80,15 +89,46 @@ const AccountTab = () => {
 
   const saveUsername = async () => {
     if (!user) return;
+    const trimmed = username.trim();
+    if (trimmed.length < 3) {
+      toast({ title: t("common.error"), description: t("auth.usernameTooShort", "Username must be at least 3 characters."), variant: "destructive" });
+      return;
+    }
+    if (!usernamePassword) {
+      toast({ title: t("common.error"), description: t("settings.passwordRequired", "Please enter your password to confirm."), variant: "destructive" });
+      return;
+    }
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({ username: username.trim() || null } as any).eq("user_id", user.id);
+
+    // Verify password
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email!,
+      password: usernamePassword,
+    });
+    if (signInError) {
+      toast({ title: t("common.error"), description: t("settings.incorrectPassword", "Incorrect password."), variant: "destructive" });
+      setSaving(false);
+      return;
+    }
+
+    // Call RPC
+    const { data, error } = await supabase.rpc("change_username", {
+      p_new_username: trimmed,
+      p_password: usernamePassword,
+    } as any);
+
+    const result = data as any;
     if (error) {
-      const msg = error.message?.includes("profile_username_key") || error.message?.includes("unique constraint")
-        ? t("auth.usernameTaken")
-        : error.message;
-      toast({ title: t("common.error"), description: msg, variant: "destructive" });
-    } else {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    } else if (result?.error === "cooldown") {
+      toast({ title: t("common.error"), description: t("settings.usernameCooldown", "You can only change your username once every 6 months. Next change available: ") + new Date(result.next_change_at).toLocaleDateString(), variant: "destructive" });
+    } else if (result?.error === "taken") {
+      toast({ title: t("common.error"), description: t("auth.usernameTaken"), variant: "destructive" });
+    } else if (result?.error === "too_short") {
+      toast({ title: t("common.error"), description: t("auth.usernameTooShort", "Username must be at least 3 characters."), variant: "destructive" });
+    } else if (result?.success) {
       toast({ title: t("profile.saved") });
+      setUsernamePassword("");
       await refreshProfile();
       setEditField(null);
     }
@@ -287,14 +327,41 @@ const AccountTab = () => {
           </div>
           {editField === "username" && (
             <div className="px-4 pb-4 space-y-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("settings.editUsername")}</Label>
-                <Input value={username} onChange={(e) => setUsername(e.target.value)} className="bg-background" placeholder="username" />
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={saveUsername} disabled={saving}>{t("actions.save")}</Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditField(null)}>{t("actions.cancel")}</Button>
-              </div>
+              {isUsernameCoolingDown ? (
+                <p className="text-xs text-destructive">
+                  {t("settings.usernameCooldown", "You can only change your username once every 6 months. Next change available: ") + cooldownEnd!.toLocaleDateString()}
+                </p>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">{t("settings.editUsername")}</Label>
+                    <Input
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="bg-background"
+                      placeholder="username"
+                      minLength={3}
+                    />
+                    {username.trim().length > 0 && username.trim().length < 3 && (
+                      <p className="text-xs text-destructive">{t("auth.usernameTooShort", "Username must be at least 3 characters.")}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">{t("settings.confirmPassword", "Confirm password")}</Label>
+                    <Input
+                      type="password"
+                      value={usernamePassword}
+                      onChange={(e) => setUsernamePassword(e.target.value)}
+                      className="bg-background"
+                      placeholder={t("settings.enterPassword", "Enter your password")}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={saveUsername} disabled={saving || username.trim().length < 3 || !usernamePassword}>{t("actions.save")}</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditField(null)}>{t("actions.cancel")}</Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

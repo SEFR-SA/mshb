@@ -79,7 +79,6 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
     const { error } = await supabase
       .from("profiles")
       .update({
-        username:             username.trim() || null,
         display_name:         displayName.trim() || null,
         about_me:             aboutMe.trim(),
         active_server_tag_id: activeServerTagId === "none" ? null : activeServerTagId,
@@ -203,10 +202,11 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
         {/* ── LEFT COLUMN — form controls ── */}
         <div className="flex-1 min-w-0 space-y-6">
 
-          {/* Username */}
+          {/* Username (read-only — change in Account tab) */}
           <div className="space-y-1.5">
             <Label className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{t("profile.username")}</Label>
-            <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" className="bg-muted/40" />
+            <Input value={username} readOnly disabled className="bg-muted/40 opacity-60 cursor-not-allowed" />
+            <p className="text-xs text-muted-foreground">{t("settings.usernameChangeNote", "Username can only be changed from the Account tab.")}</p>
           </div>
 
           {/* Display Name + Style buttons */}

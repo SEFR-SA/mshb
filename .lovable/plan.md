@@ -1,118 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-# Username Uniqueness, Cooldown, and Password Confirmation
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-## Overview
+## Tech Stack
 
-Enforce username rules: unique (already exists via DB constraint), minimum 3 characters, changeable only once every 6 months with password confirmation.
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-## Database Changes
+## Core Directives (CRITICAL — Always Enforce)
 
-**Migration: Add `username_changed_at` column to `profiles`**
+### 1. Plan First
 
-```sql
-ALTER TABLE public.profiles
-ADD COLUMN username_changed_at timestamptz DEFAULT NULL;
-```
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-For existing users, this defaults to `NULL` (meaning they can change immediately). Once changed, the timestamp is set, enforcing the 6-month cooldown.
+### 2. Single Source of Truth (SSOT)
 
-**Migration: Add CHECK constraint for minimum 3 characters**
+Never duplicate display logic. Always use the canonical shared components:
 
-```sql
-ALTER TABLE public.profiles
-ADD CONSTRAINT username_min_length CHECK (username IS NULL OR length(username) >= 3);
-```
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-**Migration: Create a security-definer function to change username with password verification**
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-```sql
-CREATE OR REPLACE FUNCTION public.change_username(p_new_username text, p_password text)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_user_id uuid := auth.uid();
-  v_email text;
-  v_last_changed timestamptz;
-  v_created_at timestamptz;
-BEGIN
-  IF v_user_id IS NULL THEN
-    RETURN jsonb_build_object('error', 'not_authenticated');
-  END IF;
+### 3. Pro Gating
 
-  -- Validate length
-  IF length(trim(p_new_username)) < 3 THEN
-    RETURN jsonb_build_object('error', 'too_short');
-  END IF;
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
 
-  -- Check 6-month cooldown
-  SELECT username_changed_at, created_at INTO v_last_changed, v_created_at
-  FROM profiles WHERE user_id = v_user_id;
+### 4. No Hallucinations
 
-  IF v_last_changed IS NOT NULL AND v_last_changed > now() - interval '6 months' THEN
-    RETURN jsonb_build_object('error', 'cooldown', 'next_change_at', (v_last_changed + interval '6 months')::text);
-  END IF;
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
 
-  -- Verify password via auth.uid() email
-  SELECT email INTO v_email FROM auth.users WHERE id = v_user_id;
+### 5. No Over-Engineering
 
-  -- Attempt sign-in to verify password (done via extension or pg_net — 
-  -- but since we can't call auth from PL/pgSQL easily, 
-  -- we'll verify password on the client side and use this RPC for the update)
-  
-  -- Check uniqueness
-  IF EXISTS (SELECT 1 FROM profiles WHERE lower(username) = lower(trim(p_new_username)) AND user_id <> v_user_id) THEN
-    RETURN jsonb_build_object('error', 'taken');
-  END IF;
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
 
-  -- Update
-  UPDATE profiles
-  SET username = lower(trim(p_new_username)),
-      username_changed_at = now()
-  WHERE user_id = v_user_id;
+## Documentation Directory
 
-  RETURN jsonb_build_object('success', true);
-END;
-$$;
-```
+Read these files for specific details — do NOT rely on memory alone:
 
-**Note on password verification**: Since Supabase's `auth.users` table doesn't expose password hashing to PL/pgSQL, password verification will happen client-side via `supabase.auth.signInWithPassword()` before calling the RPC — same pattern already used for account deletion.
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
 
-## Frontend Changes
+## Cosmetic Asset Specs
 
-### 1. `src/components/settings/tabs/AccountTab.tsx` — Username edit section
+Per-asset guides with exact dimensions, config files, and wrapper usage:
 
-Replace the simple `saveUsername` function with:
-- Add a `usernamePassword` state field
-- Add a password input field in the username edit form
-- Before saving, call `supabase.auth.signInWithPassword()` to verify the password
-- Then call the `change_username` RPC instead of a direct profile update
-- Show the cooldown date if the user can't change yet (fetch `username_changed_at` from profile)
-- Enforce 3-character minimum with validation message
-- Show remaining cooldown time if within 6 months
-
-### 2. `src/components/settings/tabs/ProfileTab.tsx` — Remove username from bulk save
-
-The ProfileTab currently saves username alongside other profile fields. Username changes must now go through the password-verified flow in AccountTab only. Remove `username` from the ProfileTab save payload and make the username field read-only (or remove it entirely, showing it as display-only).
-
-### 3. `src/pages/Settings.tsx` — Same treatment
-
-The Settings page also saves username in a bulk update. Remove username from that save logic too.
-
-### 4. `src/pages/Auth.tsx` — Already enforces 3-char minimum
-
-The signup flow already validates `username.trim().length >= 3` and shows `too_short` status. No changes needed here. The DB CHECK constraint adds server-side enforcement.
-
-## Summary
-
-| Change | Location | Purpose |
-|---|---|---|
-| Add `username_changed_at` column | DB migration | Track last change timestamp |
-| Add `username_min_length` CHECK | DB migration | Server-side 3-char enforcement |
-| Create `change_username` RPC | DB migration | Atomic username change with cooldown check |
-| Password + cooldown UI | AccountTab.tsx | User must enter password, see cooldown |
-| Remove username from bulk save | ProfileTab.tsx, Settings.tsx | Force all changes through secured flow |
-
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |

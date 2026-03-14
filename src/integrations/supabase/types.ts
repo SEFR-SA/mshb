@@ -616,6 +616,7 @@ export type Database = {
       }
       message_reports: {
         Row: {
+          assigned_to: string | null
           category: string
           created_at: string
           id: string
@@ -626,6 +627,7 @@ export type Database = {
           subcategories: string[] | null
         }
         Insert: {
+          assigned_to?: string | null
           category: string
           created_at?: string
           id?: string
@@ -636,6 +638,7 @@ export type Database = {
           subcategories?: string[] | null
         }
         Update: {
+          assigned_to?: string | null
           category?: string
           created_at?: string
           id?: string
@@ -1716,6 +1719,10 @@ export type Database = {
       calculate_server_boost_stats: {
         Args: { p_server_id: string }
         Returns: undefined
+      }
+      change_username: {
+        Args: { p_new_username: string; p_password: string }
+        Returns: Json
       }
       check_username_available: {
         Args: { p_username: string }
