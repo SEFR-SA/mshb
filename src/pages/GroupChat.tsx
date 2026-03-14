@@ -580,6 +580,9 @@ const GroupChat = () => {
                                     fileType={msgAny.file_type || ""}
                                     fileSize={msgAny.file_size || 0}
                                     isMine={isMine}
+                                    senderName={isMine ? (user?.email?.split("@")[0] || "You") : (authorProfile?.display_name || authorProfile?.username || "User")}
+                                    senderAvatar={isMine ? "" : (authorProfile?.avatar_url || "")}
+                                    timestamp={new Date(msg.created_at).toLocaleString()}
                                   />
                                 </div>
                               ) : null}

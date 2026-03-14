@@ -672,6 +672,9 @@ const Chat = () => {
                                   fileType={msgAny.file_type || ""}
                                   fileSize={msgAny.file_size || 0}
                                   isMine={isMine}
+                                  senderName={isMine ? (user?.email?.split("@")[0] || "You") : (otherProfile?.display_name || otherProfile?.username || "User")}
+                                  senderAvatar={isMine ? "" : (otherProfile?.avatar_url || "")}
+                                  timestamp={new Date(msg.created_at).toLocaleString()}
                                 />
                               </div>
                             ) : null}

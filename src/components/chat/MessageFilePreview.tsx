@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileText, Download } from "lucide-react";
 import ImageViewer from "./ImageViewer";
+import ForwardImageDialog from "./ForwardImageDialog";
 
 interface MessageFilePreviewProps {
   fileUrl: string;
@@ -9,6 +10,9 @@ interface MessageFilePreviewProps {
   fileType: string;
   fileSize: number;
   isMine: boolean;
+  senderName?: string;
+  senderAvatar?: string;
+  timestamp?: string;
 }
 
 const formatFileSize = (bytes: number) => {
@@ -17,9 +21,19 @@ const formatFileSize = (bytes: number) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const MessageFilePreview = ({ fileUrl, fileName, fileType, fileSize, isMine }: MessageFilePreviewProps) => {
+const MessageFilePreview = ({
+  fileUrl,
+  fileName,
+  fileType,
+  fileSize,
+  isMine,
+  senderName,
+  senderAvatar,
+  timestamp,
+}: MessageFilePreviewProps) => {
   const { t } = useTranslation();
   const [fullscreen, setFullscreen] = useState(false);
+  const [forwardOpen, setForwardOpen] = useState(false);
 
   if (fileType?.startsWith("image/")) {
     return (
@@ -27,18 +41,30 @@ const MessageFilePreview = ({ fileUrl, fileName, fileType, fileSize, isMine }: M
         <img
           src={fileUrl}
           alt={fileName}
-          className="max-w-full max-h-60 rounded-lg cursor-pointer object-cover"
-          onClick={() => setFullscreen(true)}
+          className="relative z-10 pointer-events-auto max-w-full max-h-60 rounded-lg cursor-pointer transition-opacity hover:opacity-90 object-cover"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setFullscreen(true); }}
         />
         {fullscreen && (
           <ImageViewer
-            fileUrl={fileUrl}
+            src={fileUrl}
+            alt={fileName}
             fileName={fileName}
-            fileType={fileType}
-            fileSize={fileSize}
+            fileSize={formatFileSize(fileSize)}
+            senderName={senderName}
+            senderAvatar={senderAvatar}
+            timestamp={timestamp}
+            onForward={() => setForwardOpen(true)}
             onClose={() => setFullscreen(false)}
           />
         )}
+        <ForwardImageDialog
+          open={forwardOpen}
+          onOpenChange={setForwardOpen}
+          fileUrl={fileUrl}
+          fileName={fileName}
+          fileType={fileType}
+          fileSize={fileSize}
+        />
       </>
     );
   }

@@ -286,7 +286,16 @@ const MessageItem = React.memo(({
               </div>
             ) : msg.file_url ? (
               <div className="mt-1">
-                <MessageFilePreview fileUrl={msg.file_url} fileName={msg.file_name || "file"} fileType={msg.file_type || ""} fileSize={msg.file_size || 0} isMine={isMine} />
+                <MessageFilePreview
+                  fileUrl={msg.file_url}
+                  fileName={msg.file_name || "file"}
+                  fileType={msg.file_type || ""}
+                  fileSize={msg.file_size || 0}
+                  isMine={isMine}
+                  senderName={name}
+                  senderAvatar={p?.avatar_url || ""}
+                  timestamp={new Date(msg.created_at).toLocaleString()}
+                />
               </div>
             ) : null}
             {msg.deleted_for_everyone ? (
