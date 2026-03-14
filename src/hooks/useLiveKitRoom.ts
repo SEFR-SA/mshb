@@ -60,7 +60,7 @@ const SCREEN_SHARE_PRESETS: Record<StreamResolution, ScreenSharePreset> = {
   "720p":  { width: 1280, height: 720,  maxFps: 30, maxBitrate: 2_500_000 },
   "1080p": { width: 1920, height: 1080, maxFps: 60, maxBitrate: 8_000_000 },
   "1440p": { width: 2560, height: 1440, maxFps: 60, maxBitrate: 18_000_000 },
-  "source": { width: 3840, height: 2160, maxFps: 60, maxBitrate: 40_000_000 },
+  "source": { width: 3840, height: 2160, maxFps: 60, maxBitrate: 25_000_000 },
 };
 
 /** Build simulcast layers for screen share based on selected resolution. */
@@ -150,8 +150,6 @@ export function useLiveKitRoom({
     room.remoteParticipants.forEach((p) => {
       const pub = p.getTrackPublication(Track.Source.ScreenShare);
       if (pub?.track?.mediaStream) {
-        // Force highest simulcast layer for screen shares — bypass adaptive downscaling
-        (pub as RemoteTrackPublication).setVideoQuality(VideoQuality.HIGH);
         streams.push({
           identity: p.identity,
           name: p.name ?? p.identity,
@@ -391,29 +389,36 @@ export function useLiveKitRoom({
         let stream: MediaStream;
 
         if (opts?.sourceId) {
-          // Electron: use desktopCapturer sourceId with mandatory constraints
+          // Electron: use desktopCapturer sourceId with mandatory constraints.
+          // For "source" mode, omit dimension constraints so the OS captures
+          // at the monitor's true native resolution (not forced 3840×2160).
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
             video: {
               mandatory: {
                 chromeMediaSource: "desktop",
                 chromeMediaSourceId: opts.sourceId,
-                minWidth: preset.width,
-                maxWidth: preset.width,
-                minHeight: preset.height,
-                maxHeight: preset.height,
-                minFrameRate: maxFramerate,
+                ...(res !== "source" && {
+                  minWidth:  preset.width,
+                  maxWidth:  preset.width,
+                  minHeight: preset.height,
+                  maxHeight: preset.height,
+                }),
+                // No minFrameRate — allows graceful drop under GPU load
                 maxFrameRate: maxFramerate,
               },
             } as any,
           });
         } else {
-          // Browser: use getDisplayMedia with strict min/ideal/max FPS
+          // Browser: use getDisplayMedia. For "source" mode let OS pick native
+          // dimensions. No min FPS — allows graceful drop under GPU load.
           stream = await navigator.mediaDevices.getDisplayMedia({
             video: {
-              width: { ideal: preset.width },
-              height: { ideal: preset.height },
-              frameRate: { min: maxFramerate, ideal: maxFramerate, max: maxFramerate },
+              ...(res !== "source" && {
+                width:  { ideal: preset.width },
+                height: { ideal: preset.height },
+              }),
+              frameRate: { ideal: maxFramerate, max: maxFramerate },
             },
             audio: false,
           });
@@ -432,11 +437,11 @@ export function useLiveKitRoom({
         const simulcastLayers = getScreenShareSimulcastLayers(res);
         const useSimulcast = simulcastLayers.length > 0;
 
-        // ── 4. Publish with H264 (HW-accelerated) + degradationPreference
+        // ── 4. Publish with VP9 (better compression for screen content) + H.264 fallback
         await room.localParticipant.publishTrack(videoTrack, {
           source: Track.Source.ScreenShare,
-          videoCodec: "h264",
-          backupCodec: { codec: "vp8" },
+          videoCodec: "vp9",
+          backupCodec: { codec: "h264" },
           degradationPreference: "balanced",
           simulcast: useSimulcast,
           ...(useSimulcast ? { videoSimulcastLayers: simulcastLayers } : {}),
