@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username_changed_at timestamptz DEFAULT NULL;
