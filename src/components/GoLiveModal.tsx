@@ -17,6 +17,8 @@ export interface GoLiveSettings {
   fps: 30 | 60;
   surface: "monitor" | "window";
   sourceId?: string;
+  /** Encoder content hint: "motion" = FPS priority (games/video), "detail" = sharpness (apps/browsers) */
+  contentType: "motion" | "detail";
 }
 
 interface DesktopSource {
@@ -76,6 +78,7 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive, boostLevel = 0 }: Props) =>
   const [surface, setSurface] = useState<"monitor" | "window">("monitor");
   const [resolution, setResolution] = useState<StreamResolution>("1080p");
   const [fps, setFps] = useState<30 | 60>(30);
+  const [contentType, setContentType] = useState<"motion" | "detail">("motion");
   const [sources, setSources] = useState<DesktopSource[]>([]);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [loadingSources, setLoadingSources] = useState(false);
@@ -99,7 +102,7 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive, boostLevel = 0 }: Props) =>
   const visibleSources = surface === "monitor" ? screensources : windowSources;
 
   const handleGoLive = () => {
-    onGoLive({ resolution, fps, surface, sourceId: selectedSourceId ?? undefined });
+    onGoLive({ resolution, fps, surface, sourceId: selectedSourceId ?? undefined, contentType });
   };
 
   const canGoLive = !isElectron() || selectedSourceId !== null;
@@ -255,6 +258,27 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive, boostLevel = 0 }: Props) =>
                 {t("streaming.fps60")}{needs60fpsBadge && <ProBadge />}
               </ToggleGroupItem>
             </ToggleGroup>
+          </div>
+
+          {/* Section 4: Content Type */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium">{t("streaming.contentType")}</p>
+            <ToggleGroup
+              type="single"
+              value={contentType}
+              onValueChange={(v) => { if (v) setContentType(v as "motion" | "detail"); }}
+              className="w-full"
+            >
+              <ToggleGroupItem value="motion" className="flex-1 text-xs">
+                {t("streaming.contentMotion")}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="detail" className="flex-1 text-xs">
+                {t("streaming.contentDetail")}
+              </ToggleGroupItem>
+            </ToggleGroup>
+            <p className="text-[10px] text-muted-foreground">
+              {contentType === "motion" ? t("streaming.contentMotionDesc") : t("streaming.contentDetailDesc")}
+            </p>
           </div>
 
           {/* Footer */}

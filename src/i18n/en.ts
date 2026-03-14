@@ -604,6 +604,11 @@ export default {
     watch: "Watch",
     watchStream: "Watch Stream",
     stopWatching: "Stop Watching",
+    contentType: "Content Type",
+    contentMotion: "Game / Video",
+    contentDetail: "App / Browser",
+    contentMotionDesc: "Prioritizes frame rate — best for games and fast motion",
+    contentDetailDesc: "Prioritizes sharpness — best for apps, code, and documents",
   },
   verifyEmail: {
     title: "Check Your Email",

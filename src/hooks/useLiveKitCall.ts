@@ -124,11 +124,13 @@ export function useLiveKitCall({
       fps?: 30 | 60;
       sourceId?: string;
       isPro?: boolean;
+      contentType?: "motion" | "detail";
     }) => {
       await lk.startScreenShare({
         resolution: settings?.resolution,
         fps: settings?.fps,
         sourceId: settings?.sourceId,
+        contentType: settings?.contentType,
       });
     },
     [lk]

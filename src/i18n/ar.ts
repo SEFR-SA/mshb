@@ -604,6 +604,11 @@ export default {
     watch: "مشاهدة",
     watchStream: "مشاهدة البث",
     stopWatching: "إيقاف المشاهدة",
+    contentType: "نوع المحتوى",
+    contentMotion: "لعبة / فيديو",
+    contentDetail: "تطبيق / متصفح",
+    contentMotionDesc: "يُفضّل معدل الإطارات — الأفضل للألعاب والحركة السريعة",
+    contentDetailDesc: "يُفضّل الحدة — الأفضل للتطبيقات والأكواد والمستندات",
   },
   verifyEmail: {
     title: "تحقق من بريدك الإلكتروني",

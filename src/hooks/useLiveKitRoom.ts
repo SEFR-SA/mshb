@@ -376,6 +376,8 @@ export function useLiveKitRoom({
       resolution?: StreamResolution;
       fps?: 30 | 60;
       sourceId?: string;
+      /** "motion" = FPS priority (games/video), "detail" = sharpness priority (apps/browsers) */
+      contentType?: "motion" | "detail";
     }) => {
       const room = roomRef.current;
       if (!room) return;
@@ -430,8 +432,8 @@ export function useLiveKitRoom({
           return;
         }
 
-        // ── 2. Set contentHint to "motion" for high-FPS priority ─────────
-        videoTrack.contentHint = "motion";
+        // ── 2. Set contentHint: "motion" = FPS priority (games), "detail" = sharpness (apps) ──
+        videoTrack.contentHint = opts?.contentType ?? "motion";
 
         // ── 3. Build simulcast layers ────────────────────────────────────
         const simulcastLayers = getScreenShareSimulcastLayers(res);
@@ -442,13 +444,14 @@ export function useLiveKitRoom({
           source: Track.Source.ScreenShare,
           videoCodec: "vp9",
           backupCodec: { codec: "h264" },
-          degradationPreference: "balanced",
+          degradationPreference: "maintain-framerate",
           simulcast: useSimulcast,
           ...(useSimulcast ? { videoSimulcastLayers: simulcastLayers } : {}),
           videoEncoding: {
             maxBitrate: preset.maxBitrate,
             maxFramerate,
             priority: "high",
+            scalabilityMode: "L1T3", // VP9 SVC: 1 spatial + 3 temporal layers; SFU drops FPS layers per-viewer bandwidth
           },
         } as TrackPublishOptions);
 

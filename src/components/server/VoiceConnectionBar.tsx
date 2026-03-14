@@ -214,6 +214,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         resolution: settings?.resolution,
         fps: settings?.fps,
         sourceId: settings?.sourceId,
+        contentType: settings?.contentType,
       });
       setIsScreenSharing(true);
 
