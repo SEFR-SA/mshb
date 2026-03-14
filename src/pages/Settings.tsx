@@ -249,7 +249,8 @@ const Settings = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>{t("profile.username")}</Label>
-            <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" className="bg-muted/40" />
+            <Input value={username} readOnly disabled className="bg-muted/40 opacity-60 cursor-not-allowed" />
+            <p className="text-xs text-muted-foreground">{t("settings.usernameChangeNote", "Username can only be changed from the Account tab.")}</p>
           </div>
           <div className="space-y-2">
             <Label>{t("profile.displayName")}</Label>
