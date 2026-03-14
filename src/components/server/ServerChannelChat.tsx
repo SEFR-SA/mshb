@@ -11,7 +11,7 @@ import { useForwardMessage } from "@/contexts/ForwardMessageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, ChevronDown, Rocket, Ticket, Unlock, FileText, Trash2, Info } from "lucide-react";
+import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, ChevronDown, Rocket, Ticket, Unlock, FileText, Trash2, Info, ShieldAlert } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
@@ -352,6 +352,13 @@ const MessageItem = React.memo(({
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-0.5">
                 <Forward className="h-3 w-3" />
                 <span className="italic">{t("actions.forwarded")}</span>
+              </div>
+            )}
+            {/* AutoMod flagged indicator */}
+            {(msg as any).automod_status === "flagged" && (
+              <div className="flex items-center gap-1 text-[10px] text-yellow-500 mt-0.5 mb-0.5">
+                <ShieldAlert className="h-3 w-3 shrink-0" />
+                <span>{t("automod.flaggedNotice")}</span>
               </div>
             )}
             <MessageReactions
@@ -837,7 +844,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     const file = selectedFile;
     setSelectedFile(null);
     try {
-      let fileData: any = null;
+      let fileData: { file_url: string; file_name: string; file_type: string; file_size: number } | null = null;
       if (file) {
         setUploadProgress(0);
         const url = await uploadChatFile(user.id, file, (p) => setUploadProgress(p));
@@ -847,29 +854,62 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       const replyId = replyingTo?.id || null;
       setReplyingTo(null);
 
+      // Detect server invite links (bypass AutoMod — content is empty)
       if (!file && content) {
         const invite = await detectInviteInMessage(content);
         if (invite.isInvite) {
-          await supabase.from("messages").insert({
-            channel_id: channelId,
-            author_id: user.id,
-            content: "",
-            type: "server_invite",
-            metadata: invite.metadata as any,
-            ...(replyId ? { reply_to_id: replyId } : {}),
-          } as any);
+          const { error: invErr } = await supabase.functions.invoke("send-message", {
+            body: { content: "", channel_id: channelId, reply_to_id: replyId, type: "server_invite", metadata: invite.metadata },
+          });
+          if (invErr) {
+            // Edge Function unavailable — fall back to direct insert
+            await supabase.from("messages").insert({
+              channel_id: channelId, author_id: user.id, content: "",
+              type: "server_invite", metadata: invite.metadata as any,
+              ...(replyId ? { reply_to_id: replyId } : {}),
+            } as any);
+          }
           setSending(false);
           return;
         }
       }
 
-      await supabase.from("messages").insert({
-        channel_id: channelId,
-        author_id: user.id,
-        content,
-        ...(fileData || {}),
-        ...(replyId ? { reply_to_id: replyId } : {}),
-      } as any);
+      // Route through AutoMod interceptor
+      const { error } = await supabase.functions.invoke("send-message", {
+        body: {
+          content,
+          channel_id: channelId,
+          reply_to_id: replyId,
+          file_url:  fileData?.file_url  ?? null,
+          file_name: fileData?.file_name ?? null,
+          file_type: fileData?.file_type ?? null,
+          file_size: fileData?.file_size ?? null,
+        },
+      });
+
+      if (error) {
+        const body = await (error as any)?.context?.json?.().catch(() => ({}));
+        if (body?.code === "AUTOMOD_BLOCK") {
+          // Message was intentionally blocked by AutoMod
+          toast({
+            title: t("automod.messageBlocked"),
+            description: t("automod.messageBlockedDesc"),
+            variant: "destructive",
+          });
+          setSending(false);
+          return;
+        }
+        // Edge Function unavailable (not deployed, network error, etc.) — fall back to direct insert
+        console.warn("[sendMessage] Edge Function unavailable, falling back to direct insert:", error);
+        await supabase.from("messages").insert({
+          channel_id: channelId,
+          author_id: user.id,
+          content,
+          ...(fileData || {}),
+          ...(replyId ? { reply_to_id: replyId } : {}),
+        } as any);
+      }
+      // Realtime subscription picks up the inserted message automatically
     } catch {
       setUploadProgress(null);
       toast({ title: t("common.error"), variant: "destructive" });

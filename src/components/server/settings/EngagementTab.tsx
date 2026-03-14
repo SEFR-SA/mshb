@@ -1,19 +1,32 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, X, ShieldAlert } from "lucide-react";
 
 interface Channel {
   id: string;
   name: string;
   type: string;
+}
+
+interface BannedWordEntry {
+  id: string;
+  word: string;
+  action_type: "block" | "censor" | "flag";
+}
+
+interface AllowedWordEntry {
+  id: string;
+  word: string;
 }
 
 interface Props {
@@ -23,36 +36,68 @@ interface Props {
 
 const TIMEOUT_OPTIONS = [1, 5, 15, 30, 60];
 
+const ACTION_COLORS: Record<string, string> = {
+  block:  "bg-red-500/10 text-red-500 border-red-500/30",
+  censor: "bg-yellow-500/10 text-yellow-500 border-yellow-500/30",
+  flag:   "bg-blue-500/10 text-blue-500 border-blue-500/30",
+};
+
 const EngagementTab = ({ serverId, canEdit }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
   const [channels, setChannels] = useState<Channel[]>([]);
 
-  const [welcomeEnabled, setWelcomeEnabled] = useState(false);
-  const [systemChannelId, setSystemChannelId] = useState<string>("");
-  const [notifLevel, setNotifLevel] = useState<string>("all_messages");
-  const [inactiveChannelId, setInactiveChannelId] = useState<string>("");
-  const [inactiveTimeout, setInactiveTimeout] = useState<string>("");
+  // ── Existing engagement settings ────────────────────────────────────────
+  const [welcomeEnabled,     setWelcomeEnabled]     = useState(false);
+  const [systemChannelId,    setSystemChannelId]    = useState<string>("");
+  const [notifLevel,         setNotifLevel]         = useState<string>("all_messages");
+  const [inactiveChannelId,  setInactiveChannelId]  = useState<string>("");
+  const [inactiveTimeout,    setInactiveTimeout]    = useState<string>("");
+
+  // ── AutoMod ─────────────────────────────────────────────────────────────
+  const [automodEnabled,  setAutomodEnabled]  = useState(false);
+  const [bannedWords,     setBannedWords]     = useState<BannedWordEntry[]>([]);
+  const [allowedWords,    setAllowedWords]    = useState<AllowedWordEntry[]>([]);
+  const [bannedInput,     setBannedInput]     = useState("");
+  const [allowedInput,    setAllowedInput]    = useState("");
+  const [bannedAction,    setBannedAction]    = useState<"block" | "censor" | "flag">("block");
+  const [addingBanned,    setAddingBanned]    = useState(false);
+  const [addingAllowed,   setAddingAllowed]   = useState(false);
+  const bannedInputRef  = useRef<HTMLInputElement>(null);
+  const allowedInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!serverId) return;
     const load = async () => {
       setLoading(true);
-      const [{ data: s }, { data: ch }] = await Promise.all([
-        supabase
-          .from("servers" as any)
-          .select("welcome_message_enabled, system_message_channel_id, default_notification_level, inactive_channel_id, inactive_timeout")
-          .eq("id", serverId)
-          .maybeSingle(),
-        supabase
-          .from("channels" as any)
-          .select("id, name, type")
-          .eq("server_id", serverId)
-          .order("position"),
-      ]);
+      const [{ data: s }, { data: ch }, { data: bw }, { data: aw }] =
+        await Promise.all([
+          supabase
+            .from("servers" as any)
+            .select(
+              "welcome_message_enabled, system_message_channel_id, default_notification_level, inactive_channel_id, inactive_timeout, automod_enabled"
+            )
+            .eq("id", serverId)
+            .maybeSingle(),
+          supabase
+            .from("channels" as any)
+            .select("id, name, type")
+            .eq("server_id", serverId)
+            .order("position"),
+          supabase
+            .from("server_blocked_words" as any)
+            .select("id, word, action_type")
+            .eq("server_id", serverId)
+            .order("created_at"),
+          supabase
+            .from("server_allowed_words" as any)
+            .select("id, word")
+            .eq("server_id", serverId)
+            .order("created_at"),
+        ]);
 
       if (s) {
         setWelcomeEnabled(!!(s as any).welcome_message_enabled);
@@ -60,14 +105,18 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         setNotifLevel((s as any).default_notification_level ?? "all_messages");
         setInactiveChannelId((s as any).inactive_channel_id ?? "");
         setInactiveTimeout((s as any).inactive_timeout ? String((s as any).inactive_timeout) : "");
+        setAutomodEnabled(!!(s as any).automod_enabled);
       }
       setChannels((ch as unknown as Channel[]) || []);
+      setBannedWords((bw as unknown as BannedWordEntry[]) || []);
+      setAllowedWords((aw as unknown as AllowedWordEntry[]) || []);
       setLoading(false);
     };
     load();
   }, [serverId]);
 
-  // Auto-save the welcome toggle immediately — no Save button needed for this single boolean
+  // ── Handlers: existing settings ─────────────────────────────────────────
+
   const handleWelcomeToggle = async (checked: boolean) => {
     const previous = welcomeEnabled;
     setWelcomeEnabled(checked);
@@ -109,7 +158,101 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
     }
   };
 
-  const textChannels = channels.filter((c) => c.type === "text");
+  // ── Handlers: AutoMod ────────────────────────────────────────────────────
+
+  const handleAutomodToggle = async (checked: boolean) => {
+    const previous = automodEnabled;
+    setAutomodEnabled(checked);
+    const { error } = await supabase
+      .from("servers" as any)
+      .update({ automod_enabled: checked } as any)
+      .eq("id", serverId);
+    if (error) {
+      setAutomodEnabled(previous);
+      toast({ title: t("common.error"), variant: "destructive" });
+    } else {
+      await supabase.from("server_audit_logs" as any).insert({
+        server_id: serverId,
+        actor_id: user?.id,
+        action_type: "server_updated",
+        changes: { field: "automod_enabled", value: checked },
+      } as any);
+    }
+  };
+
+  const handleAddBannedWord = async () => {
+    const word = bannedInput.trim().toLowerCase();
+    if (!word) return;
+    if (bannedWords.some((w) => w.word.toLowerCase() === word)) {
+      toast({ title: t("automod.wordExists"), variant: "destructive" });
+      return;
+    }
+    setAddingBanned(true);
+    const { data, error } = await supabase
+      .from("server_blocked_words" as any)
+      .insert({ server_id: serverId, word, action_type: bannedAction, created_by: user?.id } as any)
+      .select("id, word, action_type")
+      .single();
+    if (error) {
+      toast({ title: t("common.error"), variant: "destructive" });
+    } else {
+      setBannedWords((prev) => [...prev, data as unknown as BannedWordEntry]);
+      setBannedInput("");
+      bannedInputRef.current?.focus();
+    }
+    setAddingBanned(false);
+  };
+
+  const handleRemoveBannedWord = async (id: string) => {
+    const { error } = await supabase
+      .from("server_blocked_words" as any)
+      .delete()
+      .eq("id", id)
+      .eq("server_id", serverId);
+    if (error) {
+      toast({ title: t("common.error"), variant: "destructive" });
+    } else {
+      setBannedWords((prev) => prev.filter((w) => w.id !== id));
+    }
+  };
+
+  const handleAddAllowedWord = async () => {
+    const word = allowedInput.trim().toLowerCase();
+    if (!word) return;
+    if (allowedWords.some((w) => w.word.toLowerCase() === word)) {
+      toast({ title: t("automod.wordExists"), variant: "destructive" });
+      return;
+    }
+    setAddingAllowed(true);
+    const { data, error } = await supabase
+      .from("server_allowed_words" as any)
+      .insert({ server_id: serverId, word, created_by: user?.id } as any)
+      .select("id, word")
+      .single();
+    if (error) {
+      toast({ title: t("common.error"), variant: "destructive" });
+    } else {
+      setAllowedWords((prev) => [...prev, data as unknown as AllowedWordEntry]);
+      setAllowedInput("");
+      allowedInputRef.current?.focus();
+    }
+    setAddingAllowed(false);
+  };
+
+  const handleRemoveAllowedWord = async (id: string) => {
+    const { error } = await supabase
+      .from("server_allowed_words" as any)
+      .delete()
+      .eq("id", id)
+      .eq("server_id", serverId);
+    if (error) {
+      toast({ title: t("common.error"), variant: "destructive" });
+    } else {
+      setAllowedWords((prev) => prev.filter((w) => w.id !== id));
+    }
+  };
+
+  const textChannels  = channels.filter((c) => c.type === "text");
   const voiceChannels = channels.filter((c) => c.type === "voice");
 
   if (loading) {
@@ -130,7 +273,6 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           {t("serverSettings.systemMessages")}
         </p>
 
-        {/* Welcome message toggle */}
         <div className="flex items-start sm:items-center justify-between gap-3">
           <Label className="text-sm leading-snug max-w-xs">
             {t("serverSettings.sendWelcomeMessage")}
@@ -143,7 +285,6 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           />
         </div>
 
-        {/* System message channel */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <Label className="text-sm shrink-0 sm:w-48">
             {t("serverSettings.systemMessageChannel")}
@@ -159,9 +300,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
             <SelectContent>
               <SelectItem value="__none__">{t("serverSettings.noChannel")}</SelectItem>
               {textChannels.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  # {c.name}
-                </SelectItem>
+                <SelectItem key={c.id} value={c.id}># {c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -210,7 +349,6 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           </p>
         </div>
 
-        {/* Inactive channel select */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <Label className="text-sm shrink-0 sm:w-48">
             {t("serverSettings.inactiveChannel")}
@@ -226,15 +364,12 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
             <SelectContent>
               <SelectItem value="__none__">{t("serverSettings.noChannel")}</SelectItem>
               {voiceChannels.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  🔊 {c.name}
-                </SelectItem>
+                <SelectItem key={c.id} value={c.id}>🔊 {c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Inactive timeout select */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <Label className="text-sm shrink-0 sm:w-48">
             {t("serverSettings.inactiveTimeout")}
@@ -267,6 +402,170 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           </Button>
         </div>
       )}
+
+      <Separator />
+
+      {/* Section 4 — AutoMod ─────────────────────────────────────────────── */}
+      <div className="space-y-5">
+        <div>
+          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <ShieldAlert className="h-3.5 w-3.5" />
+            {t("automod.sectionTitle")}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t("automod.sectionDesc")}
+          </p>
+        </div>
+
+        {/* Master toggle */}
+        <div className="flex items-start sm:items-center justify-between gap-3">
+          <div>
+            <Label className="text-sm">{t("automod.enableAutoMod")}</Label>
+            <p className="text-xs text-muted-foreground">{t("automod.enableDesc")}</p>
+          </div>
+          <Switch
+            checked={automodEnabled}
+            onCheckedChange={canEdit ? handleAutomodToggle : undefined}
+            disabled={!canEdit}
+            className="shrink-0"
+          />
+        </div>
+
+        {/* Custom Banned Words */}
+        <div className="space-y-2">
+          <div>
+            <Label className="text-sm">{t("automod.bannedWords")}</Label>
+            <p className="text-xs text-muted-foreground">{t("automod.bannedWordsDesc")}</p>
+          </div>
+
+          {canEdit && (
+            <div className="flex gap-2">
+              {/* Action type for new word */}
+              <Select
+                value={bannedAction}
+                onValueChange={(v) => setBannedAction(v as "block" | "censor" | "flag")}
+              >
+                <SelectTrigger className="w-28 shrink-0 text-xs h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="block">{t("automod.actionBlock")}</SelectItem>
+                  <SelectItem value="censor">{t("automod.actionCensor")}</SelectItem>
+                  <SelectItem value="flag">{t("automod.actionFlag")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                ref={bannedInputRef}
+                value={bannedInput}
+                onChange={(e) => setBannedInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === ",") {
+                    e.preventDefault();
+                    handleAddBannedWord();
+                  }
+                }}
+                placeholder={t("automod.bannedWordsPlaceholder")}
+                className="flex-1 h-9 text-sm"
+                disabled={addingBanned}
+              />
+              <Button
+                size="sm"
+                onClick={handleAddBannedWord}
+                disabled={addingBanned || !bannedInput.trim()}
+                className="shrink-0 h-9"
+              >
+                {addingBanned
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : t("actions.add")}
+              </Button>
+            </div>
+          )}
+
+          {bannedWords.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {bannedWords.map((entry) => (
+                <Badge
+                  key={entry.id}
+                  variant="outline"
+                  className={`gap-1 text-xs py-0.5 ${ACTION_COLORS[entry.action_type] ?? ""}`}
+                >
+                  <span className="font-medium uppercase text-[9px] opacity-70">
+                    {t(`automod.action${entry.action_type.charAt(0).toUpperCase()}${entry.action_type.slice(1)}`)}
+                  </span>
+                  {entry.word}
+                  {canEdit && (
+                    <button
+                      onClick={() => handleRemoveBannedWord(entry.id)}
+                      className="ms-0.5 hover:opacity-70 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Global Word Whitelist */}
+        <div className="space-y-2">
+          <div>
+            <Label className="text-sm">{t("automod.allowedWords")}</Label>
+            <p className="text-xs text-muted-foreground">{t("automod.allowedWordsDesc")}</p>
+          </div>
+
+          {canEdit && (
+            <div className="flex gap-2">
+              <Input
+                ref={allowedInputRef}
+                value={allowedInput}
+                onChange={(e) => setAllowedInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === ",") {
+                    e.preventDefault();
+                    handleAddAllowedWord();
+                  }
+                }}
+                placeholder={t("automod.allowedWordsPlaceholder")}
+                className="flex-1 h-9 text-sm"
+                disabled={addingAllowed}
+              />
+              <Button
+                size="sm"
+                onClick={handleAddAllowedWord}
+                disabled={addingAllowed || !allowedInput.trim()}
+                className="shrink-0 h-9"
+              >
+                {addingAllowed
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : t("actions.add")}
+              </Button>
+            </div>
+          )}
+
+          {allowedWords.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {allowedWords.map((entry) => (
+                <Badge
+                  key={entry.id}
+                  variant="outline"
+                  className="gap-1 text-xs py-0.5 bg-green-500/10 text-green-500 border-green-500/30"
+                >
+                  {entry.word}
+                  {canEdit && (
+                    <button
+                      onClick={() => handleRemoveAllowedWord(entry.id)}
+                      className="ms-0.5 hover:opacity-70 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
