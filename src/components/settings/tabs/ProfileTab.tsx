@@ -79,7 +79,6 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
     const { error } = await supabase
       .from("profiles")
       .update({
-        username:             username.trim() || null,
         display_name:         displayName.trim() || null,
         about_me:             aboutMe.trim(),
         active_server_tag_id: activeServerTagId === "none" ? null : activeServerTagId,
