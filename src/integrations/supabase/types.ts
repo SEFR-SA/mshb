@@ -616,6 +616,7 @@ export type Database = {
       }
       message_reports: {
         Row: {
+          assigned_to: string | null
           category: string
           created_at: string
           id: string
@@ -626,6 +627,7 @@ export type Database = {
           subcategories: string[] | null
         }
         Insert: {
+          assigned_to?: string | null
           category: string
           created_at?: string
           id?: string
@@ -636,6 +638,7 @@ export type Database = {
           subcategories?: string[] | null
         }
         Update: {
+          assigned_to?: string | null
           category?: string
           created_at?: string
           id?: string
