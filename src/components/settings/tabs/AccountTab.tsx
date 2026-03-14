@@ -53,11 +53,17 @@ const AccountTab = () => {
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
   // Username edit
   const [username, setUsername] = useState(profile?.username || "");
+  const [usernamePassword, setUsernamePassword] = useState("");
   // Email edit
   const [newEmail, setNewEmail] = useState("");
   // Password edit
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  const p_profile = profile as any;
+  const usernameChangedAt = p_profile?.username_changed_at ? new Date(p_profile.username_changed_at) : null;
+  const cooldownEnd = usernameChangedAt ? new Date(usernameChangedAt.getTime() + 6 * 30 * 24 * 60 * 60 * 1000) : null;
+  const isUsernameCoolingDown = cooldownEnd ? cooldownEnd > new Date() : false;
 
   const p = profile as any;
   const initials = (profile?.display_name || profile?.username || user?.email || "?").charAt(0).toUpperCase();
