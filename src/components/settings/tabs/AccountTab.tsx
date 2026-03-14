@@ -86,15 +86,46 @@ const AccountTab = () => {
 
   const saveUsername = async () => {
     if (!user) return;
+    const trimmed = username.trim();
+    if (trimmed.length < 3) {
+      toast({ title: t("common.error"), description: t("auth.usernameTooShort", "Username must be at least 3 characters."), variant: "destructive" });
+      return;
+    }
+    if (!usernamePassword) {
+      toast({ title: t("common.error"), description: t("settings.passwordRequired", "Please enter your password to confirm."), variant: "destructive" });
+      return;
+    }
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({ username: username.trim() || null } as any).eq("user_id", user.id);
+
+    // Verify password
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email!,
+      password: usernamePassword,
+    });
+    if (signInError) {
+      toast({ title: t("common.error"), description: t("settings.incorrectPassword", "Incorrect password."), variant: "destructive" });
+      setSaving(false);
+      return;
+    }
+
+    // Call RPC
+    const { data, error } = await supabase.rpc("change_username", {
+      p_new_username: trimmed,
+      p_password: usernamePassword,
+    } as any);
+
+    const result = data as any;
     if (error) {
-      const msg = error.message?.includes("profile_username_key") || error.message?.includes("unique constraint")
-        ? t("auth.usernameTaken")
-        : error.message;
-      toast({ title: t("common.error"), description: msg, variant: "destructive" });
-    } else {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    } else if (result?.error === "cooldown") {
+      toast({ title: t("common.error"), description: t("settings.usernameCooldown", "You can only change your username once every 6 months. Next change available: ") + new Date(result.next_change_at).toLocaleDateString(), variant: "destructive" });
+    } else if (result?.error === "taken") {
+      toast({ title: t("common.error"), description: t("auth.usernameTaken"), variant: "destructive" });
+    } else if (result?.error === "too_short") {
+      toast({ title: t("common.error"), description: t("auth.usernameTooShort", "Username must be at least 3 characters."), variant: "destructive" });
+    } else if (result?.success) {
       toast({ title: t("profile.saved") });
+      setUsernamePassword("");
       await refreshProfile();
       setEditField(null);
     }
