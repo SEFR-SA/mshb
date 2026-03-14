@@ -327,14 +327,41 @@ const AccountTab = () => {
           </div>
           {editField === "username" && (
             <div className="px-4 pb-4 space-y-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("settings.editUsername")}</Label>
-                <Input value={username} onChange={(e) => setUsername(e.target.value)} className="bg-background" placeholder="username" />
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={saveUsername} disabled={saving}>{t("actions.save")}</Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditField(null)}>{t("actions.cancel")}</Button>
-              </div>
+              {isUsernameCoolingDown ? (
+                <p className="text-xs text-destructive">
+                  {t("settings.usernameCooldown", "You can only change your username once every 6 months. Next change available: ") + cooldownEnd!.toLocaleDateString()}
+                </p>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">{t("settings.editUsername")}</Label>
+                    <Input
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="bg-background"
+                      placeholder="username"
+                      minLength={3}
+                    />
+                    {username.trim().length > 0 && username.trim().length < 3 && (
+                      <p className="text-xs text-destructive">{t("auth.usernameTooShort", "Username must be at least 3 characters.")}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">{t("settings.confirmPassword", "Confirm password")}</Label>
+                    <Input
+                      type="password"
+                      value={usernamePassword}
+                      onChange={(e) => setUsernamePassword(e.target.value)}
+                      className="bg-background"
+                      placeholder={t("settings.enterPassword", "Enter your password")}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={saveUsername} disabled={saving || username.trim().length < 3 || !usernamePassword}>{t("actions.save")}</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditField(null)}>{t("actions.cancel")}</Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
