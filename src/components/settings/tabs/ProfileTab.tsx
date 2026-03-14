@@ -208,7 +208,6 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
             <Input value={username} readOnly disabled className="bg-muted/40 opacity-60 cursor-not-allowed" />
             <p className="text-xs text-muted-foreground">{t("settings.usernameChangeNote", "Username can only be changed from the Account tab.")}</p>
           </div>
-          </div>
 
           {/* Display Name + Style buttons */}
           <div className="space-y-1.5">
