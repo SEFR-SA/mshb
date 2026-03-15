@@ -38,6 +38,78 @@ export type Database = {
         }
         Relationships: []
       }
+      automod_events: {
+        Row: {
+          action_type: string
+          channel_id: string | null
+          id: string
+          message_id: string | null
+          rule_id: string | null
+          server_id: string | null
+          server_rule_id: string | null
+          triggered_at: string
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          channel_id?: string | null
+          id?: string
+          message_id?: string | null
+          rule_id?: string | null
+          server_id?: string | null
+          server_rule_id?: string | null
+          triggered_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          channel_id?: string | null
+          id?: string
+          message_id?: string | null
+          rule_id?: string | null
+          server_id?: string | null
+          server_rule_id?: string | null
+          triggered_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automod_events_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automod_events_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automod_events_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "global_blocked_words"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automod_events_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automod_events_server_rule_id_fkey"
+            columns: ["server_rule_id"]
+            isOneToOne: false
+            referencedRelation: "server_blocked_words"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocked_users: {
         Row: {
           blocked_id: string
@@ -366,6 +438,39 @@ export type Database = {
         }
         Relationships: []
       }
+      global_blocked_words: {
+        Row: {
+          action_type: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          language: string
+          match_type: string
+          word: string
+        }
+        Insert: {
+          action_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string
+          match_type?: string
+          word: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string
+          match_type?: string
+          word?: string
+        }
+        Relationships: []
+      }
       group_members: {
         Row: {
           group_id: string
@@ -661,6 +766,7 @@ export type Database = {
       messages: {
         Row: {
           author_id: string
+          automod_status: string | null
           channel_id: string | null
           content: string
           created_at: string
@@ -681,6 +787,7 @@ export type Database = {
         }
         Insert: {
           author_id: string
+          automod_status?: string | null
           channel_id?: string | null
           content?: string
           created_at?: string
@@ -701,6 +808,7 @@ export type Database = {
         }
         Update: {
           author_id?: string
+          automod_status?: string | null
           channel_id?: string | null
           content?: string
           created_at?: string
@@ -991,6 +1099,38 @@ export type Database = {
         }
         Relationships: []
       }
+      server_allowed_words: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          server_id: string
+          word: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          server_id: string
+          word: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          server_id?: string
+          word?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_allowed_words_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_audit_logs: {
         Row: {
           action_type: string
@@ -1020,6 +1160,44 @@ export type Database = {
           target_id?: string | null
         }
         Relationships: []
+      }
+      server_blocked_words: {
+        Row: {
+          action_type: string
+          created_at: string
+          created_by: string | null
+          id: string
+          match_type: string
+          server_id: string
+          word: string
+        }
+        Insert: {
+          action_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          match_type?: string
+          server_id: string
+          word: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          match_type?: string
+          server_id?: string
+          word?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_blocked_words_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       server_emojis: {
         Row: {
@@ -1297,6 +1475,7 @@ export type Database = {
       }
       servers: {
         Row: {
+          automod_enabled: boolean
           banner_url: string | null
           boost_count: number
           boost_level: number
@@ -1321,6 +1500,7 @@ export type Database = {
           welcome_message_enabled: boolean
         }
         Insert: {
+          automod_enabled?: boolean
           banner_url?: string | null
           boost_count?: number
           boost_level?: number
@@ -1345,6 +1525,7 @@ export type Database = {
           welcome_message_enabled?: boolean
         }
         Update: {
+          automod_enabled?: boolean
           banner_url?: string | null
           boost_count?: number
           boost_level?: number
