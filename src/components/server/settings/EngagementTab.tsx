@@ -435,14 +435,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         </div>
       </div>
 
-      {canEdit && (
-        <div className="pt-2">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
-            {t("actions.save")}
-          </Button>
-        </div>
-      )}
+      <UnsavedChangesBar show={isDirty && canEdit} onSave={handleSave} onReset={handleReset} />
 
       <Separator />
 

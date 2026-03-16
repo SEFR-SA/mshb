@@ -1,14 +1,14 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { getBoostPerks } from "@/config/boostPerks";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
 import { Camera, Loader2, Lock } from "lucide-react";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 interface Props {
   serverId: string;
@@ -48,6 +48,24 @@ const ServerProfileTab = ({
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const iconInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  // Dirty tracking
+  const initialName = useRef(serverName);
+  const initialDesc = useRef(description);
+  const [shakeTrigger, setShakeTrigger] = useState(0);
+
+  useEffect(() => {
+    initialName.current = serverName;
+    initialDesc.current = description;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverId]);
+
+  const isDirty = serverName !== initialName.current || description !== initialDesc.current;
+
+  const handleReset = () => {
+    setServerName(initialName.current);
+    setDescription(initialDesc.current);
+  };
 
   const uploadImage = async (file: File, path: string) => {
     const ext = file.name.split(".").pop();
@@ -101,7 +119,10 @@ const ServerProfileTab = ({
   };
 
   const handleSave = async () => {
-    if (!serverName.trim()) return;
+    if (!serverName.trim()) {
+      setShakeTrigger((p) => p + 1);
+      return;
+    }
     setSaving(true);
     try {
       await supabase.from("servers" as any).update({ name: serverName.trim(), description: description.trim() } as any).eq("id", serverId);
@@ -111,6 +132,8 @@ const ServerProfileTab = ({
         action_type: "server_updated",
         changes: { field: "profile", new_name: serverName.trim() },
       } as any);
+      initialName.current = serverName.trim();
+      initialDesc.current = description.trim();
       toast({ title: t("profile.saved") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
@@ -120,7 +143,7 @@ const ServerProfileTab = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative pb-20">
       <h2 className="text-base font-extrabold">{t("serverSettings.serverProfile")}</h2>
 
       {/* Banner */}
@@ -183,14 +206,9 @@ const ServerProfileTab = ({
             rows={3}
           />
         </div>
-
-        {canEdit && (
-          <Button onClick={handleSave} disabled={saving || !serverName.trim()}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin me-2" /> : null}
-            {t("actions.save")}
-          </Button>
-        )}
       </div>
+
+      <UnsavedChangesBar show={isDirty && canEdit} onSave={handleSave} onReset={handleReset} shakeTrigger={shakeTrigger} />
     </div>
   );
 };

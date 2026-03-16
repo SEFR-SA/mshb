@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -20,6 +19,7 @@ import CompassBadge from "@/components/ui/badges/CompassBadge";
 import BannerBadge from "@/components/ui/badges/BannerBadge";
 import { cn } from "@/lib/utils";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 interface Props {
   serverId: string;
@@ -72,6 +72,12 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
   const badgeColorInputRef = useRef<HTMLInputElement>(null);
   const containerColorInputRef = useRef<HTMLInputElement>(null);
 
+  // Dirty tracking
+  const initTagName = useRef("");
+  const initTagBadge = useRef("cactus");
+  const initTagColor = useRef(DEFAULT_COLOR);
+  const initTagContainerColor = useRef(DEFAULT_CONTAINER_COLOR);
+
   useEffect(() => {
     if (!serverId) return;
     const load = async () => {
@@ -83,19 +89,34 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         .maybeSingle();
 
       if (s) {
-        setTagName((s as any).server_tag_name ?? "");
-        setTagBadge((s as any).server_tag_badge ?? "cactus");
-        const badgeColor = (s as any).server_tag_color ?? DEFAULT_COLOR;
-        setTagColor(badgeColor);
-        setHexInput(badgeColor);
-        const containerColor = (s as any).server_tag_container_color ?? (s as any).server_tag_color ?? DEFAULT_CONTAINER_COLOR;
-        setTagContainerColor(containerColor);
-        setContainerHexInput(containerColor);
+        const n = (s as any).server_tag_name ?? "";
+        const b = (s as any).server_tag_badge ?? "cactus";
+        const c = (s as any).server_tag_color ?? DEFAULT_COLOR;
+        const cc = (s as any).server_tag_container_color ?? (s as any).server_tag_color ?? DEFAULT_CONTAINER_COLOR;
+        setTagName(n); setTagBadge(b); setTagColor(c); setHexInput(c);
+        setTagContainerColor(cc); setContainerHexInput(cc);
+        initTagName.current = n; initTagBadge.current = b;
+        initTagColor.current = c; initTagContainerColor.current = cc;
       }
       setLoading(false);
     };
     load();
   }, [serverId]);
+
+  const isDirty =
+    tagName !== initTagName.current ||
+    tagBadge !== initTagBadge.current ||
+    tagColor !== initTagColor.current ||
+    tagContainerColor !== initTagContainerColor.current;
+
+  const handleReset = () => {
+    setTagName(initTagName.current);
+    setTagBadge(initTagBadge.current);
+    setTagColor(initTagColor.current);
+    setHexInput(initTagColor.current);
+    setTagContainerColor(initTagContainerColor.current);
+    setContainerHexInput(initTagContainerColor.current);
+  };
 
   const handleBadgeColorSelect = (color: string) => {
     setTagColor(color);
@@ -136,6 +157,10 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         } as any)
         .eq("id", serverId);
 
+      initTagName.current = tagName.trim();
+      initTagBadge.current = tagBadge;
+      initTagColor.current = tagColor;
+      initTagContainerColor.current = tagContainerColor;
       toast({ title: t("profile.saved") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
@@ -155,7 +180,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
   const canInteract = canEdit && isPro;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative pb-20">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">{t("serverSettings.serverTag")}</h2>
@@ -215,7 +240,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
           {t("serverSettings.serverTagBadgeSelect")}
         </p>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-          {BADGE_OPTIONS.map(({ id, Icon, label, custom }) => (
+          {BADGE_OPTIONS.map(({ id, Icon, label }) => (
             <button
               key={id}
               onClick={() => {
@@ -386,14 +411,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         </div>
       </div>
 
-      {canEdit && (
-        <div className="pt-2">
-          <Button onClick={canInteract ? handleSave : handleProBlock} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
-            {t("actions.save")}
-          </Button>
-        </div>
-      )}
+      <UnsavedChangesBar show={isDirty && canEdit} onSave={canInteract ? handleSave : handleProBlock} onReset={handleReset} />
     </div>
   );
 };
