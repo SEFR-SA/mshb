@@ -75,6 +75,12 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
   const bannedInputRef  = useRef<HTMLInputElement>(null);
   const allowedInputRef = useRef<HTMLInputElement>(null);
 
+  // Dirty tracking refs
+  const initSystemChannelId = useRef("");
+  const initNotifLevel = useRef("all_messages");
+  const initInactiveChannelId = useRef("");
+  const initInactiveTimeout = useRef("");
+
   useEffect(() => {
     if (!serverId) return;
     const load = async () => {
@@ -107,10 +113,18 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
 
       if (s) {
         setWelcomeEnabled(!!(s as any).welcome_message_enabled);
-        setSystemChannelId((s as any).system_message_channel_id ?? "");
-        setNotifLevel((s as any).default_notification_level ?? "all_messages");
-        setInactiveChannelId((s as any).inactive_channel_id ?? "");
-        setInactiveTimeout((s as any).inactive_timeout ? String((s as any).inactive_timeout) : "");
+        const sysId = (s as any).system_message_channel_id ?? "";
+        const nLevel = (s as any).default_notification_level ?? "all_messages";
+        const inactId = (s as any).inactive_channel_id ?? "";
+        const inactT = (s as any).inactive_timeout ? String((s as any).inactive_timeout) : "";
+        setSystemChannelId(sysId);
+        setNotifLevel(nLevel);
+        setInactiveChannelId(inactId);
+        setInactiveTimeout(inactT);
+        initSystemChannelId.current = sysId;
+        initNotifLevel.current = nLevel;
+        initInactiveChannelId.current = inactId;
+        initInactiveTimeout.current = inactT;
         setAutomodEnabled(!!(s as any).automod_enabled);
         setShowMemberCount(!!(s as any).show_member_count);
         setShowOnlineCount(!!(s as any).show_online_count);
@@ -124,6 +138,19 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
     };
     load();
   }, [serverId]);
+
+  const isDirty =
+    systemChannelId !== initSystemChannelId.current ||
+    notifLevel !== initNotifLevel.current ||
+    inactiveChannelId !== initInactiveChannelId.current ||
+    inactiveTimeout !== initInactiveTimeout.current;
+
+  const handleReset = () => {
+    setSystemChannelId(initSystemChannelId.current);
+    setNotifLevel(initNotifLevel.current);
+    setInactiveChannelId(initInactiveChannelId.current);
+    setInactiveTimeout(initInactiveTimeout.current);
+  };
 
   // ── Handlers: existing settings ─────────────────────────────────────────
 
