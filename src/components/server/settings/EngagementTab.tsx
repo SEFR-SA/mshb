@@ -305,7 +305,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative pb-20">
       <h2 className="text-lg font-semibold">{t("serverSettings.engagement")}</h2>
 
       {/* Section 1 — System Messages */}
