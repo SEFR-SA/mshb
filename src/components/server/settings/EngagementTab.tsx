@@ -187,6 +187,10 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         changes: { field: "engagement" },
       } as any);
 
+      initSystemChannelId.current = systemChannelId;
+      initNotifLevel.current = notifLevel;
+      initInactiveChannelId.current = inactiveChannelId;
+      initInactiveTimeout.current = inactiveTimeout;
       toast({ title: t("profile.saved") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
