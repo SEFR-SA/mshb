@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, User, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, Megaphone, BookOpen, Music, Bell, BellOff, LifeBuoy, Ticket, ShieldCheck, Zap } from "lucide-react";
+import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone, BookOpen, Music, Bell, BellOff, LifeBuoy, Ticket } from "lucide-react";
 import VoiceUserContextMenu from "./VoiceUserContextMenu";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
@@ -25,7 +25,7 @@ import { getAppBaseUrl } from "@/lib/inviteUtils";
 import ServerSettingsDialog from "./ServerSettingsDialog";
 import InviteModal from "./InviteModal";
 import GoLiveModal from "@/components/GoLiveModal";
-import { useServerStats } from "@/hooks/useServerStats";
+import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { usePresence } from "@/hooks/usePresence";
@@ -62,10 +62,6 @@ interface Server {
   server_tag_badge: string | null;
   server_tag_color: string | null;
   server_tag_container_color: string | null;
-  show_member_count?: boolean;
-  show_online_count?: boolean;
-  show_role_count?: boolean;
-  show_boost_count?: boolean;
 }
 
 interface VoiceParticipant {
@@ -205,7 +201,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const { pendingMode, consumeRequest } = useCreateChannel();
   const status = (getUserStatus(profile) || "online") as UserStatus;
   const [server, setServer] = useState<Server | null>(null);
-  const { serverStats } = useServerStats(serverId, server);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [channelsLoading, setChannelsLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -380,7 +375,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       channel.unsubscribe();
     };
   }, [serverId, user?.id]);
-
 
   // Realtime: soundboard changes
   useEffect(() => {
@@ -772,46 +766,34 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             className="w-full h-24 object-cover shrink-0"
           />
         )}
-        <div className="px-4 pt-4 pb-2 border-b border-sidebar-border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-              <h2 className="font-bold text-sm truncate">{server?.name || "..."}</h2>
-            </div>
-            <div className="flex gap-1 shrink-0">
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setInviteModalOpen(true)} title={t("servers.copyInvite")}>
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-              {isAdmin && (
+        <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+            <h2 className="font-bold text-sm truncate">{server?.name || "..."}</h2>
+            {server?.server_tag_name && (
+              <span
+                className="inline-flex items-center gap-1 shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded leading-none whitespace-nowrap text-white"
+                style={{ backgroundColor: server.server_tag_container_color || server.server_tag_color || "#5865f2" }}
+              >
+                <ServerTagBadgeIcon badgeName={server.server_tag_badge} color={server.server_tag_color || undefined} className="h-3 w-3" />
+                {server.server_tag_name.substring(0, 4).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setInviteModalOpen(true)} title={t("servers.copyInvite")}>
+              <Copy className="h-3.5 w-3.5" />
+            </Button>
+            {isAdmin && (
+              <>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setUseCustomCategory(true); setCustomCategory(""); setNewCategory(""); setCreateOpen(true); }} title="Create Section">
+                  <FolderPlus className="h-3.5 w-3.5" />
+                </Button>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)} title={t("servers.settings")}>
                   <Settings className="h-3.5 w-3.5" />
                 </Button>
-              )}
-            </div>
+              </>
+            )}
           </div>
-          {serverStats && (server?.show_member_count || server?.show_online_count || server?.show_role_count || server?.show_boost_count) && (
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-              {server?.show_member_count && (
-                <span className="flex items-center gap-1 text-xs text-gray-400">
-                  <Users className="h-3 w-3" />{serverStats.memberCount.toLocaleString()}
-                </span>
-              )}
-              {server?.show_online_count && (
-                <span className="flex items-center gap-1 text-xs text-green-500">
-                  <User className="h-3 w-3" />{serverStats.onlineCount.toLocaleString()}
-                </span>
-              )}
-              {server?.show_role_count && (
-                <span className="flex items-center gap-1 text-xs text-red-400">
-                  <ShieldCheck className="h-3 w-3" />{serverStats.roleCount.toLocaleString()}
-                </span>
-              )}
-              {server?.show_boost_count && (
-                <span className="flex items-center gap-1 text-xs text-pink-500">
-                  <Zap className="h-3 w-3" />{serverStats.boostCount.toLocaleString()}
-                </span>
-              )}
-            </div>
-          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-4 pb-16">
@@ -1108,7 +1090,27 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             {/* Category selector */}
             <div>
               <Label className="text-sm font-medium">Section</Label>
-              {useCustomCategory ? (
+              <Select
+                value={useCustomCategory ? "__new__" : newCategory}
+                onValueChange={(val) => {
+                  if (val === "__new__") {
+                    setUseCustomCategory(true);
+                    setCustomCategory("");
+                  } else {
+                    setUseCustomCategory(false);
+                    setNewCategory(val);
+                  }
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
+                <SelectContent>
+                  {existingCategories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                  <SelectItem value="__new__">+ New Section...</SelectItem>
+                </SelectContent>
+              </Select>
+              {useCustomCategory && (
                 <Input
                   className="mt-2"
                   placeholder="Section name"
@@ -1116,18 +1118,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   onChange={(e) => setCustomCategory(e.target.value)}
                   autoFocus
                 />
-              ) : (
-                <Select
-                  value={newCategory}
-                  onValueChange={(val) => setNewCategory(val)}
-                >
-                  <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
-                  <SelectContent>
-                    {existingCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               )}
             </div>
 

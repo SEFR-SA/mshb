@@ -55,34 +55,10 @@ export function usePresence() {
       supabase.from("profiles").update({ last_seen: new Date().toISOString() }).eq("user_id", user.id).then();
     }, 60000);
 
-    // Clear last_seen when the tab/browser closes — fetch with keepalive survives page unload
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
-    const handleUnload = () => {
-      fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${user.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": supabaseKey,
-          "Authorization": `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({ last_seen: new Date(0).toISOString() }),
-        keepalive: true,
-      });
-    };
-    window.addEventListener("beforeunload", handleUnload);
-
     return () => {
       clearInterval(interval);
-      window.removeEventListener("beforeunload", handleUnload);
       channel.untrack();
       channel.unsubscribe();
-      // Immediately mark offline on logout / SPA navigation away
-      supabase
-        .from("profiles")
-        .update({ last_seen: new Date(0).toISOString() })
-        .eq("user_id", user.id)
-        .then();
     };
   }, [user]);
 

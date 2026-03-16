@@ -57,12 +57,6 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
   const [inactiveChannelId,  setInactiveChannelId]  = useState<string>("");
   const [inactiveTimeout,    setInactiveTimeout]    = useState<string>("");
 
-  // ── Server Stats visibility toggles ─────────────────────────────────────
-  const [showMemberCount, setShowMemberCount] = useState(false);
-  const [showOnlineCount, setShowOnlineCount] = useState(false);
-  const [showRoleCount,   setShowRoleCount]   = useState(false);
-  const [showBoostCount,  setShowBoostCount]  = useState(false);
-
   // ── AutoMod ─────────────────────────────────────────────────────────────
   const [automodEnabled,  setAutomodEnabled]  = useState(false);
   const [bannedWords,     setBannedWords]     = useState<BannedWordEntry[]>([]);
@@ -84,7 +78,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           supabase
             .from("servers" as any)
             .select(
-              "welcome_message_enabled, system_message_channel_id, default_notification_level, inactive_channel_id, inactive_timeout, automod_enabled, show_member_count, show_online_count, show_role_count, show_boost_count"
+              "welcome_message_enabled, system_message_channel_id, default_notification_level, inactive_channel_id, inactive_timeout, automod_enabled"
             )
             .eq("id", serverId)
             .maybeSingle(),
@@ -112,10 +106,6 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         setInactiveChannelId((s as any).inactive_channel_id ?? "");
         setInactiveTimeout((s as any).inactive_timeout ? String((s as any).inactive_timeout) : "");
         setAutomodEnabled(!!(s as any).automod_enabled);
-        setShowMemberCount(!!(s as any).show_member_count);
-        setShowOnlineCount(!!(s as any).show_online_count);
-        setShowRoleCount(!!(s as any).show_role_count);
-        setShowBoostCount(!!(s as any).show_boost_count);
       }
       setChannels((ch as unknown as Channel[]) || []);
       setBannedWords((bw as unknown as BannedWordEntry[]) || []);
@@ -412,39 +402,6 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           </Button>
         </div>
       )}
-
-      <Separator />
-
-      {/* Section — Server Stats ──────────────────────────────────────────── */}
-      <div className="space-y-4">
-        <div>
-          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            {t("serverSettings.serverStats")}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {t("serverSettings.serverStatsDesc")}
-          </p>
-        </div>
-        {([
-          { col: "show_member_count", label: t("serverSettings.showMemberCount"), val: showMemberCount, set: setShowMemberCount },
-          { col: "show_online_count", label: t("serverSettings.showOnlineCount"), val: showOnlineCount, set: setShowOnlineCount },
-          { col: "show_role_count",   label: t("serverSettings.showRoleCount"),   val: showRoleCount,   set: setShowRoleCount   },
-          { col: "show_boost_count",  label: t("serverSettings.showBoostCount"),  val: showBoostCount,  set: setShowBoostCount  },
-        ] as const).map(({ col, label, val, set }) => (
-          <div key={col} className="flex items-center justify-between">
-            <Label className="text-sm">{label}</Label>
-            <Switch
-              checked={val}
-              disabled={!canEdit}
-              onCheckedChange={async (next) => {
-                set(next as any);
-                const { error } = await supabase.from("servers" as any).update({ [col]: next }).eq("id", serverId);
-                if (error) set(!next as any);
-              }}
-            />
-          </div>
-        ))}
-      </div>
 
       <Separator />
 
