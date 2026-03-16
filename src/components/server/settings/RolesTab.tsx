@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
@@ -533,8 +532,21 @@ const RolesTab = ({ serverId, canEdit }: Props) => {
             </Tabs>
           </div>
 
-          {/* Save / Reset Bar */}
-          <UnsavedChangesBar show={isDirty} onSave={handleSave} onReset={handleReset} />
+          {/* Save / Reset Banner */}
+          {isDirty && (
+            <div className="border-t bg-background px-6 py-3 flex items-center justify-between gap-3 shrink-0">
+              <p className="text-sm text-muted-foreground">{t("serverSettings.unsavedChanges")}</p>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={handleReset} disabled={saving}>
+                  {t("serverSettings.resetChanges")}
+                </Button>
+                <Button size="sm" onClick={handleSave} disabled={saving || !editName.trim()}>
+                  {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
+                  {t("serverSettings.saveChanges")}
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
