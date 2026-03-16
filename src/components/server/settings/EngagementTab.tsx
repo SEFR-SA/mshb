@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -75,6 +76,12 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
   const bannedInputRef  = useRef<HTMLInputElement>(null);
   const allowedInputRef = useRef<HTMLInputElement>(null);
 
+  // Dirty tracking refs
+  const initSystemChannelId = useRef("");
+  const initNotifLevel = useRef("all_messages");
+  const initInactiveChannelId = useRef("");
+  const initInactiveTimeout = useRef("");
+
   useEffect(() => {
     if (!serverId) return;
     const load = async () => {
@@ -107,10 +114,18 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
 
       if (s) {
         setWelcomeEnabled(!!(s as any).welcome_message_enabled);
-        setSystemChannelId((s as any).system_message_channel_id ?? "");
-        setNotifLevel((s as any).default_notification_level ?? "all_messages");
-        setInactiveChannelId((s as any).inactive_channel_id ?? "");
-        setInactiveTimeout((s as any).inactive_timeout ? String((s as any).inactive_timeout) : "");
+        const sysId = (s as any).system_message_channel_id ?? "";
+        const nLevel = (s as any).default_notification_level ?? "all_messages";
+        const inactId = (s as any).inactive_channel_id ?? "";
+        const inactT = (s as any).inactive_timeout ? String((s as any).inactive_timeout) : "";
+        setSystemChannelId(sysId);
+        setNotifLevel(nLevel);
+        setInactiveChannelId(inactId);
+        setInactiveTimeout(inactT);
+        initSystemChannelId.current = sysId;
+        initNotifLevel.current = nLevel;
+        initInactiveChannelId.current = inactId;
+        initInactiveTimeout.current = inactT;
         setAutomodEnabled(!!(s as any).automod_enabled);
         setShowMemberCount(!!(s as any).show_member_count);
         setShowOnlineCount(!!(s as any).show_online_count);
@@ -124,6 +139,19 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
     };
     load();
   }, [serverId]);
+
+  const isDirty =
+    systemChannelId !== initSystemChannelId.current ||
+    notifLevel !== initNotifLevel.current ||
+    inactiveChannelId !== initInactiveChannelId.current ||
+    inactiveTimeout !== initInactiveTimeout.current;
+
+  const handleReset = () => {
+    setSystemChannelId(initSystemChannelId.current);
+    setNotifLevel(initNotifLevel.current);
+    setInactiveChannelId(initInactiveChannelId.current);
+    setInactiveTimeout(initInactiveTimeout.current);
+  };
 
   // ── Handlers: existing settings ─────────────────────────────────────────
 
@@ -160,6 +188,10 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         changes: { field: "engagement" },
       } as any);
 
+      initSystemChannelId.current = systemChannelId;
+      initNotifLevel.current = notifLevel;
+      initInactiveChannelId.current = inactiveChannelId;
+      initInactiveTimeout.current = inactiveTimeout;
       toast({ title: t("profile.saved") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
@@ -274,7 +306,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative pb-20">
       <h2 className="text-lg font-semibold">{t("serverSettings.engagement")}</h2>
 
       {/* Section 1 — System Messages */}
@@ -404,14 +436,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         </div>
       </div>
 
-      {canEdit && (
-        <div className="pt-2">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
-            {t("actions.save")}
-          </Button>
-        </div>
-      )}
+      <UnsavedChangesBar show={isDirty && canEdit} onSave={handleSave} onReset={handleReset} />
 
       <Separator />
 

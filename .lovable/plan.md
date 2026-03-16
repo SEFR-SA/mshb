@@ -1,47 +1,75 @@
+# CLAUDE.md — MSHB Project Guide
 
+## Project Purpose
 
-# Replace Save Buttons with UnsavedChangesBar in Server Settings
+MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
 
-## Scope
+## Tech Stack
 
-Four server settings tabs have inline Save buttons that need replacing with the shared `UnsavedChangesBar` component:
+- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
+- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
+- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
+- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
+- **Calling:** WebRTC (custom `useWebRTC` hook)
+- **i18n:** i18next + react-i18next (English + Arabic)
+- **State:** React Context API + direct Supabase calls (React Query installed but unused)
+- **Routing:** React Router v6 (hash-based in Electron)
 
-| Tab | Current pattern | Change needed |
-|---|---|---|
-| **ServerProfileTab** | Static `<Button>` at bottom | Add dirty tracking, show `UnsavedChangesBar`, remove button |
-| **EngagementTab** | Static `<Button>` at bottom | Add dirty tracking for system/notif/inactive fields, show bar, remove button |
-| **ServerTagTab** | Static `<Button>` at bottom | Add dirty tracking for tag fields, show bar, remove button |
-| **RolesTab** | Custom inline unsaved banner (lines 536-549) | Replace with shared `UnsavedChangesBar` component |
+## Core Directives (CRITICAL — Always Enforce)
 
-**CommunityTab** — no changes needed (saves happen inline on select change).
+### 1. Plan First
 
-## Implementation per tab
+Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
 
-### 1. `ServerProfileTab.tsx`
-- Store `initialName` and `initialDescription` refs (set on load from parent props via `useEffect`)
-- Compute `isDirty = serverName !== initialName || description !== initialDescription`
-- Remove the `<Button onClick={handleSave}>` block (lines 187-192)
-- Add `<UnsavedChangesBar show={isDirty} onSave={handleSave} onReset={resetToInitial} />` at the bottom
-- `onReset` restores name/description to initial values via parent setters
+### 2. Single Source of Truth (SSOT)
 
-### 2. `EngagementTab.tsx`
-- Store initial values for `systemChannelId`, `notifLevel`, `inactiveChannelId`, `inactiveTimeout` after load
-- Compute `isDirty` by comparing current state to initial
-- Remove the `<Button onClick={handleSave}>` block (lines 407-414)
-- Add `<UnsavedChangesBar>` at bottom of the component
-- `onReset` restores all four fields to initial values
+Never duplicate display logic. Always use the canonical shared components:
 
-### 3. `ServerTagTab.tsx`
-- Store initial values for `tagName`, `tagBadge`, `tagColor`, `tagContainerColor` after load
-- Compute `isDirty` by comparing current state to initial
-- Remove the `<Button>` block (lines 389-396)
-- Add `<UnsavedChangesBar>` at bottom
-- `onReset` restores all tag fields
+| Feature                 | Component                 | Location                                      |
+| ----------------------- | ------------------------- | --------------------------------------------- |
+| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
+| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
+| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
+| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
 
-### 4. `RolesTab.tsx`
-- Replace the custom inline banner (lines 536-549) with `<UnsavedChangesBar show={isDirty} onSave={handleSave} onReset={handleReset} />`
-- Already has `isDirty`, `handleSave`, and `handleReset` — just swap the UI component
+Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
 
-### Positioning note
-Since the parent `ServerSettingsDialog` wraps tab content in a scrollable `max-w-3xl` container, each tab will render `<UnsavedChangesBar>` as its last child. The bar uses `absolute bottom-0` positioning which works within the existing `relative` content area. For RolesTab (which uses a custom layout), the bar replaces the existing sticky footer.
+### 3. Pro Gating
 
+All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+
+### 4. No Hallucinations
+
+If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+
+### 5. No Over-Engineering
+
+Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+
+## Documentation Directory
+
+Read these files for specific details — do NOT rely on memory alone:
+
+| Topic                                                                      | File                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------- |
+| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
+| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
+| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
+| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
+| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
+| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
+| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+
+## Cosmetic Asset Specs
+
+Per-asset guides with exact dimensions, config files, and wrapper usage:
+
+| Asset                        | Canonical Size   | Guide                                        |
+| ---------------------------- | ---------------- | -------------------------------------------- |
+| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
+| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
+| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
+| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
+| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
+| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
+| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
