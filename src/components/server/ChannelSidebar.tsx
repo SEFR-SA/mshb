@@ -25,7 +25,7 @@ import { getAppBaseUrl } from "@/lib/inviteUtils";
 import ServerSettingsDialog from "./ServerSettingsDialog";
 import InviteModal from "./InviteModal";
 import GoLiveModal from "@/components/GoLiveModal";
-import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
+import { useServerStats } from "@/hooks/useServerStats";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { usePresence } from "@/hooks/usePresence";
@@ -205,8 +205,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const { pendingMode, consumeRequest } = useCreateChannel();
   const status = (getUserStatus(profile) || "online") as UserStatus;
   const [server, setServer] = useState<Server | null>(null);
-  const [serverStats, setServerStats] = useState<{ memberCount: number; onlineCount: number; roleCount: number; boostCount: number } | null>(null);
-  const statsFetchedAt = useRef<number>(0);
+  const { serverStats } = useServerStats(serverId, server);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [channelsLoading, setChannelsLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -382,24 +381,6 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     };
   }, [serverId, user?.id]);
 
-  // Server stats — fetch once, cache for 10 minutes
-  useEffect(() => {
-    if (!serverId || !server) return;
-    const anyEnabled = server.show_member_count || server.show_online_count
-                    || server.show_role_count   || server.show_boost_count;
-    if (!anyEnabled) return;
-    if (Date.now() - statsFetchedAt.current < 600_000) return;
-    supabase.rpc("get_server_stats" as any, { p_server_id: serverId }).then(({ data }) => {
-      if (!data) return;
-      statsFetchedAt.current = Date.now();
-      setServerStats({
-        memberCount: Number((data as any).member_count ?? 0),
-        onlineCount: Number((data as any).online_count  ?? 0),
-        roleCount:   Number((data as any).role_count    ?? 0),
-        boostCount:  Number((data as any).boost_count   ?? 0),
-      });
-    });
-  }, [serverId, server]);
 
   // Realtime: soundboard changes
   useEffect(() => {
@@ -1127,27 +1108,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             {/* Category selector */}
             <div>
               <Label className="text-sm font-medium">Section</Label>
-              <Select
-                value={useCustomCategory ? "__new__" : newCategory}
-                onValueChange={(val) => {
-                  if (val === "__new__") {
-                    setUseCustomCategory(true);
-                    setCustomCategory("");
-                  } else {
-                    setUseCustomCategory(false);
-                    setNewCategory(val);
-                  }
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
-                <SelectContent>
-                  {existingCategories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                  <SelectItem value="__new__">+ New Section...</SelectItem>
-                </SelectContent>
-              </Select>
-              {useCustomCategory && (
+              {useCustomCategory ? (
                 <Input
                   className="mt-2"
                   placeholder="Section name"
@@ -1155,6 +1116,18 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                   onChange={(e) => setCustomCategory(e.target.value)}
                   autoFocus
                 />
+              ) : (
+                <Select
+                  value={newCategory}
+                  onValueChange={(val) => setNewCategory(val)}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
+                  <SelectContent>
+                    {existingCategories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             </div>
 
