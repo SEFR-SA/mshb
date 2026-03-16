@@ -399,7 +399,7 @@ const ServerBoostPage = () => {
       </section>
 
       {/* ===== COMPARISON TABLE ===== */}
-      <section className="px-6 py-12 max-w-6xl mx-auto w-full">
+      <section className="px-6 py-12 pb-32 max-w-6xl mx-auto w-full">
         <h2 className="text-2xl font-bold text-foreground mb-8 text-center">
           {t("serverBoostPage.comparisonTitle")}
         </h2>
