@@ -433,10 +433,20 @@ export function useLiveKitRoom({
           return;
         }
 
-        // Prevent Chromium from inserting bilinear/Lanczos resize between capture and encode.
-        // Without this, a mismatch between native capture size and constraint size triggers
-        // an implicit CropAndScale step that adds scaling artifacts.
-        await videoTrack.applyConstraints({ resizeMode: "none" as any }).catch(() => {});
+        // Post-capture FPS enforcement — tells Chromium's capture pipeline to maintain
+        // the target framerate even if the initial constraints were partially ignored.
+        await videoTrack.applyConstraints({
+          frameRate: { min: maxFramerate, ideal: maxFramerate, max: maxFramerate },
+        }).catch(() => {});
+
+        // Log actual capture settings for diagnostics
+        const settings = videoTrack.getSettings();
+        console.log("[LiveKit] Screen capture actual settings:", {
+          width: settings.width,
+          height: settings.height,
+          frameRate: settings.frameRate,
+          requested: { resolution: res, fps: maxFramerate, bitrate: maxBitrate },
+        });
 
         // ── 2. Set contentHint BEFORE handing to LiveKit ──
         // "motion" = prioritise framerate (games/video), "detail" = prioritise sharpness (apps/text).
