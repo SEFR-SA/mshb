@@ -411,6 +411,14 @@ export function useLiveKitRoom({
                 minFrameRate: maxFramerate, // Force Chromium out of its 15fps default; compositor can always honour this
                 maxFrameRate: maxFramerate, // Upper bound — prevents overshooting
               },
+              // Disable Chromium's webcam post-processing pipeline.
+              // getUserMedia treats all sources (including desktop) as camera input,
+              // applying spatial denoising + high-pass filtering that causes visible
+              // over-sharpening/edge-enhancement on screen content.
+              optional: [
+                { googNoiseReduction: false },
+                { googHighpassFilter: false },
+              ],
             } as any,
           });
         } else {
@@ -434,7 +442,15 @@ export function useLiveKitRoom({
           return;
         }
 
-        // ── 2. Set contentHint: "motion" = FPS priority (games), "detail" = sharpness (apps) ──
+        // Prevent Chromium from inserting bilinear/Lanczos resize between capture and encode.
+        // Without this, a mismatch between native capture size and constraint size triggers
+        // an implicit CropAndScale step that adds scaling artifacts.
+        await videoTrack.applyConstraints({ resizeMode: "none" as any }).catch(() => {});
+
+        // ── 2. Set contentHint BEFORE handing to LiveKit ──
+        // "motion" = prioritise framerate (games/video), "detail" = prioritise sharpness (apps/text).
+        // Must be set here, not after publishTrack — LiveKit reads contentHint at publish time
+        // and uses it to choose its internal encoder tuning.
         videoTrack.contentHint = opts?.contentType ?? "motion";
 
         // ── 3. Build simulcast layers ────────────────────────────────────
