@@ -58,7 +58,7 @@ interface ScreenSharePreset {
 
 const SCREEN_SHARE_PRESETS: Record<StreamResolution, ScreenSharePreset> = {
   "720p":  { width: 1280, height: 720,  maxFps: 60, maxBitrate: 2_500_000 },
-  "1080p": { width: 1920, height: 1080, maxFps: 60, maxBitrate: 12_000_000 },
+  "1080p": { width: 1920, height: 1080, maxFps: 60, maxBitrate: 15_000_000 },
   "1440p": { width: 2560, height: 1440, maxFps: 60, maxBitrate: 18_000_000 },
   "source": { width: 3840, height: 2160, maxFps: 60, maxBitrate: 25_000_000 },
 };
@@ -433,10 +433,20 @@ export function useLiveKitRoom({
           return;
         }
 
-        // Prevent Chromium from inserting bilinear/Lanczos resize between capture and encode.
-        // Without this, a mismatch between native capture size and constraint size triggers
-        // an implicit CropAndScale step that adds scaling artifacts.
-        await videoTrack.applyConstraints({ resizeMode: "none" as any }).catch(() => {});
+        // Post-capture FPS enforcement — tells Chromium's capture pipeline to maintain
+        // the target framerate even if the initial constraints were partially ignored.
+        await videoTrack.applyConstraints({
+          frameRate: { min: maxFramerate, ideal: maxFramerate, max: maxFramerate },
+        }).catch(() => {});
+
+        // Log actual capture settings for diagnostics
+        const settings = videoTrack.getSettings();
+        console.log("[LiveKit] Screen capture actual settings:", {
+          width: settings.width,
+          height: settings.height,
+          frameRate: settings.frameRate,
+          requested: { resolution: res, fps: maxFramerate, bitrate: maxBitrate },
+        });
 
         // ── 2. Set contentHint BEFORE handing to LiveKit ──
         // "motion" = prioritise framerate (games/video), "detail" = prioritise sharpness (apps/text).
@@ -444,17 +454,14 @@ export function useLiveKitRoom({
         // and uses it to choose its internal encoder tuning.
         videoTrack.contentHint = opts?.contentType ?? "motion";
 
-        // ── 3. Publish with VP9 + H.264 fallback — single stream, no simulcast ──
-        // Simulcast is disabled for screen shares: it creates 720p@30fps fallback
-        // layers that the SFU snaps to under any BWE pressure, producing permanent
-        // quality ceilings. For gaming screen shares in small groups on good
-        // connections, a single stream at the user's selected quality is correct.
+        // ── 3. Publish with H264 — single stream, no simulcast ──
+        // H264 has near-universal hardware encoder support (NVENC GTX 600+,
+        // QuickSync Intel 4th gen+, VCE AMD GCN+). VP9 rarely has HW encoders,
+        // causing software fallback that starves frames and caps at ~15fps.
+        // Simulcast disabled: single high-quality stream for gaming screen shares.
         await room.localParticipant.publishTrack(videoTrack, {
           source: Track.Source.ScreenShare,
-          videoCodec: "vp9",
-          backupCodec: { codec: "h264" },
-          // maintain-framerate: under encoder pressure, drop resolution before FPS.
-          // Correct for gaming content where smooth motion matters most.
+          videoCodec: "h264",
           degradationPreference: "maintain-framerate",
           simulcast: false,
           videoEncoding: {
@@ -463,6 +470,14 @@ export function useLiveKitRoom({
             priority: "high",
           },
         } as TrackPublishOptions);
+
+        console.log("[LiveKit] Screen share published:", {
+          codec: "h264",
+          simulcast: false,
+          maxBitrate,
+          maxFramerate,
+          contentHint: videoTrack.contentHint,
+        });
 
         setIsScreenSharing(true);
 
