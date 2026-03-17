@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, Download, Forward, ZoomIn, ZoomOut, Copy, Link, MoreHorizontal, X, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -40,30 +40,29 @@ const ImageViewer = ({
   onForward,
 }: ImageViewerProps) => {
   const { t } = useTranslation();
-  const [zoom, setZoom] = useState(1);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomOrigin, setZoomOrigin] = useState<string>("center");
 
-  const zoomIn = useCallback(() => setZoom((z) => Math.min(z + 0.25, 3)), []);
-  const zoomOut = useCallback(() => setZoom((z) => Math.max(z - 0.25, 0.5)), []);
-
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "+" || e.key === "=") zoomIn();
-      if (e.key === "-") zoomOut();
-    },
-    [onClose, zoomIn, zoomOut]
-  );
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Escape") onClose();
+  };
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  }, [onClose]);
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    if (e.deltaY < 0) zoomIn();
-    else zoomOut();
+  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
+    e.stopPropagation();
+    if (!isZoomed) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      setZoomOrigin(`${x}% ${y}%`);
+      setIsZoomed(true);
+    } else {
+      setIsZoomed(false);
+    }
   };
 
   const handleSave = async () => {
@@ -123,8 +122,6 @@ const ImageViewer = ({
 
   const btnClass =
     "p-2 rounded-md hover:bg-white/15 text-white/70 hover:text-white transition-colors disabled:opacity-40";
-
-  const effectiveZoom = isZoomed ? zoom * 1.5 : zoom;
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -200,7 +197,7 @@ const ImageViewer = ({
             {!isZoomed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button className={btnClass} onClick={zoomIn}>
+                  <button className={btnClass} onClick={() => setIsZoomed(true)}>
                     <ZoomIn className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
@@ -211,7 +208,7 @@ const ImageViewer = ({
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button className={btnClass} onClick={zoomOut}>
+                  <button className={btnClass} onClick={() => setIsZoomed(false)}>
                     <ZoomOut className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
@@ -267,23 +264,19 @@ const ImageViewer = ({
 
         {/* Image area */}
         <div
-          className={`flex items-center justify-center w-full h-full ${isZoomed ? "overflow-auto" : "overflow-hidden"}`}
+          className="flex items-center justify-center w-full h-full overflow-hidden"
           onClick={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}
-          onWheel={handleWheel}
         >
           <img
             src={src}
             alt={alt || fileName || "image"}
-            className={`object-contain transition-transform duration-150 select-none ${
-              isZoomed ? "cursor-zoom-out max-w-none max-h-none" : "cursor-zoom-in max-w-[90vw] max-h-[85vh]"
+            onClick={handleImageClick}
+            style={{ transformOrigin: zoomOrigin }}
+            className={`max-w-[90vw] max-h-[85vh] object-contain transition-transform duration-300 ease-out select-none ${
+              isZoomed ? "cursor-zoom-out scale-[2.5]" : "cursor-zoom-in scale-100"
             }`}
-            style={{ transform: `scale(${effectiveZoom})` }}
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsZoomed((v) => !v);
-            }}
             draggable={false}
           />
         </div>
