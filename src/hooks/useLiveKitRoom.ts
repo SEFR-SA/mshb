@@ -102,6 +102,7 @@ export function useLiveKitRoom({
   >([]);
 
   const durationRef = useRef<ReturnType<typeof setInterval>>();
+  const screenShareRelockRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -433,12 +434,6 @@ export function useLiveKitRoom({
           return;
         }
 
-        // Post-capture FPS enforcement — tells Chromium's capture pipeline to maintain
-        // the target framerate even if the initial constraints were partially ignored.
-        await videoTrack.applyConstraints({
-          frameRate: { min: maxFramerate, ideal: maxFramerate, max: maxFramerate },
-        }).catch(() => {});
-
         // Log actual capture settings for diagnostics
         const settings = videoTrack.getSettings();
         console.log("[LiveKit] Screen capture actual settings:", {
@@ -462,7 +457,9 @@ export function useLiveKitRoom({
         await room.localParticipant.publishTrack(videoTrack, {
           source: Track.Source.ScreenShare,
           videoCodec: "h264",
-          degradationPreference: "maintain-framerate",
+          // "disabled" = encoder never reduces resolution or framerate in response to GCC
+          // feedback. The user explicitly selected their quality tier — we honour it.
+          degradationPreference: "disabled",
           simulcast: false,
           videoEncoding: {
             maxBitrate,
@@ -471,18 +468,44 @@ export function useLiveKitRoom({
           },
         } as TrackPublishOptions);
 
-        console.log("[LiveKit] Screen share published:", {
-          codec: "h264",
-          simulcast: false,
-          maxBitrate,
-          maxFramerate,
-          contentHint: videoTrack.contentHint,
-        });
+        // ── 4. Lock RTCRtpSender encoding parameters ─────────────────────────
+        // LiveKit SDK v2.x does not apply maxFramerate to RTCRtpSender when
+        // simulcast=false. Without this, Chromium defaults to 15fps for screen
+        // share sources. GCC also overrides setParameters every ~5s via REMB/TWCC
+        // feedback — re-locking every 3s prevents quality drift.
+        const lockEncodingParams = async () => {
+          const pub = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
+          const sender = (pub?.track as any)?.sender as RTCRtpSender | undefined;
+          if (!sender) return;
+          const params = sender.getParameters();
+          if (!params.encodings?.length) return;
+          params.encodings[0].maxBitrate           = maxBitrate;
+          params.encodings[0].maxFramerate         = maxFramerate;
+          params.encodings[0].scaleResolutionDownBy = 1.0;
+          params.encodings[0].priority             = "high";
+          params.encodings[0].networkPriority      = "high";
+          await sender.setParameters(params).catch((e) =>
+            console.warn("[LiveKit] setParameters failed:", e)
+          );
+        };
+
+        // Wait 200ms for LiveKit to finish setting up the RTCPeerConnection
+        await new Promise<void>((r) => setTimeout(r, 200));
+        await lockEncodingParams();
+
+        if (screenShareRelockRef.current) clearInterval(screenShareRelockRef.current);
+        screenShareRelockRef.current = setInterval(lockEncodingParams, 3000);
+
+        console.log("[LiveKit] Screen share encoding locked:", { maxBitrate, maxFramerate });
 
         setIsScreenSharing(true);
 
         // Listen for the track ending (user clicks browser "Stop sharing")
         videoTrack.addEventListener("ended", () => {
+          if (screenShareRelockRef.current) {
+            clearInterval(screenShareRelockRef.current);
+            screenShareRelockRef.current = null;
+          }
           const pub = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
           if (pub?.track) {
             room.localParticipant.unpublishTrack(pub.track);
@@ -497,6 +520,10 @@ export function useLiveKitRoom({
   );
 
   const stopScreenShare = useCallback(async () => {
+    if (screenShareRelockRef.current) {
+      clearInterval(screenShareRelockRef.current);
+      screenShareRelockRef.current = null;
+    }
     const room = roomRef.current;
     if (!room) return;
     const pub = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
