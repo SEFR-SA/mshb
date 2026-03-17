@@ -63,23 +63,10 @@ const SCREEN_SHARE_PRESETS: Record<StreamResolution, ScreenSharePreset> = {
   "source": { width: 3840, height: 2160, maxFps: 60, maxBitrate: 25_000_000 },
 };
 
-/** Build simulcast layers for screen share based on selected resolution. */
-function getScreenShareSimulcastLayers(resolution: StreamResolution): VideoPreset[] {
-  // 720p: single layer, no simulcast needed
-  if (resolution === "720p") return [];
-
-  const layers: VideoPreset[] = [];
-  // Always include a 720p fallback layer
-  layers.push(new VideoPreset(1280, 720, 2_500_000, 30));
-
-  if (resolution === "1440p" || resolution === "source") {
-    // Include 1080p mid layer
-    layers.push(new VideoPreset(1920, 1080, 12_000_000, 60)); // 12 Mbps: screen content needs more headroom than camera at 1080p@60fps
-  }
-
-  // The top layer is handled by the primary encoding, not in simulcast layers
-  return layers;
-}
+// Simulcast for screen shares is intentionally DISABLED.
+// In small-group gaming calls, a single high-quality stream is better than
+// simulcast layers that create permanent quality ceilings (720p@30fps fallback).
+// Camera feeds still use simulcast — see startCamera().
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -189,7 +176,11 @@ export function useLiveKitRoom({
       );
 
       const room = new Room({
-        adaptiveStream: { pixelDensity: 'screen' },
+        // adaptiveStream DISABLED — screen shares must receive full resolution.
+        // With adaptive enabled, LiveKit auto-downgrades based on <video> CSS size
+        // (e.g., 360px tile → SFU sends 720p@30fps fallback instead of 1440p@60fps).
+        // Camera feeds don't need adaptive either in small-group calls (≤8 users).
+        adaptiveStream: false,
         dynacast: true,
         reconnectPolicy: {
           nextRetryDelayInMs: (context: { retryCount: number; elapsedMs: number }) => {
@@ -453,24 +444,23 @@ export function useLiveKitRoom({
         // and uses it to choose its internal encoder tuning.
         videoTrack.contentHint = opts?.contentType ?? "motion";
 
-        // ── 3. Build simulcast layers ────────────────────────────────────
-        const simulcastLayers = getScreenShareSimulcastLayers(res);
-        const useSimulcast = simulcastLayers.length > 0;
-
-        // ── 4. Publish with VP9 (better compression for screen content) + H.264 fallback
+        // ── 3. Publish with VP9 + H.264 fallback — single stream, no simulcast ──
+        // Simulcast is disabled for screen shares: it creates 720p@30fps fallback
+        // layers that the SFU snaps to under any BWE pressure, producing permanent
+        // quality ceilings. For gaming screen shares in small groups on good
+        // connections, a single stream at the user's selected quality is correct.
         await room.localParticipant.publishTrack(videoTrack, {
           source: Track.Source.ScreenShare,
           videoCodec: "vp9",
           backupCodec: { codec: "h264" },
+          // maintain-framerate: under encoder pressure, drop resolution before FPS.
+          // Correct for gaming content where smooth motion matters most.
           degradationPreference: "maintain-framerate",
-          simulcast: useSimulcast,
-          ...(useSimulcast ? { videoSimulcastLayers: simulcastLayers } : {}),
+          simulcast: false,
           videoEncoding: {
             maxBitrate,
             maxFramerate,
             priority: "high",
-            // No scalabilityMode: L1T3 removed — VP9 SVC temporal layers (T0=15fps, T1=30fps, T2=60fps)
-            // caused BWE to snap to 15fps even on fast connections. Pure spatial simulcast only.
           },
         } as TrackPublishOptions);
 
