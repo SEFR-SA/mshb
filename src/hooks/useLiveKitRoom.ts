@@ -454,17 +454,14 @@ export function useLiveKitRoom({
         // and uses it to choose its internal encoder tuning.
         videoTrack.contentHint = opts?.contentType ?? "motion";
 
-        // ── 3. Publish with VP9 + H.264 fallback — single stream, no simulcast ──
-        // Simulcast is disabled for screen shares: it creates 720p@30fps fallback
-        // layers that the SFU snaps to under any BWE pressure, producing permanent
-        // quality ceilings. For gaming screen shares in small groups on good
-        // connections, a single stream at the user's selected quality is correct.
+        // ── 3. Publish with H264 — single stream, no simulcast ──
+        // H264 has near-universal hardware encoder support (NVENC GTX 600+,
+        // QuickSync Intel 4th gen+, VCE AMD GCN+). VP9 rarely has HW encoders,
+        // causing software fallback that starves frames and caps at ~15fps.
+        // Simulcast disabled: single high-quality stream for gaming screen shares.
         await room.localParticipant.publishTrack(videoTrack, {
           source: Track.Source.ScreenShare,
-          videoCodec: "vp9",
-          backupCodec: { codec: "h264" },
-          // maintain-framerate: under encoder pressure, drop resolution before FPS.
-          // Correct for gaming content where smooth motion matters most.
+          videoCodec: "h264",
           degradationPreference: "maintain-framerate",
           simulcast: false,
           videoEncoding: {
@@ -473,6 +470,14 @@ export function useLiveKitRoom({
             priority: "high",
           },
         } as TrackPublishOptions);
+
+        console.log("[LiveKit] Screen share published:", {
+          codec: "h264",
+          simulcast: false,
+          maxBitrate,
+          maxFramerate,
+          contentHint: videoTrack.contentHint,
+        });
 
         setIsScreenSharing(true);
 

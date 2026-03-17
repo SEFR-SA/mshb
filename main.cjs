@@ -74,8 +74,8 @@ if (process.env.MSHB_DISABLE_GPU === '1') {
     'WebRTCHWVP9Encoding,' +  // Hardware VP9 encoder (NVENC/QuickSync/VCE) — critical for VP9 primary codec
     'WebRTCHWAV1Encoding'     // Hardware AV1 encoder (Ampere+, Arc, RDNA3)
   );
-  // Keep captured frames as GpuMemoryBuffer — avoids GPU→RAM→GPU round-trip during desktop capture
-  app.commandLine.appendSwitch('enable-gpu-memory-buffer-video-frames');
+  // enable-gpu-memory-buffer-video-frames REMOVED — causes frame timing jitter
+  // with Electron desktopCapturer, producing visible stutter in screen shares.
   // Use Windows DWM overlays for captured windows — reduces compositor readback overhead
   app.commandLine.appendSwitch('enable-hardware-overlays', 'single-fullscreen,single-on-top,underlay');
 }
