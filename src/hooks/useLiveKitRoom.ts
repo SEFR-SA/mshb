@@ -57,8 +57,8 @@ interface ScreenSharePreset {
 }
 
 const SCREEN_SHARE_PRESETS: Record<StreamResolution, ScreenSharePreset> = {
-  "720p":  { width: 1280, height: 720,  maxFps: 30, maxBitrate: 2_500_000 },
-  "1080p": { width: 1920, height: 1080, maxFps: 60, maxBitrate: 8_000_000 },
+  "720p":  { width: 1280, height: 720,  maxFps: 60, maxBitrate: 2_500_000 },
+  "1080p": { width: 1920, height: 1080, maxFps: 60, maxBitrate: 12_000_000 },
   "1440p": { width: 2560, height: 1440, maxFps: 60, maxBitrate: 18_000_000 },
   "source": { width: 3840, height: 2160, maxFps: 60, maxBitrate: 25_000_000 },
 };
@@ -74,7 +74,7 @@ function getScreenShareSimulcastLayers(resolution: StreamResolution): VideoPrese
 
   if (resolution === "1440p" || resolution === "source") {
     // Include 1080p mid layer
-    layers.push(new VideoPreset(1920, 1080, 8_000_000, 60));
+    layers.push(new VideoPreset(1920, 1080, 12_000_000, 60)); // 12 Mbps: screen content needs more headroom than camera at 1080p@60fps
   }
 
   // The top layer is handled by the primary encoding, not in simulcast layers
@@ -385,6 +385,8 @@ export function useLiveKitRoom({
       const res = opts?.resolution ?? "1080p";
       const preset = SCREEN_SHARE_PRESETS[res];
       const maxFramerate = Math.min(opts?.fps ?? 30, preset.maxFps);
+      // 720p@60fps needs more headroom than 720p@30fps
+      const maxBitrate = (res === "720p" && maxFramerate === 60) ? 4_000_000 : preset.maxBitrate;
 
       try {
         // ── 1. Manual track acquisition with strict FPS constraints ──────
@@ -406,8 +408,8 @@ export function useLiveKitRoom({
                   minHeight: preset.height,
                   maxHeight: preset.height,
                 }),
-                // No minFrameRate — allows graceful drop under GPU load
-                maxFrameRate: maxFramerate,
+                minFrameRate: maxFramerate, // Force Chromium out of its 15fps default; compositor can always honour this
+                maxFrameRate: maxFramerate, // Upper bound — prevents overshooting
               },
             } as any,
           });
@@ -420,7 +422,7 @@ export function useLiveKitRoom({
                 width:  { ideal: preset.width },
                 height: { ideal: preset.height },
               }),
-              frameRate: { ideal: maxFramerate, max: maxFramerate },
+              frameRate: { min: maxFramerate, ideal: maxFramerate, max: maxFramerate },
             },
             audio: false,
           });
@@ -448,10 +450,11 @@ export function useLiveKitRoom({
           simulcast: useSimulcast,
           ...(useSimulcast ? { videoSimulcastLayers: simulcastLayers } : {}),
           videoEncoding: {
-            maxBitrate: preset.maxBitrate,
+            maxBitrate,
             maxFramerate,
             priority: "high",
-            scalabilityMode: "L1T3", // VP9 SVC: 1 spatial + 3 temporal layers; SFU drops FPS layers per-viewer bandwidth
+            // No scalabilityMode: L1T3 removed — VP9 SVC temporal layers (T0=15fps, T1=30fps, T2=60fps)
+            // caused BWE to snap to 15fps even on fast connections. Pure spatial simulcast only.
           },
         } as TrackPublishOptions);
 
