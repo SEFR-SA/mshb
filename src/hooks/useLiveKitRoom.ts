@@ -58,7 +58,7 @@ interface ScreenSharePreset {
 
 const SCREEN_SHARE_PRESETS: Record<StreamResolution, ScreenSharePreset> = {
   "720p":  { width: 1280, height: 720,  maxFps: 60, maxBitrate: 2_500_000 },
-  "1080p": { width: 1920, height: 1080, maxFps: 60, maxBitrate: 12_000_000 },
+  "1080p": { width: 1920, height: 1080, maxFps: 60, maxBitrate: 15_000_000 },
   "1440p": { width: 2560, height: 1440, maxFps: 60, maxBitrate: 18_000_000 },
   "source": { width: 3840, height: 2160, maxFps: 60, maxBitrate: 25_000_000 },
 };
