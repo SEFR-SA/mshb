@@ -1,75 +1,115 @@
-# CLAUDE.md — MSHB Project Guide
 
-## Project Purpose
+## Goal
+Stabilize screen share so the selected FPS is actually honored and stutter is reduced, without changing providers yet. The current code shows the approved fix was only partially applied.
 
-MSHB is a real-time communication platform (Discord/Telegram-style) built as an Electron desktop app and PWA. It supports DMs, group chats, servers & channels, voice/video calling (WebRTC), rich messaging, a social graph, and full internationalization (English + Arabic RTL).
+## What I found
+- `useLiveKitRoom.ts` still publishes screen share with `videoCodec: "vp9"` plus `backupCodec: { codec: "h264" }`.
+- `main.cjs` still enables `enable-gpu-memory-buffer-video-frames`.
+- `1080p` is still capped at `12_000_000` bitrate in `SCREEN_SHARE_PRESETS`.
+- The build is failing because `videoTrack.applyConstraints({ resizeMode: "none" })` is not valid for `MediaTrackConstraints`.
+- `ScreenShareViewer.tsx` no longer contains the old direct screen-share button, so that legacy bypass appears already removed.
 
-## Tech Stack
+## Implementation plan
 
-- **UI:** React 18 + TypeScript (Vite) — path alias `@/` → `src/`
-- **Styling:** Tailwind CSS + shadcn-ui (Radix UI primitives)
-- **Backend:** Supabase (PostgreSQL + Realtime + Auth + Storage)
-- **Real-time:** Supabase Realtime (`postgres_changes` subscriptions)
-- **Calling:** WebRTC (custom `useWebRTC` hook)
-- **i18n:** i18next + react-i18next (English + Arabic)
-- **State:** React Context API + direct Supabase calls (React Query installed but unused)
-- **Routing:** React Router v6 (hash-based in Electron)
+### 1) Fix the build error first
+In `src/hooks/useLiveKitRoom.ts`:
+- Remove the invalid `resizeMode` constraint entirely.
+- Replace it with a safe post-capture enforcement step:
+  - `await videoTrack.applyConstraints({ frameRate: { min: maxFramerate, ideal: maxFramerate, max: maxFramerate } }).catch(() => {})`
+- Keep `contentHint = "motion"` / `"detail"` before publish.
 
-## Core Directives (CRITICAL — Always Enforce)
+This unblocks the build and directly targets the 15fps fallback.
 
-### 1. Plan First
+### 2) Finish the codec migration properly
+In `src/hooks/useLiveKitRoom.ts`:
+- Change screen-share publish from VP9 to H264:
+  - `videoCodec: "h264"`
+- Remove `backupCodec`.
+- Keep `simulcast: false`.
 
-Before writing code for any non-trivial task, propose a step-by-step plan and wait for approval.
+Why: right now the code is still biased toward VP9, which commonly falls back to software encoding and causes dropped frames/stutter on desktop capture.
 
-### 2. Single Source of Truth (SSOT)
+### 3) Raise bitrate ceilings for gaming motion
+In `SCREEN_SHARE_PRESETS`:
+- Increase `1080p` from `12_000_000` to `15_000_000`.
+- Keep `720p@60` special case with extra headroom.
+- Leave `1440p/source` high enough for now, then tune after verification.
 
-Never duplicate display logic. Always use the canonical shared components:
+Why: if motion content is under-provisioned, the encoder preserves compatibility by reducing smoothness first.
 
-| Feature                 | Component                 | Location                                      |
-| ----------------------- | ------------------------- | --------------------------------------------- |
-| Styled display name     | `StyledDisplayName`       | `@/components/StyledDisplayName`              |
-| Avatar decoration frame | `AvatarDecorationWrapper` | `@/components/shared/AvatarDecorationWrapper` |
-| Nameplate background    | `NameplateWrapper`        | `@/components/shared/NameplateWrapper`        |
-| Profile effect overlay  | `ProfileEffectWrapper`    | `@/components/shared/ProfileEffectWrapper`    |
+### 4) Remove the Electron flag most likely causing capture jitter
+In `main.cjs`:
+- Remove `app.commandLine.appendSwitch('enable-gpu-memory-buffer-video-frames')`.
+- Keep:
+  - `enable-accelerated-video-encode`
+  - `WebRTCHWH264Encoding`
+  - other core GPU/WebRTC flags
 
-Any profile query that renders a styled name MUST select: `name_font, name_effect, name_gradient_start, name_gradient_end`
+Why: the current capture path is likely paying for unstable frame timing, which feels like stutter even when bitrate is available.
 
-### 3. Pro Gating
+### 5) Verify the Go Live settings are actually flowing end-to-end
+Trace and align:
+```text
+GoLiveModal
+  -> VoiceConnectionBar / DM handlers
+    -> useLiveKitCall
+      -> useLiveKitRoom.startScreenShare
+        -> getUserMedia/getDisplayMedia constraints
+        -> LiveKit publishTrack
+```
+I’ll verify that:
+- selected `fps` from `GoLiveModal` is passed unchanged,
+- `sourceId` path uses strict Electron desktop constraints,
+- `maxFramerate` is not being silently clamped elsewhere.
 
-All new cosmetic/premium features default to Pro-only. Check `profile?.is_pro` via `useAuth()`. Show lock icons and upgrade toasts to free users — never silently hide features.
+### 6) Add temporary diagnostics so this stops being guesswork
+In the screen-share pipeline, add lightweight logs/overlay for:
+- requested resolution/FPS,
+- actual `videoTrack.getSettings()` width/height/frameRate,
+- selected codec,
+- applied bitrate ceiling.
 
-### 4. No Hallucinations
+This is important because “looks like 15fps” needs to become measurable. If the selected 60 is not reflected in `getSettings()`, the problem is capture-side; if capture is 60 but viewers still see 15, the problem is publish/encode/SFU-side.
 
-If you do not know exact asset dimensions, wrapper props, or DB column names — stop and ask. Never guess. All canonical specs are in the documentation files below.
+## Expected result
+After these changes:
+- the build error is gone,
+- the selected FPS should stop collapsing to the browser default path,
+- hardware H264 encoding should reduce stutter significantly,
+- the stream should behave more like a single high-quality gaming feed instead of a conservative conferencing stream.
 
-### 5. No Over-Engineering
+## If performance is still not good enough
+If this still does not get close to Discord-quality, the next step should be a deliberate screen-share redesign, not a provider switch:
 
-Use the shortest correct solution. Native array methods over loops. No unnecessary abstractions. If your diff is 80+ lines for a simple feature, rewrite it.
+### Phase 2 redesign
+- Separate screen-share publishing strategy from camera strategy completely.
+- Create a dedicated screen-share publisher module/hook with:
+  - one capture path for Electron,
+  - one publish profile for motion,
+  - one publish profile for detail,
+  - explicit stats collection.
+- Add sender/receiver stats sampling from LiveKit/WebRTC:
+  - actual outgoing FPS,
+  - encode time,
+  - packet loss,
+  - retransmissions,
+  - viewer-side decoded FPS.
 
-## Documentation Directory
+### Why not switch to Agora yet
+Agora will not automatically fix:
+- bad capture constraints,
+- invalid FPS enforcement,
+- software codec fallback,
+- Electron frame-timing issues.
 
-Read these files for specific details — do NOT rely on memory alone:
+Those are implementation-level problems. Switching providers before measuring this cleaned-up pipeline would likely just move the same bottleneck.
 
-| Topic                                                                      | File                                         |
-| -------------------------------------------------------------------------- | -------------------------------------------- |
-| DB schema, Supabase patterns, real-time, RLS, auth, context stack          | `.planning/codebase/INTEGRATIONS.md`         |
-| Coding conventions, component patterns, CSS, translations, mobile rules    | `.planning/codebase/CONVENTIONS.md`          |
-| Cosmetics: wrapper components, Pro logic, asset dimensions, themes, badges | `.planning/codebase/CUSTOMIZATION_ENGINE.md` |
-| Directory structure, feature-add checklist, key files reference            | `.planning/codebase/ARCHITECTURE.md`         |
-| Full tech stack versions and config                                        | `.planning/codebase/STACK.md`                |
-| Known bugs, tech debt, performance concerns                                | `.planning/codebase/CONCERNS.md`             |
-| Testing patterns and Vitest config                                         | `.planning/codebase/TESTING.md`              |
+## Files to update
+- `src/hooks/useLiveKitRoom.ts`
+- `main.cjs`
 
-## Cosmetic Asset Specs
-
-Per-asset guides with exact dimensions, config files, and wrapper usage:
-
-| Asset                        | Canonical Size   | Guide                                        |
-| ---------------------------- | ---------------- | -------------------------------------------- |
-| Avatar Decorations           | 144 × 144 px     | `docs/cosmetic-assets/avatar-decorations.md` |
-| Nameplates                   | 224 × 42 px      | `docs/cosmetic-assets/nameplates.md`         |
-| Profile Effects              | 480 × 880 px     | `docs/cosmetic-assets/profile-effects.md`    |
-| Server Tag Badges            | 16 × 16 px (SVG) | `docs/cosmetic-assets/server-tags.md`        |
-| Display Name Fonts & Effects | —                | `docs/cosmetic-assets/display-name-fonts.md` |
-| Soundboard Clips             | —                | `docs/cosmetic-assets/soundboard.md`         |
-| Marketplace / Item Shop      | —                | `docs/cosmetic-assets/marketplace.md`        |
+## Success criteria
+- User selects 60 FPS in Go Live and `getSettings().frameRate` reflects ~60 on capture.
+- 1080p stream no longer feels capped at ~15 FPS.
+- Stutter is materially reduced during game motion.
+- No build errors.
