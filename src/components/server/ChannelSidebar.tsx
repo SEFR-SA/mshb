@@ -758,7 +758,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
   return (
     <>
-      <div className="w-[240px] max-md:w-full max-md:max-w-full h-full flex flex-col border-e border-sidebar-border shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
+      <div className="w-[303px] max-md:w-full max-md:max-w-full h-full flex flex-col border-e border-sidebar-border shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
         {server?.banner_url && (server.boost_level ?? 0) >= 1 && (
           <img
             src={server.banner_url}
