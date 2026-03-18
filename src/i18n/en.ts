@@ -328,6 +328,7 @@ export default {
     copiedInvite: "Invite link copied!",
     copyFailed: "Failed to copy link to clipboard.",
     members: "Members",
+    online: "Online",
     leave: "Leave Server",
     owner: "Owner",
     admin: "Admin",

@@ -220,7 +220,9 @@ const ServerMemberList = ({ serverId }: Props) => {
   return (
     <div className="w-[264px] flex flex-col bg-sidebar-background border-s border-sidebar-border shrink-0 overflow-hidden">
       <div className="p-3 border-b border-sidebar-border">
-        <h3 className="text-xs font-semibold uppercase text-muted-foreground">{t("servers.members")} — {members.length}</h3>
+        <h3 className="text-xs font-semibold uppercase text-muted-foreground">
+          {t("servers.members")} — {members.length} · {t("servers.online")} — {members.filter((m) => { const s = getUserStatus({ user_id: m.user_id, status: m.profile?.status }); return s !== "offline" && s !== "invisible"; }).length}
+        </h3>
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-4">
         {loading ? (
