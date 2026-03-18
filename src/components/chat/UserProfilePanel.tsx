@@ -192,7 +192,7 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
     <ProfileEffectWrapper
       effectUrl={p?.profile_effect_url}
       isPro={p?.is_pro}
-      className="w-72 border-s border-border/50 glass h-full flex flex-col"
+      className="w-[340px] border-s border-border/50 glass h-full flex flex-col"
     >
       <div className="flex-1 overflow-y-auto min-h-0">
         {/* Banner area — relative wrapper for the three-dots button */}
