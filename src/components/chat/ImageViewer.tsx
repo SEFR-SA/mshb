@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, Download, Forward, ZoomIn, ZoomOut, Copy, Link, MoreHorizontal, X, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -41,28 +41,43 @@ const ImageViewer = ({
 }: ImageViewerProps) => {
   const { t } = useTranslation();
   const [isZoomed, setIsZoomed] = useState(false);
-  const [zoomOrigin, setZoomOrigin] = useState<string>("center");
+  const [zoomOrigin, setZoomOrigin] = useState("center");
 
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Escape") onClose();
-  };
+  const zoomIn = useCallback(() => setIsZoomed(true), []);
+  const zoomOut = useCallback(() => setIsZoomed(false), []);
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "+" || e.key === "=") zoomIn();
+      if (e.key === "-") zoomOut();
+    },
+    [onClose, zoomIn, zoomOut]
+  );
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [handleKeyDown]);
 
-  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    e.stopPropagation();
+  const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
     if (!isZoomed) {
       const rect = e.currentTarget.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 100;
       const y = ((e.clientY - rect.top) / rect.height) * 100;
       setZoomOrigin(`${x}% ${y}%`);
-      setIsZoomed(true);
-    } else {
-      setIsZoomed(false);
     }
+  };
+
+  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
+    e.stopPropagation();
+    setIsZoomed(!isZoomed);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    if (e.deltaY < 0) zoomIn();
+    else zoomOut();
   };
 
   const handleSave = async () => {
@@ -127,7 +142,7 @@ const ImageViewer = ({
     <TooltipProvider delayDuration={300}>
       <div
         className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-sm flex items-center justify-center"
-        onClick={onClose}
+        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
       >
         {/* Top bar */}
         <div
@@ -194,29 +209,27 @@ const ImageViewer = ({
               </Tooltip>
             )}
 
-            {!isZoomed ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button className={btnClass} onClick={() => setIsZoomed(true)}>
-                    <ZoomIn className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={8} className="z-[10000] text-xs">
-                  {t("imageViewer.zoomIn")}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button className={btnClass} onClick={() => setIsZoomed(false)}>
-                    <ZoomOut className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={8} className="z-[10000] text-xs">
-                  {t("imageViewer.zoomOut")}
-                </TooltipContent>
-              </Tooltip>
-            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className={btnClass} onClick={zoomIn}>
+                  <ZoomIn className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={8} className="z-[10000] text-xs">
+                {t("imageViewer.zoomIn")}
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className={btnClass} onClick={zoomOut}>
+                  <ZoomOut className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={8} className="z-[10000] text-xs">
+                {t("imageViewer.zoomOut")}
+              </TooltipContent>
+            </Tooltip>
 
             <DropdownMenu>
               <Tooltip>
@@ -264,18 +277,20 @@ const ImageViewer = ({
 
         {/* Image area */}
         <div
-          className="flex items-center justify-center w-full h-full overflow-hidden"
+          className={`flex items-center justify-center w-full h-full ${isZoomed ? "overflow-auto p-4 items-start" : "overflow-hidden"}`}
           onClick={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}
+          onWheel={handleWheel}
         >
           <img
             src={src}
             alt={alt || fileName || "image"}
-            onClick={handleImageClick}
+            onClick={(e) => { e.stopPropagation(); setIsZoomed(!isZoomed); }}
+            onMouseMove={handleMouseMove}
             style={{ transformOrigin: zoomOrigin }}
-            className={`max-w-[90vw] max-h-[85vh] object-contain transition-transform duration-300 ease-out select-none ${
-              isZoomed ? "cursor-zoom-out scale-[2.5]" : "cursor-zoom-in scale-100"
+            className={`object-contain transition-transform duration-200 select-none ${
+              isZoomed ? "cursor-zoom-out scale-[1.5] max-w-none max-h-none" : "cursor-zoom-in scale-100 max-w-[90vw] max-h-[85vh]"
             }`}
             draggable={false}
           />
