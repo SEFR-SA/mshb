@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,11 +37,14 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [eligibleTags, setEligibleTags]   = useState<any[]>([]);
   const [activeServerTagId, setActiveServerTagId] = useState<string>("none");
+  const [profilePrimaryColor, setProfilePrimaryColor] = useState<string>("#5865F2");
+  const [profileAccentColor,  setProfileAccentColor]  = useState<string>("#3BA55C");
 
   const isPro = (profile as any)?.is_pro ?? false;
   const p     = profile as any;
 
-  const originalRef = useRef<any>(null);
+  const originalRef  = useRef<any>(null);
+  const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -54,7 +58,11 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
       setDisplayName(values.displayName);
       setAboutMe(values.aboutMe);
       setActiveServerTagId(values.activeServerTagId);
-      originalRef.current = values;
+      const primaryColor = p?.profile_primary_color ?? "#5865F2";
+      const accentColor  = p?.profile_accent_color  ?? "#3BA55C";
+      setProfilePrimaryColor(primaryColor);
+      setProfileAccentColor(accentColor);
+      originalRef.current = { ...values, profilePrimaryColor: primaryColor, profileAccentColor: accentColor };
     }
   }, [profile]);
 
@@ -72,6 +80,19 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
         }
       });
   }, [user]);
+
+  const colorMutation = useMutation({
+    mutationFn: async (colors: { primary: string; accent: string }) => {
+      if (!user) return;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ profile_primary_color: colors.primary, profile_accent_color: colors.accent } as any)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => refreshProfile(),
+  });
+
 
   const handleSave = async () => {
     if (!user) return;
@@ -92,12 +113,15 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
           : error.message;
       toast({ title: t("common.error"), description: msg, variant: "destructive" });
     } else {
+      await colorMutation.mutateAsync({ primary: profilePrimaryColor, accent: profileAccentColor });
       toast({ title: t("profile.saved") });
       originalRef.current = {
-        username:          username.trim() || "",
-        displayName:       displayName.trim() || "",
-        aboutMe:           aboutMe.trim(),
-        activeServerTagId: activeServerTagId === "none" ? "none" : activeServerTagId,
+        username:            username.trim() || "",
+        displayName:         displayName.trim() || "",
+        aboutMe:             aboutMe.trim(),
+        activeServerTagId:   activeServerTagId === "none" ? "none" : activeServerTagId,
+        profilePrimaryColor: profilePrimaryColor,
+        profileAccentColor:  profileAccentColor,
       };
       clearUnsaved?.();
       await refreshProfile();
@@ -106,20 +130,25 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
   };
 
   const handleReset = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!originalRef.current) return;
     setUsername(originalRef.current.username);
     setDisplayName(originalRef.current.displayName);
     setAboutMe(originalRef.current.aboutMe);
     setActiveServerTagId(originalRef.current.activeServerTagId);
+    setProfilePrimaryColor(originalRef.current.profilePrimaryColor ?? "#5865F2");
+    setProfileAccentColor(originalRef.current.profileAccentColor  ?? "#3BA55C");
     clearUnsaved?.();
   };
 
   const isDirty =
     originalRef.current !== null && (
-      username          !== originalRef.current.username          ||
-      displayName       !== originalRef.current.displayName       ||
-      aboutMe           !== originalRef.current.aboutMe           ||
-      activeServerTagId !== originalRef.current.activeServerTagId
+      username            !== originalRef.current.username            ||
+      displayName         !== originalRef.current.displayName         ||
+      aboutMe             !== originalRef.current.aboutMe             ||
+      activeServerTagId   !== originalRef.current.activeServerTagId   ||
+      profilePrimaryColor !== originalRef.current.profilePrimaryColor ||
+      profileAccentColor  !== originalRef.current.profileAccentColor
     );
 
   const saveFnRef  = useRef(handleSave);
@@ -294,6 +323,36 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
             <p className="text-xs text-muted-foreground text-end">{aboutMe.length}/500</p>
           </div>
 
+          {/* Profile Theme */}
+          <div className="border-t border-border/50 pt-4 space-y-3">
+            <div>
+              <h3 className="font-extrabold text-xs uppercase tracking-wider text-muted-foreground">Profile Theme</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">These colors appear on your profile card for everyone.</p>
+            </div>
+            <div className="flex gap-6">
+              <label className="flex flex-col gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                Primary Color
+                <input
+                  type="color"
+                  value={profilePrimaryColor}
+                  onChange={e => setProfilePrimaryColor(e.target.value)}
+                  className="h-9 w-20 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                />
+                <span className="font-mono">{profilePrimaryColor}</span>
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                Accent Color
+                <input
+                  type="color"
+                  value={profileAccentColor}
+                  onChange={e => setProfileAccentColor(e.target.value)}
+                  className="h-9 w-20 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+                />
+                <span className="font-mono">{profileAccentColor}</span>
+              </label>
+            </div>
+          </div>
+
           {/* Server Tags */}
           <div className="border-t border-border/50 pt-4 space-y-3">
             <div>
@@ -334,13 +393,21 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
             <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground/70 mb-2">
               {t("nameStyle.previewTitle")}
             </p>
-            <div className="rounded-xl overflow-hidden border border-border/50">
-              {/* Banner — click to upload */}
-              <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={isPro}>
+            <div
+              className="relative rounded-xl overflow-hidden"
+              style={{ borderColor: profileAccentColor, borderWidth: '2px', borderStyle: 'solid' }}
+            >
+              {/* L1: Full-bleed gradient */}
+              <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${profilePrimaryColor}, ${profileAccentColor})` }} />
+              {/* L2: Dark wash */}
+              <div className="absolute inset-0 bg-black/60 z-[1]" />
+              {/* L3: Content */}
+              <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={isPro} className="relative z-[2]">
+                {/* Banner — click to upload */}
                 <label className="block relative cursor-pointer group">
                   {p?.banner_url
                     ? <img src={p.banner_url} alt="" className="h-24 w-full object-cover" />
-                    : <div className="h-24 w-full bg-gradient-to-r from-primary/30 to-primary/10" />}
+                    : <div className="h-24 w-full bg-white/5" />}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <ImagePlus className="h-5 w-5 text-white" />
                   </div>
@@ -370,10 +437,16 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
                     onClick={() => setStatusModalOpen(true)}
                   />
                 </div>
-                <StyledDisplayName {...nameStyleProps} className="font-bold text-base" />
-                {username && <p className="text-xs text-muted-foreground mt-0.5">@{username}</p>}
+                <StyledDisplayName {...nameStyleProps} className="font-bold text-base text-white" />
+                {username && <p className="text-xs text-white/70 mt-0.5">@{username}</p>}
+                <button
+                  className="mt-3 w-full py-2 rounded-md text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: profilePrimaryColor }}
+                >
+                  Example Button
+                </button>
                 {aboutMe && (
-                  <p className="text-xs text-muted-foreground mt-2 line-clamp-3 whitespace-pre-wrap">{aboutMe}</p>
+                  <p className="text-xs text-white/70 mt-2 line-clamp-3 whitespace-pre-wrap">{aboutMe}</p>
                 )}
               </div>
               </ProfileEffectWrapper>

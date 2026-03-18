@@ -67,27 +67,37 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
 
   const currentStatusOption = STATUS_OPTIONS.find((s) => s.value === currentStatus) || STATUS_OPTIONS[0];
 
-  return (
-    <div className="w-[308px] h-[391px] overflow-visible rounded-t-xl">
-      {/* Banner */}
-      <div
-        className="h-24 w-full relative rounded-t-xl"
-        style={
-          profile.banner_url
-            ? { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
-            : { background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)/0.6))" }
-        }
-      />
+  const profileThemeVars = {
+    "--profile-primary": p?.profile_primary_color ?? "hsl(var(--primary))",
+    "--profile-accent":  p?.profile_accent_color  ?? "hsl(var(--primary)/0.6)",
+  } as React.CSSProperties;
 
-      {/* Avatar + Info */}
-      <div className="px-3 pb-3">
+  return (
+    <div
+      className="relative w-[308px] min-h-[391px] overflow-hidden rounded-xl"
+      style={{ ...profileThemeVars, borderColor: "var(--profile-accent)", borderWidth: "2px", borderStyle: "solid" }}
+    >
+      {/* L1: Full-bleed gradient */}
+      <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, var(--profile-primary), var(--profile-accent))" }} />
+      {/* L2: Dark wash */}
+      <div className="absolute inset-0 bg-black/60 z-[1]" />
+
+      {/* Banner — z-[2] */}
+      <div className="relative h-24 w-full z-[2]">
+        {profile.banner_url && (
+          <img src={profile.banner_url} alt="" className="w-full h-full object-cover" />
+        )}
+      </div>
+
+      {/* Avatar + Info — z-[2] */}
+      <div className="relative px-3 pb-3 z-[2]">
         <div className="-mt-10 mb-2 flex items-end gap-2">
           <AvatarDecorationWrapper
             decorationUrl={p?.avatar_decoration_url}
             isPro={p?.is_pro}
             size={80}
           >
-            <Avatar className="h-20 w-20 border-4 border-background">
+            <Avatar className="h-20 w-20 border-4 border-black/30">
               <AvatarImage src={profile.avatar_url || ""} />
               <AvatarFallback className="bg-primary/20 text-primary text-lg">
                 {initials}
@@ -109,10 +119,10 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
           effect={p?.name_effect}
           gradientStart={p?.name_gradient_start}
           gradientEnd={p?.name_gradient_end}
-          className="text-sm font-bold truncate leading-tight"
+          className="text-sm font-bold truncate leading-tight text-white"
         />
         {profile.username && (
-          <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>
+          <p className="text-xs text-white/70 truncate">@{profile.username}</p>
         )}
 
         {/* Container 1: Edit Profile + Status */}

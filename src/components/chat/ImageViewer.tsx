@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, Download, Forward, ZoomIn, ZoomOut, Copy, Link, MoreHorizontal, X, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -15,6 +15,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useMountEffect } from "@/hooks/useMountEffect";
 
 interface ImageViewerProps {
   src: string;
@@ -28,6 +29,10 @@ interface ImageViewerProps {
   onForward?: () => void;
 }
 
+const MIN_SCALE = 1;
+const MAX_SCALE = 4;
+const SCALE_STEP = 0.5;
+
 const ImageViewer = ({
   src,
   alt,
@@ -40,40 +45,82 @@ const ImageViewer = ({
   onForward,
 }: ImageViewerProps) => {
   const { t } = useTranslation();
-  const [isZoomed, setIsZoomed] = useState(false);
-  const [zoom, setZoom] = useState(1);
 
-  // States for Drag-to-Pan (Grab & Drag)
+  const [scale, setScale] = useState(MIN_SCALE);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const dragStart = useRef({ x: 0, y: 0 });
+  const mouseDownPos = useRef({ x: 0, y: 0 });
 
-  const zoomIn = useCallback(() => setIsZoomed(true), []);
-  const zoomOut = useCallback(() => {
-    setIsZoomed(false);
-    setPosition({ x: 0, y: 0 }); // Reset position when unzoomed
+  const zoomIn = useCallback(() => {
+    setScale(s => Math.min(s + SCALE_STEP, MAX_SCALE));
   }, []);
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "+" || e.key === "=") zoomIn();
-      if (e.key === "-") zoomOut();
-    },
-    [onClose, zoomIn, zoomOut]
-  );
+  const zoomOut = useCallback(() => {
+    setScale(s => {
+      const next = Math.max(s - SCALE_STEP, MIN_SCALE);
+      if (next <= MIN_SCALE) setPosition({ x: 0, y: 0 });
+      return next;
+    });
+  }, []);
 
-  useEffect(() => {
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  const resetView = useCallback(() => {
+    setScale(MIN_SCALE);
+    setPosition({ x: 0, y: 0 });
+  }, []);
 
+  const handleClose = useCallback((e?: React.MouseEvent) => {
+    if (e) {
+      const dx = e.clientX - mouseDownPos.current.x;
+      const dy = e.clientY - mouseDownPos.current.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 5) return;
+    }
+    resetView();
+    onClose();
+  }, [onClose, resetView]);
+
+  // Keyboard shortcuts
+  useMountEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+      else if (e.key === "+" || e.key === "=") zoomIn();
+      else if (e.key === "-") zoomOut();
+      else if (e.key === "0") resetView();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
+
+  // Scroll wheel zoom
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     if (e.deltaY < 0) zoomIn();
     else zoomOut();
   };
 
+  // --- Drag-to-pan handlers (on container, not just img) ---
+  const handleMouseDown = (e: React.MouseEvent) => {
+    mouseDownPos.current = { x: e.clientX, y: e.clientY };
+    if (scale <= MIN_SCALE) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || scale <= MIN_SCALE) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setPosition({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y });
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (isDragging) e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  // Utility handlers
   const handleSave = async () => {
     try {
       const res = await fetch(src);
@@ -136,39 +183,14 @@ const ImageViewer = ({
     toast({ title: t("imageViewer.viewDetails"), description: parts.join(" · ") || src });
   };
 
-  // Drag Handlers
-  const handleMouseDown = (e: React.MouseEvent<HTMLImageElement>) => {
-    e.preventDefault(); // Stop native ghost dragging
-    e.stopPropagation(); // SHIELD: Don't close viewer
-    if (!isZoomed) return;
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
-    if (!isDragging || !isZoomed) return;
-    e.preventDefault();
-    e.stopPropagation(); // SHIELD
-    setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
-  };
-
-  const handleMouseUp = (e: React.MouseEvent<HTMLImageElement>) => {
-    e.stopPropagation(); // SHIELD
-    setIsDragging(false);
-  };
-
-  // CLICK SHIELD: Absolute protection. Clicking image will NEVER close viewer.
-  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    e.stopPropagation(); // THIS IS THE ULTIMATE SHIELD!
-  };
-
+  const isZoomed = scale > MIN_SCALE;
   const btnClass = "p-2 rounded-md hover:bg-white/15 text-white/70 hover:text-white transition-colors disabled:opacity-40";
 
   return (
     <TooltipProvider delayDuration={300}>
       <div
         className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-sm flex items-center justify-center"
-        onClick={onClose} // Only closes when clicking the pure background
+        onClick={(e) => handleClose(e)}
         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
       >
         {/* Top bar */}
@@ -235,7 +257,7 @@ const ImageViewer = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className={btnClass} onClick={zoomIn}>
+                <button className={btnClass} onClick={zoomIn} disabled={scale >= MAX_SCALE}>
                   <ZoomIn className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
@@ -246,7 +268,7 @@ const ImageViewer = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className={btnClass} onClick={zoomOut}>
+                <button className={btnClass} onClick={zoomOut} disabled={scale <= MIN_SCALE}>
                   <ZoomOut className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
@@ -288,45 +310,56 @@ const ImageViewer = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className={btnClass} onClick={onClose}>
+                <button className={btnClass} onClick={() => handleClose()}>
                   <X className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={8} className="z-[10000] text-xs">
-                {t("actions.cancel", "Cancel")}
+                {t("actions.close", "Close")}
               </TooltipContent>
             </Tooltip>
           </div>
         </div>
 
-        {/* Image area: Drag Container */}
+        {/* Image area: drag container */}
         <div
           className="relative flex items-center justify-center w-full h-full overflow-hidden"
+          style={{ cursor: isZoomed ? (isDragging ? "grabbing" : "grab") : "zoom-in" }}
           onClick={(e) => {
-            // ONLY close if the background itself was clicked
-            if (e.target === e.currentTarget) onClose();
+            if (e.target === e.currentTarget) handleClose(e);
           }}
           onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
         >
           <img
             src={src}
             alt={alt || fileName || "image"}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onClick={handleImageClick} // CLICK SHIELD IS HERE
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isZoomed) zoomIn();
+            }}
             style={{
-              // Use direct translate and scale for smooth drag and zoom without flickering
-              transform: `translate(${position.x}px, ${position.y}px) scale(${isZoomed ? 1.5 : 1})`,
-              transition: isDragging ? 'none' : 'transform 0.2s ease-in-out',
-              // Dynamic Cursors (Hand 🖐️ and Fist ✊)
-              cursor: isZoomed ? (isDragging ? 'grabbing' : 'grab') : 'default'
+              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+              transition: isDragging ? "none" : "transform 0.2s ease-out",
+              pointerEvents: isDragging ? "none" : "auto",
+              cursor: isZoomed ? (isDragging ? "grabbing" : "grab") : "zoom-in",
             }}
             className="max-w-[90vw] max-h-[85vh] object-contain select-none"
             draggable={false}
           />
         </div>
+
+        {/* Zoom level badge */}
+        {isZoomed && (
+          <div
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-black/70 text-white/90 text-xs font-mono pointer-events-none"
+          >
+            {scale.toFixed(1)}x
+          </div>
+        )}
       </div>
     </TooltipProvider>
   );

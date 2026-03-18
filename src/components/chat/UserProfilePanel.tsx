@@ -188,19 +188,29 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
   const effectiveStatusText =
     p?.status_until && new Date(p.status_until) < new Date() ? null : (p?.status_text ?? null);
 
+  const profileThemeVars = {
+    "--profile-primary": p?.profile_primary_color ?? "hsl(var(--primary))",
+    "--profile-accent":  p?.profile_accent_color  ?? "hsl(var(--primary)/0.6)",
+  } as React.CSSProperties;
+
   return (
     <ProfileEffectWrapper
       effectUrl={p?.profile_effect_url}
       isPro={p?.is_pro}
-      className="w-[340px] border-s border-border/50 glass h-full flex flex-col"
+      className="relative w-[340px] border-s border-border/50 h-full flex flex-col overflow-hidden"
     >
-      <div className="flex-1 overflow-y-auto min-h-0">
+      {/* L1: Full-bleed gradient */}
+      <div className="absolute inset-0" style={{ ...profileThemeVars, background: "linear-gradient(135deg, var(--profile-primary), var(--profile-accent))" }} />
+      {/* L2: Dark wash */}
+      <div className="absolute inset-0 bg-black/60 z-[1]" />
+
+      <div className="relative z-[2] flex-1 overflow-y-auto min-h-0">
         {/* Banner area — relative wrapper for the three-dots button */}
         <div className="relative">
           {p.banner_url ? (
             <img src={p.banner_url} alt="" className="w-[340px] h-[120px] object-cover rounded-b-lg" />
           ) : (
-            <div className="w-[340px] h-[120px] bg-primary/20 rounded-b-lg" />
+            <div className="w-[340px] h-[120px] rounded-b-lg bg-white/5" />
           )}
 
           {/* Three-dots menu — only shown for other users */}
@@ -294,7 +304,7 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
         </div>
 
         {/* Profile card */}
-        <div className="mx-4 mt-3 p-3 rounded-lg bg-card/80 border border-border/50 space-y-3">
+        <div className="mx-4 mt-3 p-3 rounded-lg bg-white/10 border border-white/20 space-y-3">
           <div>
             <StyledDisplayName
               displayName={profile.display_name || profile.username || "User"}
@@ -302,7 +312,7 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
               effect={p?.name_effect}
               gradientStart={p?.name_gradient_start}
               gradientEnd={p?.name_gradient_end}
-              className="text-lg font-bold"
+              className="text-lg font-bold text-white"
               serverTag={
                 p?.active_server_tag
                   ? {
@@ -315,13 +325,13 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
                   : null
               }
             />
-            {profile.username && <p className="text-sm text-muted-foreground">@{profile.username}</p>}
+            {profile.username && <p className="text-sm text-white/70">@{profile.username}</p>}
           </div>
 
           {/* Status */}
           <div className="flex items-center gap-2">
             <StatusBadge status={status} size="sm" />
-            <span className="text-sm capitalize">
+            <span className="text-sm capitalize text-white/80">
               {t(`status.${statusLabel !== "offline" ? statusLabel : "invisible"}`)}
             </span>
           </div>
@@ -329,41 +339,41 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
           {/* About Me */}
           {p.about_me && (
             <>
-              <Separator />
+              <Separator className="bg-white/20" />
               <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">{t("profile.aboutMe")}</h4>
-                <p className="text-sm whitespace-pre-wrap">{p.about_me}</p>
+                <h4 className="text-xs font-semibold text-white/50 uppercase mb-1">{t("profile.aboutMe")}</h4>
+                <p className="text-sm text-white/90 whitespace-pre-wrap">{p.about_me}</p>
               </div>
             </>
           )}
 
-          <Separator />
+          <Separator className="bg-white/20" />
 
           {/* Member Since */}
           <div>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">{t("profile.memberSince")}</h4>
-            <p className="text-sm">{format(new Date(profile.created_at), "MMM d, yyyy")}</p>
+            <h4 className="text-xs font-semibold text-white/50 uppercase mb-1">{t("profile.memberSince")}</h4>
+            <p className="text-sm text-white/80">{format(new Date(profile.created_at), "MMM d, yyyy")}</p>
           </div>
 
           {/* Mutual Servers */}
           {!isSelf && (
             <>
-              <Separator />
+              <Separator className="bg-white/20" />
               <Collapsible open={serversOpen} onOpenChange={setServersOpen}>
-                <CollapsibleTrigger className="flex w-full items-center justify-between py-1 text-xs font-semibold text-muted-foreground uppercase cursor-pointer hover:text-foreground transition-colors">
+                <CollapsibleTrigger className="flex w-full items-center justify-between py-1 text-xs font-semibold text-white/50 uppercase cursor-pointer hover:text-white transition-colors">
                   <span>{t("profile.mutualServers", "Mutual Servers")} — {mutualServers.length}</span>
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${serversOpen ? "rotate-180" : ""}`} />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-1.5 pt-1.5">
                   {mutualServers.map((server) => (
-                    <div key={server.id} className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent/50 transition-colors">
+                    <div key={server.id} className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-white/10 transition-colors">
                       <Avatar className="h-6 w-6">
                         <AvatarImage src={server.icon_url || ""} />
                         <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
                           {server.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm truncate">{server.name}</span>
+                      <span className="text-sm truncate text-white/80">{server.name}</span>
                     </div>
                   ))}
                 </CollapsibleContent>
@@ -374,22 +384,22 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
           {/* Mutual Friends */}
           {!isSelf && (
             <>
-              <Separator />
+              <Separator className="bg-white/20" />
               <Collapsible open={friendsOpen} onOpenChange={setFriendsOpen}>
-                <CollapsibleTrigger className="flex w-full items-center justify-between py-1 text-xs font-semibold text-muted-foreground uppercase cursor-pointer hover:text-foreground transition-colors">
+                <CollapsibleTrigger className="flex w-full items-center justify-between py-1 text-xs font-semibold text-white/50 uppercase cursor-pointer hover:text-white transition-colors">
                   <span>{t("profile.mutualFriends", "Mutual Friends")} — {mutualFriends.length}</span>
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${friendsOpen ? "rotate-180" : ""}`} />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-1.5 pt-1.5">
                   {mutualFriends.map((friend) => (
-                    <div key={friend.user_id} className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent/50 transition-colors">
+                    <div key={friend.user_id} className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-white/10 transition-colors">
                       <Avatar className="h-6 w-6">
                         <AvatarImage src={friend.avatar_url || ""} />
                         <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
                           {(friend.display_name || friend.username || "?").charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm truncate">{friend.display_name || friend.username}</span>
+                      <span className="text-sm truncate text-white/80">{friend.display_name || friend.username}</span>
                     </div>
                   ))}
                 </CollapsibleContent>
@@ -401,10 +411,10 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
 
       {/* View Full Profile — pinned footer */}
       {targetUserId && (
-        <div className="shrink-0 px-4 py-3 border-t border-border/50">
+        <div className="relative z-[2] shrink-0 px-4 py-3 border-t border-white/20">
           <Button
             variant="ghost"
-            className="w-full text-sm"
+            className="w-full text-sm text-white/80 hover:text-white hover:bg-white/10"
             onClick={() => openProfile(targetUserId)}
           >
             {t("profile.viewFullProfile", "View Full Profile")}

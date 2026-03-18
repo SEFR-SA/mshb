@@ -47,6 +47,8 @@ interface Member {
     avatar_decoration_url?: string | null;
     profile_effect_url?: string | null;
     is_pro?: boolean;
+    profile_primary_color?: string | null;
+    profile_accent_color?: string | null;
   };
 }
 
@@ -92,7 +94,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       const userIds = (data as any[]).map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, status_text, status_until, created_at, name_font, name_effect, name_gradient_start, name_gradient_end, nameplate_url, avatar_decoration_url, profile_effect_url, is_pro, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
+        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, status_text, status_until, created_at, name_font, name_effect, name_gradient_start, name_gradient_end, nameplate_url, avatar_decoration_url, profile_effect_url, is_pro, profile_primary_color, profile_accent_color, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
         .in("user_id", userIds);
 
       const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
@@ -245,24 +247,37 @@ const ServerMemberList = ({ serverId }: Props) => {
                     const username = p?.username || "user";
                     const status = getUserStatus({ user_id: m.user_id, status: p?.status });
 
+                    const profileThemeVars = {
+                      "--profile-primary": (p as any)?.profile_primary_color ?? "hsl(var(--primary))",
+                      "--profile-accent":  (p as any)?.profile_accent_color  ?? "hsl(var(--primary)/0.6)",
+                    } as React.CSSProperties;
+
                     const profileCardContent = (
                       <ProfileEffectWrapper
                         effectUrl={(p as any)?.profile_effect_url}
                         isPro={p?.is_pro}
-                        className="bg-popover rounded-lg"
+                        className="rounded-lg"
                       >
-                        <div className="max-h-[700px] overflow-y-auto">
-                          {/* Banner */}
-                          <div
-                            className="h-[105px] w-full bg-primary/60"
-                            style={p?.banner_url ? { backgroundImage: `url(${p.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
-                          />
-                          {/* Avatar + Info */}
-                          <div className="px-4 pb-3">
+                        <div
+                          className="relative max-h-[700px] overflow-y-auto overflow-hidden rounded-lg"
+                          style={{ ...profileThemeVars, borderColor: "var(--profile-accent)", borderWidth: "2px", borderStyle: "solid" }}
+                        >
+                          {/* L1: Full-bleed gradient */}
+                          <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, var(--profile-primary), var(--profile-accent))" }} />
+                          {/* L2: Dark wash */}
+                          <div className="absolute inset-0 bg-black/60 z-[1]" />
+                          {/* Banner — z-[2] */}
+                          <div className="relative h-[105px] w-full z-[2]">
+                            {p?.banner_url && (
+                              <img src={p.banner_url} alt="" className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                          {/* Avatar + Info — z-[2] */}
+                          <div className="relative px-4 pb-3 z-[2]">
                             <div className="-mt-10 mb-2 flex items-end gap-2">
                               <div className="relative shrink-0">
                                 <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={80}>
-                                  <Avatar className="h-20 w-20 border-4 border-popover">
+                                  <Avatar className="h-20 w-20 border-4 border-black/30">
                                     <AvatarImage src={p?.avatar_url || ""} />
                                     <AvatarFallback className="bg-primary/20 text-primary text-xl">{name.charAt(0).toUpperCase()}</AvatarFallback>
                                   </Avatar>
@@ -280,9 +295,9 @@ const ServerMemberList = ({ serverId }: Props) => {
                               effect={p?.name_effect}
                               gradientStart={p?.name_gradient_start}
                               gradientEnd={p?.name_gradient_end}
-                              className="font-bold text-foreground text-base"
+                              className="font-bold text-white text-base"
                             />
-                            <div className="text-xs text-muted-foreground">@{username}</div>
+                            <div className="text-xs text-white/70">@{username}</div>
 
                             <div className="flex flex-wrap gap-1 mt-2">
                               <Badge className={`text-[10px] px-2 py-0.5 ${roleBadgeColors[m.role] || roleBadgeColors.member}`}>
@@ -305,24 +320,24 @@ const ServerMemberList = ({ serverId }: Props) => {
 
                             {p?.about_me && (
                               <>
-                                <Separator className="my-3" />
+                                <Separator className="my-3 bg-white/20" />
                                 <div>
-                                  <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">{t("profile.aboutMe")}</div>
-                                  <p className="text-sm text-foreground whitespace-pre-wrap break-words">{p.about_me}</p>
+                                  <div className="text-xs font-semibold uppercase text-white/50 mb-1">{t("profile.aboutMe")}</div>
+                                  <p className="text-sm text-white/90 whitespace-pre-wrap break-words">{p.about_me}</p>
                                 </div>
                               </>
                             )}
 
-                            <Separator className="my-3" />
+                            <Separator className="my-3 bg-white/20" />
 
                             <div className="space-y-1.5">
                               <div>
-                                <div className="text-xs font-semibold uppercase text-muted-foreground">{t("profile.memberSince")}</div>
-                                <div className="text-xs text-foreground">{p?.created_at ? format(new Date(p.created_at), "MMM d, yyyy") : "—"}</div>
+                                <div className="text-xs font-semibold uppercase text-white/50">{t("profile.memberSince")}</div>
+                                <div className="text-xs text-white/80">{p?.created_at ? format(new Date(p.created_at), "MMM d, yyyy") : "—"}</div>
                               </div>
                               <div>
-                                <div className="text-xs font-semibold uppercase text-muted-foreground">{t("profile.joinedServer")}</div>
-                                <div className="text-xs text-foreground">{m.joined_at ? format(new Date(m.joined_at), "MMM d, yyyy") : "—"}</div>
+                                <div className="text-xs font-semibold uppercase text-white/50">{t("profile.joinedServer")}</div>
+                                <div className="text-xs text-white/80">{m.joined_at ? format(new Date(m.joined_at), "MMM d, yyyy") : "—"}</div>
                               </div>
                             </div>
 

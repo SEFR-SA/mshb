@@ -277,111 +277,127 @@ const FullProfileModal = () => {
     p?.status_until && new Date(p.status_until) < new Date() ? null : p?.status_text ?? null;
   const initial = (p?.display_name || p?.username || "?").charAt(0).toUpperCase();
 
+  const profileThemeVars = {
+    "--profile-primary": p?.profile_primary_color ?? "hsl(var(--primary))",
+    "--profile-accent":  p?.profile_accent_color  ?? "hsl(var(--primary)/0.6)",
+  } as React.CSSProperties;
+
   // ── Compact content (mobile / fallback) ──────────────────────────────────
 
   const compactContent = (
-    <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={p?.is_pro} className="flex flex-col">
-      <div
-        className="h-24 relative"
-        style={{
-          background: p?.banner_url
-            ? `url(${p.banner_url}) center/cover`
-            : "hsl(var(--primary) / 0.2)",
-        }}
-      />
-      <div className="px-4 -mt-10 relative z-10 flex items-end gap-2">
-        <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={80} className="shrink-0">
-          <Avatar className="h-20 w-20 border-4 border-popover">
-            <AvatarImage src={p?.avatar_url || ""} />
-            <AvatarFallback className="bg-primary/20 text-primary text-2xl">{initial}</AvatarFallback>
-          </Avatar>
-        </AvatarDecorationWrapper>
-        <StatusBubble
-          statusText={effectiveStatusText}
-          isEditable={isSelf}
-          onClick={isSelf ? () => setStatusModalOpen(true) : undefined}
-        />
-      </div>
-      <div className="px-4 pt-2 pb-4 space-y-4">
-        <div>
-          <StyledDisplayName
-            displayName={p?.display_name || p?.username || "User"}
-            fontStyle={p?.name_font}
-            effect={p?.name_effect}
-            gradientStart={p?.name_gradient_start}
-            gradientEnd={p?.name_gradient_end}
-            className="text-xl font-bold"
-          />
-          {p?.username && <p className="text-sm text-muted-foreground">@{p.username}</p>}
+    <div
+      className="relative overflow-hidden rounded-xl"
+      style={{ ...profileThemeVars, borderColor: "var(--profile-accent)", borderWidth: "2px", borderStyle: "solid" }}
+    >
+      {/* L1: Full-bleed gradient */}
+      <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, var(--profile-primary), var(--profile-accent))" }} />
+      {/* L2: Dark wash */}
+      <div className="absolute inset-0 bg-black/60 z-[1]" />
+      {/* L3: Content */}
+      <ProfileEffectWrapper effectUrl={p?.profile_effect_url} isPro={p?.is_pro} className="relative z-[2] flex flex-col">
+        <div className="h-24 relative">
+          {p?.banner_url && (
+            <img src={p.banner_url} alt="" className="h-24 w-full object-cover" />
+          )}
         </div>
-        {!isSelf && (
-          <div className="flex gap-2">
-            <Button onClick={handleMessage} className="flex-1 gap-2">
-              <MessageSquare className="h-4 w-4" />
-              {t("actions.message")}
-            </Button>
-            <Button variant="secondary" size="icon" onClick={handleCall}>
-              <Phone className="h-4 w-4" />
-            </Button>
+        <div className="px-4 -mt-10 relative z-10 flex items-end gap-2">
+          <AvatarDecorationWrapper decorationUrl={p?.avatar_decoration_url} isPro={p?.is_pro} size={80} className="shrink-0">
+            <Avatar className="h-20 w-20 border-4 border-popover">
+              <AvatarImage src={p?.avatar_url || ""} />
+              <AvatarFallback className="bg-primary/20 text-primary text-2xl">{initial}</AvatarFallback>
+            </Avatar>
+          </AvatarDecorationWrapper>
+          <StatusBubble
+            statusText={effectiveStatusText}
+            isEditable={isSelf}
+            onClick={isSelf ? () => setStatusModalOpen(true) : undefined}
+          />
+        </div>
+        <div className="px-4 pt-2 pb-4 space-y-4">
+          <div>
+            <StyledDisplayName
+              displayName={p?.display_name || p?.username || "User"}
+              fontStyle={p?.name_font}
+              effect={p?.name_effect}
+              gradientStart={p?.name_gradient_start}
+              gradientEnd={p?.name_gradient_end}
+              className="text-xl font-bold text-white"
+            />
+            {p?.username && <p className="text-sm text-white/70">@{p.username}</p>}
           </div>
+          {!isSelf && (
+            <div className="flex gap-2">
+              <Button onClick={handleMessage} className="flex-1 gap-2">
+                <MessageSquare className="h-4 w-4" />
+                {t("actions.message")}
+              </Button>
+              <Button variant="secondary" size="icon" onClick={handleCall}>
+                <Phone className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          {p?.about_me && (
+            <Section label={t("profile.aboutMe", "About Me")}>
+              <p className="text-sm text-white/90">{p.about_me}</p>
+            </Section>
+          )}
+          {p?.created_at && (
+            <Section label={t("profile.memberSince", "Member Since")}>
+              <p className="text-sm text-white/70">{format(new Date(p.created_at), "MMMM yyyy")}</p>
+            </Section>
+          )}
+        </div>
+        {statusModalOpen && isSelf && (
+          <SetStatusModal
+            onClose={() => setStatusModalOpen(false)}
+            onSaved={async () => { await fetchProfile(); setStatusModalOpen(false); }}
+          />
         )}
-        {p?.about_me && (
-          <Section label={t("profile.aboutMe", "About Me")}>
-            <p className="text-sm">{p.about_me}</p>
-          </Section>
-        )}
-        {p?.created_at && (
-          <Section label={t("profile.memberSince", "Member Since")}>
-            <p className="text-sm text-muted-foreground">{format(new Date(p.created_at), "MMMM yyyy")}</p>
-          </Section>
-        )}
-      </div>
-      {statusModalOpen && isSelf && (
-        <SetStatusModal
-          onClose={() => setStatusModalOpen(false)}
-          onSaved={async () => { await fetchProfile(); setStatusModalOpen(false); }}
-        />
-      )}
-    </ProfileEffectWrapper>
+      </ProfileEffectWrapper>
+    </div>
   );
 
   // ── Desktop two-column content ────────────────────────────────────────────
 
   const desktopContent = (
-    <div className="flex w-full h-full">
+    <div className="flex w-full h-full" style={profileThemeVars}>
       {/* ── Left column — profile card ──────────────────────────────────── */}
       <div className="p-6 shrink-0 h-full">
         <ProfileEffectWrapper
           effectUrl={p?.profile_effect_url}
           isPro={p?.is_pro}
-          className="w-[400px] h-full rounded-xl overflow-hidden bg-card relative"
+          className="w-[400px] h-full rounded-xl overflow-hidden relative"
         >
-          {/* Banner */}
-          <div
-            className="absolute top-0 left-0 w-full h-[140px]"
-            style={{
-              background: p?.banner_url
-                ? `url(${p.banner_url}) center/cover`
-                : "hsl(var(--primary) / 0.25)",
-            }}
-          />
+          {/* L1: Full-bleed gradient */}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, var(--profile-primary), var(--profile-accent))" }} />
+          {/* L2: Dark wash */}
+          <div className="absolute inset-0 bg-black/60 z-[1]" />
 
-          {/* Avatar — overlaps banner */}
-          <div className="absolute left-4" style={{ top: 76 }}>
+          {/* Banner — z-[2] */}
+          <div
+            className="absolute top-0 left-0 w-full h-[140px] z-[2]"
+          >
+            {p?.banner_url && (
+              <img src={p.banner_url} alt="" className="w-full h-full object-cover" />
+            )}
+          </div>
+
+          {/* Avatar — overlaps banner, z-[2] */}
+          <div className="absolute left-4 z-[2]" style={{ top: 76 }}>
             <AvatarDecorationWrapper
               decorationUrl={p?.avatar_decoration_url}
               isPro={p?.is_pro}
               size={120}
             >
-              <Avatar className="h-[120px] w-[120px] border-4 border-card">
+              <Avatar className="h-[120px] w-[120px] border-4 border-black/30">
                 <AvatarImage src={p?.avatar_url || ""} />
                 <AvatarFallback className="bg-primary/20 text-primary text-4xl">{initial}</AvatarFallback>
               </Avatar>
             </AvatarDecorationWrapper>
           </div>
 
-          {/* Scrollable body — starts below avatar */}
-          <div className="absolute inset-0 overflow-y-auto" style={{ top: 208 }}>
+          {/* Scrollable body — starts below avatar, z-[2] */}
+          <div className="absolute inset-0 overflow-y-auto z-[2]" style={{ top: 208 }}>
             <div className="px-4 pb-6 space-y-4 pt-3">
               {/* Status bubble */}
               <StatusBubble
@@ -398,10 +414,10 @@ const FullProfileModal = () => {
                   effect={p?.name_effect}
                   gradientStart={p?.name_gradient_start}
                   gradientEnd={p?.name_gradient_end}
-                  className="text-xl font-bold"
+                  className="text-xl font-bold text-white"
                 />
                 {p?.username && (
-                  <p className="text-sm text-muted-foreground">@{p.username}</p>
+                  <p className="text-sm text-white/70">@{p.username}</p>
                 )}
               </div>
 
@@ -421,14 +437,14 @@ const FullProfileModal = () => {
               {/* About Me */}
               {p?.about_me && (
                 <Section label={t("profile.aboutMe", "About Me")}>
-                  <p className="text-sm leading-relaxed">{p.about_me}</p>
+                  <p className="text-sm leading-relaxed text-white/90">{p.about_me}</p>
                 </Section>
               )}
 
               {/* Member Since */}
               {p?.created_at && (
                 <Section label={t("profile.memberSince", "Member Since")}>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-white/70">
                     {format(new Date(p.created_at), "MMMM yyyy")}
                   </p>
                 </Section>
@@ -443,7 +459,7 @@ const FullProfileModal = () => {
                     onBlur={saveNote}
                     placeholder={t("profile.notesPlaceholder", "Add a note about this user…")}
                     rows={3}
-                    className="w-full bg-muted/40 border border-border/50 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-primary/50 transition-colors placeholder:text-muted-foreground/50"
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-white/40 transition-colors placeholder:text-white/40"
                   />
                 </Section>
               )}
