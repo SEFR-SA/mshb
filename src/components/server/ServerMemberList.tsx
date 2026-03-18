@@ -223,17 +223,12 @@ const ServerMemberList = ({ serverId }: Props) => {
   }).length;
 
   return (
-<<<<<<< HEAD
+    
     <div className="w-[265px] flex flex-col bg-sidebar-background border-s border-sidebar-border shrink-0 overflow-hidden">
       <div className="p-3 border-b border-sidebar-border">
         <h3 className="text-xs font-semibold uppercase text-muted-foreground">{t("servers.members")} — {members.length} · {t("servers.online")} — {onlineCount}</h3>
-=======
-    <div className="w-[264px] flex flex-col bg-sidebar-background border-s border-sidebar-border shrink-0 overflow-hidden">
-      <div className="p-3 border-b border-sidebar-border">
-        <h3 className="text-xs font-semibold uppercase text-muted-foreground">
-          {t("servers.members")} — {members.length} · {t("servers.online")} — {members.filter((m) => { const s = getUserStatus({ user_id: m.user_id, status: m.profile?.status }); return s !== "offline" && s !== "invisible"; }).length}
-        </h3>
->>>>>>> 5cf0fc95d33cb47b3c29661efaf080a7d2be337f
+    
+
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-4">
         {loading ? (
