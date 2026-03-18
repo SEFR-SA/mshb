@@ -218,7 +218,7 @@ const ServerMemberList = ({ serverId }: Props) => {
   const currentUserRole = members.find((m) => m.user_id === user?.id)?.role ?? null;
 
   return (
-    <div className="w-[240px] flex flex-col bg-sidebar-background border-s border-sidebar-border shrink-0 overflow-hidden">
+    <div className="w-[264px] flex flex-col bg-sidebar-background border-s border-sidebar-border shrink-0 overflow-hidden">
       <div className="p-3 border-b border-sidebar-border">
         <h3 className="text-xs font-semibold uppercase text-muted-foreground">{t("servers.members")} — {members.length}</h3>
       </div>
