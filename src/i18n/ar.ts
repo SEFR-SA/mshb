@@ -328,6 +328,7 @@ export default {
     copiedInvite: "تم نسخ رابط الدعوة!",
     copyFailed: "فشل نسخ الرابط إلى الحافظة.",
     members: "الأعضاء",
+    online: "متصل",
     leave: "مغادرة السيرفر",
     owner: "المالك",
     admin: "مشرف",

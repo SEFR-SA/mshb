@@ -117,7 +117,7 @@ const ActiveNowPanel: React.FC<ActiveNowPanelProps> = ({ friendUserIds }) => {
   const initials = (name: string) => name.charAt(0).toUpperCase();
 
   return (
-    <div className="flex flex-col h-full p-4">
+    <div className="flex flex-col h-full p-4 w-[390px]">
       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
         {t("friends.activeNow")}
       </h3>

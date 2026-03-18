@@ -68,7 +68,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
   const currentStatusOption = STATUS_OPTIONS.find((s) => s.value === currentStatus) || STATUS_OPTIONS[0];
 
   return (
-    <div className="w-[300px] overflow-visible rounded-t-xl">
+    <div className="w-[308px] h-[391px] overflow-visible rounded-t-xl">
       {/* Banner */}
       <div
         className="h-24 w-full relative rounded-t-xl"

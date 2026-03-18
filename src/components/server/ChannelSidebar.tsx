@@ -3,13 +3,14 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Copy, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone, BookOpen, Music, Bell, BellOff, LifeBuoy, Ticket } from "lucide-react";
+import { Hash, Volume2, Plus, Link, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone, BookOpen, Music, Bell, BellOff, LifeBuoy, Ticket } from "lucide-react";
 import VoiceUserContextMenu from "./VoiceUserContextMenu";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
 import { ChannelListSkeleton } from "@/components/skeletons/SkeletonLoaders";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -93,7 +94,7 @@ interface ServerMember {
 interface Props {
   serverId: string;
   activeChannelId?: string;
-  onChannelSelect?: (channel: { id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean }) => void;
+  onChannelSelect?: (channel: { id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean; description?: string | null }) => void;
   onVoiceChannelSelect?: (channel: { id: string; name: string }) => void;
   activeVoiceChannelId?: string;
 }
@@ -227,6 +228,16 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     window.addEventListener("open-go-live", handler);
     return () => window.removeEventListener("open-go-live", handler);
   }, []);
+
+  // Listen for "open-edit-channel" event from ChatWelcome banner button
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ch = channels.find(c => c.id === (e as CustomEvent).detail.channelId);
+      if (ch) openEditDialog(ch);
+    };
+    window.addEventListener("open-edit-channel", handler);
+    return () => window.removeEventListener("open-edit-channel", handler);
+  }, [channels]);
   // speakingUsers state removed — now driven by p.is_speaking from DB
 
   // Edit/Delete/Manage members state
@@ -234,6 +245,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [editChannel, setEditChannel] = useState<Channel | null>(null);
   const [editName, setEditName] = useState("");
   const [editIsPrivate, setEditIsPrivate] = useState(false);
+  const [editDescription, setEditDescription] = useState("");
   const [editMembers, setEditMembers] = useState<string[]>([]);
   const [manageMembersOpen, setManageMembersOpen] = useState(false);
   const [manageMembersChannel, setManageMembersChannel] = useState<Channel | null>(null);
@@ -541,6 +553,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setEditChannel(ch);
     setEditName(ch.name);
     setEditIsPrivate(ch.is_private);
+    setEditDescription((ch as any).description ?? "");
     setEditMembers([]);
     if (ch.is_private) {
       await loadChannelMembers(ch.id, setEditMembers);
@@ -552,7 +565,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const handleEditChannel = async () => {
     if (!editChannel || !editName.trim()) return;
     const name = editName.trim().toLowerCase().replace(/\s+/g, "-");
-    await supabase.from("channels" as any).update({ name, is_private: editIsPrivate } as any).eq("id", editChannel.id);
+    await supabase.from("channels" as any).update({ name, is_private: editIsPrivate, description: editDescription || null } as any).eq("id", editChannel.id);
 
     if (!editIsPrivate && editChannel.is_private) {
       // Switched from private to public — remove all channel_members
@@ -561,6 +574,19 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
       // Sync members
       await syncChannelMembers(editChannel.id, editMembers);
     }
+
+    // Immediately update local state so the edit dialog and header reflect the change
+    const updatedDescription = editDescription || null;
+    setChannels(prev =>
+      prev.map(ch =>
+        ch.id === editChannel.id
+          ? { ...ch, name, is_private: editIsPrivate, description: updatedDescription } as any
+          : ch
+      )
+    );
+    window.dispatchEvent(new CustomEvent("channel-description-updated", {
+      detail: { channelId: editChannel.id, description: updatedDescription },
+    }));
 
     toast({ title: t("channels.updated") });
     setEditOpen(false);
@@ -758,7 +784,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
   return (
     <>
-      <div className="w-[240px] max-md:w-full max-md:max-w-full h-full flex flex-col border-e border-sidebar-border shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
+      <div className="w-[303px] max-md:w-full max-md:max-w-full h-full flex flex-col border-e border-sidebar-border shrink-0 max-md:shrink max-md:min-w-0 overflow-hidden">
         {server?.banner_url && (server.boost_level ?? 0) >= 1 && (
           <img
             src={server.banner_url}
@@ -781,17 +807,12 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
           </div>
           <div className="flex gap-1">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setInviteModalOpen(true)} title={t("servers.copyInvite")}>
-              <Copy className="h-3.5 w-3.5" />
+              <Link className="h-3.5 w-3.5" />
             </Button>
             {isAdmin && (
-              <>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setUseCustomCategory(true); setCustomCategory(""); setNewCategory(""); setCreateOpen(true); }} title="Create Section">
-                  <FolderPlus className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)} title={t("servers.settings")}>
-                  <Settings className="h-3.5 w-3.5" />
-                </Button>
-              </>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)} title={t("servers.settings")}>
+                <Settings className="h-3.5 w-3.5" />
+              </Button>
             )}
           </div>
         </div>
@@ -1035,7 +1056,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                           >
                             <NavLink
                               to={`/server/${serverId}/channel/${ch.id}`}
-                              onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private, is_announcement: ch.is_announcement, is_rules: ch.is_rules })}
+                              onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private, is_announcement: ch.is_announcement, is_rules: ch.is_rules, description: (ch as any).description ?? null })}
                               className={({ isActive }) =>
                                 `flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${isActive || ch.id === activeChannelId
                                   ? "bg-primary/10 border-s-2 border-primary text-primary font-bold"
@@ -1249,6 +1270,13 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleEditChannel()}
+            />
+            <Textarea
+              placeholder="Channel description (optional)"
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              rows={3}
+              className="resize-none"
             />
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">

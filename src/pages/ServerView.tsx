@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMountEffect } from "@/hooks/useMountEffect";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTranslation } from "react-i18next";
@@ -25,11 +26,38 @@ const ServerView = () => {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
   const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStreams, remoteCameraStream, isWatchingStream, setIsWatchingStream } = useVoiceChannel();
-  const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean } | null>(null);
+  const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean; description?: string | null } | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [showMembers, setShowMembers] = useState(!isMobile);
   const [pendingVoiceChannel, setPendingVoiceChannel] = useState<{ id: string; name: string } | null>(null);
   const [switchDialogOpen, setSwitchDialogOpen] = useState(false);
+
+  // Fetch user's server role for canEdit check
+  useMountEffect(() => {
+    if (!user || !serverId) return;
+    supabase
+      .from("server_members" as any)
+      .select("role")
+      .eq("server_id", serverId)
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setCanEdit(data?.role === "owner" || data?.role === "admin");
+      });
+  });
+
+  // Immediately update activeChannel.description when the sidebar edit dialog saves
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { channelId: updatedId, description } = (e as CustomEvent).detail;
+      setActiveChannel(prev =>
+        prev?.id === updatedId ? { ...prev, description } : prev
+      );
+    };
+    window.addEventListener("channel-description-updated", handler);
+    return () => window.removeEventListener("channel-description-updated", handler);
+  }, []);
 
   // Check access for private channels
   useEffect(() => {
@@ -49,7 +77,7 @@ const ServerView = () => {
   useEffect(() => {
     if (!serverId) return;
     if (channelId) {
-      supabase.from("channels" as any).select("id, name, type, is_private, is_announcement, is_rules").eq("id", channelId).maybeSingle()
+      supabase.from("channels" as any).select("id, name, type, is_private, is_announcement, is_rules, description").eq("id", channelId).maybeSingle()
         .then(({ data }) => {
           if (data) {
             setActiveChannel(data as any);
@@ -75,7 +103,7 @@ const ServerView = () => {
     const ensureChannelExists = async () => {
       const { data } = await supabase
         .from("channels" as any)
-        .select("id, name, type, is_private, is_announcement, is_rules")
+        .select("id, name, type, is_private, is_announcement, is_rules, description")
         .eq("id", channelId)
         .maybeSingle();
 
@@ -173,7 +201,7 @@ const ServerView = () => {
     if (activeChannel.type === "support") {
       return <SupportChannelView serverId={serverId} channelId={activeChannel.id} channelName={activeChannel.name} />;
     }
-    return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} isPrivate={activeChannel.is_private} hasAccess={hasAccess} serverId={serverId} isAnnouncement={activeChannel.is_announcement} isRules={activeChannel.is_rules} channelType={activeChannel.type} />;
+    return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} isPrivate={activeChannel.is_private} hasAccess={hasAccess} serverId={serverId} isAnnouncement={activeChannel.is_announcement} isRules={activeChannel.is_rules} channelType={activeChannel.type} channelDescription={activeChannel.description ?? null} canEdit={canEdit} />;
   };
 
   const switchDialog = (

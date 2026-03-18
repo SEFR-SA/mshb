@@ -69,7 +69,7 @@ const HomeView = () => {
         <Outlet />
       </div>
       {isFriendsView && (
-        <div className="w-[280px] border-s border-border/50 shrink-0">
+        <div className="w-[390px] border-s border-border/50 shrink-0">
           <ActiveNowPanel friendUserIds={friendUserIds} />
         </div>
       )}

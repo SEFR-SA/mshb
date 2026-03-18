@@ -15,7 +15,9 @@ import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, C
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import MarkdownToolbar from "@/components/chat/MarkdownToolbar";
+import ChatWelcome from "@/components/server/ChatWelcome";
 import { toast } from "@/hooks/use-toast";
 import { uploadChatFile } from "@/lib/uploadChatFile";
 import FileAttachmentButton from "@/components/chat/FileAttachmentButton";
@@ -56,6 +58,8 @@ interface Props {
   isAnnouncement?: boolean;
   isRules?: boolean;
   channelType?: string;
+  channelDescription?: string | null;
+  canEdit?: boolean;
 }
 
 const renderMessageContent = (
@@ -394,7 +398,7 @@ const MessageItem = React.memo(({
 
 // ─── ServerChannelChat ───────────────────────────────────────────────────────
 
-const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement, isRules, channelType }: Props) => {
+const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement, isRules, channelType, channelDescription, canEdit }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { serverId: serverIdParam } = useParams<{ serverId: string }>();
@@ -428,6 +432,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const [deletingTicket, setDeletingTicket] = useState(false);
   const [reopeningTicket, setReopeningTicket] = useState(false);
   const [generatingTranscript, setGeneratingTranscript] = useState(false);
+  const [topicOpen, setTopicOpen] = useState(false);
 
   // Infinite scrolling messages
   const {
@@ -957,18 +962,48 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
       )}
 
       <header className="flex items-center gap-2 p-3 glass border-b border-border/50">
-        {channelType === "ticket" ? <Ticket className="h-5 w-5 text-muted-foreground" /> : isPrivate ? <Lock className="h-5 w-5 text-muted-foreground" /> : isRules ? <BookOpen className="h-5 w-5 text-muted-foreground" /> : isAnnouncement ? <Megaphone className="h-5 w-5 text-muted-foreground" /> : <Hash className="h-5 w-5 text-muted-foreground" />}
-        <h2 className="font-semibold">{channelName}</h2>
-        {isAnnouncement && <span className="ms-1 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("channels.announcementBadge")}</span>}
-        {isRules && <span className="ms-1 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("channels.rulesBadge")}</span>}
+        {/* Left: channel icon + name + badges (all shrink-0) */}
+        {channelType === "ticket" ? <Ticket className="h-5 w-5 shrink-0 text-muted-foreground" /> : isPrivate ? <Lock className="h-5 w-5 shrink-0 text-muted-foreground" /> : isRules ? <BookOpen className="h-5 w-5 shrink-0 text-muted-foreground" /> : isAnnouncement ? <Megaphone className="h-5 w-5 shrink-0 text-muted-foreground" /> : <Hash className="h-5 w-5 shrink-0 text-muted-foreground" />}
+        <h2 className="font-semibold shrink-0">{channelName}</h2>
+        {isAnnouncement && <span className="shrink-0 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("channels.announcementBadge")}</span>}
+        {isRules && <span className="shrink-0 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("channels.rulesBadge")}</span>}
         {channelType === "ticket" && ticketInfo && (
-          <span className={`ms-1 text-xs font-medium px-1.5 py-0.5 rounded ${ticketInfo.status === "open" ? "bg-green-500/20 text-green-500" : "bg-muted text-muted-foreground"}`}>
+          <span className={`shrink-0 text-xs font-medium px-1.5 py-0.5 rounded ${ticketInfo.status === "open" ? "bg-green-500/20 text-green-500" : "bg-muted text-muted-foreground"}`}>
             {ticketInfo.status === "open" ? t("tickets.statusOpen") : t("tickets.statusClosed")}
           </span>
         )}
-        <div className="ms-auto">
-          <PinnedMessagesDrawer channelId={channelId} />
-        </div>
+
+        {/* Middle: description fills all remaining space and truncates */}
+        {channelDescription ? (
+          <div className="flex-1 min-w-0 max-w-[1741px] flex items-center">
+            <div className="w-px h-5 bg-border/60 mx-1 shrink-0" />
+            <button
+              onClick={() => setTopicOpen(true)}
+              className="min-w-0 truncate text-sm text-muted-foreground hover:text-foreground cursor-pointer transition-colors text-start"
+            >
+              {channelDescription}
+            </button>
+          </div>
+        ) : (
+          <div className="flex-1" />
+        )}
+
+        {/* Topic Modal (portal — does not affect layout) */}
+        <Dialog open={topicOpen} onOpenChange={setTopicOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Channel Topic</DialogTitle>
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <Hash className="h-3.5 w-3.5" />
+                {channelName}
+              </p>
+            </DialogHeader>
+            <p className="text-sm leading-relaxed">{channelDescription}</p>
+          </DialogContent>
+        </Dialog>
+
+        {/* Right: pin icon */}
+        <PinnedMessagesDrawer channelId={channelId} />
       </header>
 
       {/* Ticket Controls Card */}
@@ -1011,6 +1046,15 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
           <div className="animate-fade-in">
             {/* Top sentinel for infinite scroll */}
             <div ref={topSentinelRef} className="h-1" />
+
+            {/* Welcome banner */}
+            <ChatWelcome
+              channelName={channelName}
+              description={channelDescription}
+              canEdit={!!canEdit}
+              onEdit={() => window.dispatchEvent(new CustomEvent("open-edit-channel", { detail: { channelId } }))}
+            />
+
             {isFetchingNextPage && (
               <div className="flex justify-center py-2">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -1125,7 +1169,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                 <Button variant="ghost" size="sm" onClick={() => setSelectedFile(null)} className="h-6 text-xs">{t("actions.cancel")}</Button>
               </div>
             )}
-            <div className="relative theme-input border border-border/40 rounded-xl flex items-start gap-2 px-3 py-2.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+            <div className="relative theme-input border border-border/40 rounded-xl flex items-center gap-2 px-3 focus-within:ring-1 focus-within:ring-ring h-[58px]">
               {mentionOpen && serverId && (
                 <MentionPopup
                   serverId={serverId}
@@ -1162,7 +1206,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
                 }}
                 placeholder={`${t("chat.placeholder")} #${channelName}`}
-                className="flex-1"
+                className="flex-1 min-h-0"
                 maxLength={5000}
               />
               <Button size="icon" onClick={sendMessage} disabled={(!newMsg.trim() && !selectedFile) || sending}>
