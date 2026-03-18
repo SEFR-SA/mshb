@@ -41,10 +41,18 @@ const ImageViewer = ({
 }: ImageViewerProps) => {
   const { t } = useTranslation();
   const [isZoomed, setIsZoomed] = useState(false);
-  const [zoomOrigin, setZoomOrigin] = useState("center");
+  const [zoom, setZoom] = useState(1);
+
+  // States for Drag-to-Pan (Grab & Drag)
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const zoomIn = useCallback(() => setIsZoomed(true), []);
-  const zoomOut = useCallback(() => setIsZoomed(false), []);
+  const zoomOut = useCallback(() => {
+    setIsZoomed(false);
+    setPosition({ x: 0, y: 0 }); // Reset position when unzoomed
+  }, []);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -59,20 +67,6 @@ const ImageViewer = ({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
-    if (!isZoomed) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 100;
-      const y = ((e.clientY - rect.top) / rect.height) * 100;
-      setZoomOrigin(`${x}% ${y}%`);
-    }
-  };
-
-  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    e.stopPropagation();
-    setIsZoomed(!isZoomed);
-  };
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -101,31 +95,38 @@ const ImageViewer = ({
     try {
       const res = await fetch(src);
       const blob = await res.blob();
-      const pngBlob =
-        blob.type === "image/png"
-          ? blob
-          : await new Promise<Blob>((resolve) => {
-              const img = new Image();
-              img.crossOrigin = "anonymous";
-              img.onload = () => {
-                const canvas = document.createElement("canvas");
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                canvas.getContext("2d")!.drawImage(img, 0, 0);
-                canvas.toBlob((b) => resolve(b!), "image/png");
-              };
-              img.src = URL.createObjectURL(blob);
-            });
+      let pngBlob = blob;
+
+      if (blob.type !== "image/png") {
+        pngBlob = await new Promise<Blob>((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            canvas.getContext("2d")?.drawImage(img, 0, 0);
+            canvas.toBlob((b) => {
+              if (b) resolve(b);
+              else reject(new Error("Conversion failed"));
+            }, "image/png");
+          };
+          img.onerror = () => reject(new Error("Image load failed"));
+          img.src = URL.createObjectURL(blob);
+        });
+      }
+
       await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob })]);
-      toast({ title: t("imageViewer.copiedToClipboard") });
-    } catch {
+      toast({ title: t("imageViewer.copiedToClipboard", "Copied to clipboard") });
+    } catch (err) {
+      console.error(err);
       toast({ title: t("common.error"), variant: "destructive" });
     }
   };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(src);
-    toast({ title: t("imageViewer.copiedToClipboard") });
+    toast({ title: t("imageViewer.copiedToClipboard", "Copied to clipboard") });
   };
 
   const handleImageDetails = () => {
@@ -135,13 +136,39 @@ const ImageViewer = ({
     toast({ title: t("imageViewer.viewDetails"), description: parts.join(" · ") || src });
   };
 
-  const btnClass =
-    "p-2 rounded-md hover:bg-white/15 text-white/70 hover:text-white transition-colors disabled:opacity-40";
+  // Drag Handlers
+  const handleMouseDown = (e: React.MouseEvent<HTMLImageElement>) => {
+    e.preventDefault(); // Stop native ghost dragging
+    e.stopPropagation(); // SHIELD: Don't close viewer
+    if (!isZoomed) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (!isDragging || !isZoomed) return;
+    e.preventDefault();
+    e.stopPropagation(); // SHIELD
+    setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+  };
+
+  const handleMouseUp = (e: React.MouseEvent<HTMLImageElement>) => {
+    e.stopPropagation(); // SHIELD
+    setIsDragging(false);
+  };
+
+  // CLICK SHIELD: Absolute protection. Clicking image will NEVER close viewer.
+  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
+    e.stopPropagation(); // THIS IS THE ULTIMATE SHIELD!
+  };
+
+  const btnClass = "p-2 rounded-md hover:bg-white/15 text-white/70 hover:text-white transition-colors disabled:opacity-40";
 
   return (
     <TooltipProvider delayDuration={300}>
       <div
         className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-sm flex items-center justify-center"
+        onClick={onClose} // Only closes when clicking the pure background
         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
       >
         {/* Top bar */}
@@ -165,7 +192,7 @@ const ImageViewer = ({
               </>
             )}
             {timestamp && (
-              <span className="text-xs text-zinc-400 shrink-0">{timestamp}</span>
+              <span className="text-xs text-white/70 shrink-0">{timestamp}</span>
             )}
           </div>
 
@@ -173,10 +200,7 @@ const ImageViewer = ({
           <div className="flex items-center gap-0.5">
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  className={btnClass}
-                  onClick={() => window.open(src, "_blank")}
-                >
+                <button className={btnClass} onClick={() => window.open(src, "_blank")}>
                   <ExternalLink className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
@@ -192,7 +216,7 @@ const ImageViewer = ({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={8} className="z-[10000] text-xs">
-                {t("imageViewer.save")}
+                {t("imageViewer.save", "Save")}
               </TooltipContent>
             </Tooltip>
 
@@ -204,7 +228,7 @@ const ImageViewer = ({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" sideOffset={8} className="z-[10000] text-xs">
-                  {t("imageViewer.forward")}
+                  {t("imageViewer.forward", "Forward")}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -216,7 +240,7 @@ const ImageViewer = ({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={8} className="z-[10000] text-xs">
-                {t("imageViewer.zoomIn")}
+                {t("imageViewer.zoomIn", "Zoom In")}
               </TooltipContent>
             </Tooltip>
 
@@ -227,7 +251,7 @@ const ImageViewer = ({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={8} className="z-[10000] text-xs">
-                {t("imageViewer.zoomOut")}
+                {t("imageViewer.zoomOut", "Zoom Out")}
               </TooltipContent>
             </Tooltip>
 
@@ -245,17 +269,17 @@ const ImageViewer = ({
                 </TooltipContent>
               </Tooltip>
               <DropdownMenuContent side="bottom" align="end" className="z-[10000] min-w-[180px]">
-                <DropdownMenuItem onClick={handleCopyImage}>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCopyImage(); }}>
                   <Copy className="h-4 w-4 mr-2" />
-                  {t("imageViewer.copyImage")}
+                  {t("imageViewer.copyImage", "Copy Image")}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleCopyLink}>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCopyLink(); }}>
                   <Link className="h-4 w-4 mr-2" />
-                  {t("imageViewer.copyLink")}
+                  {t("imageViewer.copyLink", "Copy Link")}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleImageDetails}>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleImageDetails(); }}>
                   <Info className="h-4 w-4 mr-2" />
-                  {t("imageViewer.viewDetails")}
+                  {t("imageViewer.viewDetails", "View Details")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -269,16 +293,17 @@ const ImageViewer = ({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={8} className="z-[10000] text-xs">
-                {t("actions.cancel")}
+                {t("actions.cancel", "Cancel")}
               </TooltipContent>
             </Tooltip>
           </div>
         </div>
 
-        {/* Image area */}
+        {/* Image area: Drag Container */}
         <div
-          className={`flex items-center justify-center w-full h-full ${isZoomed ? "overflow-auto p-4 items-start" : "overflow-hidden"}`}
+          className="relative flex items-center justify-center w-full h-full overflow-hidden"
           onClick={(e) => {
+            // ONLY close if the background itself was clicked
             if (e.target === e.currentTarget) onClose();
           }}
           onWheel={handleWheel}
@@ -286,12 +311,19 @@ const ImageViewer = ({
           <img
             src={src}
             alt={alt || fileName || "image"}
-            onClick={(e) => { e.stopPropagation(); setIsZoomed(!isZoomed); }}
+            onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
-            style={{ transformOrigin: zoomOrigin }}
-            className={`object-contain transition-transform duration-200 select-none ${
-              isZoomed ? "cursor-zoom-out scale-[1.5] max-w-none max-h-none" : "cursor-zoom-in scale-100 max-w-[90vw] max-h-[85vh]"
-            }`}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onClick={handleImageClick} // CLICK SHIELD IS HERE
+            style={{
+              // Use direct translate and scale for smooth drag and zoom without flickering
+              transform: `translate(${position.x}px, ${position.y}px) scale(${isZoomed ? 1.5 : 1})`,
+              transition: isDragging ? 'none' : 'transform 0.2s ease-in-out',
+              // Dynamic Cursors (Hand 🖐️ and Fist ✊)
+              cursor: isZoomed ? (isDragging ? 'grabbing' : 'grab') : 'default'
+            }}
+            className="max-w-[90vw] max-h-[85vh] object-contain select-none"
             draggable={false}
           />
         </div>
