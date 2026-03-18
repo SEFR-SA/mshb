@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Monitor, PictureInPicture2, Maximize, Minimize,
-  Mic, MicOff, Video, VideoOff, MonitorOff,
+  Mic, MicOff, Video, VideoOff,
   Volume2, Volume1, VolumeX, Headphones, HeadphoneOff, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,6 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
   const containerRef = useRef<HTMLDivElement>(null);
   const hudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const preMuteVolumeRef = useRef(100);
-  const localScreenStreamRef = useRef<MediaStream | null>(null);
   const isVolumeOpenRef = useRef(false);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -36,7 +35,6 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
 
   const {
     isCameraOn, setIsCameraOn,
-    isScreenSharing, setIsScreenSharing,
     localCameraStream, setLocalCameraStream,
   } = useVoiceChannel();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
@@ -103,11 +101,10 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
     setResolutionLabel(`${res}${fps}`);
   }, [stream]);
 
-  // Cleanup HUD timer + local screen stream on unmount
+  // Cleanup HUD timer on unmount
   useEffect(() => {
     return () => {
       if (hudTimerRef.current) clearTimeout(hudTimerRef.current);
-      localScreenStreamRef.current?.getTracks().forEach(t => t.stop());
     };
   }, []);
 
@@ -148,26 +145,6 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
         setIsCameraOn(true);
       } catch (err) {
         console.error("Camera error:", err);
-      }
-    }
-  };
-
-  const handleScreenShareToggle = async () => {
-    if (isScreenSharing) {
-      localScreenStreamRef.current?.getTracks().forEach(t => t.stop());
-      localScreenStreamRef.current = null;
-      setIsScreenSharing(false);
-    } else {
-      try {
-        const s = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true });
-        localScreenStreamRef.current = s;
-        s.getVideoTracks()[0].onended = () => {
-          localScreenStreamRef.current = null;
-          setIsScreenSharing(false);
-        };
-        setIsScreenSharing(true);
-      } catch (err) {
-        console.error("Screen share error:", err);
       }
     }
   };
@@ -287,18 +264,6 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
                 title={isCameraOn ? t("calls.stopCamera") : t("calls.startCamera")}
               >
                 {isCameraOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
-              </button>
-
-              {/* Share Screen */}
-              <button
-                onClick={handleScreenShareToggle}
-                className={cn(
-                  "p-2 rounded-full transition-colors",
-                  isScreenSharing ? "bg-green-600 text-white" : "bg-white/10 text-white hover:bg-white/20"
-                )}
-                title={isScreenSharing ? t("calls.stopSharing") : t("calls.shareScreen")}
-              >
-                {isScreenSharing ? <MonitorOff className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
               </button>
 
               {onStopWatching && <div className="w-px h-6 bg-white/20" />}

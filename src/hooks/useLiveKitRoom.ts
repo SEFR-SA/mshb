@@ -57,29 +57,16 @@ interface ScreenSharePreset {
 }
 
 const SCREEN_SHARE_PRESETS: Record<StreamResolution, ScreenSharePreset> = {
-  "720p":  { width: 1280, height: 720,  maxFps: 30, maxBitrate: 2_500_000 },
-  "1080p": { width: 1920, height: 1080, maxFps: 60, maxBitrate: 8_000_000 },
+  "720p":  { width: 1280, height: 720,  maxFps: 60, maxBitrate: 2_500_000 },
+  "1080p": { width: 1920, height: 1080, maxFps: 60, maxBitrate: 15_000_000 },
   "1440p": { width: 2560, height: 1440, maxFps: 60, maxBitrate: 18_000_000 },
   "source": { width: 3840, height: 2160, maxFps: 60, maxBitrate: 25_000_000 },
 };
 
-/** Build simulcast layers for screen share based on selected resolution. */
-function getScreenShareSimulcastLayers(resolution: StreamResolution): VideoPreset[] {
-  // 720p: single layer, no simulcast needed
-  if (resolution === "720p") return [];
-
-  const layers: VideoPreset[] = [];
-  // Always include a 720p fallback layer
-  layers.push(new VideoPreset(1280, 720, 2_500_000, 30));
-
-  if (resolution === "1440p" || resolution === "source") {
-    // Include 1080p mid layer
-    layers.push(new VideoPreset(1920, 1080, 8_000_000, 60));
-  }
-
-  // The top layer is handled by the primary encoding, not in simulcast layers
-  return layers;
-}
+// Simulcast for screen shares is intentionally DISABLED.
+// In small-group gaming calls, a single high-quality stream is better than
+// simulcast layers that create permanent quality ceilings (720p@30fps fallback).
+// Camera feeds still use simulcast — see startCamera().
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -115,6 +102,7 @@ export function useLiveKitRoom({
   >([]);
 
   const durationRef = useRef<ReturnType<typeof setInterval>>();
+  const screenShareRelockRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -189,7 +177,11 @@ export function useLiveKitRoom({
       );
 
       const room = new Room({
-        adaptiveStream: { pixelDensity: 'screen' },
+        // adaptiveStream DISABLED — screen shares must receive full resolution.
+        // With adaptive enabled, LiveKit auto-downgrades based on <video> CSS size
+        // (e.g., 360px tile → SFU sends 720p@30fps fallback instead of 1440p@60fps).
+        // Camera feeds don't need adaptive either in small-group calls (≤8 users).
+        adaptiveStream: false,
         dynacast: true,
         reconnectPolicy: {
           nextRetryDelayInMs: (context: { retryCount: number; elapsedMs: number }) => {
@@ -385,6 +377,8 @@ export function useLiveKitRoom({
       const res = opts?.resolution ?? "1080p";
       const preset = SCREEN_SHARE_PRESETS[res];
       const maxFramerate = Math.min(opts?.fps ?? 30, preset.maxFps);
+      // 720p@60fps needs more headroom than 720p@30fps
+      const maxBitrate = (res === "720p" && maxFramerate === 60) ? 4_000_000 : preset.maxBitrate;
 
       try {
         // ── 1. Manual track acquisition with strict FPS constraints ──────
@@ -406,9 +400,17 @@ export function useLiveKitRoom({
                   minHeight: preset.height,
                   maxHeight: preset.height,
                 }),
-                // No minFrameRate — allows graceful drop under GPU load
-                maxFrameRate: maxFramerate,
+                minFrameRate: maxFramerate, // Force Chromium out of its 15fps default; compositor can always honour this
+                maxFrameRate: maxFramerate, // Upper bound — prevents overshooting
               },
+              // Disable Chromium's webcam post-processing pipeline.
+              // getUserMedia treats all sources (including desktop) as camera input,
+              // applying spatial denoising + high-pass filtering that causes visible
+              // over-sharpening/edge-enhancement on screen content.
+              optional: [
+                { googNoiseReduction: false },
+                { googHighpassFilter: false },
+              ],
             } as any,
           });
         } else {
@@ -420,7 +422,7 @@ export function useLiveKitRoom({
                 width:  { ideal: preset.width },
                 height: { ideal: preset.height },
               }),
-              frameRate: { ideal: maxFramerate, max: maxFramerate },
+              frameRate: { min: maxFramerate, ideal: maxFramerate, max: maxFramerate },
             },
             audio: false,
           });
@@ -432,33 +434,78 @@ export function useLiveKitRoom({
           return;
         }
 
-        // ── 2. Set contentHint: "motion" = FPS priority (games), "detail" = sharpness (apps) ──
+        // Log actual capture settings for diagnostics
+        const settings = videoTrack.getSettings();
+        console.log("[LiveKit] Screen capture actual settings:", {
+          width: settings.width,
+          height: settings.height,
+          frameRate: settings.frameRate,
+          requested: { resolution: res, fps: maxFramerate, bitrate: maxBitrate },
+        });
+
+        // ── 2. Set contentHint BEFORE handing to LiveKit ──
+        // "motion" = prioritise framerate (games/video), "detail" = prioritise sharpness (apps/text).
+        // Must be set here, not after publishTrack — LiveKit reads contentHint at publish time
+        // and uses it to choose its internal encoder tuning.
         videoTrack.contentHint = opts?.contentType ?? "motion";
 
-        // ── 3. Build simulcast layers ────────────────────────────────────
-        const simulcastLayers = getScreenShareSimulcastLayers(res);
-        const useSimulcast = simulcastLayers.length > 0;
-
-        // ── 4. Publish with VP9 (better compression for screen content) + H.264 fallback
+        // ── 3. Publish with H264 — single stream, no simulcast ──
+        // H264 has near-universal hardware encoder support (NVENC GTX 600+,
+        // QuickSync Intel 4th gen+, VCE AMD GCN+). VP9 rarely has HW encoders,
+        // causing software fallback that starves frames and caps at ~15fps.
+        // Simulcast disabled: single high-quality stream for gaming screen shares.
         await room.localParticipant.publishTrack(videoTrack, {
           source: Track.Source.ScreenShare,
-          videoCodec: "vp9",
-          backupCodec: { codec: "h264" },
-          degradationPreference: "maintain-framerate",
-          simulcast: useSimulcast,
-          ...(useSimulcast ? { videoSimulcastLayers: simulcastLayers } : {}),
+          videoCodec: "h264",
+          // "disabled" = encoder never reduces resolution or framerate in response to GCC
+          // feedback. The user explicitly selected their quality tier — we honour it.
+          degradationPreference: "disabled",
+          simulcast: false,
           videoEncoding: {
-            maxBitrate: preset.maxBitrate,
+            maxBitrate,
             maxFramerate,
             priority: "high",
-            scalabilityMode: "L1T3", // VP9 SVC: 1 spatial + 3 temporal layers; SFU drops FPS layers per-viewer bandwidth
           },
         } as TrackPublishOptions);
+
+        // ── 4. Lock RTCRtpSender encoding parameters ─────────────────────────
+        // LiveKit SDK v2.x does not apply maxFramerate to RTCRtpSender when
+        // simulcast=false. Without this, Chromium defaults to 15fps for screen
+        // share sources. GCC also overrides setParameters every ~5s via REMB/TWCC
+        // feedback — re-locking every 3s prevents quality drift.
+        const lockEncodingParams = async () => {
+          const pub = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
+          const sender = (pub?.track as any)?.sender as RTCRtpSender | undefined;
+          if (!sender) return;
+          const params = sender.getParameters();
+          if (!params.encodings?.length) return;
+          params.encodings[0].maxBitrate           = maxBitrate;
+          params.encodings[0].maxFramerate         = maxFramerate;
+          params.encodings[0].scaleResolutionDownBy = 1.0;
+          params.encodings[0].priority             = "high";
+          params.encodings[0].networkPriority      = "high";
+          await sender.setParameters(params).catch((e) =>
+            console.warn("[LiveKit] setParameters failed:", e)
+          );
+        };
+
+        // Wait 200ms for LiveKit to finish setting up the RTCPeerConnection
+        await new Promise<void>((r) => setTimeout(r, 200));
+        await lockEncodingParams();
+
+        if (screenShareRelockRef.current) clearInterval(screenShareRelockRef.current);
+        screenShareRelockRef.current = setInterval(lockEncodingParams, 3000);
+
+        console.log("[LiveKit] Screen share encoding locked:", { maxBitrate, maxFramerate });
 
         setIsScreenSharing(true);
 
         // Listen for the track ending (user clicks browser "Stop sharing")
         videoTrack.addEventListener("ended", () => {
+          if (screenShareRelockRef.current) {
+            clearInterval(screenShareRelockRef.current);
+            screenShareRelockRef.current = null;
+          }
           const pub = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
           if (pub?.track) {
             room.localParticipant.unpublishTrack(pub.track);
@@ -473,6 +520,10 @@ export function useLiveKitRoom({
   );
 
   const stopScreenShare = useCallback(async () => {
+    if (screenShareRelockRef.current) {
+      clearInterval(screenShareRelockRef.current);
+      screenShareRelockRef.current = null;
+    }
     const room = roomRef.current;
     if (!room) return;
     const pub = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);

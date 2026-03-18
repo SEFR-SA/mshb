@@ -64,8 +64,9 @@ function isResolutionAllowed(
   return resRank <= maxRank;
 }
 
-/** Check if 60fps is allowed. */
-function isFpsAllowed(isPro: boolean, boostLevel: number): boolean {
+/** Check if 60fps is allowed for the given resolution and user tier. */
+function isFpsAllowed(resolution: StreamResolution, isPro: boolean, boostLevel: number): boolean {
+  if (resolution === "720p") return true; // 720p@60fps is available to everyone
   if (isPro) return true;
   return getBoostPerks(boostLevel).maxScreenShareFps >= 60;
 }
@@ -115,15 +116,15 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive, boostLevel = 0 }: Props) =>
       return;
     }
     setResolution(res);
-    // If selected resolution doesn't allow 60fps for this tier, reset to 30
-    if (fps === 60 && !isFpsAllowed(isPro, boostLevel)) {
+    // If the new resolution doesn't allow 60fps for this tier, reset to 30
+    if (fps === 60 && !isFpsAllowed(res, isPro, boostLevel)) {
       setFps(30);
     }
   };
 
   const handleFpsChange = (v: string) => {
     if (!v) return;
-    if (v === "60" && !isFpsAllowed(isPro, boostLevel)) {
+    if (v === "60" && !isFpsAllowed(resolution, isPro, boostLevel)) {
       toast({ title: t("pro.proRequired"), description: t("pro.upgradeToast") });
       return;
     }
@@ -133,7 +134,7 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive, boostLevel = 0 }: Props) =>
   // Derived: which options need badges
   const needs1440Badge = !isPro && boostLevel < 2;
   const needsSourceBadge = !isPro && boostLevel < 3;
-  const needs60fpsBadge = !isPro && !isFpsAllowed(isPro, boostLevel);
+  const needs60fpsBadge = !isFpsAllowed(resolution, isPro, boostLevel);
 
   // Badge helper: show boost level needed or PRO
   const resolutionBadge = (res: StreamResolution) => {

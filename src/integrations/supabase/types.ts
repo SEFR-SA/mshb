@@ -1496,6 +1496,10 @@ export type Database = {
           server_tag_color: string | null
           server_tag_container_color: string | null
           server_tag_name: string | null
+          show_boost_count: boolean
+          show_member_count: boolean
+          show_online_count: boolean
+          show_role_count: boolean
           system_message_channel_id: string | null
           welcome_message_enabled: boolean
         }
@@ -1521,6 +1525,10 @@ export type Database = {
           server_tag_color?: string | null
           server_tag_container_color?: string | null
           server_tag_name?: string | null
+          show_boost_count?: boolean
+          show_member_count?: boolean
+          show_online_count?: boolean
+          show_role_count?: boolean
           system_message_channel_id?: string | null
           welcome_message_enabled?: boolean
         }
@@ -1546,6 +1554,10 @@ export type Database = {
           server_tag_color?: string | null
           server_tag_container_color?: string | null
           server_tag_name?: string | null
+          show_boost_count?: boolean
+          show_member_count?: boolean
+          show_online_count?: boolean
+          show_role_count?: boolean
           system_message_channel_id?: string | null
           welcome_message_enabled?: boolean
         }
@@ -1963,6 +1975,7 @@ export type Database = {
           use_count: number
         }[]
       }
+      get_server_stats: { Args: { p_server_id: string }; Returns: Json }
       insert_boost_audit_log: {
         Args: {
           p_action: string
