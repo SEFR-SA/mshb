@@ -198,9 +198,9 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
         {/* Banner area — relative wrapper for the three-dots button */}
         <div className="relative">
           {p.banner_url ? (
-            <img src={p.banner_url} alt="" className="h-24 w-full object-cover rounded-b-lg" />
+            <img src={p.banner_url} alt="" className="w-[340px] h-[120px] object-cover rounded-b-lg" />
           ) : (
-            <div className="h-24 bg-primary/20 rounded-b-lg" />
+            <div className="w-[340px] h-[120px] bg-primary/20 rounded-b-lg" />
           )}
 
           {/* Three-dots menu — only shown for other users */}
