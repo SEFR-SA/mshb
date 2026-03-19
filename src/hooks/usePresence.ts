@@ -66,6 +66,7 @@ export function usePresence() {
   const getUserStatus = (profile: any): string => {
     if (!profile) return "offline";
     if (profile.status === "invisible") return "invisible";
+    if (profile.is_bot) return profile.status || "online";
     if (isOnline(profile.user_id)) return profile.status || "online";
     return "offline";
   };

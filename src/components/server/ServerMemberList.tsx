@@ -68,6 +68,7 @@ const roleBadgeColors: Record<string, string> = {
   owner: "bg-green-600 text-white hover:bg-green-600",
   admin: "bg-blue-600 text-white hover:bg-blue-600",
   member: "bg-muted text-muted-foreground hover:bg-muted",
+  bot: "bg-indigo-600 text-white hover:bg-indigo-600",
 };
 
 const ServerMemberList = ({ serverId }: Props) => {
@@ -94,7 +95,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       const userIds = (data as any[]).map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, status_text, status_until, created_at, name_font, name_effect, name_gradient_start, name_gradient_end, nameplate_url, avatar_decoration_url, profile_effect_url, is_pro, profile_primary_color, profile_accent_color, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
+        .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, status_text, status_until, created_at, name_font, name_effect, name_gradient_start, name_gradient_end, nameplate_url, avatar_decoration_url, profile_effect_url, is_pro, profile_primary_color, profile_accent_color, is_bot, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
         .in("user_id", userIds);
 
       const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
@@ -197,7 +198,9 @@ const ServerMemberList = ({ serverId }: Props) => {
   const noCustomRoleAdmins: Member[] = [];
   const noCustomRoleMembers: Member[] = [];
 
-  members.filter((m) => m.role !== "owner").forEach((m) => {
+  const noCustomRoleBots: Member[] = [];
+
+  members.filter((m) => m.role !== "owner" && m.role !== "bot").forEach((m) => {
     const highestRole = userHighestRoleMap.get(m.user_id);
     if (highestRole) {
       const g = customRoleGroupMap.get(highestRole.id) || { role: highestRole, mems: [] };
@@ -209,6 +212,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       noCustomRoleMembers.push(m);
     }
   });
+  members.filter((m) => m.role === "bot").forEach((m) => noCustomRoleBots.push(m));
 
   [...customRoleGroupMap.values()]
     .sort((a, b) => a.role.position - b.role.position)
@@ -216,11 +220,12 @@ const ServerMemberList = ({ serverId }: Props) => {
 
   if (noCustomRoleAdmins.length > 0) groupsArray.push({ label: t("servers.admin"), mems: noCustomRoleAdmins, sortKey: 1000 });
   if (noCustomRoleMembers.length > 0) groupsArray.push({ label: t("servers.member"), mems: noCustomRoleMembers, sortKey: 1001 });
+  if (noCustomRoleBots.length > 0) groupsArray.push({ label: t("servers.bots"), mems: noCustomRoleBots, sortKey: 1002 });
 
   const currentUserRole = members.find((m) => m.user_id === user?.id)?.role ?? null;
 
   const onlineCount = members.filter((m) => {
-    const s = getUserStatus({ user_id: m.user_id, status: m.profile?.status });
+    const s = getUserStatus({ user_id: m.user_id, status: m.profile?.status, is_bot: (m.profile as any)?.is_bot });
     return s !== "offline" && s !== "invisible";
   }).length;
 
@@ -245,7 +250,7 @@ const ServerMemberList = ({ serverId }: Props) => {
                     const p = m.profile;
                     const name = p?.display_name || p?.username || "User";
                     const username = p?.username || "user";
-                    const status = getUserStatus({ user_id: m.user_id, status: p?.status });
+                    const status = getUserStatus({ user_id: m.user_id, status: p?.status, is_bot: (p as any)?.is_bot });
 
                     const profileThemeVars = {
                       "--profile-primary": (p as any)?.profile_primary_color ?? "hsl(var(--primary))",

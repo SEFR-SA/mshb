@@ -92,7 +92,7 @@ export function useLiveKitRoom({
   // Screen share state
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [remoteScreenStreams, setRemoteScreenStreams] = useState<
-    { identity: string; name: string; stream: MediaStream }[]
+    { identity: string; name: string; stream: MediaStream; streamingApp?: string; streamStartedAt?: string }[]
   >([]);
 
   // Camera state
@@ -134,7 +134,7 @@ export function useLiveKitRoom({
   const syncScreenShares = useCallback(() => {
     const room = roomRef.current;
     if (!room) return;
-    const streams: { identity: string; name: string; stream: MediaStream }[] = [];
+    const streams: { identity: string; name: string; stream: MediaStream; streamingApp?: string; streamStartedAt?: string }[] = [];
     room.remoteParticipants.forEach((p) => {
       const pub = p.getTrackPublication(Track.Source.ScreenShare);
       if (pub?.track?.mediaStream) {
@@ -142,6 +142,8 @@ export function useLiveKitRoom({
           identity: p.identity,
           name: p.name ?? p.identity,
           stream: pub.track.mediaStream,
+          streamingApp: p.attributes?.streamingApp || undefined,
+          streamStartedAt: p.attributes?.streamStartedAt || undefined,
         });
       }
     });

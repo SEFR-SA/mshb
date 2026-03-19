@@ -11,9 +11,10 @@ import { toast } from "@/hooks/use-toast";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreated?: () => Promise<void> | void;
 }
 
-const CreateServerDialog = ({ open, onOpenChange }: Props) => {
+const CreateServerDialog = ({ open, onOpenChange, onCreated }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -32,11 +33,12 @@ const CreateServerDialog = ({ open, onOpenChange }: Props) => {
       if (error) throw error;
       const serverId = (server as any).id;
 
-      await supabase.from("server_members" as any).insert({
+      const { error: memberError } = await supabase.from("server_members" as any).insert({
         server_id: serverId,
         user_id: user.id,
         role: "owner",
       } as any);
+      if (memberError) throw memberError;
 
       await supabase.from("channels" as any).insert({
         server_id: serverId,
@@ -47,6 +49,7 @@ const CreateServerDialog = ({ open, onOpenChange }: Props) => {
 
       setName("");
       onOpenChange(false);
+      await onCreated?.();
       navigate(`/server/${serverId}`);
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });

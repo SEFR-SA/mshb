@@ -56,6 +56,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
   const [notifLevel,         setNotifLevel]         = useState<string>("all_messages");
   const [inactiveChannelId,  setInactiveChannelId]  = useState<string>("");
   const [inactiveTimeout,    setInactiveTimeout]    = useState<string>("");
+  const [freeGamesChannelId, setFreeGamesChannelId] = useState<string>("");
 
   // ── AutoMod ─────────────────────────────────────────────────────────────
   const [automodEnabled,  setAutomodEnabled]  = useState(false);
@@ -78,7 +79,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           supabase
             .from("servers" as any)
             .select(
-              "welcome_message_enabled, system_message_channel_id, default_notification_level, inactive_channel_id, inactive_timeout, automod_enabled"
+              "welcome_message_enabled, system_message_channel_id, default_notification_level, inactive_channel_id, inactive_timeout, automod_enabled, free_games_channel_id"
             )
             .eq("id", serverId)
             .maybeSingle(),
@@ -106,6 +107,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         setInactiveChannelId((s as any).inactive_channel_id ?? "");
         setInactiveTimeout((s as any).inactive_timeout ? String((s as any).inactive_timeout) : "");
         setAutomodEnabled(!!(s as any).automod_enabled);
+        setFreeGamesChannelId((s as any).free_games_channel_id ?? "");
       }
       setChannels((ch as unknown as Channel[]) || []);
       setBannedWords((bw as unknown as BannedWordEntry[]) || []);
@@ -140,6 +142,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           default_notification_level: notifLevel,
           inactive_channel_id: inactiveChannelId || null,
           inactive_timeout: inactiveTimeout ? parseInt(inactiveTimeout, 10) : null,
+          free_games_channel_id: freeGamesChannelId || null,
         } as any)
         .eq("id", serverId);
 
@@ -405,7 +408,41 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
 
       <Separator />
 
-      {/* Section 4 — AutoMod ─────────────────────────────────────────────── */}
+      {/* Section 4 — Free Games Bot */}
+      <div className="space-y-4">
+        <div>
+          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            🎮 {t("serverSettings.freeGamesBot")}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t("serverSettings.freeGamesBotDesc")}
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <Label className="text-sm shrink-0 sm:w-48">
+            {t("serverSettings.freeGamesChannel")}
+          </Label>
+          <Select
+            value={freeGamesChannelId || "__none__"}
+            onValueChange={(v) => setFreeGamesChannelId(v === "__none__" ? "" : v)}
+            disabled={!canEdit}
+          >
+            <SelectTrigger className="w-full sm:w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">{t("serverSettings.noChannel")}</SelectItem>
+              {textChannels.map((c) => (
+                <SelectItem key={c.id} value={c.id}># {c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Section 5 — AutoMod ─────────────────────────────────────────────── */}
       <div className="space-y-5">
         <div>
           <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">

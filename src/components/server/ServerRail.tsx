@@ -628,7 +628,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
         <NotificationBell />
       </div>
 
-      <CreateServerDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <CreateServerDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={loadData} />
       <JoinServerDialog open={joinOpen} onOpenChange={setJoinOpen} />
       {settingsServerId && (
         <ServerSettingsDialog

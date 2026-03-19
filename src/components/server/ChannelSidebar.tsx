@@ -33,10 +33,11 @@ import { usePresence } from "@/hooks/usePresence";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { useCreateChannel } from "@/contexts/CreateChannelContext";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { NavLink as RouterNavLink } from "react-router-dom";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { useChannelNotificationPref, type ChannelNotifLevel } from "@/hooks/useChannelNotificationPref";
+import { useStreamTimer } from "@/hooks/useStreamTimer";
 
 
 interface Channel {
@@ -105,6 +106,54 @@ const StreamPreviewVideo = ({ stream }: { stream: MediaStream }) => {
     if (ref.current) ref.current.srcObject = stream;
   }, [stream]);
   return <video ref={ref} autoPlay muted playsInline className="w-full h-full object-contain" />;
+};
+
+interface StreamPreviewCardProps {
+  stream: MediaStream | null;
+  streamingApp: string | null | undefined;
+  streamStartedAt: string | null | undefined;
+  participantName: string;
+  nameFont?: string | null;
+  nameEffect?: string | null;
+  nameGradientStart?: string | null;
+  nameGradientEnd?: string | null;
+  onWatch: () => void;
+}
+
+const StreamPreviewCard = ({
+  stream, streamingApp, streamStartedAt, participantName,
+  nameFont, nameEffect, nameGradientStart, nameGradientEnd, onWatch,
+}: StreamPreviewCardProps) => {
+  const { t } = useTranslation();
+  const timer = useStreamTimer(streamStartedAt);
+  return (
+    <>
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 bg-black/60">
+        <span className="text-zinc-400 text-xs">Streaming Now</span>
+        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">LIVE</span>
+      </div>
+      {/* Video preview */}
+      <div className="aspect-video bg-black flex items-center justify-center">
+        {stream ? <StreamPreviewVideo stream={stream} /> : <Monitor className="h-8 w-8 text-muted-foreground" />}
+      </div>
+      {/* App info + button */}
+      <div className="p-3 flex flex-col gap-2">
+        {(streamingApp || timer) && (
+          <div className="flex flex-col gap-0.5">
+            {streamingApp && <p className="text-sm font-semibold text-white">{streamingApp}</p>}
+            {timer && <p className="text-zinc-400 text-xs">{timer}</p>}
+          </div>
+        )}
+        <button
+          onClick={onWatch}
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold py-1.5 rounded-md transition-colors"
+        >
+          {t("streaming.watchStream")}
+        </button>
+      </div>
+    </>
+  );
 };
 
 interface ChannelDropdownProps {
@@ -196,7 +245,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
-  const { voiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsWatchingStream, nativeResolutionLabel, remoteScreenStreams, localScreenStream } = useVoiceChannel();
+  const { voiceChannel, disconnectVoice, isScreenSharing, setIsScreenSharing, remoteScreenStream, setRemoteScreenStream, setScreenSharerName, isCameraOn, setIsWatchingStream, nativeResolutionLabel, remoteScreenStreams, localScreenStream, localStreamingApp, localStreamStartedAt } = useVoiceChannel();
   const { getUserStatus } = usePresence();
   const isMobile = useIsMobile();
   const { pendingMode, consumeRequest } = useCreateChannel();
@@ -976,8 +1025,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                   </div>
                                 );
                                 return (
-                                  <Popover
+                                  <HoverCard
                                     key={p.user_id}
+                                    openDelay={250}
+                                    closeDelay={200}
                                     open={streamCardOpen === p.user_id}
                                     onOpenChange={(open) => setStreamCardOpen(open ? p.user_id : null)}
                                   >
@@ -989,34 +1040,33 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                       serverOwnerId={server?.owner_id || ""}
                                       currentUserRole={currentUserRole}
                                     >
-                                      <PopoverTrigger asChild>
+                                      <HoverCardTrigger asChild>
                                         {clickableRow}
-                                      </PopoverTrigger>
+                                      </HoverCardTrigger>
                                     </VoiceUserContextMenu>
-                                    <PopoverContent side="right" align="start" sideOffset={8} className="w-[280px] p-0 overflow-hidden rounded-lg">
-                                      <div className="aspect-video bg-black flex items-center justify-center">
-                                        {(() => {
-                                          const userStream = p.user_id === user?.id
-                                            ? localScreenStream
-                                            : (remoteScreenStreams.find(s => s.identity === p.user_id)?.stream ?? remoteScreenStream);
-                                          return userStream
-                                            ? <StreamPreviewVideo stream={userStream} />
-                                            : <Monitor className="h-8 w-8 text-muted-foreground" />;
-                                        })()}
-                                      </div>
-                                      <div className="p-3 flex flex-col items-center gap-2.5">
-                                        <p className="text-xs font-semibold text-foreground text-center">
-                                          <StyledDisplayName displayName={p.display_name || p.username || "User"} fontStyle={p.name_font} effect={p.name_effect} gradientStart={p.name_gradient_start} gradientEnd={p.name_gradient_end} className="inline" /> · {t("streaming.live")}
-                                        </p>
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); setStreamCardOpen(null); }}
-                                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold py-1.5 rounded-md transition-colors"
-                                        >
-                                          {t("streaming.watchStream")}
-                                        </button>
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
+                                    <HoverCardContent side="right" align="start" sideOffset={8} className="w-[280px] p-0 overflow-hidden rounded-lg bg-[#1a1a1f]">
+                                      {(() => {
+                                        const isLocal = p.user_id === user?.id;
+                                        const remoteInfo = remoteScreenStreams.find(s => s.identity === p.user_id);
+                                        const userStream = isLocal ? localScreenStream : (remoteInfo?.stream ?? remoteScreenStream);
+                                        const appName = isLocal ? localStreamingApp : (remoteInfo?.streamingApp ?? null);
+                                        const startedAt = isLocal ? localStreamStartedAt : (remoteInfo?.streamStartedAt ?? null);
+                                        return (
+                                          <StreamPreviewCard
+                                            stream={userStream ?? null}
+                                            streamingApp={appName}
+                                            streamStartedAt={startedAt}
+                                            participantName={p.display_name || p.username || "User"}
+                                            nameFont={p.name_font}
+                                            nameEffect={p.name_effect}
+                                            nameGradientStart={p.name_gradient_start}
+                                            nameGradientEnd={p.name_gradient_end}
+                                            onWatch={() => { setIsWatchingStream(true); setStreamCardOpen(null); }}
+                                          />
+                                        );
+                                      })()}
+                                    </HoverCardContent>
+                                  </HoverCard>
                                 );
                               }
 

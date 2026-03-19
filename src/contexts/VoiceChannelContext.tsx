@@ -11,6 +11,8 @@ export interface RemoteScreenShareInfo {
   identity: string;
   name: string;
   stream: MediaStream;
+  streamingApp?: string;
+  streamStartedAt?: string;
 }
 
 interface VoiceChannelContextType {
@@ -44,6 +46,10 @@ interface VoiceChannelContextType {
   setUserVolume: (userId: string, volume: number) => void;
   nativeResolutionLabel: string | null;
   setNativeResolutionLabel: (label: string | null) => void;
+  localStreamingApp: string | null;
+  setLocalStreamingApp: (app: string | null) => void;
+  localStreamStartedAt: string | null;
+  setLocalStreamStartedAt: (ts: string | null) => void;
 }
 
 const VoiceChannelContext = createContext<VoiceChannelContextType>({
@@ -74,6 +80,10 @@ const VoiceChannelContext = createContext<VoiceChannelContextType>({
   setUserVolume: () => {},
   nativeResolutionLabel: null,
   setNativeResolutionLabel: () => {},
+  localStreamingApp: null,
+  setLocalStreamingApp: () => {},
+  localStreamStartedAt: null,
+  setLocalStreamStartedAt: () => {},
 });
 
 export const useVoiceChannel = () => useContext(VoiceChannelContext);
@@ -113,6 +123,8 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
   const [remoteCameraStream, setRemoteCameraStream] = useState<MediaStream | null>(null);
   const [userVolumes, setUserVolumes] = useState<Record<string, number>>({});
   const [nativeResolutionLabel, setNativeResolutionLabel] = useState<string | null>(null);
+  const [localStreamingApp, setLocalStreamingApp] = useState<string | null>(null);
+  const [localStreamStartedAt, setLocalStreamStartedAt] = useState<string | null>(null);
 
   const setUserVolume = useCallback((userId: string, volume: number) => {
     setUserVolumes((prev) => ({ ...prev, [userId]: volume }));
@@ -159,6 +171,8 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
     setRemoteCameraStream(null);
     setUserVolumes({});
     setNativeResolutionLabel(null);
+    setLocalStreamingApp(null);
+    setLocalStreamStartedAt(null);
   }, []);
 
   return (
@@ -176,6 +190,8 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
       remoteCameraStream, setRemoteCameraStream,
       userVolumes, setUserVolume,
       nativeResolutionLabel, setNativeResolutionLabel,
+      localStreamingApp, setLocalStreamingApp,
+      localStreamStartedAt, setLocalStreamStartedAt,
     }}>
       {children}
     </VoiceChannelContext.Provider>

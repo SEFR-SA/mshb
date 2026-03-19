@@ -17,6 +17,8 @@ export interface GoLiveSettings {
   fps: 30 | 60;
   surface: "monitor" | "window";
   sourceId?: string;
+  /** Display name of the selected window/screen (e.g. "Overwatch", "Display 1"). */
+  sourceName?: string;
   /** Encoder content hint: "motion" = FPS priority (games/video), "detail" = sharpness (apps/browsers) */
   contentType: "motion" | "detail";
 }
@@ -103,7 +105,10 @@ const GoLiveModal = ({ open, onOpenChange, onGoLive, boostLevel = 0 }: Props) =>
   const visibleSources = surface === "monitor" ? screensources : windowSources;
 
   const handleGoLive = () => {
-    onGoLive({ resolution, fps, surface, sourceId: selectedSourceId ?? undefined, contentType });
+    const sourceName = selectedSourceId
+      ? (sources.find((s) => s.id === selectedSourceId)?.name ?? "Screen")
+      : "Screen";
+    onGoLive({ resolution, fps, surface, sourceId: selectedSourceId ?? undefined, sourceName, contentType });
   };
 
   const canGoLive = !isElectron() || selectedSourceId !== null;

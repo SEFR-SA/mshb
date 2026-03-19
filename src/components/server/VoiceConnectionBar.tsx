@@ -27,6 +27,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     isCameraOn, setIsCameraOn,
     setLocalCameraStream, setRemoteCameraStream,
     voiceChannel, setVoiceChannel, setNativeResolutionLabel,
+    setLocalStreamingApp, setLocalStreamStartedAt,
   } = useVoiceChannel();
 
   const [isJoined, setIsJoined] = useState(false);
@@ -241,6 +242,13 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         setLocalScreenStream(screenPub.track.mediaStream);
       }
 
+      // Broadcast app name + start time so remote users can show it in the hover card
+      const streamingApp = settings?.sourceName || "Screen";
+      const streamStartedAt = new Date().toISOString();
+      room?.localParticipant.setAttributes({ streamingApp, streamStartedAt });
+      setLocalStreamingApp(streamingApp);
+      setLocalStreamStartedAt(streamStartedAt);
+
       // Update DB
       if (user) {
         supabase
@@ -271,6 +279,9 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     };
 
     const stopHandler = async () => {
+      lk.room.current?.localParticipant.setAttributes({ streamingApp: "", streamStartedAt: "" });
+      setLocalStreamingApp(null);
+      setLocalStreamStartedAt(null);
       await lk.stopScreenShare();
       setIsScreenSharing(false);
       setLocalScreenStream(null);

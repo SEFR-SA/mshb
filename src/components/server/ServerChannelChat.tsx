@@ -36,6 +36,7 @@ import ReplyInputBar from "@/components/chat/ReplyInputBar";
 import MessageReactions from "@/components/chat/MessageReactions";
 import { useMessageReactions } from "@/hooks/useMessageReactions";
 import ServerInviteCard from "@/components/chat/ServerInviteCard";
+import FreeGameCard from "@/components/server/FreeGameCard";
 import { detectInviteInMessage } from "@/lib/inviteUtils";
 import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
@@ -202,6 +203,15 @@ const MessageItem = React.memo(({
     );
   }
 
+  // Free game card (posted by the Mshb FreeStuff bot)
+  if (msgAny.type === "free_game" && msgAny.metadata) {
+    return (
+      <div className={`flex justify-start px-4 ${isGrouped ? "mt-1" : isFirstMessage ? "" : "mt-3"}`}>
+        <FreeGameCard metadata={msgAny.metadata} timestamp={msg.created_at} />
+      </div>
+    );
+  }
+
   const replyAuthorProfile = replyToMsg ? profiles.get(replyToMsg.author_id) : null;
   const replyName = replyAuthorProfile?.display_name || replyAuthorProfile?.username || "…";
   const replyAvatarUrl = replyAuthorProfile?.avatar_url || "";
@@ -276,6 +286,9 @@ const MessageItem = React.memo(({
                   />
                   {!isMine && roleInfo?.iconUrl && (
                     <img src={roleInfo.iconUrl} className="h-3.5 w-3.5 rounded shrink-0 ms-1" alt="role" />
+                  )}
+                  {(p as any)?.is_bot && (
+                    <span className="ms-1 bg-primary text-primary-foreground text-[9px] font-bold px-1 py-0.5 rounded leading-none align-middle">BOT</span>
                   )}
                 </span>
               </UserContextMenu>
@@ -681,7 +694,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
     if (newIds.length === 0) return;
-    const { data } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").in("user_id", newIds);
+    const { data } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end, is_bot, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").in("user_id", newIds);
     if (data) {
       setProfiles((prev) => {
         const next = new Map(prev);
