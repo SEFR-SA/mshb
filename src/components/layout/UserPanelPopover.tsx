@@ -126,7 +126,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
         )}
 
         {/* Container 1: Edit Profile + Status */}
-        <div className="mt-3 rounded-md bg-muted/50 p-1 space-y-0.5">
+        <div className="mt-3 rounded-md bg-muted/50 p-1 space-y-0.5 w-[268px] h-[99px]">
           <button
             className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start"
             onClick={handleEditProfile}
@@ -208,7 +208,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
         </div>
 
         {/* Container 2: Sign Out */}
-        <div className="mt-2 rounded-md bg-muted/50 p-1">
+        <div className="mt-2 rounded-md bg-muted/50 p-1 w-[268px] h-[50px]">
           <button
             className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-destructive hover:text-destructive-foreground transition-colors text-start text-destructive"
             onClick={handleSignOut}
