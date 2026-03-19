@@ -308,6 +308,7 @@ export default {
     save: "Save",
     copyImage: "Copy Image",
     copyLink: "Copy Link",
+    openLink: "Open Link",
     viewDetails: "View Details",
     filename: "Filename",
     size: "Size",

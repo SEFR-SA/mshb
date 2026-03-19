@@ -1,6 +1,15 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, Copy, Link, ExternalLink } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { copyImageToClipboard, saveImageAs } from "@/lib/imageClipboard";
+import { copyToClipboard } from "@/lib/utils";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import ImageViewer from "./ImageViewer";
 import ForwardImageDialog from "./ForwardImageDialog";
 
@@ -38,12 +47,43 @@ const MessageFilePreview = ({
   if (fileType?.startsWith("image/")) {
     return (
       <>
-        <img
-          src={fileUrl}
-          alt={fileName}
-          className="relative z-10 pointer-events-auto max-w-full max-h-60 rounded-lg cursor-pointer transition-opacity hover:opacity-90 object-cover"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setFullscreen(true); }}
-        />
+        <ContextMenu>
+          <ContextMenuTrigger asChild onContextMenu={(e: React.MouseEvent) => e.stopPropagation()}>
+            <img
+              src={fileUrl}
+              alt={fileName}
+              className="relative z-10 pointer-events-auto max-w-full max-h-60 rounded-lg cursor-pointer transition-opacity hover:opacity-90 object-cover"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setFullscreen(true); }}
+            />
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-48">
+            <ContextMenuItem onClick={async () => {
+              const ok = await copyImageToClipboard(fileUrl);
+              toast({ title: ok ? t("imageViewer.copiedToClipboard") : t("common.error"), variant: ok ? undefined : "destructive" });
+            }}>
+              <Copy className="h-4 w-4 me-2" />
+              {t("imageViewer.copyImage")}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={async () => {
+              const ok = await saveImageAs(fileUrl, fileName);
+              if (!ok) toast({ title: t("common.error"), variant: "destructive" });
+            }}>
+              <Download className="h-4 w-4 me-2" />
+              {t("imageViewer.save")}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={async () => {
+              const ok = await copyToClipboard(fileUrl);
+              toast({ title: ok ? t("imageViewer.copiedToClipboard") : t("common.error"), variant: ok ? undefined : "destructive" });
+            }}>
+              <Link className="h-4 w-4 me-2" />
+              {t("imageViewer.copyLink")}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => window.open(fileUrl, "_blank")}>
+              <ExternalLink className="h-4 w-4 me-2" />
+              {t("imageViewer.openLink", "Open Link")}
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
         {fullscreen && (
           <ImageViewer
             src={fileUrl}

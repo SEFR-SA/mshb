@@ -2,6 +2,8 @@ import React, { useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, Download, Forward, ZoomIn, ZoomOut, Copy, Link, MoreHorizontal, X, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { copyImageToClipboard, saveImageAs } from "@/lib/imageClipboard";
+import { copyToClipboard } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,58 +124,24 @@ const ImageViewer = ({
 
   // Utility handlers
   const handleSave = async () => {
-    try {
-      const res = await fetch(src);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName || alt || "image";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      toast({ title: t("common.error"), variant: "destructive" });
-    }
+    const ok = await saveImageAs(src, fileName || alt || "image");
+    if (!ok) toast({ title: t("common.error"), variant: "destructive" });
   };
 
   const handleCopyImage = async () => {
-    try {
-      const res = await fetch(src);
-      const blob = await res.blob();
-      let pngBlob = blob;
-
-      if (blob.type !== "image/png") {
-        pngBlob = await new Promise<Blob>((resolve, reject) => {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.onload = () => {
-            const canvas = document.createElement("canvas");
-            canvas.width = img.naturalWidth;
-            canvas.height = img.naturalHeight;
-            canvas.getContext("2d")?.drawImage(img, 0, 0);
-            canvas.toBlob((b) => {
-              if (b) resolve(b);
-              else reject(new Error("Conversion failed"));
-            }, "image/png");
-          };
-          img.onerror = () => reject(new Error("Image load failed"));
-          img.src = URL.createObjectURL(blob);
-        });
-      }
-
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob })]);
-      toast({ title: t("imageViewer.copiedToClipboard", "Copied to clipboard") });
-    } catch (err) {
-      console.error(err);
-      toast({ title: t("common.error"), variant: "destructive" });
-    }
+    const ok = await copyImageToClipboard(src);
+    toast({
+      title: ok ? t("imageViewer.copiedToClipboard", "Copied to clipboard") : t("common.error"),
+      variant: ok ? undefined : "destructive",
+    });
   };
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(src);
-    toast({ title: t("imageViewer.copiedToClipboard", "Copied to clipboard") });
+  const handleCopyLink = async () => {
+    const ok = await copyToClipboard(src);
+    toast({
+      title: ok ? t("imageViewer.copiedToClipboard", "Copied to clipboard") : t("common.error"),
+      variant: ok ? undefined : "destructive",
+    });
   };
 
   const handleImageDetails = () => {

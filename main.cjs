@@ -341,6 +341,19 @@ ipcMain.on('restart-app', () => {
   }
 });
 
+// --- Clipboard: write image via nativeImage ---
+ipcMain.handle('clipboard-write-image', async (_event, dataUrl) => {
+  const { clipboard, nativeImage } = require('electron');
+  try {
+    const img = nativeImage.createFromDataURL(dataUrl);
+    clipboard.writeImage(img);
+    return true;
+  } catch (err) {
+    console.error('clipboard-write-image failed:', err);
+    return false;
+  }
+});
+
 if (require('electron-squirrel-startup')) app.quit();
 
 const gotTheLock = app.requestSingleInstanceLock();

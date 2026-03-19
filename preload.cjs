@@ -14,4 +14,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('fullscreen-changed', wrapped);
   },
   setTitleBarColor: (color, symbolColor) => ipcRenderer.send('set-title-bar-color', color, symbolColor),
+  copyImageToClipboard: (dataUrl) => ipcRenderer.invoke('clipboard-write-image', dataUrl),
 });

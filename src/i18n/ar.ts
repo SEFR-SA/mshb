@@ -308,6 +308,7 @@ export default {
     save: "حفظ",
     copyImage: "نسخ الصورة",
     copyLink: "نسخ الرابط",
+    openLink: "فتح الرابط",
     viewDetails: "عرض التفاصيل",
     filename: "اسم الملف",
     size: "الحجم",

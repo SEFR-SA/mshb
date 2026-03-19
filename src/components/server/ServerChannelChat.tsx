@@ -1205,6 +1205,21 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                   if (mentionOpen) return;
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
                 }}
+                onPaste={(e) => {
+                  const items = e.clipboardData?.items;
+                  if (!items) return;
+                  for (const item of Array.from(items)) {
+                    if (item.type.startsWith("image/")) {
+                      e.preventDefault();
+                      const file = item.getAsFile();
+                      if (!file) return;
+                      const maxBytes = getBoostPerks(serverBoostLevel).maxUploadSizeMB * 1024 * 1024;
+                      if (file.size > maxBytes) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
+                      setSelectedFile(file);
+                      return;
+                    }
+                  }
+                }}
                 placeholder={`${t("chat.placeholder")} #${channelName}`}
                 className="flex-1 min-h-0"
                 maxLength={5000}

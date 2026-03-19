@@ -46,6 +46,7 @@ declare global {
       setFullscreen: (flag: boolean) => Promise<void>;
       getFullscreen: () => Promise<boolean>;
       onFullscreenChange: (callback: (isFull: boolean) => void) => () => void;
+      copyImageToClipboard: (dataUrl: string) => Promise<boolean>;
     };
   }
 }
