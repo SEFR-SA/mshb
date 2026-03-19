@@ -74,7 +74,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
 
   return (
     <div
-      className="relative w-[308px] min-h-[391px] overflow-hidden rounded-xl"
+      className="relative w-[308px] min-h-[391px] overflow-visible rounded-xl"
       style={{ ...profileThemeVars, borderColor: "var(--profile-accent)", borderWidth: "2px", borderStyle: "solid" }}
     >
       {/* L1: Full-bleed gradient */}
