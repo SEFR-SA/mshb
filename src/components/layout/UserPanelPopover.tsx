@@ -83,7 +83,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
       <div className="absolute inset-0 rounded-xl bg-black/60 z-[1]" />
 
       {/* Banner — z-[2] */}
-      <div className="relative h-24 w-full z-[2]">
+      <div className="relative h-24 w-full z-[2] rounded-t-xl overflow-hidden">
         {profile.banner_url && (
           <img src={profile.banner_url} alt="" className="w-full h-full object-cover" />
         )}
