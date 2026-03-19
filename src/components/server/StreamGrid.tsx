@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import { useVoiceChannel, type RemoteScreenShareInfo } from "@/contexts/VoiceChannelContext";
 import ScreenShareViewer from "@/components/server/ScreenShareViewer";
 import { Maximize2, Grid2x2 } from "lucide-react";
@@ -20,6 +21,7 @@ interface StreamGridProps {
  */
 const StreamGrid = ({ streams, channelName, onStopWatching }: StreamGridProps) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { focusedStreamIdentity, setFocusedStreamIdentity } = useVoiceChannel();
 
   // Single stream — just render the viewer directly
@@ -30,6 +32,7 @@ const StreamGrid = ({ streams, channelName, onStopWatching }: StreamGridProps) =
         sharerName={streams[0].name}
         channelName={channelName}
         onStopWatching={onStopWatching}
+        audioMuted={streams[0].identity === user?.id}
       />
     );
   }
@@ -47,6 +50,7 @@ const StreamGrid = ({ streams, channelName, onStopWatching }: StreamGridProps) =
           sharerName={focusedStream.name}
           channelName={channelName}
           onStopWatching={onStopWatching}
+          audioMuted={focusedStream.identity === user?.id}
         />
         {/* Grid toggle button */}
         <button

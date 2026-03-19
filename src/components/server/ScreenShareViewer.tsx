@@ -16,9 +16,10 @@ interface ScreenShareViewerProps {
   label?: string;
   channelName?: string;
   onStopWatching?: () => void;
+  audioMuted?: boolean;
 }
 
-const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: ScreenShareViewerProps) => {
+const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching, audioMuted }: ScreenShareViewerProps) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,7 +48,7 @@ const ScreenShareViewer = ({ stream, sharerName, channelName, onStopWatching }: 
     const video = videoRef.current;
     if (!video) return;
     video.srcObject = stream;
-    video.muted = false;
+    video.muted = !!audioMuted;
     video.play().catch(() => {});
   }, [stream]);
 

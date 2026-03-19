@@ -34,6 +34,8 @@ interface VoiceChannelContextType {
   setFocusedStreamIdentity: (id: string | null) => void;
   isCameraOn: boolean;
   setIsCameraOn: (v: boolean) => void;
+  localScreenStream: MediaStream | null;
+  setLocalScreenStream: (s: MediaStream | null) => void;
   localCameraStream: MediaStream | null;
   setLocalCameraStream: (s: MediaStream | null) => void;
   remoteCameraStream: MediaStream | null;
@@ -62,6 +64,8 @@ const VoiceChannelContext = createContext<VoiceChannelContextType>({
   setFocusedStreamIdentity: () => {},
   isCameraOn: false,
   setIsCameraOn: () => {},
+  localScreenStream: null,
+  setLocalScreenStream: () => {},
   localCameraStream: null,
   setLocalCameraStream: () => {},
   remoteCameraStream: null,
@@ -83,13 +87,15 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
   const [isWatchingStream, setIsWatchingStream] = useState(false);
   const [focusedStreamIdentity, setFocusedStreamIdentity] = useState<string | null>(null);
 
-  // Auto-reset watching state when all remote streams disappear
+  const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
+
+  // Auto-reset watching state when all streams disappear (local + remote)
   useEffect(() => {
-    if (remoteScreenStreams.length === 0) {
+    if (remoteScreenStreams.length === 0 && !localScreenStream) {
       setIsWatchingStream(false);
       setFocusedStreamIdentity(null);
     }
-  }, [remoteScreenStreams]);
+  }, [remoteScreenStreams, localScreenStream]);
 
   // Keep legacy single-stream in sync with array (first stream)
   useEffect(() => {
@@ -148,6 +154,7 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
     setIsWatchingStream(false);
     setFocusedStreamIdentity(null);
     setIsCameraOn(false);
+    setLocalScreenStream(null);
     setLocalCameraStream(null);
     setRemoteCameraStream(null);
     setUserVolumes({});
@@ -164,6 +171,7 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
       isWatchingStream, setIsWatchingStream,
       focusedStreamIdentity, setFocusedStreamIdentity,
       isCameraOn, setIsCameraOn,
+      localScreenStream, setLocalScreenStream,
       localCameraStream, setLocalCameraStream,
       remoteCameraStream, setRemoteCameraStream,
       userVolumes, setUserVolume,

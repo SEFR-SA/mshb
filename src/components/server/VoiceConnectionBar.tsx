@@ -23,6 +23,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const {
     isScreenSharing, setIsScreenSharing,
     setRemoteScreenStreams,
+    setLocalScreenStream,
     isCameraOn, setIsCameraOn,
     setLocalCameraStream, setRemoteCameraStream,
     voiceChannel, setVoiceChannel, setNativeResolutionLabel,
@@ -234,6 +235,12 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         }
       }
 
+      // Expose local screen stream for self-preview
+      const screenPub = room?.localParticipant.getTrackPublication("screen_share" as any);
+      if (screenPub?.track?.mediaStream) {
+        setLocalScreenStream(screenPub.track.mediaStream);
+      }
+
       // Update DB
       if (user) {
         supabase
@@ -266,6 +273,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     const stopHandler = async () => {
       await lk.stopScreenShare();
       setIsScreenSharing(false);
+      setLocalScreenStream(null);
       setNativeResolutionLabel(null);
 
       if (user) {
@@ -388,6 +396,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   useEffect(() => {
     return () => {
       setIsScreenSharing(false);
+      setLocalScreenStream(null);
       setRemoteScreenStreams([]);
       setIsCameraOn(false);
       setLocalCameraStream(null);

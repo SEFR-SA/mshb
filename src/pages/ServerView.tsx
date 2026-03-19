@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,16 +22,29 @@ import { Menu, Users, ArrowLeft } from "lucide-react";
 const ServerView = () => {
   const { serverId, channelId } = useParams<{ serverId: string; channelId?: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const isMobile = useIsMobile();
   const { t } = useTranslation();
-  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStreams, remoteCameraStream, isWatchingStream, setIsWatchingStream } = useVoiceChannel();
+  const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStreams, remoteCameraStream, isWatchingStream, setIsWatchingStream, isScreenSharing, localScreenStream } = useVoiceChannel();
   const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean; description?: string | null } | null>(null);
   const [canEdit, setCanEdit] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [showMembers, setShowMembers] = useState(!isMobile);
   const [pendingVoiceChannel, setPendingVoiceChannel] = useState<{ id: string; name: string } | null>(null);
   const [switchDialogOpen, setSwitchDialogOpen] = useState(false);
+
+  // Combine remote + local screen streams so the local user sees their own share in the grid
+  const allScreenStreams = useMemo(() => {
+    const combined = [...remoteScreenStreams];
+    if (isScreenSharing && localScreenStream && user) {
+      combined.push({
+        identity: user.id,
+        name: (profile as any)?.display_name || (profile as any)?.username || "You",
+        stream: localScreenStream,
+      });
+    }
+    return combined;
+  }, [remoteScreenStreams, isScreenSharing, localScreenStream, user, profile]);
 
   // Fetch user's server role for canEdit check
   useMountEffect(() => {
@@ -246,8 +259,8 @@ const ServerView = () => {
                 </SheetContent>
               </Sheet>
             </header>
-            {remoteScreenStreams.length > 0 && isWatchingStream && (
-              <StreamGrid streams={remoteScreenStreams} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
+            {allScreenStreams.length > 0 && isWatchingStream && (
+              <StreamGrid streams={allScreenStreams} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
             )}
             <div className="flex-1 min-h-0">{renderMainContent()}</div>
           </div>
@@ -262,8 +275,8 @@ const ServerView = () => {
         <div className="flex h-full w-full max-w-full overflow-x-hidden bg-background">
           <ServerRail />
           <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col bg-surface rounded-tl-[16px]">
-            {remoteScreenStreams.length > 0 && isWatchingStream && (
-              <StreamGrid streams={remoteScreenStreams} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
+            {allScreenStreams.length > 0 && isWatchingStream && (
+              <StreamGrid streams={allScreenStreams} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
             )}
             <div className="flex-1 min-h-0 overflow-hidden">
               <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
@@ -281,8 +294,8 @@ const ServerView = () => {
       <div className="flex h-full">
         <ChannelSidebar serverId={serverId} activeChannelId={activeChannel?.id} onChannelSelect={handleChannelSelect} onVoiceChannelSelect={handleVoiceChannelSelect} activeVoiceChannelId={voiceChannel?.id} />
         <div className="flex-1 flex flex-col min-h-0">
-          {remoteScreenStreams.length > 0 && isWatchingStream && (
-            <StreamGrid streams={remoteScreenStreams} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
+          {allScreenStreams.length > 0 && isWatchingStream && (
+            <StreamGrid streams={allScreenStreams} channelName={voiceChannel?.name || ""} onStopWatching={() => setIsWatchingStream(false)} />
           )}
           {remoteCameraStream && (
             <CameraViewer stream={remoteCameraStream} />
