@@ -42,7 +42,7 @@ const ServerView = () => {
       .eq("server_id", serverId)
       .eq("user_id", user.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         setCanEdit(data?.role === "owner" || data?.role === "admin");
       });
   });
