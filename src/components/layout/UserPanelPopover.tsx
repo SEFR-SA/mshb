@@ -74,13 +74,13 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
 
   return (
     <div
-      className="relative w-[308px] min-h-[391px] overflow-hidden rounded-xl"
+      className="relative w-[308px] min-h-[391px] overflow-visible rounded-xl"
       style={{ ...profileThemeVars, borderColor: "var(--profile-accent)", borderWidth: "2px", borderStyle: "solid" }}
     >
       {/* L1: Full-bleed gradient */}
-      <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, var(--profile-primary), var(--profile-accent))" }} />
+      <div className="absolute inset-0 rounded-xl" style={{ background: "linear-gradient(135deg, var(--profile-primary), var(--profile-accent))" }} />
       {/* L2: Dark wash */}
-      <div className="absolute inset-0 bg-black/60 z-[1]" />
+      <div className="absolute inset-0 rounded-xl bg-black/60 z-[1]" />
 
       {/* Banner — z-[2] */}
       <div className="relative h-24 w-full z-[2]">

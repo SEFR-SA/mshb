@@ -97,7 +97,7 @@ const ServerMemberList = ({ serverId }: Props) => {
         .select("user_id, display_name, username, avatar_url, banner_url, about_me, status, status_text, status_until, created_at, name_font, name_effect, name_gradient_start, name_gradient_end, nameplate_url, avatar_decoration_url, profile_effect_url, is_pro, profile_primary_color, profile_accent_color, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)")
         .in("user_id", userIds);
 
-      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
       setMembers(
         (data as any[]).map((m) => ({ ...m, profile: profileMap.get(m.user_id) }))
       );
