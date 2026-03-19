@@ -74,7 +74,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
 
   return (
     <div
-      className="relative w-[308px] min-h-[391px] overflow-visible rounded-xl"
+      className="relative w-[300px] min-h-[391px] overflow-visible rounded-xl"
       style={{ ...profileThemeVars, borderColor: "var(--profile-accent)", borderWidth: "2px", borderStyle: "solid" }}
     >
       {/* L1: Full-bleed gradient */}
@@ -126,7 +126,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
         )}
 
         {/* Container 1: Edit Profile + Status */}
-        <div className="mt-3 rounded-md bg-muted/50 p-1 space-y-0.5 w-[268px] h-[99px]">
+        <div className="mt-3 rounded-md bg-muted/50 p-1 space-y-0.5 w-full flex flex-col justify-center">
           <button
             className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start"
             onClick={handleEditProfile}
@@ -208,7 +208,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
         </div>
 
         {/* Container 2: Sign Out */}
-        <div className="mt-2 rounded-md bg-muted/50 p-1 w-[268px] h-[50px]">
+        <div className="mt-2 rounded-md bg-muted/50 p-1 w-full flex flex-col justify-center">
           <button
             className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-destructive hover:text-destructive-foreground transition-colors text-start text-destructive"
             onClick={handleSignOut}
