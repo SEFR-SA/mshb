@@ -126,9 +126,9 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
         )}
 
         {/* Container 1: Edit Profile + Status */}
-        <div className="mt-3 rounded-md bg-muted/50 p-1 space-y-0.5 w-full flex flex-col justify-center">
+        <div className="mt-3 rounded-md bg-black/40 backdrop-blur-sm px-1 space-y-0.5 w-[268px] h-[99px] mx-auto flex flex-col items-stretch justify-center">
           <button
-            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start"
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs text-white/80 hover:text-white hover:bg-white/10 transition-colors text-start"
             onClick={handleEditProfile}
           >
             <Pencil className="h-3.5 w-3.5 shrink-0" />
@@ -142,7 +142,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
             onMouseLeave={() => setShowStatusMenu(false)}
           >
             <button
-              className="flex items-center justify-between w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start group"
+              className="flex items-center justify-between w-full px-2 py-1.5 rounded-sm text-xs text-white/80 hover:text-white hover:bg-white/10 transition-colors text-start group"
               onClick={() => setShowStatusMenu(!showStatusMenu)}
             >
               <span className="flex items-center gap-2">
@@ -150,20 +150,20 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
                 {currentStatusOption.label}
               </span>
               {isMobile
-                ? (showStatusMenu ? <ChevronUp className="h-3 w-3 text-muted-foreground group-hover:text-accent-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-accent-foreground" />)
-                : <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-accent-foreground" />
+                ? (showStatusMenu ? <ChevronUp className="h-3 w-3 text-white/50 group-hover:text-white" /> : <ChevronDown className="h-3 w-3 text-white/50 group-hover:text-white" />)
+                : <ChevronRight className="h-3 w-3 text-white/50 group-hover:text-white" />
               }
             </button>
 
             {/* Mobile: inline status list */}
             {showStatusMenu && isMobile && (
-              <div className="mt-0.5 rounded-md border border-border bg-popover/95 backdrop-blur-xl p-1 space-y-0.5">
+              <div className="mt-0.5 rounded-md border border-white/10 bg-black/80 backdrop-blur-xl p-1 space-y-0.5">
                 {STATUS_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     className={cn(
-                      "flex flex-col w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start gap-0.5 group",
-                      currentStatus === opt.value && "bg-accent text-accent-foreground"
+                      "flex flex-col w-full px-2 py-1.5 rounded-sm text-xs text-white/80 hover:text-white hover:bg-white/10 transition-colors text-start gap-0.5 group",
+                      currentStatus === opt.value && "bg-white/10 text-white"
                     )}
                     onClick={() => handleStatusChange(opt.value)}
                   >
@@ -172,7 +172,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
                       {opt.label}
                     </span>
                     {opt.description && (
-                      <span className="text-[10px] text-muted-foreground group-hover:text-accent-foreground ps-[18px]">{opt.description}</span>
+                      <span className="text-[10px] text-white/50 group-hover:text-white/70 ps-[18px]">{opt.description}</span>
                     )}
                   </button>
                 ))}
@@ -182,13 +182,13 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
             {/* Desktop: side-positioned status submenu */}
             {showStatusMenu && !isMobile && (
               <div className="absolute left-full bottom-0 ms-0 rtl:left-auto rtl:right-full z-50 ps-2 rtl:ps-0 rtl:pe-2">
-                <div className="w-[200px] rounded-md border border-border bg-popover/95 backdrop-blur-xl p-1 shadow-lg space-y-0.5">
+                <div className="w-[200px] rounded-md border border-white/10 bg-black/80 backdrop-blur-xl p-1 shadow-lg space-y-0.5">
                   {STATUS_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
                       className={cn(
-                        "flex flex-col w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent hover:text-accent-foreground transition-colors text-start gap-0.5 group",
-                        currentStatus === opt.value && "bg-accent text-accent-foreground"
+                        "flex flex-col w-full px-2 py-1.5 rounded-sm text-xs text-white/80 hover:text-white hover:bg-white/10 transition-colors text-start gap-0.5 group",
+                        currentStatus === opt.value && "bg-white/10 text-white"
                       )}
                       onClick={() => handleStatusChange(opt.value)}
                     >
@@ -197,7 +197,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
                         {opt.label}
                       </span>
                       {opt.description && (
-                        <span className="text-[10px] text-muted-foreground group-hover:text-accent-foreground ps-[18px]">{opt.description}</span>
+                        <span className="text-[10px] text-white/50 group-hover:text-white/70 ps-[18px]">{opt.description}</span>
                       )}
                     </button>
                   ))}
@@ -208,9 +208,9 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
         </div>
 
         {/* Container 2: Sign Out */}
-        <div className="mt-2 rounded-md bg-muted/50 p-1 w-full flex flex-col justify-center">
+        <div className="mt-2 rounded-md bg-black/40 backdrop-blur-sm p-1 w-[268px] h-[50px] mx-auto flex flex-col justify-center">
           <button
-            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-destructive hover:text-destructive-foreground transition-colors text-start text-destructive"
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors text-start"
             onClick={handleSignOut}
           >
             <LogOut className="h-3.5 w-3.5 shrink-0" />
