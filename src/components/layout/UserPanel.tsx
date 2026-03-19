@@ -36,7 +36,7 @@ const UserPanel = ({ className }: UserPanelProps) => {
   if (!user) return null;
 
   return (
-    <div className={cn("flex flex-col w-[359px] h-[58px]", className)}>
+    <div className={cn("flex flex-col w-[359px] min-h-[58px]", className)}>
       {/* Voice connection status */}
       {voiceChannel && (
         <div className="flex items-center gap-2 px-2 py-1.5 border-b border-border/30">

@@ -930,16 +930,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                         {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
                                       </AvatarFallback>
                                     </Avatar>
-                                    {p.is_screen_sharing && (
-                                      <span className="absolute -bottom-1 -end-1 bg-green-600 text-white text-[7px] font-bold leading-none px-0.5 py-px rounded-sm">
-                                        {t("streaming.live")}
-                                      </span>
-                                    )}
                                   </div>
                                   <StyledDisplayName displayName={p.display_name || p.username || "User"} fontStyle={p.name_font} effect={p.name_effect} gradientStart={p.name_gradient_start} gradientEnd={p.name_gradient_end} className="truncate" />
-                                  {p.is_screen_sharing && (
-                                    <Monitor className="h-3 w-3 text-green-500 shrink-0" />
-                                  )}
                                   {p.is_deafened ? (
                                     <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
                                   ) : p.is_muted ? (
@@ -947,6 +939,9 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                   ) : p.is_speaking ? (
                                     <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
                                   ) : null}
+                                  {p.is_screen_sharing && (
+                                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">LIVE</span>
+                                  )}
                                   {isScreenSharer && isMobile && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); setIsWatchingStream(true); }}
@@ -968,12 +963,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                           {(p.display_name || p.username || "U").charAt(0).toUpperCase()}
                                         </AvatarFallback>
                                       </Avatar>
-                                      <span className="absolute -bottom-1 -end-1 bg-green-600 text-white text-[7px] font-bold leading-none px-0.5 py-px rounded-sm">
-                                        {t("streaming.live")}
-                                      </span>
                                     </div>
                                     <StyledDisplayName displayName={p.display_name || p.username || "User"} fontStyle={p.name_font} effect={p.name_effect} gradientStart={p.name_gradient_start} gradientEnd={p.name_gradient_end} className="truncate" />
-                                    <Monitor className="h-3 w-3 text-green-500 shrink-0" />
                                     {p.is_deafened ? (
                                       <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
                                     ) : p.is_muted ? (
@@ -981,6 +972,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                     ) : p.is_speaking ? (
                                       <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
                                     ) : null}
+                                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">LIVE</span>
                                   </div>
                                 );
                                 return (

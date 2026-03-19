@@ -108,7 +108,7 @@ const AppLayout = () => {
         {/* Floating user panel */}
         {!isMobile && !isBoostPage && (
 
-          <UserPanel className="absolute bottom-0 left-0 z-50 m-2 w-[calc(72px+303px-16px)] h-[58px] bg-background border border-border/50 rounded-lg shadow-lg" />
+          <UserPanel className="absolute bottom-0 left-0 z-50 m-2 w-[calc(72px+303px-16px)] min-h-[58px] bg-background border border-border/50 rounded-lg shadow-lg" />
 
         )}
         {isMobile && !isFullPageView && !isFriendsDashboard && !isBoostPage && (
