@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   return {
     base: process.env.ELECTRON === 'true' ? './' : '/',
     server: {
-      host: "::",
+      host: "0.0.0.0",
       port: 8080,
       hmr: {
         overlay: false,
