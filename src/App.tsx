@@ -47,6 +47,8 @@ declare global {
       getFullscreen: () => Promise<boolean>;
       onFullscreenChange: (callback: (isFull: boolean) => void) => () => void;
       copyImageToClipboard: (dataUrl: string) => Promise<boolean>;
+      registerGlobalShortcuts: (binds: { action: string; keys: string[] }[]) => void;
+      onGlobalShortcutTriggered: (callback: (action: string) => void) => () => void;
     };
   }
 }

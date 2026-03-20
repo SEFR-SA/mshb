@@ -1,4 +1,4 @@
-const { app, BrowserWindow, autoUpdater, ipcMain, desktopCapturer, Menu, session } = require('electron');
+const { app, BrowserWindow, autoUpdater, ipcMain, desktopCapturer, Menu, session, globalShortcut } = require('electron');
 const path = require('path');
 
 if (process.defaultApp) {
@@ -354,6 +354,46 @@ ipcMain.handle('clipboard-write-image', async (_event, dataUrl) => {
   }
 });
 
+// --- Global Shortcuts ---
+function keysToAccelerator(keys) {
+  return keys.map(k => {
+    const lower = k.toLowerCase();
+    if (lower === 'ctrl') return 'CommandOrControl';
+    if (lower === 'alt') return 'Alt';
+    if (lower === 'shift') return 'Shift';
+    if (lower === 'meta') return 'Super';
+    if (lower === 'space') return 'Space';
+    if (lower === 'enter') return 'Return';
+    if (lower === 'backspace') return 'Backspace';
+    if (lower === 'escape' || lower === 'esc') return 'Escape';
+    if (lower === 'delete') return 'Delete';
+    if (lower === 'tab') return 'Tab';
+    if (lower === 'arrowup') return 'Up';
+    if (lower === 'arrowdown') return 'Down';
+    if (lower === 'arrowleft') return 'Left';
+    if (lower === 'arrowright') return 'Right';
+    return k;
+  }).join('+');
+}
+
+ipcMain.on('register-global-shortcuts', (event, binds) => {
+  globalShortcut.unregisterAll();
+  if (!Array.isArray(binds)) return;
+  for (const bind of binds) {
+    if (!bind.keys || bind.keys.length === 0 || bind.action === 'UNASSIGNED') continue;
+    try {
+      const accel = keysToAccelerator(bind.keys);
+      globalShortcut.register(accel, () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('global-shortcut-triggered', bind.action);
+        }
+      });
+    } catch (err) {
+      console.warn('Failed to register shortcut:', bind.keys, err.message);
+    }
+  }
+});
+
 if (require('electron-squirrel-startup')) app.quit();
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -440,4 +480,8 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });

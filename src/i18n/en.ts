@@ -738,6 +738,22 @@ export default {
     noOtherDevices: "No other devices are logged into your account.",
     unknownLocation: "Unknown location",
   },
+  keybinds: {
+    description: "Default keyboard shortcuts for quick actions.",
+    addKeybind: "Add a Keybind",
+    customKeybinds: "Custom Keybinds",
+    recordKeybind: "Record Keybind",
+    actions: {
+      UNASSIGNED: "Unassigned",
+      TOGGLE_MUTE: "Toggle Mute",
+      TOGGLE_DEAFEN: "Toggle Deafen",
+      DISCONNECT_VOICE: "Disconnect from Voice Channel",
+      TOGGLE_SCREEN_SHARE: "Toggle Screen Share",
+      TOGGLE_STREAMER_MODE: "Toggle Streamer Mode",
+      ANSWER_CALL: "Answer Incoming Call",
+      DECLINE_CALL: "Decline Incoming Call",
+    },
+  },
   serverSettings: {
     serverProfile: "Server Profile",
     serverTag: "Server Tag",

@@ -738,6 +738,22 @@ export default {
     noOtherDevices: "لا توجد أجهزة أخرى مسجلة في حسابك.",
     unknownLocation: "موقع غير معروف",
   },
+  keybinds: {
+    description: "اختصارات لوحة المفاتيح الافتراضية للإجراءات السريعة.",
+    addKeybind: "إضافة اختصار",
+    customKeybinds: "اختصارات مخصصة",
+    recordKeybind: "سجّل اختصارًا",
+    actions: {
+      UNASSIGNED: "غير معيّن",
+      TOGGLE_MUTE: "تبديل كتم الصوت",
+      TOGGLE_DEAFEN: "تبديل الصمم",
+      DISCONNECT_VOICE: "قطع الاتصال بالقناة الصوتية",
+      TOGGLE_SCREEN_SHARE: "تبديل مشاركة الشاشة",
+      TOGGLE_STREAMER_MODE: "تبديل وضع البث",
+      ANSWER_CALL: "الرد على المكالمة",
+      DECLINE_CALL: "رفض المكالمة",
+    },
+  },
   serverSettings: {
     serverProfile: "ملف السيرفر",
     serverTag: "وسم السيرفر",

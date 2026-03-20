@@ -15,4 +15,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   setTitleBarColor: (color, symbolColor) => ipcRenderer.send('set-title-bar-color', color, symbolColor),
   copyImageToClipboard: (dataUrl) => ipcRenderer.invoke('clipboard-write-image', dataUrl),
+  registerGlobalShortcuts: (binds) => ipcRenderer.send('register-global-shortcuts', binds),
+  onGlobalShortcutTriggered: (callback) => {
+    const wrapped = (_event, action) => callback(action);
+    ipcRenderer.on('global-shortcut-triggered', wrapped);
+    return () => ipcRenderer.removeListener('global-shortcut-triggered', wrapped);
+  },
 });
