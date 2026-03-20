@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.send-message]
 verify_jwt = false
+
+[functions.free-games-bot]
+verify_jwt = false
