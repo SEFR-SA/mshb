@@ -964,7 +964,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                               onDrop={(e) => handleChannelDrop(e, ch.id, category)}
                             >
                               <button
-                                onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name })}
+                                onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name, restricted_permissions: ch.restricted_permissions })}
                                 className={`flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors hover:bg-sidebar-accent/50 ${hasParticipants
                                     ? "font-bold text-white"
                                     : "font-medium text-[#949BA4] hover:text-[#DBDEE1]"
