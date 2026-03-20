@@ -318,6 +318,7 @@ export type Database = {
           is_rules: boolean
           name: string
           position: number
+          restricted_permissions: string[]
           server_id: string
           support_role_ids: string[] | null
           type: string
@@ -332,6 +333,7 @@ export type Database = {
           is_rules?: boolean
           name: string
           position?: number
+          restricted_permissions?: string[]
           server_id: string
           support_role_ids?: string[] | null
           type?: string
@@ -346,6 +348,7 @@ export type Database = {
           is_rules?: boolean
           name?: string
           position?: number
+          restricted_permissions?: string[]
           server_id?: string
           support_role_ids?: string[] | null
           type?: string
@@ -967,6 +970,112 @@ export type Database = {
           },
         ]
       }
+      poll_answers: {
+        Row: {
+          emoji: string | null
+          id: string
+          poll_id: string
+          position: number
+          text: string
+        }
+        Insert: {
+          emoji?: string | null
+          id?: string
+          poll_id: string
+          position?: number
+          text: string
+        }
+        Update: {
+          emoji?: string | null
+          id?: string
+          poll_id?: string
+          position?: number
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_answers_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_votes: {
+        Row: {
+          answer_id: string
+          created_at: string
+          id: string
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          answer_id: string
+          created_at?: string
+          id?: string
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          answer_id?: string
+          created_at?: string
+          id?: string
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: false
+            referencedRelation: "poll_answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      polls: {
+        Row: {
+          allow_multiple: boolean
+          created_at: string
+          expires_at: string
+          id: string
+          message_id: string
+          question: string
+        }
+        Insert: {
+          allow_multiple?: boolean
+          created_at?: string
+          expires_at: string
+          id?: string
+          message_id: string
+          question: string
+        }
+        Update: {
+          allow_multiple?: boolean
+          created_at?: string
+          expires_at?: string
+          id?: string
+          message_id?: string
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "polls_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: true
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_notes: {
         Row: {
           author_id: string
@@ -1201,6 +1310,41 @@ export type Database = {
           target_id?: string | null
         }
         Relationships: []
+      }
+      server_bans: {
+        Row: {
+          banned_by: string
+          created_at: string
+          id: string
+          reason: string | null
+          server_id: string
+          user_id: string
+        }
+        Insert: {
+          banned_by: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          server_id: string
+          user_id: string
+        }
+        Update: {
+          banned_by?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          server_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_bans_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       server_blocked_words: {
         Row: {
@@ -1963,8 +2107,16 @@ export type Database = {
         Returns: undefined
       }
       apply_inventory_boost: { Args: { p_server_id: string }; Returns: boolean }
+      ban_server_member: {
+        Args: { p_reason?: string; p_server_id: string; p_user_id: string }
+        Returns: undefined
+      }
       calculate_server_boost_stats: {
         Args: { p_server_id: string }
+        Returns: undefined
+      }
+      cast_poll_vote: {
+        Args: { p_answer_id: string; p_poll_id: string }
         Returns: undefined
       }
       change_username: {
@@ -1983,6 +2135,10 @@ export type Database = {
           channel_id: string
           ticket_number: number
         }[]
+      }
+      delete_channel_message: {
+        Args: { p_message_id: string }
+        Returns: undefined
       }
       delete_ticket: { Args: { p_ticket_id: string }; Returns: undefined }
       disable_community: { Args: { p_server_id: string }; Returns: undefined }
@@ -2027,6 +2183,15 @@ export type Database = {
         }[]
       }
       get_server_stats: { Args: { p_server_id: string }; Returns: Json }
+      get_user_permissions: { Args: { _server_id: string }; Returns: Json }
+      has_channel_permission: {
+        Args: { _channel_id: string; _permission: string; _user_id: string }
+        Returns: boolean
+      }
+      has_role_permission: {
+        Args: { _permission: string; _server_id: string; _user_id: string }
+        Returns: boolean
+      }
       insert_boost_audit_log: {
         Args: {
           p_action: string
@@ -2063,11 +2228,16 @@ export type Database = {
         Args: { p_server_id: string }
         Returns: undefined
       }
+      remove_poll_votes: { Args: { p_poll_id: string }; Returns: undefined }
       reopen_ticket: { Args: { p_ticket_id: string }; Returns: undefined }
       toggle_message_pin: { Args: { p_message_id: string }; Returns: boolean }
       transfer_boost: {
         Args: { p_boost_id: string; p_new_server_id: string }
         Returns: boolean
+      }
+      unban_server_member: {
+        Args: { p_server_id: string; p_user_id: string }
+        Returns: undefined
       }
       update_entrance_sound: {
         Args: { p_server_id: string; p_sound_id: string }

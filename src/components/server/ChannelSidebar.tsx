@@ -98,7 +98,7 @@ interface Props {
   serverId: string;
   activeChannelId?: string;
   onChannelSelect?: (channel: { id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean; description?: string | null }) => void;
-  onVoiceChannelSelect?: (channel: { id: string; name: string }) => void;
+  onVoiceChannelSelect?: (channel: { id: string; name: string; restricted_permissions?: string[] }) => void;
   activeVoiceChannelId?: string;
 }
 
@@ -964,7 +964,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                               onDrop={(e) => handleChannelDrop(e, ch.id, category)}
                             >
                               <button
-                                onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name })}
+                                onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name, restricted_permissions: ch.restricted_permissions })}
                                 className={`flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors hover:bg-sidebar-accent/50 ${hasParticipants
                                     ? "font-bold text-white"
                                     : "font-medium text-[#949BA4] hover:text-[#DBDEE1]"

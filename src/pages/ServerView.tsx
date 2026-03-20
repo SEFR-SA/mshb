@@ -6,6 +6,8 @@ import { useMountEffect } from "@/hooks/useMountEffect";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTranslation } from "react-i18next";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
+import { toast } from "sonner";
 import ChannelSidebar from "@/components/server/ChannelSidebar";
 import ServerChannelChat from "@/components/server/ServerChannelChat";
 import ServerMemberList from "@/components/server/ServerMemberList";
@@ -30,8 +32,9 @@ const ServerView = () => {
   const [canEdit, setCanEdit] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [showMembers, setShowMembers] = useState(!isMobile);
-  const [pendingVoiceChannel, setPendingVoiceChannel] = useState<{ id: string; name: string } | null>(null);
+  const [pendingVoiceChannel, setPendingVoiceChannel] = useState<{ id: string; name: string; restricted_permissions?: string[] } | null>(null);
   const [switchDialogOpen, setSwitchDialogOpen] = useState(false);
+  const { permissions } = useServerPermissions(serverId);
 
   // Combine remote + local screen streams so the local user sees their own share in the grid
   const allScreenStreams = useMemo(() => {
@@ -172,7 +175,14 @@ const ServerView = () => {
     }
   };
 
-  const handleVoiceChannelSelect = (channel: { id: string; name: string }) => {
+  const handleVoiceChannelSelect = (channel: { id: string; name: string; restricted_permissions?: string[] }) => {
+    // Check connect permission if restricted
+    const restricted = channel.restricted_permissions ?? [];
+    if (restricted.includes("connect") && !permissions.connect) {
+      toast.error(t("servers.permissionDenied", "You don't have permission to connect to this channel"));
+      return;
+    }
+
     if (voiceChannel && voiceChannel.id !== channel.id) {
       setPendingVoiceChannel(channel);
       setSwitchDialogOpen(true);
