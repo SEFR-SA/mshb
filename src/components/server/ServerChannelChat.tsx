@@ -37,6 +37,8 @@ import MessageReactions from "@/components/chat/MessageReactions";
 import { useMessageReactions } from "@/hooks/useMessageReactions";
 import ServerInviteCard from "@/components/chat/ServerInviteCard";
 import FreeGameCard from "@/components/server/FreeGameCard";
+import PollView from "@/components/server/PollView";
+import CreatePollModal from "@/components/server/CreatePollModal";
 import { detectInviteInMessage } from "@/lib/inviteUtils";
 import AutoResizeTextarea from "@/components/chat/AutoResizeTextarea";
 import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
@@ -208,6 +210,15 @@ const MessageItem = React.memo(({
     return (
       <div className={`flex justify-start px-4 ${isGrouped ? "mt-1" : isFirstMessage ? "" : "mt-3"}`}>
         <FreeGameCard metadata={msgAny.metadata} timestamp={msg.created_at} />
+      </div>
+    );
+  }
+
+  // Poll card
+  if (msgAny.type === "poll") {
+    return (
+      <div className={`flex justify-start px-4 ${isGrouped ? "mt-1" : isFirstMessage ? "" : "mt-3"}`}>
+        <PollView messageId={msg.id} />
       </div>
     );
   }
@@ -439,6 +450,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const [userRole, setUserRole] = useState<string>("member");
   const [userRoleColorMap, setUserRoleColorMap] = useState<Map<string, { color: string; iconUrl: string | null }>>(new Map());
   const [ticketInfo, setTicketInfo] = useState<{ id: string; status: string; ticket_number: number; transcript_url?: string } | null>(null);
+  const [pollModalOpen, setPollModalOpen] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [closingTicket, setClosingTicket] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -1206,6 +1218,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                   if (!user) return;
                   await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
                 }}
+                onPollClick={() => setPollModalOpen(true)}
                 disabled={sending}
                 serverId={serverId}
                 serverBoostLevel={serverBoostLevel}
@@ -1244,6 +1257,9 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
           </div>
         </>
       )}
+
+      {/* Create Poll Modal */}
+      <CreatePollModal open={pollModalOpen} onOpenChange={setPollModalOpen} channelId={channelId} />
 
       {/* Close Ticket Confirmation Dialog */}
       <AlertDialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}>

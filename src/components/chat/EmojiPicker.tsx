@@ -165,7 +165,7 @@ const EmojiPicker = ({ onEmojiSelect, serverId }: EmojiPickerProps) => {
           <Smile className="h-5 w-5 text-muted-foreground" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[320px] p-0" side="top" align="start">
+      <PopoverContent className="w-[320px] p-0 z-[10001]" side="top" align="start">
         <div className="flex flex-col h-[350px]">
           {/* Search */}
           <div className="p-2 border-b border-border">

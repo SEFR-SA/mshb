@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Paperclip, Smile, ImageIcon, Sticker } from "lucide-react";
+import { Plus, Paperclip, Smile, ImageIcon, Sticker, BarChart3 } from "lucide-react";
 import FileAttachmentButton from "./FileAttachmentButton";
 import EmojiPicker from "./EmojiPicker";
 import GifPicker from "./GifPicker";
@@ -14,6 +14,7 @@ interface ChatInputActionsProps {
   onEmojiSelect: (emoji: string) => void;
   onGifSelect: (url: string) => Promise<void>;
   onStickerSelect: (url: string) => Promise<void>;
+  onPollClick?: () => void;
   disabled?: boolean;
   serverId?: string;
   serverBoostLevel?: number;
@@ -24,6 +25,7 @@ const ChatInputActions = ({
   onEmojiSelect,
   onGifSelect,
   onStickerSelect,
+  onPollClick,
   disabled,
   serverId,
   serverBoostLevel,
@@ -42,6 +44,11 @@ const ChatInputActions = ({
         <EmojiPicker onEmojiSelect={onEmojiSelect} serverId={serverId} />
         <GifPicker onGifSelect={onGifSelect} />
         <StickerPicker onStickerSelect={onStickerSelect} serverId={serverId} />
+        {onPollClick && (
+          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={onPollClick} title={t("polls.create")}>
+            <BarChart3 className="h-5 w-5" />
+          </Button>
+        )}
       </>
     );
   }
@@ -52,6 +59,7 @@ const ChatInputActions = ({
     { key: "emoji" as const, icon: Smile, label: t("chat.emoji", "Insert Emoji") },
     { key: "gif" as const, icon: ImageIcon, label: t("chat.gif", "Send GIF") },
     { key: "sticker" as const, icon: Sticker, label: t("chat.stickers", "Stickers") },
+    ...(onPollClick ? [{ key: "poll" as const, icon: BarChart3, label: t("polls.create") }] : []),
   ];
 
   return (
@@ -75,7 +83,8 @@ const ChatInputActions = ({
                 className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-foreground"
                 onClick={() => {
                   setMenuOpen(false);
-                  setActivePicker(item.key);
+                  if (item.key === "poll") { onPollClick?.(); }
+                  else setActivePicker(item.key);
                 }}
               >
                 <item.icon className="h-4 w-4 text-muted-foreground" />
