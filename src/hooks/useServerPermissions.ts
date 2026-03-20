@@ -35,11 +35,11 @@ const ALL_TRUE: ServerPermissions = {
 
 const ALL_FALSE: ServerPermissions = {
   manage_roles: false, create_expressions: false, view_audit_log: false,
-  manage_server: false, create_invites: true, kick_members: false,
+  manage_server: false, create_invites: false, kick_members: false,
   ban_members: false, view_channel: false, manage_channel: false,
-  send_messages: true, attach_files: true, mention_everyone: false,
-  delete_messages: false, create_polls: true, connect: true, speak: true,
-  video: true, mute_members: false, deafen_members: false,
+  send_messages: false, attach_files: false, mention_everyone: false,
+  delete_messages: false, create_polls: false, connect: false, speak: false,
+  video: false, mute_members: false, deafen_members: false,
 };
 
 interface UseServerPermissionsResult {
