@@ -694,7 +694,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
     if (newIds.length === 0) return;
-    const { data } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end, is_bot, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").in("user_id", newIds);
+    const { data } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").in("user_id", newIds);
     if (data) {
       setProfiles((prev) => {
         const next = new Map(prev);

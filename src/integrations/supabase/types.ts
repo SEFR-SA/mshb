@@ -131,6 +131,35 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_posted_games: {
+        Row: {
+          game_id: string
+          id: string
+          posted_at: string | null
+          server_id: string
+        }
+        Insert: {
+          game_id: string
+          id?: string
+          posted_at?: string | null
+          server_id: string
+        }
+        Update: {
+          game_id?: string
+          id?: string
+          posted_at?: string | null
+          server_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_posted_games_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bundle_items: {
         Row: {
           bundle_id: string
@@ -975,6 +1004,7 @@ export type Database = {
           gender: string | null
           id: string
           is_banned: boolean
+          is_bot: boolean | null
           is_pro: boolean
           language: string | null
           last_seen: string | null
@@ -1010,6 +1040,7 @@ export type Database = {
           gender?: string | null
           id?: string
           is_banned?: boolean
+          is_bot?: boolean | null
           is_pro?: boolean
           language?: string | null
           last_seen?: string | null
@@ -1045,6 +1076,7 @@ export type Database = {
           gender?: string | null
           id?: string
           is_banned?: boolean
+          is_bot?: boolean | null
           is_pro?: boolean
           language?: string | null
           last_seen?: string | null
@@ -1491,6 +1523,7 @@ export type Database = {
           created_at: string
           default_notification_level: string
           description: string | null
+          free_games_channel_id: string | null
           icon_url: string | null
           id: string
           inactive_channel_id: string | null
@@ -1520,6 +1553,7 @@ export type Database = {
           created_at?: string
           default_notification_level?: string
           description?: string | null
+          free_games_channel_id?: string | null
           icon_url?: string | null
           id?: string
           inactive_channel_id?: string | null
@@ -1549,6 +1583,7 @@ export type Database = {
           created_at?: string
           default_notification_level?: string
           description?: string | null
+          free_games_channel_id?: string | null
           icon_url?: string | null
           id?: string
           inactive_channel_id?: string | null
@@ -1571,6 +1606,13 @@ export type Database = {
           welcome_message_enabled?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "servers_free_games_channel_id_fkey"
+            columns: ["free_games_channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "servers_inactive_channel_id_fkey"
             columns: ["inactive_channel_id"]
