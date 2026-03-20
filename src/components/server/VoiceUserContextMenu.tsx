@@ -23,6 +23,7 @@ import {
   ContextMenuTrigger,
   ContextMenuLabel,
 } from "@/components/ui/context-menu";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
 
 interface VoiceUserContextMenuProps {
   children: React.ReactNode;
@@ -60,7 +61,7 @@ const VoiceUserContextMenu = ({
   const [memberData, setMemberData] = useState<any>(null);
 
   const isSelf = user?.id === targetUserId;
-  const isAdmin = currentUserRole === "owner" || currentUserRole === "admin";
+  const { permissions } = useServerPermissions(serverId);
   const volume = userVolumes[targetUserId] ?? 100;
 
   useEffect(() => {
@@ -259,7 +260,7 @@ const VoiceUserContextMenu = ({
             </>
           )}
 
-          {isAdmin && (
+          {permissions.kick_members && (
             <>
               <ContextMenuSeparator />
               <ContextMenuItem onClick={handleDisconnect} className="text-destructive">

@@ -46,6 +46,7 @@ import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 import { useMessageKeybinds } from "@/hooks/useMessageKeybinds";
 import { getBoostPerks } from "@/config/boostPerks";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
 
 // Default to 200 MB; overridden by server boost level once fetched
 
@@ -63,6 +64,7 @@ interface Props {
   channelType?: string;
   channelDescription?: string | null;
   canEdit?: boolean;
+  restrictedPermissions?: string[];
 }
 
 const renderMessageContent = (
@@ -422,11 +424,18 @@ const MessageItem = React.memo(({
 
 // ─── ServerChannelChat ───────────────────────────────────────────────────────
 
-const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement, isRules, channelType, channelDescription, canEdit }: Props) => {
+const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement, isRules, channelType, channelDescription, canEdit, restrictedPermissions }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { serverId: serverIdParam } = useParams<{ serverId: string }>();
   const serverId = serverIdProp || serverIdParam;
+  const { permissions } = useServerPermissions(serverId);
+  // Channel-level permission checks (restricted_permissions means "role-gated")
+  const canSendMessages = restrictedPermissions?.includes("send_messages") ? permissions.send_messages : true;
+  const canAttach = restrictedPermissions?.includes("attach_files") ? permissions.attach_files : true;
+  const canCreatePolls = restrictedPermissions?.includes("create_polls") ? permissions.create_polls : true;
+  const canMentionEveryone = restrictedPermissions?.includes("mention_everyone") ? permissions.mention_everyone : true;
+
   const [profiles, setProfiles] = useState<Map<string, any>>(new Map());
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
@@ -597,7 +606,9 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     return () => { channel.unsubscribe(); };
   }, [serverId]);
 
-  const canPost = channelType === "ticket" ? (ticketInfo?.status !== "closed") : ((!isAnnouncement && !isRules) || userRole === "admin" || userRole === "owner");
+  const canPost = channelType === "ticket"
+    ? (ticketInfo?.status !== "closed")
+    : (((!isAnnouncement && !isRules) || userRole === "admin" || userRole === "owner") && canSendMessages);
 
   // Fetch ticket info for ticket channels
   useEffect(() => {
@@ -773,8 +784,8 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   }, [user]);
 
   const handleDeleteForEveryone = useCallback(async (id: string) => {
-    await supabase.from("messages").update({ deleted_for_everyone: true, content: "" }).eq("id", id);
-    updateRealtimeMessage({ id, deleted_for_everyone: true, content: "" });
+    const { error } = await supabase.rpc("delete_channel_message" as any, { p_message_id: id } as any);
+    if (!error) updateRealtimeMessage({ id, deleted_for_everyone: true, content: "" });
   }, [updateRealtimeMessage]);
 
   const handleMarkUnread = useCallback((msgId: string, msgCreatedAt: string) => {
@@ -1115,7 +1126,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                     onReply={handleReply}
                     onEdit={handleStartEdit}
                     onDeleteForMe={handleDeleteForMe}
-                    onDeleteForEveryone={msg.author_id === user?.id ? handleDeleteForEveryone : undefined}
+                    onDeleteForEveryone={msg.author_id === user?.id || permissions.delete_messages ? handleDeleteForEveryone : undefined}
                     onMarkUnread={handleMarkUnread}
                     onTogglePin={handleToggleMessagePin}
                     onHighlight={setHighlightedMsgId}
@@ -1162,6 +1173,11 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
           <Megaphone className="h-4 w-4 shrink-0" />
           {t("channels.announcementReadOnly")}
         </div>
+      ) : !canPost ? (
+        <div className="px-4 py-3 flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 border-t border-border/40">
+          <ShieldAlert className="h-4 w-4 shrink-0" />
+          {t("channels.sendMessagesRestricted")}
+        </div>
       ) : (isAnnouncement || isRules) && canPost ? (
         /* Markdown toolbar for admins/owners in announcement/rules channels */
         <div className="px-4 pb-2 pt-2 bg-transparent shrink-0">
@@ -1201,10 +1217,12 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                   filter={mentionFilter}
                   onSelect={handleMentionSelect}
                   onClose={() => setMentionOpen(false)}
+                  canMentionEveryone={canMentionEveryone}
                 />
               )}
               <ChatInputActions
                 onFileSelect={(f) => {
+                  if (!canAttach) { toast({ title: t("common.error"), description: t("channels.attachFilesRestricted"), variant: "destructive" }); return; }
                   const maxBytes = getBoostPerks(serverBoostLevel).maxUploadSizeMB * 1024 * 1024;
                   if (f.size > maxBytes) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
                   setSelectedFile(f);
@@ -1218,7 +1236,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                   if (!user) return;
                   await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
                 }}
-                onPollClick={() => setPollModalOpen(true)}
+                onPollClick={canCreatePolls ? () => setPollModalOpen(true) : undefined}
                 disabled={sending}
                 serverId={serverId}
                 serverBoostLevel={serverBoostLevel}

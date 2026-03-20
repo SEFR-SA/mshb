@@ -26,7 +26,7 @@ const ServerView = () => {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
   const { voiceChannel, setVoiceChannel: setVoiceCtx, disconnectVoice, remoteScreenStreams, remoteCameraStream, isWatchingStream, setIsWatchingStream, isScreenSharing, localScreenStream } = useVoiceChannel();
-  const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean; description?: string | null } | null>(null);
+  const [activeChannel, setActiveChannel] = useState<{ id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean; description?: string | null; restricted_permissions?: string[] } | null>(null);
   const [canEdit, setCanEdit] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [showMembers, setShowMembers] = useState(!isMobile);
@@ -90,7 +90,7 @@ const ServerView = () => {
   useEffect(() => {
     if (!serverId) return;
     if (channelId) {
-      supabase.from("channels" as any).select("id, name, type, is_private, is_announcement, is_rules, description").eq("id", channelId).maybeSingle()
+      supabase.from("channels" as any).select("id, name, type, is_private, is_announcement, is_rules, description, restricted_permissions").eq("id", channelId).maybeSingle()
         .then(({ data }) => {
           if (data) {
             setActiveChannel(data as any);
@@ -116,7 +116,7 @@ const ServerView = () => {
     const ensureChannelExists = async () => {
       const { data } = await supabase
         .from("channels" as any)
-        .select("id, name, type, is_private, is_announcement, is_rules, description")
+        .select("id, name, type, is_private, is_announcement, is_rules, description, restricted_permissions")
         .eq("id", channelId)
         .maybeSingle();
 
@@ -214,7 +214,7 @@ const ServerView = () => {
     if (activeChannel.type === "support") {
       return <SupportChannelView serverId={serverId} channelId={activeChannel.id} channelName={activeChannel.name} />;
     }
-    return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} isPrivate={activeChannel.is_private} hasAccess={hasAccess} serverId={serverId} isAnnouncement={activeChannel.is_announcement} isRules={activeChannel.is_rules} channelType={activeChannel.type} channelDescription={activeChannel.description ?? null} canEdit={canEdit} />;
+    return <ServerChannelChat channelId={activeChannel.id} channelName={activeChannel.name} isPrivate={activeChannel.is_private} hasAccess={hasAccess} serverId={serverId} isAnnouncement={activeChannel.is_announcement} isRules={activeChannel.is_rules} channelType={activeChannel.type} channelDescription={activeChannel.description ?? null} canEdit={canEdit} restrictedPermissions={activeChannel.restricted_permissions ?? []} />;
   };
 
   const switchDialog = (

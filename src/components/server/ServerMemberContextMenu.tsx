@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { MessageSquare, UserPlus, UserMinus, Phone, ClipboardCopy, ShieldCheck, ShieldOff, ShieldAlert, UserX } from "lucide-react";
+import { MessageSquare, UserPlus, UserMinus, Phone, ClipboardCopy, ShieldCheck, ShieldOff, ShieldAlert, UserX, Gavel } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   ContextMenu,
@@ -16,6 +16,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
 
 interface ServerMemberContextMenuProps {
   children: React.ReactNode;
@@ -45,7 +46,7 @@ const ServerMemberContextMenu = ({
 
   const isSelf = user?.id === targetUserId;
   const isOwner = currentUserRole === "owner";
-  const isAdmin = currentUserRole === "admin";
+  const { permissions } = useServerPermissions(serverId);
 
   useEffect(() => {
     if (!user || isSelf) return;
@@ -184,6 +185,17 @@ const ServerMemberContextMenu = ({
     toast({ title: t("servers.kicked") });
   };
 
+  const handleBan = async () => {
+    const { error } = await supabase.rpc("ban_server_member" as any, {
+      p_server_id: serverId, p_user_id: targetUserId, p_reason: null,
+    } as any);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: t("serverSettings.banSuccess") });
+    }
+  };
+
   const loadRolesIfNeeded = async () => {
     if (cmRolesLoaded) return;
     const [{ data: roles }, { data: assigned }] = await Promise.all([
@@ -211,8 +223,10 @@ const ServerMemberContextMenu = ({
 
   const canPromote = isOwner && targetRole === "member";
   const canDemote = isOwner && targetRole === "admin";
-  const canKick = (isOwner && targetRole !== "owner") || (isAdmin && targetRole === "member");
-  const hasAdminActions = canPromote || canDemote || canKick;
+  const canKick = permissions.kick_members && targetRole !== "owner";
+  const canBan = permissions.ban_members && targetRole !== "owner";
+  const canAssignRoles = permissions.manage_roles && targetRole !== "owner";
+  const hasAdminActions = canPromote || canDemote || canKick || canBan;
 
   return (
     <ContextMenu>
@@ -252,7 +266,7 @@ const ServerMemberContextMenu = ({
             </ContextMenuItem>
           </>
         )}
-        {(isOwner || isAdmin) && targetRole !== "owner" && (
+        {canAssignRoles && (
           <>
             <ContextMenuSeparator />
             <ContextMenuSub onOpenChange={(open) => open && loadRolesIfNeeded()}>
@@ -301,6 +315,12 @@ const ServerMemberContextMenu = ({
               <ContextMenuItem onClick={handleKick} className="text-destructive">
                 <UserX className="h-4 w-4 me-2" />
                 {t("servers.kick")}
+              </ContextMenuItem>
+            )}
+            {canBan && (
+              <ContextMenuItem onClick={handleBan} className="text-destructive">
+                <Gavel className="h-4 w-4 me-2" />
+                {t("serverSettings.banMember")}
               </ContextMenuItem>
             )}
           </>

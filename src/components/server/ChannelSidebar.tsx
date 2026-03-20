@@ -38,6 +38,7 @@ import { NavLink as RouterNavLink } from "react-router-dom";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { useChannelNotificationPref, type ChannelNotifLevel } from "@/hooks/useChannelNotificationPref";
 import { useStreamTimer } from "@/hooks/useStreamTimer";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
 
 
 interface Channel {
@@ -49,6 +50,7 @@ interface Channel {
   is_private: boolean;
   is_announcement?: boolean;
   is_rules?: boolean;
+  restricted_permissions: string[];
 }
 
 interface Server {
@@ -295,6 +297,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [editName, setEditName] = useState("");
   const [editIsPrivate, setEditIsPrivate] = useState(false);
   const [editDescription, setEditDescription] = useState("");
+  const [editRestrictedPermissions, setEditRestrictedPermissions] = useState<string[]>([]);
   const [editMembers, setEditMembers] = useState<string[]>([]);
   const [manageMembersOpen, setManageMembersOpen] = useState(false);
   const [manageMembersChannel, setManageMembersChannel] = useState<Channel | null>(null);
@@ -371,7 +374,11 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     });
   };
 
-  const isAdmin = server?.owner_id === user?.id;
+  const { permissions } = useServerPermissions(serverId);
+  const canManageChannel = permissions.manage_channel;
+  const canOpenSettings = permissions.manage_server || permissions.manage_roles || permissions.create_expressions || permissions.view_audit_log;
+  // Legacy alias kept for ChannelDropdown prop name
+  const isAdmin = canManageChannel;
 
   const textChannelIds = useMemo(() => channels.filter((c) => c.type === "text").map((c) => c.id), [channels]);
   const unreadSet = useChannelUnread(textChannelIds);
@@ -603,6 +610,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setEditName(ch.name);
     setEditIsPrivate(ch.is_private);
     setEditDescription((ch as any).description ?? "");
+    setEditRestrictedPermissions(ch.restricted_permissions || []);
     setEditMembers([]);
     if (ch.is_private) {
       await loadChannelMembers(ch.id, setEditMembers);
@@ -614,7 +622,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const handleEditChannel = async () => {
     if (!editChannel || !editName.trim()) return;
     const name = editName.trim().toLowerCase().replace(/\s+/g, "-");
-    await supabase.from("channels" as any).update({ name, is_private: editIsPrivate, description: editDescription || null } as any).eq("id", editChannel.id);
+    await supabase.from("channels" as any).update({ name, is_private: editIsPrivate, description: editDescription || null, restricted_permissions: editRestrictedPermissions } as any).eq("id", editChannel.id);
 
     if (!editIsPrivate && editChannel.is_private) {
       // Switched from private to public — remove all channel_members
@@ -858,7 +866,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setInviteModalOpen(true)} title={t("servers.copyInvite")}>
               <Link className="h-3.5 w-3.5" />
             </Button>
-            {isAdmin && (
+            {canOpenSettings && (
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)} title={t("servers.settings")}>
                 <Settings className="h-3.5 w-3.5" />
               </Button>
@@ -1339,6 +1347,39 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
             {editIsPrivate && renderMemberPicker(editMembers, (id) =>
               setEditMembers((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
+            )}
+
+            {/* Channel Permission Restrictions */}
+            {editChannel && (editChannel.type === "text" || editChannel.type === "voice") && (
+              <div className="space-y-2 pt-1">
+                <Label className="text-sm font-semibold">{t("channels.permissionsTitle")}</Label>
+                <p className="text-xs text-muted-foreground">{t("channels.permissionsDesc")}</p>
+                {(editChannel.type === "text"
+                  ? ["send_messages", "attach_files", "mention_everyone", "delete_messages", "create_polls"]
+                  : ["connect", "speak", "video", "mute_members", "deafen_members"]
+                ).map((key) => {
+                  const label = t(`serverSettings.perm_${key}`);
+                  const isRestricted = editRestrictedPermissions.includes(key);
+                  return (
+                    <div key={key} className="flex items-center justify-between rounded-lg border border-border/50 p-2.5">
+                      <div className="space-y-0">
+                        <Label className="text-sm font-medium">{label}</Label>
+                        <p className="text-xs text-muted-foreground">
+                          {isRestricted ? t("serverSettings.permRolesOnlyLabel") : t("serverSettings.permEveryoneLabel")}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={isRestricted}
+                        onCheckedChange={(checked) => {
+                          setEditRestrictedPermissions(prev =>
+                            checked ? [...prev, key] : prev.filter(k => k !== key)
+                          );
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             )}
 
             <Button onClick={handleEditChannel} disabled={!editName.trim()} className="w-full">

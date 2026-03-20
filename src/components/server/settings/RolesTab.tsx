@@ -32,17 +32,20 @@ interface Props {
 }
 
 const DEFAULT_PERMISSIONS: Record<string, boolean> = {
-  view_channels: false,
-  manage_channels: false,
   manage_roles: false,
+  create_expressions: false,
+  view_audit_log: false,
   manage_server: false,
-  create_invite: false,
+  create_invites: false,
   kick_members: false,
   ban_members: false,
+  view_channel: false,
+  manage_channel: false,
   send_messages: false,
   attach_files: false,
-  add_reactions: false,
   mention_everyone: false,
+  delete_messages: false,
+  create_polls: false,
   connect: false,
   speak: false,
   video: false,
@@ -52,16 +55,16 @@ const DEFAULT_PERMISSIONS: Record<string, boolean> = {
 
 const PERMISSION_GROUPS = [
   {
-    label: "permCategoryGeneral",
-    keys: ["view_channels", "manage_channels", "manage_roles", "manage_server"],
+    label: "permCategoryServerGeneral",
+    keys: ["manage_roles", "create_expressions", "view_audit_log", "manage_server", "create_invites", "kick_members", "ban_members"],
   },
   {
-    label: "permCategoryMembership",
-    keys: ["create_invite", "kick_members", "ban_members"],
+    label: "permCategoryChannelGeneral",
+    keys: ["view_channel", "manage_channel"],
   },
   {
     label: "permCategoryText",
-    keys: ["send_messages", "attach_files", "add_reactions", "mention_everyone"],
+    keys: ["send_messages", "attach_files", "mention_everyone", "delete_messages", "create_polls"],
   },
   {
     label: "permCategoryVoice",

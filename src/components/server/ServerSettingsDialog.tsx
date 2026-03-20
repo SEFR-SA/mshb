@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -24,17 +25,6 @@ import MembersTab from "./settings/MembersTab";
 import RolesTab from "./settings/RolesTab";
 import ServerBoostsTab from "./settings/ServerBoostsTab";
 import CommunityTab from "./settings/CommunityTab";
-
-interface Member {
-  user_id: string;
-  role: string;
-  profile?: {
-    display_name: string | null;
-    username: string | null;
-    avatar_url: string | null;
-    status: string;
-  };
-}
 
 interface Props {
   open: boolean;
@@ -62,15 +52,12 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
   const [isCommunity, setIsCommunity] = useState(false);
   const [rulesChannelId, setRulesChannelId] = useState<string | null>(null);
   const [updatesChannelId, setUpdatesChannelId] = useState<string | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
+  const { permissions } = useServerPermissions(serverId);
   const isOwner = ownerId === user?.id;
-  const isAdmin = members.find((m) => m.user_id === user?.id)?.role === "admin";
-  const canEdit = isOwner || isAdmin;
-  const canViewAuditLogs = isOwner || isAdmin;
 
   const loadServerData = async () => {
     if (!serverId) return;
@@ -85,13 +72,6 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
       setIsCommunity((s as any).is_community ?? false);
       setRulesChannelId((s as any).rules_channel_id ?? null);
       setUpdatesChannelId((s as any).public_updates_channel_id ?? null);
-    }
-    const { data: mems } = await supabase.from("server_members" as any).select("user_id, role").eq("server_id", serverId);
-    if (mems) {
-      const userIds = (mems as any[]).map((m) => m.user_id);
-      const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, status").in("user_id", userIds);
-      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
-      setMembers((mems as any[]).map((m) => ({ ...m, profile: profileMap.get(m.user_id) })));
     }
   };
 
@@ -155,7 +135,7 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
           </button>
         ))}
 
-        {canEdit && (
+        {permissions.manage_server && (
           <>
             <Separator className="my-2" />
             <button
@@ -171,7 +151,7 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
           </>
         )}
 
-        {canViewAuditLogs && (
+        {permissions.view_audit_log && (
           <>
             <Separator className="my-2" />
             <button
@@ -233,29 +213,29 @@ const ServerSettingsDialog = ({ open, onOpenChange, serverId, initialTab }: Prop
             setIconUrl={setIconUrl}
             bannerUrl={bannerUrl}
             setBannerUrl={setBannerUrl}
-            canEdit={canEdit}
+            canEdit={permissions.manage_server}
             userId={user?.id}
             boostLevel={boostLevel}
           />
         );
       case "members":
-        return <MembersTab serverId={serverId} canEdit={canEdit} />;
+        return <MembersTab serverId={serverId} canEdit={permissions.manage_roles} />;
       case "engagement":
-        return <EngagementTab serverId={serverId} canEdit={canEdit} />;
+        return <EngagementTab serverId={serverId} canEdit={permissions.manage_server} />;
       case "tag":
-        return <ServerTagTab serverId={serverId} canEdit={canEdit} />;
+        return <ServerTagTab serverId={serverId} canEdit={permissions.manage_server} />;
       case "emojis":
-        return <EmojisTab serverId={serverId} canEdit={canEdit} boostLevel={boostLevel} />;
+        return <EmojisTab serverId={serverId} canEdit={permissions.create_expressions} boostLevel={boostLevel} />;
       case "stickers":
-        return <StickersTab serverId={serverId} canEdit={canEdit} boostLevel={boostLevel} />;
+        return <StickersTab serverId={serverId} canEdit={permissions.create_expressions} boostLevel={boostLevel} />;
       case "soundboard":
-        return <SoundboardTab serverId={serverId} canEdit={canEdit} />;
+        return <SoundboardTab serverId={serverId} canEdit={permissions.create_expressions} />;
       case "roles":
-        return <RolesTab serverId={serverId} canEdit={canEdit} />;
+        return <RolesTab serverId={serverId} canEdit={permissions.manage_roles} />;
       case "serverBoosts":
-        return canEdit ? <ServerBoostsTab serverId={serverId} /> : null;
+        return permissions.manage_server ? <ServerBoostsTab serverId={serverId} /> : null;
       case "auditlogs":
-        return canViewAuditLogs ? <AuditLogView serverId={serverId} /> : null;
+        return permissions.view_audit_log ? <AuditLogView serverId={serverId} /> : null;
       case "community":
         return isOwner ? <CommunityTab serverId={serverId} isCommunity={isCommunity} rulesChannelId={rulesChannelId} updatesChannelId={updatesChannelId} onRefresh={loadServerData} /> : null;
       default:

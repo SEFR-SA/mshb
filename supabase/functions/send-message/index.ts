@@ -100,10 +100,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── Derive server_id from channel — never trust client ───────────────────
+    // ── Derive server_id + restricted_permissions from channel ───────────────
     const { data: channel, error: chanErr } = await serviceClient
       .from("channels")
-      .select("server_id")
+      .select("server_id, restricted_permissions")
       .eq("id", channel_id)
       .single();
 
@@ -113,6 +113,36 @@ Deno.serve(async (req) => {
       });
     }
     const server_id: string = (channel as any).server_id;
+    const restrictedPerms: string[] = (channel as any).restricted_permissions ?? [];
+
+    // ── Permission checks (channel-level restrictions) ───────────────────────
+    const checkPerm = async (perm: string): Promise<boolean> => {
+      if (!restrictedPerms.includes(perm)) return true;
+      const { data } = await serviceClient.rpc("has_role_permission" as any, {
+        _user_id: userId, _server_id: server_id, _permission: perm,
+      } as any);
+      return !!data;
+    };
+
+    if (!(await checkPerm("send_messages"))) {
+      return new Response(JSON.stringify({ error: "Missing send_messages permission" }), {
+        status: 403, headers: jsonHeaders,
+      });
+    }
+
+    if (file_url && !(await checkPerm("attach_files"))) {
+      return new Response(JSON.stringify({ error: "Missing attach_files permission" }), {
+        status: 403, headers: jsonHeaders,
+      });
+    }
+
+    if (typeof content === "string" && (content.includes("@all") || content.includes("@everyone"))) {
+      if (!(await checkPerm("mention_everyone"))) {
+        return new Response(JSON.stringify({ error: "Missing mention_everyone permission" }), {
+          status: 403, headers: jsonHeaders,
+        });
+      }
+    }
 
     // ── Step 1: Immunity check ───────────────────────────────────────────────
     let shouldFilter = false;

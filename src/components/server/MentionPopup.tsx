@@ -9,6 +9,7 @@ interface MentionPopupProps {
   filter: string;
   onSelect: (mention: string) => void;
   onClose: () => void;
+  canMentionEveryone?: boolean;
 }
 
 interface MemberProfile {
@@ -18,7 +19,7 @@ interface MemberProfile {
   avatar_url: string | null;
 }
 
-const MentionPopup = ({ serverId, filter, onSelect, onClose }: MentionPopupProps) => {
+const MentionPopup = ({ serverId, filter, onSelect, onClose, canMentionEveryone = true }: MentionPopupProps) => {
   const { t } = useTranslation();
   const [members, setMembers] = useState<MemberProfile[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -51,7 +52,7 @@ const MentionPopup = ({ serverId, filter, onSelect, onClose }: MentionPopupProps
 
   // Build suggestions: @all first, then filtered members
   const suggestions: { label: string; value: string; avatar?: string | null }[] = [];
-  if ("all".includes(lowerFilter) || lowerFilter === "") {
+  if (canMentionEveryone && ("all".includes(lowerFilter) || lowerFilter === "")) {
     suggestions.push({ label: t("mentions.all", "everyone"), value: "@all" });
   }
   filtered.forEach((m) => {
