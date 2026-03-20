@@ -98,7 +98,7 @@ interface Props {
   serverId: string;
   activeChannelId?: string;
   onChannelSelect?: (channel: { id: string; name: string; type: string; is_private?: boolean; is_announcement?: boolean; is_rules?: boolean; description?: string | null }) => void;
-  onVoiceChannelSelect?: (channel: { id: string; name: string }) => void;
+  onVoiceChannelSelect?: (channel: { id: string; name: string; restricted_permissions?: string[] }) => void;
   activeVoiceChannelId?: string;
 }
 
