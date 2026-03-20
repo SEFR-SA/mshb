@@ -32,8 +32,9 @@ const ServerView = () => {
   const [canEdit, setCanEdit] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [showMembers, setShowMembers] = useState(!isMobile);
-  const [pendingVoiceChannel, setPendingVoiceChannel] = useState<{ id: string; name: string } | null>(null);
+  const [pendingVoiceChannel, setPendingVoiceChannel] = useState<{ id: string; name: string; restricted_permissions?: string[] } | null>(null);
   const [switchDialogOpen, setSwitchDialogOpen] = useState(false);
+  const { permissions } = useServerPermissions(serverId);
 
   // Combine remote + local screen streams so the local user sees their own share in the grid
   const allScreenStreams = useMemo(() => {
