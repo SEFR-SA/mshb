@@ -175,7 +175,14 @@ const ServerView = () => {
     }
   };
 
-  const handleVoiceChannelSelect = (channel: { id: string; name: string }) => {
+  const handleVoiceChannelSelect = (channel: { id: string; name: string; restricted_permissions?: string[] }) => {
+    // Check connect permission if restricted
+    const restricted = channel.restricted_permissions ?? [];
+    if (restricted.includes("connect") && !permissions.connect) {
+      toast.error(t("servers.permissionDenied", "You don't have permission to connect to this channel"));
+      return;
+    }
+
     if (voiceChannel && voiceChannel.id !== channel.id) {
       setPendingVoiceChannel(channel);
       setSwitchDialogOpen(true);
