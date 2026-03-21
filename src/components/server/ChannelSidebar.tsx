@@ -27,6 +27,7 @@ import ServerSettingsDialog from "./ServerSettingsDialog";
 import InviteModal from "./InviteModal";
 import GoLiveModal from "@/components/GoLiveModal";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
+import ChannelSettingsOverlay from "./ChannelSettingsOverlay";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
 import { usePresence } from "@/hooks/usePresence";
@@ -1309,85 +1310,45 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         </DialogContent>
       </Dialog>
 
-      {/* Edit Channel Dialog */}
-      <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) setEditChannel(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("channels.edit")}</DialogTitle>
-            <DialogDescription>{t("channels.editDesc")}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Input
-              placeholder={t("channels.namePlaceholder")}
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleEditChannel()}
-            />
-            <Textarea
-              placeholder="Channel description (optional)"
-              value={editDescription}
-              onChange={(e) => setEditDescription(e.target.value)}
-              rows={3}
-              className="resize-none"
-            />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="edit-private-toggle" className="text-sm font-medium">{t("channels.private")}</Label>
-                <p className="text-xs text-muted-foreground">{t("channels.privateDesc")}</p>
-              </div>
-              <Switch
-                id="edit-private-toggle"
-                checked={editIsPrivate}
-                onCheckedChange={(checked) => {
-                  setEditIsPrivate(checked);
-                  if (checked && serverMembers.length === 0) fetchServerMembers();
-                }}
-              />
-            </div>
-
-            {editIsPrivate && renderMemberPicker(editMembers, (id) =>
-              setEditMembers((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
-            )}
-
-            {/* Channel Permission Restrictions */}
-            {editChannel && (editChannel.type === "text" || editChannel.type === "voice") && (
-              <div className="space-y-2 pt-1">
-                <Label className="text-sm font-semibold">{t("channels.permissionsTitle")}</Label>
-                <p className="text-xs text-muted-foreground">{t("channels.permissionsDesc")}</p>
-                {(editChannel.type === "text"
-                  ? ["send_messages", "attach_files", "mention_everyone", "delete_messages", "create_polls"]
-                  : ["connect", "speak", "video", "mute_members", "deafen_members"]
-                ).map((key) => {
-                  const label = t(`serverSettings.perm_${key}`);
-                  const isRestricted = editRestrictedPermissions.includes(key);
-                  return (
-                    <div key={key} className="flex items-center justify-between rounded-lg border border-border/50 p-2.5">
-                      <div className="space-y-0">
-                        <Label className="text-sm font-medium">{label}</Label>
-                        <p className="text-xs text-muted-foreground">
-                          {isRestricted ? t("serverSettings.permRolesOnlyLabel") : t("serverSettings.permEveryoneLabel")}
-                        </p>
-                      </div>
-                      <Switch
-                        checked={isRestricted}
-                        onCheckedChange={(checked) => {
-                          setEditRestrictedPermissions(prev =>
-                            checked ? [...prev, key] : prev.filter(k => k !== key)
-                          );
-                        }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            <Button onClick={handleEditChannel} disabled={!editName.trim()} className="w-full">
-              {t("actions.save")}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Edit Channel — Full-Screen Overlay */}
+      {editOpen && editChannel && (
+        <ChannelSettingsOverlay
+          channel={{
+            id: editChannel.id,
+            name: editChannel.name,
+            type: editChannel.type,
+            is_private: editChannel.is_private,
+            description: (editChannel as any).description ?? null,
+            restricted_permissions: editChannel.restricted_permissions ?? [],
+            user_limit: (editChannel as any).user_limit ?? 0,
+          }}
+          serverId={serverId}
+          serverMembers={serverMembers.map(m => ({ id: m.user_id, username: m.username ?? undefined, name: m.display_name || m.username || "User", avatar_url: m.avatar_url ?? undefined }))}
+          onClose={() => { setEditOpen(false); setEditChannel(null); }}
+          onSave={async (updates) => {
+            await supabase.from("channels" as any).update(updates as any).eq("id", editChannel.id);
+            if (!updates.is_private && editChannel.is_private) {
+              await supabase.from("channel_members" as any).delete().eq("channel_id", editChannel.id);
+            } else if (updates.is_private) {
+              await syncChannelMembers(editChannel.id, editMembers);
+            }
+            setChannels(prev => prev.map(ch =>
+              ch.id === editChannel.id ? { ...ch, ...updates } as any : ch
+            ));
+            window.dispatchEvent(new CustomEvent("channel-description-updated", {
+              detail: { channelId: editChannel.id, description: updates.description },
+            }));
+            toast({ title: t("channels.updated") });
+            setEditOpen(false);
+            setEditChannel(null);
+          }}
+          onDelete={() => {
+            setEditOpen(false);
+            setDeleteChannelId(editChannel.id);
+            setEditChannel(null);
+          }}
+        />
+      )}
 
       {/* Manage Members Dialog */}
       <Dialog open={manageMembersOpen} onOpenChange={(open) => { setManageMembersOpen(open); if (!open) setManageMembersChannel(null); }}>

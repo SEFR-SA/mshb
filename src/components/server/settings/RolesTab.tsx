@@ -7,13 +7,12 @@ import { useServerOwnerIsPro } from "@/hooks/useServerOwnerIsPro";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, Loader2, Lock, Plus, Trash2, Upload } from "lucide-react";
+import { ChevronLeft, Check, Loader2, Lock, Plus, Trash2, Upload, X } from "lucide-react";
 
 interface ServerRole {
   id: string;
@@ -362,7 +361,7 @@ const RolesTab = ({ serverId, canEdit }: Props) => {
           <div className="flex-1 overflow-y-auto p-6">
             {/* Delete role button */}
             {canEdit && (
-              <div className="flex justify-end mb-4">
+              <div className="flex justify-start mb-4">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -517,14 +516,32 @@ const RolesTab = ({ serverId, canEdit }: Props) => {
                               {t(`serverSettings.perm_${key}_desc`)}
                             </p>
                           </div>
-                          <Switch
-                            checked={!!editPermissions[key]}
-                            onCheckedChange={(v) =>
-                              setEditPermissions((prev) => ({ ...prev, [key]: v }))
-                            }
-                            disabled={!canEdit}
-                            className="shrink-0 mt-0.5"
-                          />
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => setEditPermissions(prev => ({ ...prev, [key]: false }))}
+                              disabled={!canEdit}
+                              className={cn(
+                                "w-7 h-7 flex items-center justify-center rounded transition-colors",
+                                !editPermissions[key]
+                                  ? "bg-red-500/20 text-red-400 ring-1 ring-red-500/50"
+                                  : "text-muted-foreground hover:bg-muted hover:text-red-400"
+                              )}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setEditPermissions(prev => ({ ...prev, [key]: true }))}
+                              disabled={!canEdit}
+                              className={cn(
+                                "w-7 h-7 flex items-center justify-center rounded transition-colors",
+                                !!editPermissions[key]
+                                  ? "bg-green-500/20 text-green-400 ring-1 ring-green-500/50"
+                                  : "text-muted-foreground hover:bg-muted hover:text-green-400"
+                              )}
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
