@@ -106,7 +106,7 @@ export default function ChannelSettingsOverlay({ channel, serverId, serverMember
       .select("id, name, color")
       .eq("server_id", serverId)
       .order("position")
-      .then(({ data }) => setServerRoles((data as ServerRole[]) || []));
+      .then(({ data }) => setServerRoles((data as unknown as ServerRole[]) || []));
   }, [serverId]);
 
   // ── Derived filtered lists for popover ────────────────────────────────────

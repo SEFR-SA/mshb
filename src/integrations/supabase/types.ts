@@ -322,6 +322,7 @@ export type Database = {
           server_id: string
           support_role_ids: string[] | null
           type: string
+          user_limit: number
         }
         Insert: {
           category?: string
@@ -337,6 +338,7 @@ export type Database = {
           server_id: string
           support_role_ids?: string[] | null
           type?: string
+          user_limit?: number
         }
         Update: {
           category?: string
@@ -352,6 +354,7 @@ export type Database = {
           server_id?: string
           support_role_ids?: string[] | null
           type?: string
+          user_limit?: number
         }
         Relationships: [
           {
@@ -2065,6 +2068,8 @@ export type Database = {
           is_screen_sharing: boolean
           is_speaking: boolean
           joined_at: string
+          server_deafened: boolean
+          server_muted: boolean
           user_id: string
         }
         Insert: {
@@ -2075,6 +2080,8 @@ export type Database = {
           is_screen_sharing?: boolean
           is_speaking?: boolean
           joined_at?: string
+          server_deafened?: boolean
+          server_muted?: boolean
           user_id: string
         }
         Update: {
@@ -2085,6 +2092,8 @@ export type Database = {
           is_screen_sharing?: boolean
           is_speaking?: boolean
           joined_at?: string
+          server_deafened?: boolean
+          server_muted?: boolean
           user_id?: string
         }
         Relationships: [
@@ -2196,20 +2205,15 @@ export type Database = {
         Args: { _channel_id: string; _permission: string; _user_id: string }
         Returns: boolean
       }
-      has_role_permission:
-        | {
-            Args: { _permission: string; _server_id: string; _user_id: string }
-            Returns: boolean
-          }
-        | {
-            Args: {
-              _permission: string
-              _server_id: string
-              _skip_defaults?: boolean
-              _user_id: string
-            }
-            Returns: boolean
-          }
+      has_role_permission: {
+        Args: {
+          _permission: string
+          _server_id: string
+          _skip_defaults?: boolean
+          _user_id: string
+        }
+        Returns: boolean
+      }
       insert_boost_audit_log: {
         Args: {
           p_action: string
@@ -2248,6 +2252,15 @@ export type Database = {
       }
       remove_poll_votes: { Args: { p_poll_id: string }; Returns: undefined }
       reopen_ticket: { Args: { p_ticket_id: string }; Returns: undefined }
+      server_moderate_voice_user: {
+        Args: {
+          p_channel_id: string
+          p_server_deafened?: boolean
+          p_server_muted?: boolean
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       toggle_message_pin: { Args: { p_message_id: string }; Returns: boolean }
       transfer_boost: {
         Args: { p_boost_id: string; p_new_server_id: string }
