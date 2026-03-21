@@ -34,7 +34,7 @@ const ServerView = () => {
   const [showMembers, setShowMembers] = useState(!isMobile);
   const [pendingVoiceChannel, setPendingVoiceChannel] = useState<{ id: string; name: string; restricted_permissions?: string[] } | null>(null);
   const [switchDialogOpen, setSwitchDialogOpen] = useState(false);
-  const { permissions } = useServerPermissions(serverId);
+  const { permissions, strictPermissions } = useServerPermissions(serverId);
 
   // Combine remote + local screen streams so the local user sees their own share in the grid
   const allScreenStreams = useMemo(() => {
@@ -176,9 +176,9 @@ const ServerView = () => {
   };
 
   const handleVoiceChannelSelect = (channel: { id: string; name: string; restricted_permissions?: string[] }) => {
-    // Check connect permission if restricted
+    // Check connect permission if restricted — use strictPermissions (no default-ON fallback)
     const restricted = channel.restricted_permissions ?? [];
-    if (restricted.includes("connect") && !permissions.connect) {
+    if (restricted.includes("connect") && !strictPermissions.connect) {
       toast.error(t("servers.permissionDenied", "You don't have permission to connect to this channel"));
       return;
     }
@@ -191,8 +191,8 @@ const ServerView = () => {
     joinVoiceChannel(channel);
   };
 
-  const joinVoiceChannel = (channel: { id: string; name: string }) => {
-    setVoiceCtx({ id: channel.id, name: channel.name, serverId: serverId! });
+  const joinVoiceChannel = (channel: { id: string; name: string; restricted_permissions?: string[] }) => {
+    setVoiceCtx({ id: channel.id, name: channel.name, serverId: serverId!, restrictedPermissions: channel.restricted_permissions ?? [] });
     if (!activeChannel && serverId && !isMobile) {
       supabase.from("channels" as any).select("id, name, type, is_private, is_announcement, is_rules").eq("server_id", serverId).eq("type", "text").order("position").limit(1)
         .then(({ data }) => {

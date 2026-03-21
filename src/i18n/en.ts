@@ -935,6 +935,8 @@ export default {
     soundboard: "Soundboard",
     noSounds: "No sounds uploaded yet",
     movedToAfk: "You were moved to the AFK channel for being inactive.",
+    speakRestricted: "You don't have permission to speak in this channel.",
+    videoRestricted: "You don't have permission to use video in this channel.",
   },
   pro: {
     upgradeToast: "Upgrade to Mshb Pro to unlock this feature.",

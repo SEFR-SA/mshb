@@ -5,6 +5,8 @@ interface VoiceChannel {
   id: string;
   name: string;
   serverId: string;
+  /** Channel-level restricted_permissions array — used for speak/video gating */
+  restrictedPermissions?: string[];
 }
 
 export interface RemoteScreenShareInfo {

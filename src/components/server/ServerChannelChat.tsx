@@ -429,12 +429,13 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const { user } = useAuth();
   const { serverId: serverIdParam } = useParams<{ serverId: string }>();
   const serverId = serverIdProp || serverIdParam;
-  const { permissions } = useServerPermissions(serverId);
-  // Channel-level permission checks (restricted_permissions means "role-gated")
-  const canSendMessages = restrictedPermissions?.includes("send_messages") ? permissions.send_messages : true;
-  const canAttach = restrictedPermissions?.includes("attach_files") ? permissions.attach_files : true;
-  const canCreatePolls = restrictedPermissions?.includes("create_polls") ? permissions.create_polls : true;
-  const canMentionEveryone = restrictedPermissions?.includes("mention_everyone") ? permissions.mention_everyone : true;
+  const { permissions, strictPermissions } = useServerPermissions(serverId);
+  // Channel-level permission checks use strictPermissions (no default-ON fallback)
+  // so that "Selected Roles Only" actually denies members without an explicit role grant.
+  const canSendMessages = restrictedPermissions?.includes("send_messages") ? strictPermissions.send_messages : true;
+  const canAttach = restrictedPermissions?.includes("attach_files") ? strictPermissions.attach_files : true;
+  const canCreatePolls = restrictedPermissions?.includes("create_polls") ? strictPermissions.create_polls : true;
+  const canMentionEveryone = restrictedPermissions?.includes("mention_everyone") ? strictPermissions.mention_everyone : true;
 
   const [profiles, setProfiles] = useState<Map<string, any>>(new Map());
   const [newMsg, setNewMsg] = useState("");
@@ -903,7 +904,15 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
             body: { content: "", channel_id: channelId, reply_to_id: replyId, type: "server_invite", metadata: invite.metadata },
           });
           if (invErr) {
-            // Edge Function unavailable — fall back to direct insert
+            // Check for permission denied (403) — do NOT fall back
+            const invBody = await (invErr as any)?.context?.json?.().catch(() => ({}));
+            const invStatus = (invErr as any)?.context?.status;
+            if (invStatus === 403) {
+              toast({ title: t("common.error"), description: invBody?.error || t("channels.sendMessagesRestricted"), variant: "destructive" });
+              setSending(false);
+              return;
+            }
+            // Genuine edge function unavailability — fall back to direct insert
             await supabase.from("messages").insert({
               channel_id: channelId, author_id: user.id, content: "",
               type: "server_invite", metadata: invite.metadata as any,
@@ -940,7 +949,14 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
           setSending(false);
           return;
         }
-        // Edge Function unavailable (not deployed, network error, etc.) — fall back to direct insert
+        // Permission denied (403) — do NOT fall back to direct insert
+        const status = (error as any)?.context?.status;
+        if (status === 403) {
+          toast({ title: t("common.error"), description: body?.error || t("channels.sendMessagesRestricted"), variant: "destructive" });
+          setSending(false);
+          return;
+        }
+        // Genuine edge function unavailability (not deployed, network error) — fall back to direct insert
         console.warn("[sendMessage] Edge Function unavailable, falling back to direct insert:", error);
         await supabase.from("messages").insert({
           channel_id: channelId,
@@ -1229,11 +1245,11 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                 }}
                 onEmojiSelect={(emoji) => { setNewMsg((prev) => prev + emoji); inputRef.current?.focus(); }}
                 onGifSelect={async (url) => {
-                  if (!user) return;
+                  if (!user || !canPost) return;
                   await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "gif", file_name: "gif" } as any);
                 }}
                 onStickerSelect={async (url) => {
-                  if (!user) return;
+                  if (!user || !canPost) return;
                   await supabase.from("messages").insert({ channel_id: channelId, author_id: user.id, content: "", file_url: url, file_type: "sticker", file_name: "sticker" } as any);
                 }}
                 onPollClick={canCreatePolls ? () => setPollModalOpen(true) : undefined}

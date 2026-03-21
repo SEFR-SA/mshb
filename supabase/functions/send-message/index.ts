@@ -118,8 +118,11 @@ Deno.serve(async (req) => {
     // ── Permission checks (channel-level restrictions) ───────────────────────
     const checkPerm = async (perm: string): Promise<boolean> => {
       if (!restrictedPerms.includes(perm)) return true;
+      // _skip_defaults: true — when a channel restricts a permission, only explicit
+      // role grants (or owner/admin) pass. The default-ON fallback is bypassed.
       const { data } = await serviceClient.rpc("has_role_permission" as any, {
         _user_id: userId, _server_id: server_id, _permission: perm,
+        _skip_defaults: true,
       } as any);
       return !!data;
     };

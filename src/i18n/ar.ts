@@ -935,6 +935,8 @@ export default {
     soundboard: "لوحة الأصوات",
     noSounds: "لا توجد أصوات مرفوعة بعد",
     movedToAfk: "تم نقلك إلى قناة الخمول بسبب عدم النشاط.",
+    speakRestricted: "ليس لديك صلاحية التحدث في هذه القناة.",
+    videoRestricted: "ليس لديك صلاحية استخدام الفيديو في هذه القناة.",
   },
   pro: {
     upgradeToast: "قم بالترقية إلى Mshb Pro لفتح هذه الميزة.",

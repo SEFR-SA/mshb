@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAudioSettings } from "@/contexts/AudioSettingsContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
+import { useServerPermissions } from "@/hooks/useServerPermissions";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,12 @@ const UserPanel = ({ className }: UserPanelProps) => {
   const { user, profile } = useAuth();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
   const { voiceChannel, disconnectVoice, isScreenSharing, isCameraOn, nativeResolutionLabel } = useVoiceChannel();
+  const { strictPermissions } = useServerPermissions(voiceChannel?.serverId);
+
+  // Channel-level voice permission flags — only relevant when in a restricted voice channel
+  const voiceRestricted = voiceChannel?.restrictedPermissions ?? [];
+  const canSpeak = voiceRestricted.includes("speak") ? strictPermissions.speak : true;
+  const canVideo = voiceRestricted.includes("video") ? strictPermissions.video : true;
   
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [micPopoverOpen, setMicPopoverOpen] = useState(false);
@@ -50,9 +57,10 @@ const UserPanel = ({ className }: UserPanelProps) => {
           <Button
             variant="ghost"
             size="icon"
-            className={`h-6 w-6 shrink-0 ${isCameraOn ? "text-green-500" : ""}`}
-            onClick={() => window.dispatchEvent(new CustomEvent("toggle-camera"))}
-            title={isCameraOn ? t("calls.stopCamera") : t("calls.startCamera")}
+            className={`h-6 w-6 shrink-0 ${isCameraOn ? "text-green-500" : ""} ${!canVideo ? "opacity-40 cursor-not-allowed" : ""}`}
+            onClick={() => canVideo && window.dispatchEvent(new CustomEvent("toggle-camera"))}
+            title={!canVideo ? t("voice.videoRestricted", "You don't have permission to use video in this channel") : isCameraOn ? t("calls.stopCamera") : t("calls.startCamera")}
+            disabled={!canVideo}
           >
             {isCameraOn ? <VideoOff className="h-3 w-3" /> : <Video className="h-3 w-3" />}
           </Button>
@@ -106,8 +114,15 @@ const UserPanel = ({ className }: UserPanelProps) => {
             <div className="flex items-center shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
               {/* Mic button group */}
               <div className="flex items-center">
-                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-e-none" onClick={toggleGlobalMute} title={globalMuted ? t("audio.unmute") : t("audio.mute")}>
-                  {globalMuted ? <MicOff className="h-3.5 w-3.5 text-destructive" /> : <Mic className="h-3.5 w-3.5" />}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-7 w-7 rounded-e-none ${!canSpeak ? "opacity-40 cursor-not-allowed" : ""}`}
+                  onClick={canSpeak ? toggleGlobalMute : undefined}
+                  title={!canSpeak ? t("voice.speakRestricted", "You don't have permission to speak in this channel") : globalMuted ? t("audio.unmute") : t("audio.mute")}
+                  disabled={!canSpeak}
+                >
+                  {(!canSpeak || globalMuted) ? <MicOff className={`h-3.5 w-3.5 ${!canSpeak ? "" : "text-destructive"}`} /> : <Mic className="h-3.5 w-3.5" />}
                 </Button>
                 <AudioControlPopover type="input" open={micPopoverOpen} onOpenChange={setMicPopoverOpen}>
                   <Button variant="ghost" size="icon" className="h-7 w-4 rounded-s-none px-0" title={t("settings.microphone")}>

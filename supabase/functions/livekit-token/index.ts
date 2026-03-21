@@ -36,6 +36,12 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
+    // Service client for permission checks (bypasses RLS, uses _user_id param)
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
@@ -57,7 +63,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch user's Pro status and boost level in parallel
+    // Fetch user's Pro status and boost level, plus voice permissions for server channels
     const profilePromise = supabase
       .from("profiles")
       .select("is_pro")
@@ -65,8 +71,13 @@ Deno.serve(async (req) => {
       .single();
 
     let boostPromise: Promise<number> = Promise.resolve(0);
+    let connectPromise: Promise<boolean> = Promise.resolve(true);
+    let speakPromise: Promise<boolean> = Promise.resolve(true);
+    let videoPromise: Promise<boolean> = Promise.resolve(true);
+
     if (roomName.startsWith("server-voice:")) {
       const channelId = roomName.replace("server-voice:", "");
+
       boostPromise = supabase
         .from("channels")
         .select("server_id")
@@ -81,12 +92,47 @@ Deno.serve(async (req) => {
             .single();
           return server?.boost_level ?? 0;
         });
+
+      // Check connect, speak, video permissions via service client (skips defaults for restricted channels)
+      connectPromise = serviceClient
+        .rpc("has_channel_permission" as any, {
+          _user_id: userId,
+          _channel_id: channelId,
+          _permission: "connect",
+        } as any)
+        .then(({ data }) => data ?? true);
+
+      speakPromise = serviceClient
+        .rpc("has_channel_permission" as any, {
+          _user_id: userId,
+          _channel_id: channelId,
+          _permission: "speak",
+        } as any)
+        .then(({ data }) => data ?? true);
+
+      videoPromise = serviceClient
+        .rpc("has_channel_permission" as any, {
+          _user_id: userId,
+          _channel_id: channelId,
+          _permission: "video",
+        } as any)
+        .then(({ data }) => data ?? true);
     }
 
-    const [{ data: profile }, boostLevel] = await Promise.all([profilePromise, boostPromise]);
+    const [{ data: profile }, boostLevel, canConnect, canSpeak, canVideo] =
+      await Promise.all([profilePromise, boostPromise, connectPromise, speakPromise, videoPromise]);
+
+    // Block token entirely if user cannot connect
+    if (!canConnect) {
+      return new Response(
+        JSON.stringify({ error: "You don't have permission to join this voice channel" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const isPro = profile?.is_pro ?? false;
 
-    // Generate LiveKit access token
+    // Generate LiveKit access token with permission-aware grants
     const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
       identity: participantIdentity || userId,
       name: participantName,
@@ -94,13 +140,25 @@ Deno.serve(async (req) => {
       ttl: "24h",
     });
 
-    at.addGrant({
+    // canPublish: false blocks all track publishing (mic + camera)
+    // canPublishSources: when video is denied but speak is allowed, restrict to mic/screen only
+    const grantOptions: Record<string, unknown> = {
       room: roomName,
       roomJoin: true,
-      canPublish: true,
+      canPublish: canSpeak || canVideo, // false only if both are denied
       canSubscribe: true,
       canPublishData: true,
-    });
+    };
+
+    // If speak is denied, they cannot publish at all regardless of video
+    if (!canSpeak) {
+      grantOptions.canPublish = false;
+    } else if (!canVideo) {
+      // Speak allowed but video denied — restrict sources to mic + screen share only
+      grantOptions.canPublishSources = ["microphone", "screen_share", "screen_share_audio"];
+    }
+
+    at.addGrant(grantOptions as any);
 
     const jwt = await at.toJwt();
 

@@ -43,7 +43,10 @@ const ALL_FALSE: ServerPermissions = {
 };
 
 interface UseServerPermissionsResult {
+  /** Server-level permissions including default-ON fallbacks (use for admin gates) */
   permissions: ServerPermissions;
+  /** Strict permissions — only explicit role grants, no default-ON (use for channel restriction intersection) */
+  strictPermissions: ServerPermissions;
   loading: boolean;
   refresh: () => void;
 }
@@ -51,6 +54,7 @@ interface UseServerPermissionsResult {
 export function useServerPermissions(serverId: string | null | undefined): UseServerPermissionsResult {
   const { user } = useAuth();
   const [permissions, setPermissions] = useState<ServerPermissions>(ALL_FALSE);
+  const [strictPermissions, setStrictPermissions] = useState<ServerPermissions>(ALL_FALSE);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -67,18 +71,21 @@ export function useServerPermissions(serverId: string | null | undefined): UseSe
     const role = (sm as any)?.role;
     if (role === "owner" || role === "admin") {
       setPermissions(ALL_TRUE);
+      setStrictPermissions(ALL_TRUE);
       setLoading(false);
       return;
     }
 
-    // For regular members: call get_user_permissions RPC
-    const { data } = await supabase.rpc("get_user_permissions" as any, {
-      _server_id: serverId,
-    } as any);
+    // For regular members: call both RPCs in parallel
+    // - get_user_permissions: includes default-ON (for server-level gates)
+    // - get_user_permissions_strict: explicit grants only (for channel restriction gates)
+    const [{ data }, { data: strictData }] = await Promise.all([
+      supabase.rpc("get_user_permissions" as any, { _server_id: serverId } as any),
+      supabase.rpc("get_user_permissions_strict" as any, { _server_id: serverId } as any),
+    ]);
 
-    if (data) {
-      setPermissions(data as unknown as ServerPermissions);
-    }
+    if (data) setPermissions(data as unknown as ServerPermissions);
+    if (strictData) setStrictPermissions(strictData as unknown as ServerPermissions);
     setLoading(false);
   }, [serverId, user]);
 
@@ -87,7 +94,7 @@ export function useServerPermissions(serverId: string | null | undefined): UseSe
     load();
   }, [load]);
 
-  // Re-fetch when member_roles change for this server (role assignments)
+  // Re-fetch when member_roles change (role assignments added/removed)
   useEffect(() => {
     if (!serverId || !user) return;
     const channel = supabase
@@ -102,5 +109,20 @@ export function useServerPermissions(serverId: string | null | undefined): UseSe
     return () => { channel.unsubscribe(); };
   }, [serverId, user, load]);
 
-  return { permissions, loading, refresh: load };
+  // Re-fetch when server_roles permissions change (admin edits a role's permissions)
+  useEffect(() => {
+    if (!serverId || !user) return;
+    const channel = supabase
+      .channel(`perms-roles-${serverId}`)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "server_roles",
+        filter: `server_id=eq.${serverId}`,
+      }, load)
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [serverId, user, load]);
+
+  return { permissions, strictPermissions, loading, refresh: load };
 }

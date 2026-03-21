@@ -151,11 +151,14 @@ const VoiceUserContextMenu = ({
   };
 
   const handleDisconnect = async () => {
-    await supabase
-      .from("voice_channel_participants")
-      .delete()
-      .eq("channel_id", channelId)
-      .eq("user_id", targetUserId);
+    const { error } = await supabase.rpc("disconnect_voice_user" as any, {
+      p_channel_id: channelId,
+      p_user_id: targetUserId,
+    } as any);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      return;
+    }
     toast({ title: t("voiceContext.disconnected") });
   };
 
