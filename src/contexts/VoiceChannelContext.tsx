@@ -52,6 +52,12 @@ interface VoiceChannelContextType {
   setLocalStreamingApp: (app: string | null) => void;
   localStreamStartedAt: string | null;
   setLocalStreamStartedAt: (ts: string | null) => void;
+  /** Set to true when a moderator has server-muted the local user. */
+  isServerMuted: boolean;
+  setIsServerMuted: (v: boolean) => void;
+  /** Set to true when a moderator has server-deafened the local user. */
+  isServerDeafened: boolean;
+  setIsServerDeafened: (v: boolean) => void;
 }
 
 const VoiceChannelContext = createContext<VoiceChannelContextType>({
@@ -86,6 +92,10 @@ const VoiceChannelContext = createContext<VoiceChannelContextType>({
   setLocalStreamingApp: () => {},
   localStreamStartedAt: null,
   setLocalStreamStartedAt: () => {},
+  isServerMuted: false,
+  setIsServerMuted: () => {},
+  isServerDeafened: false,
+  setIsServerDeafened: () => {},
 });
 
 export const useVoiceChannel = () => useContext(VoiceChannelContext);
@@ -127,6 +137,8 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
   const [nativeResolutionLabel, setNativeResolutionLabel] = useState<string | null>(null);
   const [localStreamingApp, setLocalStreamingApp] = useState<string | null>(null);
   const [localStreamStartedAt, setLocalStreamStartedAt] = useState<string | null>(null);
+  const [isServerMuted, setIsServerMuted] = useState(false);
+  const [isServerDeafened, setIsServerDeafened] = useState(false);
 
   const setUserVolume = useCallback((userId: string, volume: number) => {
     setUserVolumes((prev) => ({ ...prev, [userId]: volume }));
@@ -175,6 +187,8 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
     setNativeResolutionLabel(null);
     setLocalStreamingApp(null);
     setLocalStreamStartedAt(null);
+    setIsServerMuted(false);
+    setIsServerDeafened(false);
   }, []);
 
   return (
@@ -194,6 +208,8 @@ export const VoiceChannelProvider = ({ children }: { children: React.ReactNode }
       nativeResolutionLabel, setNativeResolutionLabel,
       localStreamingApp, setLocalStreamingApp,
       localStreamStartedAt, setLocalStreamStartedAt,
+      isServerMuted, setIsServerMuted,
+      isServerDeafened, setIsServerDeafened,
     }}>
       {children}
     </VoiceChannelContext.Provider>

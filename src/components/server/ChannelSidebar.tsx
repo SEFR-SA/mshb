@@ -78,6 +78,8 @@ interface VoiceParticipant {
   is_muted: boolean;
   is_deafened: boolean;
   is_screen_sharing: boolean;
+  server_muted?: boolean;
+  server_deafened?: boolean;
   name_font?: string | null;
   name_effect?: string | null;
   name_gradient_start?: string | null;
@@ -483,7 +485,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
     const { data } = await supabase
       .from("voice_channel_participants")
-      .select("channel_id, user_id, is_speaking, is_muted, is_deafened, is_screen_sharing")
+      .select("channel_id, user_id, is_speaking, is_muted, is_deafened, is_screen_sharing, server_muted, server_deafened")
       .in("channel_id", voiceChannelIds);
     if (!data || data.length === 0) { setVoiceParticipants(new Map()); return; }
 
@@ -507,6 +509,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         is_muted: !!(d as any).is_muted,
         is_deafened: !!(d as any).is_deafened,
         is_screen_sharing: !!(d as any).is_screen_sharing,
+        server_muted: !!(d as any).server_muted,
+        server_deafened: !!(d as any).server_deafened,
         name_font: (p as any)?.name_font || null,
         name_effect: (p as any)?.name_effect || null,
         name_gradient_start: (p as any)?.name_gradient_start || null,

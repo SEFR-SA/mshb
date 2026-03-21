@@ -28,6 +28,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     setLocalCameraStream, setRemoteCameraStream,
     voiceChannel, setVoiceChannel, setNativeResolutionLabel,
     setLocalStreamingApp, setLocalStreamStartedAt,
+    setIsServerMuted, setIsServerDeafened,
   } = useVoiceChannel();
 
   const [isJoined, setIsJoined] = useState(false);
@@ -190,6 +191,52 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       .eq("user_id", user.id)
       .then();
   }, [globalMuted, globalDeafened, isJoined, user, channelId]);
+
+  // ── Server mute/deafen enforcement ────────────────────────────────────────
+  // Watch our own row for admin-set server_muted / server_deafened changes.
+
+  useEffect(() => {
+    if (!user || !channelId || !isJoined) return;
+    const ch = supabase
+      .channel(`voice-mod-self-${channelId}-${user.id}`)
+      .on(
+        "postgres_changes" as any,
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "voice_channel_participants",
+          filter: `channel_id=eq.${channelId}`,
+        },
+        (payload: any) => {
+          const row = payload.new;
+          if (row.user_id !== user.id) return;
+          const room = lk.room.current;
+
+          // Server Muted
+          setIsServerMuted(!!row.server_muted);
+          if (row.server_muted) {
+            room?.localParticipant.setMicrophoneEnabled(false);
+            setGlobalMuted(true);
+          }
+
+          // Server Deafened
+          setIsServerDeafened(!!row.server_deafened);
+          if (row.server_deafened) {
+            room?.localParticipant.setMicrophoneEnabled(false);
+            setGlobalMuted(true);
+            room?.remoteParticipants.forEach((p) => {
+              p.audioTrackPublications.forEach((pub) => {
+                if (pub.track) (pub.track as any).mediaStreamTrack.enabled = false;
+              });
+            });
+            setGlobalDeafened(true);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(ch); };
+  }, [user, channelId, isJoined, lk, setGlobalMuted, setGlobalDeafened, setIsServerMuted, setIsServerDeafened]);
 
   // ── Sync remote screen shares to VoiceChannelContext ──────────────────────
 

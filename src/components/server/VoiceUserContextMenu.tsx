@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
-import { User, MessageSquare, Phone, Volume2, VolumeX, UserPlus, UserMinus, PhoneOff, ClipboardCopy } from "lucide-react";
+import { User, MessageSquare, Phone, Volume2, VolumeX, UserPlus, UserMinus, PhoneOff, ClipboardCopy, MicOff, HeadphoneOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -63,6 +63,25 @@ const VoiceUserContextMenu = ({
   const isSelf = user?.id === targetUserId;
   const { permissions } = useServerPermissions(serverId);
   const volume = userVolumes[targetUserId] ?? 100;
+  const [serverMuted, setServerMuted] = useState(false);
+  const [serverDeafened, setServerDeafened] = useState(false);
+
+  // Fetch current server moderation state for the target
+  useEffect(() => {
+    if (isSelf) return;
+    supabase
+      .from("voice_channel_participants" as any)
+      .select("server_muted, server_deafened")
+      .eq("channel_id", channelId)
+      .eq("user_id", targetUserId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setServerMuted(!!(data as any).server_muted);
+          setServerDeafened(!!(data as any).server_deafened);
+        }
+      });
+  }, [isSelf, channelId, targetUserId]);
 
   useEffect(() => {
     if (!user || isSelf) return;
@@ -148,6 +167,34 @@ const VoiceUserContextMenu = ({
     const newVol = volume > 0 ? 0 : 100;
     setUserVolume(targetUserId, newVol);
     toast({ title: newVol > 0 ? t("voiceContext.userUnmuted") : t("voiceContext.userMuted") });
+  };
+
+  const handleServerMute = async (mute: boolean) => {
+    const { error } = await supabase.rpc("server_moderate_voice_user" as any, {
+      p_channel_id: channelId,
+      p_user_id: targetUserId,
+      p_server_muted: mute,
+    } as any);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      return;
+    }
+    setServerMuted(mute);
+    toast({ title: mute ? t("voiceContext.userServerMuted") : t("voiceContext.userServerUnmuted") });
+  };
+
+  const handleServerDeafen = async (deafen: boolean) => {
+    const { error } = await supabase.rpc("server_moderate_voice_user" as any, {
+      p_channel_id: channelId,
+      p_user_id: targetUserId,
+      p_server_deafened: deafen,
+    } as any);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      return;
+    }
+    setServerDeafened(deafen);
+    toast({ title: deafen ? t("voiceContext.userServerDeafened") : t("voiceContext.userServerUndeafened") });
   };
 
   const handleDisconnect = async () => {
@@ -260,6 +307,27 @@ const VoiceUserContextMenu = ({
                 <ClipboardCopy className="h-4 w-4 me-2" />
                 {t("actions.copyUsername")}
               </ContextMenuItem>
+            </>
+          )}
+
+          {(permissions.mute_members || permissions.deafen_members) && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuLabel className="text-xs text-muted-foreground">
+                {t("voiceContext.serverModeration")}
+              </ContextMenuLabel>
+              {permissions.mute_members && (
+                <ContextMenuItem onClick={() => handleServerMute(!serverMuted)}>
+                  <MicOff className="h-4 w-4 me-2" />
+                  {serverMuted ? t("voiceContext.serverUnmute") : t("voiceContext.serverMute")}
+                </ContextMenuItem>
+              )}
+              {permissions.deafen_members && (
+                <ContextMenuItem onClick={() => handleServerDeafen(!serverDeafened)}>
+                  <HeadphoneOff className="h-4 w-4 me-2" />
+                  {serverDeafened ? t("voiceContext.serverUndeafen") : t("voiceContext.serverDeafen")}
+                </ContextMenuItem>
+              )}
             </>
           )}
 

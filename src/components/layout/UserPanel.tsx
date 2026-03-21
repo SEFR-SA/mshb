@@ -26,7 +26,7 @@ const UserPanel = ({ className }: UserPanelProps) => {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { globalMuted, globalDeafened, toggleGlobalMute, toggleGlobalDeafen } = useAudioSettings();
-  const { voiceChannel, disconnectVoice, isScreenSharing, isCameraOn, nativeResolutionLabel } = useVoiceChannel();
+  const { voiceChannel, disconnectVoice, isScreenSharing, isCameraOn, nativeResolutionLabel, isServerMuted, isServerDeafened } = useVoiceChannel();
   const { strictPermissions } = useServerPermissions(voiceChannel?.serverId);
 
   // Channel-level voice permission flags — only relevant when in a restricted voice channel
@@ -117,12 +117,18 @@ const UserPanel = ({ className }: UserPanelProps) => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={`h-7 w-7 rounded-e-none ${!canSpeak ? "opacity-40 cursor-not-allowed" : ""}`}
-                  onClick={canSpeak ? toggleGlobalMute : undefined}
-                  title={!canSpeak ? t("voice.speakRestricted", "You don't have permission to speak in this channel") : globalMuted ? t("audio.unmute") : t("audio.mute")}
-                  disabled={!canSpeak}
+                  className={`h-7 w-7 rounded-e-none ${(!canSpeak || isServerMuted || isServerDeafened) ? "opacity-40 cursor-not-allowed" : ""}`}
+                  onClick={(!canSpeak || isServerMuted || isServerDeafened) ? undefined : toggleGlobalMute}
+                  title={
+                    isServerMuted || isServerDeafened
+                      ? t("voice.serverMutedTooltip", "You have been server muted by a moderator")
+                      : !canSpeak
+                      ? t("voice.speakRestricted", "You don't have permission to speak in this channel")
+                      : globalMuted ? t("audio.unmute") : t("audio.mute")
+                  }
+                  disabled={!canSpeak || isServerMuted || isServerDeafened}
                 >
-                  {(!canSpeak || globalMuted) ? <MicOff className={`h-3.5 w-3.5 ${!canSpeak ? "" : "text-destructive"}`} /> : <Mic className="h-3.5 w-3.5" />}
+                  {(!canSpeak || isServerMuted || isServerDeafened || globalMuted) ? <MicOff className={`h-3.5 w-3.5 ${(!canSpeak || isServerMuted || isServerDeafened) ? "" : "text-destructive"}`} /> : <Mic className="h-3.5 w-3.5" />}
                 </Button>
                 <AudioControlPopover type="input" open={micPopoverOpen} onOpenChange={setMicPopoverOpen}>
                   <Button variant="ghost" size="icon" className="h-7 w-4 rounded-s-none px-0" title={t("settings.microphone")}>
@@ -133,8 +139,15 @@ const UserPanel = ({ className }: UserPanelProps) => {
 
               {/* Speaker button group */}
               <div className="flex items-center">
-                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-e-none" onClick={toggleGlobalDeafen} title={globalDeafened ? t("audio.undeafen") : t("audio.deafen")}>
-                  {globalDeafened ? <HeadphoneOff className="h-3.5 w-3.5 text-destructive" /> : <Headphones className="h-3.5 w-3.5" />}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-7 w-7 rounded-e-none ${isServerDeafened ? "opacity-40 cursor-not-allowed" : ""}`}
+                  onClick={isServerDeafened ? undefined : toggleGlobalDeafen}
+                  title={isServerDeafened ? t("voice.serverDeafenedTooltip", "You have been server deafened by a moderator") : globalDeafened ? t("audio.undeafen") : t("audio.deafen")}
+                  disabled={isServerDeafened}
+                >
+                  {(isServerDeafened || globalDeafened) ? <HeadphoneOff className="h-3.5 w-3.5 text-destructive" /> : <Headphones className="h-3.5 w-3.5" />}
                 </Button>
                 <AudioControlPopover type="output" open={speakerPopoverOpen} onOpenChange={setSpeakerPopoverOpen}>
                   <Button variant="ghost" size="icon" className="h-7 w-4 rounded-s-none px-0" title={t("settings.speakers")}>
