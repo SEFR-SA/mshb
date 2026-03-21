@@ -2142,6 +2142,10 @@ export type Database = {
       }
       delete_ticket: { Args: { p_ticket_id: string }; Returns: undefined }
       disable_community: { Args: { p_server_id: string }; Returns: undefined }
+      disconnect_voice_user: {
+        Args: { p_channel_id: string; p_user_id: string }
+        Returns: undefined
+      }
       enable_community: {
         Args: {
           p_rules_channel_id?: string
@@ -2184,14 +2188,28 @@ export type Database = {
       }
       get_server_stats: { Args: { p_server_id: string }; Returns: Json }
       get_user_permissions: { Args: { _server_id: string }; Returns: Json }
+      get_user_permissions_strict: {
+        Args: { _server_id: string }
+        Returns: Json
+      }
       has_channel_permission: {
         Args: { _channel_id: string; _permission: string; _user_id: string }
         Returns: boolean
       }
-      has_role_permission: {
-        Args: { _permission: string; _server_id: string; _user_id: string }
-        Returns: boolean
-      }
+      has_role_permission:
+        | {
+            Args: { _permission: string; _server_id: string; _user_id: string }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              _permission: string
+              _server_id: string
+              _skip_defaults?: boolean
+              _user_id: string
+            }
+            Returns: boolean
+          }
       insert_boost_audit_log: {
         Args: {
           p_action: string
