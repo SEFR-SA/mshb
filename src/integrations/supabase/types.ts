@@ -2205,20 +2205,15 @@ export type Database = {
         Args: { _channel_id: string; _permission: string; _user_id: string }
         Returns: boolean
       }
-      has_role_permission:
-        | {
-            Args: { _permission: string; _server_id: string; _user_id: string }
-            Returns: boolean
-          }
-        | {
-            Args: {
-              _permission: string
-              _server_id: string
-              _skip_defaults?: boolean
-              _user_id: string
-            }
-            Returns: boolean
-          }
+      has_role_permission: {
+        Args: {
+          _permission: string
+          _server_id: string
+          _skip_defaults?: boolean
+          _user_id: string
+        }
+        Returns: boolean
+      }
       insert_boost_audit_log: {
         Args: {
           p_action: string
