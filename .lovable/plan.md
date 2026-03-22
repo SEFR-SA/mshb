@@ -1,151 +1,52 @@
 
-Investigation results
 
-I cannot reliably click the right-click voice context menu from automation because browser automation does not support native/custom context-menu interactions well, so I verified this by tracing the code paths and checking live backend data for your current server/voice rows.
+## Investigation Summary
 
-What I found
+I found **4 distinct issues** causing the server mute/deafen feature to malfunction:
 
-1. Server Mute / Server Deafen are partially working in the backend
-- The moderation RPC exists and is no longer ambiguous:
-  - `server_moderate_voice_user(uuid, uuid, boolean, boolean)`
-  - `has_role_permission(uuid, uuid, text, boolean)`
-- In the live database, I found a participant row in the `voice` channel where:
-  - `server_muted = true`
-  - `server_deafened = true`
-- That proves the mute/deafen action is successfully writing to the backend for at least one user.
+### Issue 1: Muted user's mic still works — LiveKit doesn't enforce server mute
 
-2. The voice-channel participant list is showing the wrong icons
-In `src/components/server/ChannelSidebar.tsx`, `fetchVoiceParticipants()` selects only:
-```ts
-.select("channel_id, user_id, is_speaking, is_muted, is_deafened, is_screen_sharing")
+In `VoiceConnectionBar.tsx` (line 167), when `globalMuted` changes, the code calls `room.localParticipant.setMicrophoneEnabled(!globalMuted)`. But when a moderator server-mutes a user, the realtime listener (line 218) sets `globalMuted = true` and disables the mic. However, the speaking detection (line 144) still writes `is_speaking: true` to the database even when the user is server-muted, because LiveKit's `activeSpeakers` fires based on audio input detection regardless of whether the mic track is published.
+
+**Fix:** In the speaking detection effect, suppress `is_speaking` writes when the user is server-muted. Always write `is_speaking: false` if `isServerMuted` is true.
+
+### Issue 2: Speaking indicator shows green mic for server-muted users
+
+In `ChannelSidebar.tsx` (lines 997-1003 and 1030-1036), the icon priority is:
 ```
-But later it maps:
-```ts
-server_muted: !!(d as any).server_muted,
-server_deafened: !!(d as any).server_deafened,
-```
-Those fields were never selected, so they are always `undefined -> false`.
-
-Then the rendered row icons use only:
-```ts
-p.is_deafened ? HeadphoneOff : p.is_muted ? MicOff : ...
-```
-So:
-- server mute does not show the mute icon
-- server deafen does not show the deafen icon
-- only self-muted/self-deafened states are reflected visually
-
-This is a confirmed bug.
-
-3. Server mute/deafen enforcement is one-way only
-In `src/components/server/VoiceConnectionBar.tsx`, the realtime listener does this:
-
-```ts
-if (row.server_muted) {
-  room?.localParticipant.setMicrophoneEnabled(false);
-  setGlobalMuted(true);
-}
-
-if (row.server_deafened) {
-  room?.localParticipant.setMicrophoneEnabled(false);
-  setGlobalMuted(true);
-  ...
-  setGlobalDeafened(true);
-}
+deafened → muted → speaking → null
 ```
 
-Problems:
-- It handles turning moderation on
-- It does not handle turning moderation off
-- If a moderator un-mutes or un-deafens a user, the local client state is not restored/reset
-- `setIsServerMuted` / `setIsServerDeafened` are updated both ways, but the actual audio behavior only changes on the `true` branch
+This is correct — `server_muted` should take priority over `is_speaking`. However, because of Issue 1, the DB still has `is_speaking: true` written by the muted user's client, and between realtime update cycles there can be a flash of the green mic. The fix for Issue 1 resolves this at the source.
 
-So from the target user’s side:
-- server mute/deafen may appear stuck
-- unmute/undeafen may not fully take effect until reconnect or manual toggling
+### Issue 3: Muted user doesn't see the effect immediately — realtime filter is too narrow
 
-4. There is also a likely loading/state mismatch in the moderation menu
-`VoiceUserContextMenu.tsx` fetches the target’s `server_muted/server_deafened` only once on mount:
-```ts
-useEffect(() => {
-  ...
-  .maybeSingle()
-  .then(({ data }) => {
-    setServerMuted(...)
-    setServerDeafened(...)
-  });
-}, [isSelf, channelId, targetUserId]);
-```
-There is no realtime subscription for that menu state.
-So if the moderation state changes elsewhere, the menu label can become stale until reopened/remounted.
+In `VoiceConnectionBar.tsx` (line 208), the realtime subscription filters by `channel_id=eq.${channelId}` and then further filters by `row.user_id !== user.id` (line 212). This part is correct — it only processes updates for the current user's row.
 
-Answer to your question
+The actual problem is that the realtime subscription uses `event: "UPDATE"` correctly, but the **initial state is never loaded**. When the component mounts, it doesn't fetch the current `server_muted`/`server_deafened` values from the database. If the moderation happened before the realtime subscription was set up, the user never gets the update.
 
-From my side:
-- The backend mute/deafen action appears to be working.
-- The UI indication is not working correctly.
-- The target-user enforcement is incomplete, especially when moderation is removed.
-- So overall, I would say: not fully working.
+**Fix:** On mount (when `isJoined` becomes true), fetch the current row and apply any existing server moderation state.
 
-Plan to fix
+### Issue 4: UserPanel doesn't reflect server moderation visually for the muted user
 
-1. Fix participant query to include moderation fields
-Update `ChannelSidebar.tsx` so `fetchVoiceParticipants()` selects:
-```ts
-server_muted, server_deafened
-```
-This makes the row data accurate.
+The UserPanel correctly reads `isServerMuted` and `isServerDeafened` from context and applies the disabled/grayed-out style. This should work once the context values are properly set (fixed by Issues 1 and 3).
 
-2. Fix displayed icons to respect server moderation
-Update the participant row rendering so it treats:
-- `server_deafened || is_deafened` as deafened
-- `server_muted || is_muted` as muted
+---
 
-Priority should match Discord-style behavior:
-```text
-deafened state wins over muted state
-```
+## Plan
 
-3. Fix target-side enforcement for both ON and OFF transitions
-Update the realtime moderation listener in `VoiceConnectionBar.tsx` so it handles both cases:
-- when `server_muted` becomes true: force mic off
-- when `server_muted` becomes false: clear the forced moderation state without leaving the client stuck
-- when `server_deafened` becomes true: force deafen behavior
-- when `server_deafened` becomes false: restore remote audio playback and clear forced deafen state
+### 1. Fix speaking detection to respect server mute (`VoiceConnectionBar.tsx`)
 
-This is the most important behavioral fix.
+In the speaking detection effect (~line 141), check `isServerMuted` from the voice channel context. If server-muted, always write `is_speaking: false` to the database regardless of what LiveKit reports.
 
-4. Make moderation menu state live/accurate
-Add a realtime subscription in `VoiceUserContextMenu.tsx` for the target participant row, or refresh state after each moderation action, so menu labels stay in sync.
+### 2. Fetch initial moderation state on join (`VoiceConnectionBar.tsx`)
 
-5. Verify owner/admin behavior is still intact
-After the fix, confirm:
-- owner can mute/deafen anyone appropriate
-- muted users show mic-off icon
-- deafened users show headphone-off icon
-- unmute/undeafen clears the forced state correctly
+After the DB presence row is inserted on join (~line 431), immediately query the row back to check if `server_muted` or `server_deafened` are already true (e.g., from a previous session or pre-set by a moderator). Apply the enforcement if so.
 
-Files to update
-- `src/components/server/ChannelSidebar.tsx`
-- `src/components/server/VoiceConnectionBar.tsx`
-- `src/components/server/VoiceUserContextMenu.tsx`
+### 3. Ensure realtime listener properly enforces both transitions (`VoiceConnectionBar.tsx`)
 
-Technical detail
-```text
-Current state flow
+The current listener (line 198-255) handles ON transitions but the OFF transition for mute doesn't restore the mic. Update the `else` branch (line 222) to call `setGlobalMuted(false)` when server unmuted (only if not also server-deafened).
 
-VoiceUserContextMenu
-  -> rpc(server_moderate_voice_user)
-  -> updates voice_channel_participants.server_muted/server_deafened
+### Files to modify
+- `src/components/server/VoiceConnectionBar.tsx` — All 3 fixes above
 
-But then:
-
-ChannelSidebar
-  -> does NOT select server_muted/server_deafened
-  -> cannot render correct icons
-
-VoiceConnectionBar
-  -> listens for row updates
-  -> enforces only when flags become true
-  -> does not properly reverse enforcement when flags become false
-```
