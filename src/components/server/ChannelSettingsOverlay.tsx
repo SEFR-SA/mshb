@@ -60,7 +60,7 @@ type Tab = "overview" | "permissions";
 
 const GENERAL_CHANNEL_PERMS = ["view_channel", "manage_channel"] as const;
 const TEXT_PERMS = ["send_messages", "attach_files", "mention_everyone", "delete_messages", "create_polls"] as const;
-const VOICE_PERMS = ["connect", "speak", "video", "mute_members", "deafen_members"] as const;
+const VOICE_PERMS = ["connect", "speak", "video", "mute_members", "deafen_members", "move_members"] as const;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 

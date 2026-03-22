@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVoiceChannel } from "@/contexts/VoiceChannelContext";
-import { User, MessageSquare, Phone, Volume2, VolumeX, UserPlus, UserMinus, PhoneOff, ClipboardCopy, MicOff, HeadphoneOff } from "lucide-react";
+import { User, MessageSquare, Phone, Volume2, VolumeX, UserPlus, UserMinus, PhoneOff, ClipboardCopy, MicOff, HeadphoneOff, ArrowRightLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,6 +20,9 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
   ContextMenuLabel,
 } from "@/components/ui/context-menu";
@@ -33,6 +36,7 @@ interface VoiceUserContextMenuProps {
   channelId: string;
   serverOwnerId: string;
   currentUserRole?: string;
+  voiceChannels?: Array<{ id: string; name: string }>;
 }
 
 const roleBadgeColors: Record<string, string> = {
@@ -49,6 +53,7 @@ const VoiceUserContextMenu = ({
   channelId,
   serverOwnerId,
   currentUserRole,
+  voiceChannels = [],
 }: VoiceUserContextMenuProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -183,6 +188,20 @@ const VoiceUserContextMenu = ({
     toast({ title: mute ? t("voiceContext.userServerMuted") : t("voiceContext.userServerUnmuted") });
   };
 
+  const handleMoveUser = async (targetChannelId: string, targetChannelName: string) => {
+    const { error } = await supabase.rpc("move_voice_user" as any, {
+      p_from_channel_id: channelId,
+      p_user_id: targetUserId,
+      p_to_channel_id: targetChannelId,
+      p_to_channel_name: targetChannelName,
+    } as any);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: t("voiceContext.moved") });
+  };
+
   const handleServerDeafen = async (deafen: boolean) => {
     const { error } = await supabase.rpc("server_moderate_voice_user" as any, {
       p_channel_id: channelId,
@@ -307,6 +326,26 @@ const VoiceUserContextMenu = ({
                 <ClipboardCopy className="h-4 w-4 me-2" />
                 {t("actions.copyUsername")}
               </ContextMenuItem>
+            </>
+          )}
+
+          {permissions.move_members && voiceChannels.filter(ch => ch.id !== channelId).length > 0 && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuSub>
+                <ContextMenuSubTrigger>
+                  <ArrowRightLeft className="h-4 w-4 me-2" />
+                  {t("voiceContext.moveTo")}
+                </ContextMenuSubTrigger>
+                <ContextMenuSubContent className="w-48">
+                  {voiceChannels.filter(ch => ch.id !== channelId).map(ch => (
+                    <ContextMenuItem key={ch.id} onClick={() => handleMoveUser(ch.id, ch.name)}>
+                      <Volume2 className="h-4 w-4 me-2" />
+                      {ch.name}
+                    </ContextMenuItem>
+                  ))}
+                </ContextMenuSubContent>
+              </ContextMenuSub>
             </>
           )}
 

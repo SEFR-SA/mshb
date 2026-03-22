@@ -253,12 +253,22 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
               setGlobalMuted(false);
             }
           }
+
+          // Server-initiated channel move
+          if (row.pending_move_channel_id && row.pending_move_channel_id !== channelId) {
+            setVoiceChannel({
+              id: row.pending_move_channel_id,
+              name: row.pending_move_channel_name ?? "Voice",
+              serverId,
+            });
+            return;
+          }
         }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(ch); };
-  }, [user, channelId, isJoined, lk, setGlobalMuted, setGlobalDeafened, setIsServerMuted, setIsServerDeafened]);
+  }, [user, channelId, isJoined, lk, setGlobalMuted, setGlobalDeafened, setIsServerMuted, setIsServerDeafened, setVoiceChannel, serverId]);
 
   // ── Sync remote screen shares to VoiceChannelContext ──────────────────────
 

@@ -50,6 +50,7 @@ const DEFAULT_PERMISSIONS: Record<string, boolean> = {
   video: false,
   mute_members: false,
   deafen_members: false,
+  move_members: false,
 };
 
 const PERMISSION_GROUPS = [
@@ -67,7 +68,7 @@ const PERMISSION_GROUPS = [
   },
   {
     label: "permCategoryVoice",
-    keys: ["connect", "speak", "video", "mute_members", "deafen_members"],
+    keys: ["connect", "speak", "video", "mute_members", "deafen_members", "move_members"],
   },
 ];
 

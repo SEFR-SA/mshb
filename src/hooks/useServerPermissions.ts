@@ -22,6 +22,7 @@ export interface ServerPermissions {
   video: boolean;
   mute_members: boolean;
   deafen_members: boolean;
+  move_members: boolean;
 }
 
 const ALL_TRUE: ServerPermissions = {
@@ -30,7 +31,7 @@ const ALL_TRUE: ServerPermissions = {
   ban_members: true, view_channel: true, manage_channel: true,
   send_messages: true, attach_files: true, mention_everyone: true,
   delete_messages: true, create_polls: true, connect: true, speak: true,
-  video: true, mute_members: true, deafen_members: true,
+  video: true, mute_members: true, deafen_members: true, move_members: true,
 };
 
 const ALL_FALSE: ServerPermissions = {
@@ -39,7 +40,7 @@ const ALL_FALSE: ServerPermissions = {
   ban_members: false, view_channel: false, manage_channel: false,
   send_messages: false, attach_files: false, mention_everyone: false,
   delete_messages: false, create_polls: false, connect: false, speak: false,
-  video: false, mute_members: false, deafen_members: false,
+  video: false, mute_members: false, deafen_members: false, move_members: false,
 };
 
 interface UseServerPermissionsResult {

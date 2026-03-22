@@ -312,8 +312,9 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
   // Drag-and-drop state
   const [dragItem, setDragItem] = useState<string | null>(null);
-  const [dragType, setDragType] = useState<"channel" | "section" | null>(null);
+  const [dragType, setDragType] = useState<"channel" | "section" | "participant" | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+  const [dragParticipantFrom, setDragParticipantFrom] = useState<string | null>(null);
 
   // Soundboard
   const [serverSounds, setServerSounds] = useState<{ id: string; name: string; url: string }[]>([]);
@@ -737,6 +738,41 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setDragItem(null);
     setDragType(null);
     setDragOverTarget(null);
+    setDragParticipantFrom(null);
+  };
+
+  const handleParticipantDragStart = (e: React.DragEvent, userId: string, fromChannelId: string) => {
+    e.stopPropagation();
+    e.dataTransfer.effectAllowed = "move";
+    setDragItem(userId);
+    setDragType("participant");
+    setDragParticipantFrom(fromChannelId);
+  };
+
+  const handleVoiceChannelDragOver = (e: React.DragEvent, targetChannelId: string) => {
+    if (dragType !== "participant") return;
+    if (targetChannelId === dragParticipantFrom) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverTarget(targetChannelId);
+  };
+
+  const handleParticipantDrop = async (e: React.DragEvent, targetChannelId: string, targetChannelName: string) => {
+    e.preventDefault();
+    if (dragType !== "participant" || !dragItem || !dragParticipantFrom) { handleDragEnd(); return; }
+    if (targetChannelId === dragParticipantFrom) { handleDragEnd(); return; }
+    const userId = dragItem;
+    const fromChannelId = dragParticipantFrom;
+    handleDragEnd();
+    const { error } = await supabase.rpc("move_voice_user" as any, {
+      p_from_channel_id: fromChannelId,
+      p_user_id: userId,
+      p_to_channel_id: targetChannelId,
+      p_to_channel_name: targetChannelName,
+    } as any);
+    if (error) {
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    }
   };
 
   const handleChannelDragOver = (e: React.DragEvent, channelId: string) => {
@@ -961,12 +997,12 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                           <div key={ch.id}>
                             {dragOverTarget === ch.id && dragType === "channel" && <div className="h-0.5 bg-primary rounded-full mx-2" />}
                             <div
-                              className={`group flex items-center ${dragItem === ch.id ? 'opacity-50' : ''}`}
+                              className={`group flex items-center ${dragItem === ch.id ? 'opacity-50' : ''} ${dragType === "participant" && dragOverTarget === ch.id && dragParticipantFrom !== ch.id ? "ring-1 ring-primary/60 bg-primary/10 rounded-md" : ""}`}
                               draggable={isAdmin}
                               onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, ch.id, "channel"); }}
                               onDragEnd={handleDragEnd}
-                              onDragOver={(e) => handleChannelDragOver(e, ch.id)}
-                              onDrop={(e) => handleChannelDrop(e, ch.id, category)}
+                              onDragOver={(e) => { if (dragType === "participant") handleVoiceChannelDragOver(e, ch.id); else handleChannelDragOver(e, ch.id); }}
+                              onDrop={(e) => { if (dragType === "participant") handleParticipantDrop(e, ch.id, ch.name); else handleChannelDrop(e, ch.id, category); }}
                             >
                               <button
                                 onClick={() => onVoiceChannelSelect?.({ id: ch.id, name: ch.name, restricted_permissions: ch.restricted_permissions })}
@@ -984,7 +1020,12 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                               const isScreenSharer = p.is_screen_sharing;
 
                               const innerRow = (
-                                <div className="relative group flex items-center gap-2 ps-8 py-1.5 text-xs font-medium text-muted-foreground cursor-default">
+                                <div
+                                  className={`relative group flex items-center gap-2 ps-8 py-1.5 text-xs font-medium text-muted-foreground ${permissions.move_members && p.user_id !== user?.id ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
+                                  draggable={permissions.move_members && p.user_id !== user?.id}
+                                  onDragStart={(e) => handleParticipantDragStart(e, p.user_id, ch.id)}
+                                  onDragEnd={handleDragEnd}
+                                >
                                   <div className="relative shrink-0">
                                     <Avatar className="h-5 w-5">
                                       <AvatarImage src={p.avatar_url || ""} />
@@ -1052,6 +1093,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                       channelId={ch.id}
                                       serverOwnerId={server?.owner_id || ""}
                                       currentUserRole={currentUserRole}
+                                      voiceChannels={channels.filter(c => c.type === "voice").map(c => ({ id: c.id, name: c.name }))}
                                     >
                                       <HoverCardTrigger asChild>
                                         {clickableRow}
@@ -1092,6 +1134,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                   channelId={ch.id}
                                   serverOwnerId={server?.owner_id || ""}
                                   currentUserRole={currentUserRole}
+                                  voiceChannels={channels.filter(c => c.type === "voice").map(c => ({ id: c.id, name: c.name }))}
                                 >
                                   {innerRow}
                                 </VoiceUserContextMenu>
