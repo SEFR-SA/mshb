@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { AccessToken } from "npm:livekit-server-sdk@2.9.1";
+import { isRateLimited, rateLimitResponse } from "../_shared/rateLimiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,6 +53,7 @@ Deno.serve(async (req) => {
     }
 
     const userId = claimsData.claims.sub as string;
+    if (isRateLimited(userId, 10, 60_000)) return rateLimitResponse();
 
     // Parse request body
     const { roomName, participantName, participantIdentity } = await req.json();

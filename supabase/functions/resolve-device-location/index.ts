@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { isRateLimited, rateLimitResponse } from "../_shared/rateLimiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,6 +15,8 @@ serve(async (req) => {
   try {
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+
+    if (ip && isRateLimited(ip, 10, 60_000)) return rateLimitResponse();
 
     if (!ip) {
       return new Response(

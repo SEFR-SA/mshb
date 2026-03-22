@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { isRateLimited, rateLimitResponse } from "../_shared/rateLimiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -79,6 +80,7 @@ Deno.serve(async (req) => {
       });
     }
     const userId = claimsData.claims.sub as string;
+    if (isRateLimited(userId, 30, 60_000)) return rateLimitResponse();
 
     // ── Parse body ──────────────────────────────────────────────────────────
     const {
