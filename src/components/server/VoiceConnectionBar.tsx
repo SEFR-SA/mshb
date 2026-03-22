@@ -28,7 +28,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     setLocalCameraStream, setRemoteCameraStream,
     voiceChannel, setVoiceChannel, setNativeResolutionLabel,
     setLocalStreamingApp, setLocalStreamStartedAt,
-    setIsServerMuted, setIsServerDeafened,
+    isServerMuted, setIsServerMuted, setIsServerDeafened,
   } = useVoiceChannel();
 
   const [isJoined, setIsJoined] = useState(false);
@@ -141,7 +141,9 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   useEffect(() => {
     if (!user || !isJoined) return;
     // Check if local user is in activeSpeakers
-    const isSpeaking = lk.activeSpeakers.has(user.id);
+    const rawSpeaking = lk.activeSpeakers.has(user.id);
+    // Suppress speaking indicator when server-muted — mic should be off
+    const isSpeaking = rawSpeaking && !isServerMuted;
     if (isSpeaking === lastSpeakingRef.current) return;
     lastSpeakingRef.current = isSpeaking;
 
@@ -156,7 +158,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       .eq("channel_id", channelId)
       .eq("user_id", user.id)
       .then();
-  }, [lk.activeSpeakers, user, isJoined, channelId, resetIdleTimer, resetAfkTimer]);
+  }, [lk.activeSpeakers, user, isJoined, channelId, resetIdleTimer, resetAfkTimer, isServerMuted]);
 
   // ── Sync mute/deafen to LiveKit + DB ──────────────────────────────────────
 
@@ -219,7 +221,11 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
             room?.localParticipant.setMicrophoneEnabled(false);
             setGlobalMuted(true);
           } else {
-            // Server unmuted — restore mic ability (user can toggle themselves)
+            // Server unmuted — restore mic (only if not also server-deafened)
+            if (!row.server_deafened) {
+              room?.localParticipant.setMicrophoneEnabled(true);
+              setGlobalMuted(false);
+            }
           }
 
           // Server Deafened
@@ -435,6 +441,33 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         if (mounted) {
           setIsJoined(true);
           window.dispatchEvent(new CustomEvent("voice-participants-changed"));
+
+          // Fetch initial moderation state in case it was set before we joined
+          const { data: modRow } = await supabase
+            .from("voice_channel_participants" as any)
+            .select("server_muted, server_deafened")
+            .eq("channel_id", channelId)
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (modRow && mounted) {
+            const sm = !!(modRow as any).server_muted;
+            const sd = !!(modRow as any).server_deafened;
+            setIsServerMuted(sm);
+            setIsServerDeafened(sd);
+            const room = lk.room.current;
+            if (sm || sd) {
+              room?.localParticipant.setMicrophoneEnabled(false);
+              setGlobalMuted(true);
+            }
+            if (sd) {
+              room?.remoteParticipants.forEach((p) => {
+                p.audioTrackPublications.forEach((pub) => {
+                  if (pub.track) (pub.track as any).mediaStreamTrack.enabled = false;
+                });
+              });
+              setGlobalDeafened(true);
+            }
+          }
         }
 
         // Broadcast entrance sound
