@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
           author_id:  BOT_USER_ID,
           channel_id: channelId,
           type:       "free_game",
-          content:    `🎮 Free: ${game.title}`,
+          content:    `Free game for you @all: ${game.title} ${game.platforms} Giveaway`,
           metadata: {
             title:            game.title,
             thumbnail:        game.image || game.thumbnail,

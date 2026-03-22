@@ -11,7 +11,7 @@ import { useForwardMessage } from "@/contexts/ForwardMessageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, ChevronDown, Rocket, Ticket, Unlock, FileText, Trash2, Info, ShieldAlert } from "lucide-react";
+import { Send, Hash, Upload, Lock, Megaphone, BookOpen, Pin, Forward, Loader2, ChevronDown, Rocket, Ticket, Unlock, FileText, Trash2, Info, ShieldAlert, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
@@ -209,9 +209,47 @@ const MessageItem = React.memo(({
 
   // Free game card (posted by the Mshb FreeStuff bot)
   if (msgAny.type === "free_game" && msgAny.metadata) {
+    const botName = p?.display_name || p?.username || "MSHB Bot";
     return (
-      <div className={`flex justify-start px-4 ${isGrouped ? "mt-1" : isFirstMessage ? "" : "mt-3"}`}>
-        <FreeGameCard metadata={msgAny.metadata} timestamp={msg.created_at} />
+      <div
+        id={`msg-${msg.id}`}
+        className={`hover:bg-muted/30 rounded-lg px-2 py-1 -mx-2 transition-colors ${isGrouped ? "mt-0.5" : isFirstMessage ? "" : "mt-3"}`}
+      >
+        <div className="flex gap-3">
+          <Avatar className="h-9 w-9 mt-0.5 shrink-0">
+            <AvatarImage src={p?.avatar_url || ""} />
+            <AvatarFallback className="bg-primary/20 text-primary text-xs">
+              {botName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-2">
+              <span className="inline-flex items-center gap-1">
+                <StyledDisplayName
+                  displayName={botName}
+                  fontStyle={p?.name_font}
+                  effect={p?.name_effect}
+                  gradientStart={p?.name_gradient_start}
+                  gradientEnd={p?.name_gradient_end}
+                  className="text-sm font-bold text-foreground"
+                />
+                <span className="inline-flex items-center gap-0.5 bg-indigo-500 text-white text-[9px] font-bold px-1 py-0.5 rounded leading-none">
+                  <Check className="h-2.5 w-2.5" />
+                  BOT
+                </span>
+              </span>
+              <span className="text-[10px] text-muted-foreground">{formatTime(msg.created_at)}</span>
+            </div>
+            {msg.content && (
+              <p className="text-sm whitespace-pre-wrap break-words mt-0.5">
+                {renderMessageContent(msg.content, profiles, currentUserId, serverEmojis)}
+              </p>
+            )}
+            <div className="mt-1.5">
+              <FreeGameCard metadata={msgAny.metadata} timestamp={msg.created_at} />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -718,7 +756,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
   const loadProfiles = useCallback(async (authorIds: string[]) => {
     const newIds = authorIds.filter((id) => !profiles.has(id));
     if (newIds.length === 0) return;
-    const { data } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").in("user_id", newIds);
+    const { data } = await supabase.from("profiles").select("user_id, display_name, username, avatar_url, name_font, name_effect, name_gradient_start, name_gradient_end, is_bot, active_server_tag:servers!profiles_active_server_tag_id_fkey(server_tag_name, server_tag_badge, server_tag_color, server_tag_container_color)").in("user_id", newIds);
     if (data) {
       setProfiles((prev) => {
         const next = new Map(prev);

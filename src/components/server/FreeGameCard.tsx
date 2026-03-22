@@ -22,7 +22,7 @@ function formatEndDate(dateStr: string): string {
 
 function PlatformBadge({ name }: { name: string }) {
   return (
-    <span className="text-[10px] font-semibold bg-white/10 text-white/80 px-1.5 py-0.5 rounded">
+    <span className="text-[10px] font-semibold bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
       {name.trim()}
     </span>
   );
@@ -39,7 +39,7 @@ const FreeGameCard = ({ metadata, timestamp }: Props) => {
     : [];
 
   return (
-    <div className="max-w-[400px] rounded-lg overflow-hidden border border-white/10 bg-[#1a1a2e] shadow-lg my-1">
+    <div className="max-w-[400px] rounded-lg overflow-hidden border border-border bg-card shadow-lg my-1">
       {/* Thumbnail */}
       {metadata.thumbnail && (
         <div className="relative">
@@ -66,7 +66,7 @@ const FreeGameCard = ({ metadata, timestamp }: Props) => {
       <div className="p-3 space-y-2">
         {/* Title row */}
         <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-bold text-white leading-tight">{metadata.title}</p>
+          <p className="text-sm font-bold text-card-foreground leading-tight">{metadata.title}</p>
           <Gift className="h-4 w-4 text-green-400 shrink-0 mt-0.5" />
         </div>
 
@@ -79,19 +79,19 @@ const FreeGameCard = ({ metadata, timestamp }: Props) => {
 
         {/* Description */}
         {metadata.description && (
-          <p className="text-xs text-white/60 line-clamp-2 leading-snug">
+          <p className="text-xs text-muted-foreground line-clamp-2 leading-snug">
             {metadata.description}
           </p>
         )}
 
         {/* End date */}
-        <p className="text-[11px] text-white/40">{formatEndDate(metadata.end_date)}</p>
+        <p className="text-[11px] text-muted-foreground">{formatEndDate(metadata.end_date)}</p>
 
         {/* CTA */}
         <Button
           asChild
           size="sm"
-          className="w-full bg-green-600 hover:bg-green-500 text-white font-semibold text-xs mt-1"
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs mt-1"
         >
           <a href={metadata.open_giveaway_url} target="_blank" rel="noopener noreferrer">
             <ExternalLink className="h-3.5 w-3.5 me-1.5" />
