@@ -141,7 +141,9 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   useEffect(() => {
     if (!user || !isJoined) return;
     // Check if local user is in activeSpeakers
-    const isSpeaking = lk.activeSpeakers.has(user.id);
+    const rawSpeaking = lk.activeSpeakers.has(user.id);
+    // Suppress speaking indicator when server-muted — mic should be off
+    const isSpeaking = rawSpeaking && !voiceChannel?.isServerMuted;
     if (isSpeaking === lastSpeakingRef.current) return;
     lastSpeakingRef.current = isSpeaking;
 
@@ -156,7 +158,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       .eq("channel_id", channelId)
       .eq("user_id", user.id)
       .then();
-  }, [lk.activeSpeakers, user, isJoined, channelId, resetIdleTimer, resetAfkTimer]);
+  }, [lk.activeSpeakers, user, isJoined, channelId, resetIdleTimer, resetAfkTimer, voiceChannel?.isServerMuted]);
 
   // ── Sync mute/deafen to LiveKit + DB ──────────────────────────────────────
 
