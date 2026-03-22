@@ -143,7 +143,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     // Check if local user is in activeSpeakers
     const rawSpeaking = lk.activeSpeakers.has(user.id);
     // Suppress speaking indicator when server-muted — mic should be off
-    const isSpeaking = rawSpeaking && !voiceChannel?.isServerMuted;
+    const isSpeaking = rawSpeaking && !isServerMuted;
     if (isSpeaking === lastSpeakingRef.current) return;
     lastSpeakingRef.current = isSpeaking;
 
