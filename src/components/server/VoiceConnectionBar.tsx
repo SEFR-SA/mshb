@@ -28,7 +28,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     setLocalCameraStream, setRemoteCameraStream,
     voiceChannel, setVoiceChannel, setNativeResolutionLabel,
     setLocalStreamingApp, setLocalStreamStartedAt,
-    setIsServerMuted, setIsServerDeafened,
+    isServerMuted, setIsServerMuted, setIsServerDeafened,
   } = useVoiceChannel();
 
   const [isJoined, setIsJoined] = useState(false);
