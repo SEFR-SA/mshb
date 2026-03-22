@@ -485,7 +485,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
     const { data } = await supabase
       .from("voice_channel_participants")
-      .select("channel_id, user_id, is_speaking, is_muted, is_deafened, is_screen_sharing")
+      .select("channel_id, user_id, is_speaking, is_muted, is_deafened, is_screen_sharing, server_muted, server_deafened")
       .in("channel_id", voiceChannelIds);
     if (!data || data.length === 0) { setVoiceParticipants(new Map()); return; }
 
