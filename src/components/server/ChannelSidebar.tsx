@@ -993,6 +993,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                       if (ch.type === "voice") {
                         const participants = voiceParticipants.get(ch.id) || [];
                         const hasParticipants = participants.length > 0;
+                        const localIsConnecting =
+                          !!voiceChannel &&
+                          voiceChannel.id === ch.id &&
+                          !participants.some((p) => p.user_id === user?.id);
                         return (
                           <div key={ch.id}>
                             {dragOverTarget === ch.id && dragType === "channel" && <div className="h-0.5 bg-primary rounded-full mx-2" />}
@@ -1016,12 +1020,27 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                               </button>
                               {renderAdminDropdown(ch)}
                             </div>
+                            {localIsConnecting && user && (
+                              <div className="relative flex items-center gap-2 ps-8 py-1.5 text-xs font-medium text-muted-foreground opacity-50 animate-pulse pointer-events-none">
+                                <div className="relative shrink-0">
+                                  <Avatar className="h-5 w-5">
+                                    <AvatarImage src={profile?.avatar_url || ""} />
+                                    <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
+                                      {(profile?.display_name || profile?.username || user.email || "U").charAt(0).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </div>
+                                <span className="truncate">
+                                  {profile?.display_name || profile?.username || user.email?.split("@")[0] || "Connecting…"}
+                                </span>
+                              </div>
+                            )}
                             {participants.map((p) => {
                               const isScreenSharer = p.is_screen_sharing;
 
                               const innerRow = (
                                 <div
-                                  className={`relative group flex items-center gap-2 ps-8 py-1.5 text-xs font-medium text-muted-foreground ${permissions.move_members && p.user_id !== user?.id ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
+                                  className={`relative group flex items-center gap-2 ps-8 py-1.5 text-xs font-medium text-muted-foreground transition-opacity duration-300 ${permissions.move_members && p.user_id !== user?.id ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
                                   draggable={permissions.move_members && p.user_id !== user?.id}
                                   onDragStart={(e) => handleParticipantDragStart(e, p.user_id, ch.id)}
                                   onDragEnd={handleDragEnd}
