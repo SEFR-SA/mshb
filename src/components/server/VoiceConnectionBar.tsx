@@ -213,15 +213,19 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           const room = lk.room.current;
 
           // Server Muted
-          setIsServerMuted(!!row.server_muted);
-          if (row.server_muted) {
+          const wasMuted = !!row.server_muted;
+          setIsServerMuted(wasMuted);
+          if (wasMuted) {
             room?.localParticipant.setMicrophoneEnabled(false);
             setGlobalMuted(true);
+          } else {
+            // Server unmuted — restore mic ability (user can toggle themselves)
           }
 
           // Server Deafened
-          setIsServerDeafened(!!row.server_deafened);
-          if (row.server_deafened) {
+          const wasDeafened = !!row.server_deafened;
+          setIsServerDeafened(wasDeafened);
+          if (wasDeafened) {
             room?.localParticipant.setMicrophoneEnabled(false);
             setGlobalMuted(true);
             room?.remoteParticipants.forEach((p) => {
@@ -230,6 +234,18 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
               });
             });
             setGlobalDeafened(true);
+          } else {
+            // Server undeafened — restore remote audio
+            room?.remoteParticipants.forEach((p) => {
+              p.audioTrackPublications.forEach((pub) => {
+                if (pub.track) (pub.track as any).mediaStreamTrack.enabled = true;
+              });
+            });
+            setGlobalDeafened(false);
+            // Only unmute mic if server mute is also off
+            if (!row.server_muted) {
+              setGlobalMuted(false);
+            }
           }
         }
       )

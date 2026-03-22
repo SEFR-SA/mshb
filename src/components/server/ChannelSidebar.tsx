@@ -485,7 +485,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
     const { data } = await supabase
       .from("voice_channel_participants")
-      .select("channel_id, user_id, is_speaking, is_muted, is_deafened, is_screen_sharing")
+      .select("channel_id, user_id, is_speaking, is_muted, is_deafened, is_screen_sharing, server_muted, server_deafened")
       .in("channel_id", voiceChannelIds);
     if (!data || data.length === 0) { setVoiceParticipants(new Map()); return; }
 
@@ -994,9 +994,9 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                     </Avatar>
                                   </div>
                                   <StyledDisplayName displayName={p.display_name || p.username || "User"} fontStyle={p.name_font} effect={p.name_effect} gradientStart={p.name_gradient_start} gradientEnd={p.name_gradient_end} className="truncate" />
-                                  {p.is_deafened ? (
+                                  {(p.is_deafened || p.server_deafened) ? (
                                     <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
-                                  ) : p.is_muted ? (
+                                  ) : (p.is_muted || p.server_muted) ? (
                                     <MicOff className="h-3 w-3 text-destructive shrink-0" />
                                   ) : p.is_speaking ? (
                                     <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
@@ -1027,9 +1027,9 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                                       </Avatar>
                                     </div>
                                     <StyledDisplayName displayName={p.display_name || p.username || "User"} fontStyle={p.name_font} effect={p.name_effect} gradientStart={p.name_gradient_start} gradientEnd={p.name_gradient_end} className="truncate" />
-                                    {p.is_deafened ? (
+                                    {(p.is_deafened || p.server_deafened) ? (
                                       <HeadphoneOff className="h-3 w-3 text-destructive shrink-0" />
-                                    ) : p.is_muted ? (
+                                    ) : (p.is_muted || p.server_muted) ? (
                                       <MicOff className="h-3 w-3 text-destructive shrink-0" />
                                     ) : p.is_speaking ? (
                                       <Mic className="h-3 w-3 text-[#00db21] shrink-0 animate-pulse" />
