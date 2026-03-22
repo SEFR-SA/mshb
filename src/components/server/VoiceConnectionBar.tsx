@@ -221,7 +221,11 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
             room?.localParticipant.setMicrophoneEnabled(false);
             setGlobalMuted(true);
           } else {
-            // Server unmuted — restore mic ability (user can toggle themselves)
+            // Server unmuted — restore mic (only if not also server-deafened)
+            if (!row.server_deafened) {
+              room?.localParticipant.setMicrophoneEnabled(true);
+              setGlobalMuted(false);
+            }
           }
 
           // Server Deafened
