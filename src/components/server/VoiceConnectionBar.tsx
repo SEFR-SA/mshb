@@ -158,7 +158,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       .eq("channel_id", channelId)
       .eq("user_id", user.id)
       .then();
-  }, [lk.activeSpeakers, user, isJoined, channelId, resetIdleTimer, resetAfkTimer, voiceChannel?.isServerMuted]);
+  }, [lk.activeSpeakers, user, isJoined, channelId, resetIdleTimer, resetAfkTimer, isServerMuted]);
 
   // ── Sync mute/deafen to LiveKit + DB ──────────────────────────────────────
 
