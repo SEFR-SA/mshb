@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatusBadge, type UserStatus } from "@/components/StatusBadge";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X, Zap } from "lucide-react";
+import { X, Zap, Check } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -305,9 +305,16 @@ const ServerMemberList = ({ serverId }: Props) => {
                             <div className="text-xs text-white/70">@{username}</div>
 
                             <div className="flex flex-wrap gap-1 mt-2">
-                              <Badge className={`text-[10px] px-2 py-0.5 ${roleBadgeColors[m.role] || roleBadgeColors.member}`}>
-                                {t(`servers.${m.role}`)}
-                              </Badge>
+                              {m.role === "bot" ? (
+                                <span className="inline-flex items-center gap-0.5 bg-indigo-500 text-white text-[9px] font-bold px-1 py-0.5 rounded leading-none">
+                                  <Check className="h-2.5 w-2.5" />
+                                  BOT
+                                </span>
+                              ) : (
+                                <Badge className={`text-[10px] px-2 py-0.5 ${roleBadgeColors[m.role] || roleBadgeColors.member}`}>
+                                  {t(`servers.${m.role}`)}
+                                </Badge>
+                              )}
                               {(userAllRolesMap.get(m.user_id) || []).map((cr) => (
                                 <Badge
                                   key={cr.id}

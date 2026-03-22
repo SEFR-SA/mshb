@@ -29,6 +29,15 @@ const corsHeaders = {
 
 const BOT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
+async function resolveRedirect(url: string): Promise<string | null> {
+  try {
+    const r = await fetch(url, { redirect: "follow" });
+    return r.url;
+  } catch {
+    return null;
+  }
+}
+
 const GAMERPOWER_URL =
   "https://www.gamerpower.com/api/filter?platform=epic-games-store.steam&type=game&sort-by=popularity";
 
@@ -77,6 +86,11 @@ Deno.serve(async (req) => {
     // Only include active giveaways
     const activeGames = games.filter((g) => g.status === "Active");
 
+    // Resolve redirect URLs for all games in parallel (server-side, no CORS restrictions)
+    const storeUrls = await Promise.all(
+      activeGames.map((g) => resolveRedirect(g.open_giveaway_url || g.giveaway_url)),
+    );
+
     if (activeGames.length === 0) {
       return new Response(
         JSON.stringify({ posted: 0, message: "No active free games found" }),
@@ -109,7 +123,9 @@ Deno.serve(async (req) => {
         { onConflict: "server_id,user_id", ignoreDuplicates: true },
       );
 
-      for (const game of activeGames) {
+      for (let gi = 0; gi < activeGames.length; gi++) {
+        const game = activeGames[gi];
+        const storeUrl = storeUrls[gi];
         const gameId = String(game.id);
 
         // Skip if already posted to this server
@@ -137,6 +153,7 @@ Deno.serve(async (req) => {
             end_date:         game.end_date,
             open_giveaway_url: game.open_giveaway_url || game.giveaway_url,
             platforms:        game.platforms,
+            store_url:        storeUrl ?? undefined,
           },
         } as any);
 

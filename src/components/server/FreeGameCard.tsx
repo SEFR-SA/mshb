@@ -1,5 +1,5 @@
 import React from "react";
-import { ExternalLink, Gift } from "lucide-react";
+import { ExternalLink, Gift, MonitorPlay } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export interface FreeGameMetadata {
@@ -11,6 +11,7 @@ export interface FreeGameMetadata {
   end_date: string;
   open_giveaway_url: string;
   platforms: string;
+  store_url?: string;
 }
 
 function formatEndDate(dateStr: string): string {
@@ -18,6 +19,29 @@ function formatEndDate(dateStr: string): string {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
   return `Ends ${d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+}
+
+interface ClientUri {
+  uri: string;
+  label: string;
+}
+
+function getClientUri(platforms: string, url: string, storeUrl?: string): ClientUri | null {
+  const lp = platforms.toLowerCase();
+
+  if (lp.includes("steam")) {
+    const match = (storeUrl ?? "").match(/store\.steampowered\.com\/app\/(\d+)/);
+    if (match) return { uri: `steam://store/${match[1]}`, label: "Open in Steam" };
+    return { uri: url, label: "Open in Steam" };
+  }
+
+  if (lp.includes("epic")) {
+    const match = (storeUrl ?? "").match(/\/(?:p|product)\/([^/?#]+)/);
+    if (match) return { uri: `com.epicgames.launcher://store/p/${match[1]}`, label: "Open in Epic" };
+    return { uri: url, label: "Open in Epic" };
+  }
+
+  return null;
 }
 
 function PlatformBadge({ name }: { name: string }) {
@@ -37,6 +61,7 @@ const FreeGameCard = ({ metadata, timestamp }: Props) => {
   const platforms = metadata.platforms
     ? metadata.platforms.split(",").filter(Boolean)
     : [];
+  const clientUri = getClientUri(metadata.platforms, metadata.open_giveaway_url, metadata.store_url);
 
   return (
     <div className="max-w-[400px] rounded-lg overflow-hidden border border-border bg-card shadow-lg my-1">
@@ -88,16 +113,33 @@ const FreeGameCard = ({ metadata, timestamp }: Props) => {
         <p className="text-[11px] text-muted-foreground">{formatEndDate(metadata.end_date)}</p>
 
         {/* CTA */}
-        <Button
-          asChild
-          size="sm"
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs mt-1"
-        >
-          <a href={metadata.open_giveaway_url} target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="h-3.5 w-3.5 me-1.5" />
-            Claim for Free
-          </a>
-        </Button>
+        {clientUri ? (
+          <div className="flex gap-2 mt-1">
+            <Button asChild size="sm" className="flex-1 font-semibold text-xs">
+              <a href={clientUri.uri}>
+                <MonitorPlay className="h-3.5 w-3.5 me-1.5" />
+                {clientUri.label}
+              </a>
+            </Button>
+            <Button asChild size="sm" variant="outline" className="flex-1 font-semibold text-xs">
+              <a href={metadata.open_giveaway_url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5 me-1.5" />
+                Browser
+              </a>
+            </Button>
+          </div>
+        ) : (
+          <Button
+            asChild
+            size="sm"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs mt-1"
+          >
+            <a href={metadata.open_giveaway_url} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-3.5 w-3.5 me-1.5" />
+              Claim for Free
+            </a>
+          </Button>
+        )}
       </div>
     </div>
   );
