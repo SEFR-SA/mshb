@@ -441,6 +441,33 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
         if (mounted) {
           setIsJoined(true);
           window.dispatchEvent(new CustomEvent("voice-participants-changed"));
+
+          // Fetch initial moderation state in case it was set before we joined
+          const { data: modRow } = await supabase
+            .from("voice_channel_participants" as any)
+            .select("server_muted, server_deafened")
+            .eq("channel_id", channelId)
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (modRow && mounted) {
+            const sm = !!(modRow as any).server_muted;
+            const sd = !!(modRow as any).server_deafened;
+            setIsServerMuted(sm);
+            setIsServerDeafened(sd);
+            const room = lk.room.current;
+            if (sm || sd) {
+              room?.localParticipant.setMicrophoneEnabled(false);
+              setGlobalMuted(true);
+            }
+            if (sd) {
+              room?.remoteParticipants.forEach((p) => {
+                p.audioTrackPublications.forEach((pub) => {
+                  if (pub.track) (pub.track as any).mediaStreamTrack.enabled = false;
+                });
+              });
+              setGlobalDeafened(true);
+            }
+          }
         }
 
         // Broadcast entrance sound
