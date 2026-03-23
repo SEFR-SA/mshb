@@ -256,11 +256,23 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
 
           // Server-initiated channel move
           if (row.pending_move_channel_id && row.pending_move_channel_id !== channelId) {
-            setVoiceChannel({
-              id: row.pending_move_channel_id,
-              name: row.pending_move_channel_name ?? "Voice",
-              serverId,
-            });
+            const targetId = row.pending_move_channel_id;
+            const targetName = row.pending_move_channel_name ?? "Voice";
+
+            // 1. Clear pending fields so the move is consumed
+            supabase
+              .from("voice_channel_participants" as any)
+              .update({ pending_move_channel_id: null, pending_move_channel_name: null } as any)
+              .eq("channel_id", channelId)
+              .eq("user_id", user.id)
+              .then();
+
+            // 2. Disconnect LiveKit + delete old DB row BEFORE switching channel
+            lk.disconnect();
+            cleanupDb();
+
+            // 3. Set the new voice channel — triggers remount with new key
+            setVoiceChannel({ id: targetId, name: targetName, serverId });
             return;
           }
         }
