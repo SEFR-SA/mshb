@@ -294,7 +294,7 @@ export default {
     blocked: "محظور",
   },
   files: {
-    tooLarge: "الملف كبير جداً. الحد الأقصى هو ٢٠٠ ميغابايت.",
+    tooLarge: "الملف كبير جداً لخطتك الحالية.",
     uploadError: "فشل رفع الملف.",
     download: "تحميل",
     attachment: "مرفق",
@@ -1188,10 +1188,13 @@ export default {
     perks: {
       level1Item1: "لافتة مخصصة للسيرفر",
       level1Item2: "أيقونة سيرفر متحركة",
+      level1Item3: "حد الرفع: ١٠٠ ميغابايت لكل ملف",
       level2Item1: "جودة فيديو عالية الدقة (1080p)",
       level2Item2: "فتحات إيموجي إضافية (+100)",
+      level2Item3: "حد الرفع: ١٥٠ ميغابايت لكل ملف",
       level3Item1: "شارة داعم حصرية",
       level3Item2: "رابط مخصص للسيرفر",
+      level3Item3: "حد الرفع: ٢٠٠ ميغابايت لكل ملف",
     },
     noBoosts: "لم تدعم أي سيرفر بعد.",
     cancelAutoRenew: "إلغاء التجديد التلقائي",

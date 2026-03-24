@@ -21,7 +21,7 @@ const FEATURES: FeatureRow[] = [
   { label: "Profile Badge",      free: false,                          pro: true },
   { label: "Profile Avatar",     free: "Standard image",               pro: "Animated GIF avatars" },
   { label: "Server Tags",        free: "Text tags only",               pro: "Custom image badges" },
-  { label: "File Upload Limit",  free: "50 MB",                        pro: "1 GB" },
+  { label: "File Upload Limit",  free: "50 MB",                        pro: "500 MB" },
   { label: "Global Media",       free: "Within server only",           pro: "Server Emojis & Stickers anywhere" },
   { label: "Screen Share",       free: "1080p / 30fps",                pro: "1080p / 60fps & Source Quality" },
   { label: "Audio Quality",      free: "High Fidelity (384 kbps)",     pro: "High Fidelity (384 kbps)" },

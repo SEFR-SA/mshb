@@ -9,14 +9,26 @@ export interface BoostPerks {
 }
 
 export const BOOST_PERKS: Record<0 | 1 | 2 | 3, BoostPerks> = {
-  0: { maxEmojis: 50,  maxStickers: 5,  maxUploadSizeMB: 8,   audioQualityKbps: 96,  maxScreenShareRes: "1080p", maxScreenShareFps: 30, features: [] },
-  1: { maxEmojis: 100, maxStickers: 15, maxUploadSizeMB: 8,   audioQualityKbps: 128, maxScreenShareRes: "1080p", maxScreenShareFps: 60, features: ["animated_icon", "server_banner"] },
-  2: { maxEmojis: 150, maxStickers: 30, maxUploadSizeMB: 50,  audioQualityKbps: 256, maxScreenShareRes: "1440p", maxScreenShareFps: 60, features: ["animated_icon", "server_banner", "hd_voice"] },
-  3: { maxEmojis: 250, maxStickers: 60, maxUploadSizeMB: 100, audioQualityKbps: 384, maxScreenShareRes: "4k",    maxScreenShareFps: 60, features: ["animated_icon", "server_banner", "hd_voice", "vanity_url"] },
+  0: { maxEmojis: 50,  maxStickers: 5,  maxUploadSizeMB: 50,  audioQualityKbps: 96,  maxScreenShareRes: "1080p", maxScreenShareFps: 30, features: [] },
+  1: { maxEmojis: 100, maxStickers: 15, maxUploadSizeMB: 100, audioQualityKbps: 128, maxScreenShareRes: "1080p", maxScreenShareFps: 60, features: ["animated_icon", "server_banner"] },
+  2: { maxEmojis: 150, maxStickers: 30, maxUploadSizeMB: 150, audioQualityKbps: 256, maxScreenShareRes: "1440p", maxScreenShareFps: 60, features: ["animated_icon", "server_banner", "hd_voice"] },
+  3: { maxEmojis: 250, maxStickers: 60, maxUploadSizeMB: 200, audioQualityKbps: 384, maxScreenShareRes: "4k",    maxScreenShareFps: 60, features: ["animated_icon", "server_banner", "hd_voice", "vanity_url"] },
 };
 
 export const getBoostPerks = (level: number): BoostPerks =>
   BOOST_PERKS[Math.min(Math.max(Math.floor(level), 0), 3) as 0 | 1 | 2 | 3];
+
+/** Returns the max upload size in MB for a participant.
+ *  Rule: max(server boost level limit, user tier limit).
+ *  - Free floor: 50 MB | Pro floor: 500 MB
+ *  - Boost levels: 50 / 100 / 150 / 200 MB
+ */
+export function calculateMaxUploadSizeMB(isPro: boolean, boostLevel: number): number {
+  const bl = Math.min(Math.max(Math.floor(boostLevel), 0), 3) as 0 | 1 | 2 | 3;
+  const boostMB = BOOST_PERKS[bl].maxUploadSizeMB;
+  const tierMB  = isPro ? 500 : 50;
+  return Math.max(boostMB, tierMB);
+}
 
 /** Returns the audio publish bitrate in bps for a participant.
  *  Rule: take the higher of the server boost level bitrate and the user tier bitrate.

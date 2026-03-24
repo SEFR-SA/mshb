@@ -294,7 +294,7 @@ export default {
     blocked: "Blocked",
   },
   files: {
-    tooLarge: "File is too large. Maximum size is 200 MB.",
+    tooLarge: "File is too large for your current plan.",
     uploadError: "Failed to upload file.",
     download: "Download",
     attachment: "Attachment",
@@ -1188,10 +1188,13 @@ export default {
     perks: {
       level1Item1: "Custom server banner",
       level1Item2: "Animated server icon",
+      level1Item3: "Upload limit: 100 MB per file",
       level2Item1: "HD video quality (1080p)",
       level2Item2: "More emoji slots (100+)",
+      level2Item3: "Upload limit: 150 MB per file",
       level3Item1: "Exclusive booster badge",
       level3Item2: "Custom vanity URL",
+      level3Item3: "Upload limit: 200 MB per file",
     },
     noBoosts: "You haven't boosted any servers yet.",
     cancelAutoRenew: "Cancel Auto-Renew",

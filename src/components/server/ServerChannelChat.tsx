@@ -45,7 +45,7 @@ import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 import { useMessageKeybinds } from "@/hooks/useMessageKeybinds";
-import { getBoostPerks } from "@/config/boostPerks";
+import { getBoostPerks, calculateMaxUploadSizeMB } from "@/config/boostPerks";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 
 // Default to 200 MB; overridden by server boost level once fetched
@@ -464,7 +464,8 @@ const MessageItem = React.memo(({
 
 const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serverId: serverIdProp, isAnnouncement, isRules, channelType, channelDescription, canEdit, restrictedPermissions }: Props) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const isPro = (profile as any)?.is_pro ?? false;
   const { serverId: serverIdParam } = useParams<{ serverId: string }>();
   const serverId = serverIdProp || serverIdParam;
   const { permissions, strictPermissions } = useServerPermissions(serverId);
@@ -1019,7 +1020,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
-    if (file.size > getBoostPerks(serverBoostLevel).maxUploadSizeMB * 1024 * 1024) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
+    if (file.size > calculateMaxUploadSizeMB(isPro, serverBoostLevel) * 1024 * 1024) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
     setSelectedFile(file);
   };
 
@@ -1277,7 +1278,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
               <ChatInputActions
                 onFileSelect={(f) => {
                   if (!canAttach) { toast({ title: t("common.error"), description: t("channels.attachFilesRestricted"), variant: "destructive" }); return; }
-                  const maxBytes = getBoostPerks(serverBoostLevel).maxUploadSizeMB * 1024 * 1024;
+                  const maxBytes = calculateMaxUploadSizeMB(isPro, serverBoostLevel) * 1024 * 1024;
                   if (f.size > maxBytes) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
                   setSelectedFile(f);
                 }}
@@ -1311,7 +1312,7 @@ const ServerChannelChat = ({ channelId, channelName, isPrivate, hasAccess, serve
                       e.preventDefault();
                       const file = item.getAsFile();
                       if (!file) return;
-                      const maxBytes = getBoostPerks(serverBoostLevel).maxUploadSizeMB * 1024 * 1024;
+                      const maxBytes = calculateMaxUploadSizeMB(isPro, serverBoostLevel) * 1024 * 1024;
                       if (file.size > maxBytes) { toast({ title: t("files.tooLarge"), variant: "destructive" }); return; }
                       setSelectedFile(file);
                       return;

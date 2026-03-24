@@ -109,9 +109,9 @@ const ServerBoostModal = ({ open, onOpenChange, serverId, serverName }: Props) =
   const remaining = boostLevel === 3 ? 0 : Math.max(0, nextThreshold - boostCount);
 
   const perkTiers = [
-    { level: 1, items: [t("serverBoost.perks.level1Item1"), t("serverBoost.perks.level1Item2")] },
-    { level: 2, items: [t("serverBoost.perks.level2Item1"), t("serverBoost.perks.level2Item2")] },
-    { level: 3, items: [t("serverBoost.perks.level3Item1"), t("serverBoost.perks.level3Item2")] },
+    { level: 1, items: [t("serverBoost.perks.level1Item1"), t("serverBoost.perks.level1Item2"), t("serverBoost.perks.level1Item3")] },
+    { level: 2, items: [t("serverBoost.perks.level2Item1"), t("serverBoost.perks.level2Item2"), t("serverBoost.perks.level2Item3")] },
+    { level: 3, items: [t("serverBoost.perks.level3Item1"), t("serverBoost.perks.level3Item2"), t("serverBoost.perks.level3Item3")] },
   ];
 
   const handleBoost = async () => {

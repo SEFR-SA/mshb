@@ -40,16 +40,17 @@ import { useTogglePinMessage } from "@/hooks/useTogglePinMessage";
 import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 import { useMessageKeybinds } from "@/hooks/useMessageKeybinds";
+import { calculateMaxUploadSizeMB } from "@/config/boostPerks";
 
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
 
-const MAX_FILE_SIZE = 200 * 1024 * 1024;
-
 const GroupChat = () => {
   const { t } = useTranslation();
   const { groupId } = useParams<{ groupId: string }>();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const isPro = (profile as any)?.is_pro ?? false;
+  const MAX_FILE_SIZE = calculateMaxUploadSizeMB(isPro, 0) * 1024 * 1024;
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 

@@ -47,17 +47,18 @@ import PinnedMessagesDrawer from "@/components/chat/PinnedMessagesDrawer";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import { useMessageKeybinds } from "@/hooks/useMessageKeybinds";
+import { calculateMaxUploadSizeMB } from "@/config/boostPerks";
 type Message = Tables<"messages">;
 type Profile = Tables<"profiles">;
-
-const MAX_FILE_SIZE = 200 * 1024 * 1024;
 
 const Chat = () => {
   const { t } = useTranslation();
   const { threadId } = useParams<{ threadId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
-  
+  const isPro = (profile as any)?.is_pro ?? false;
+  const MAX_FILE_SIZE = calculateMaxUploadSizeMB(isPro, 0) * 1024 * 1024;
+
   const { isOnline, getUserStatus } = usePresence();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
