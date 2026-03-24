@@ -16,7 +16,7 @@ import {
   type TrackPublishOptions,
 } from "livekit-client";
 import { fetchLiveKitToken } from "@/lib/livekit";
-import { BOOST_PERKS } from "@/config/boostPerks";
+import { calculateMaxAudioBitrate } from "@/config/boostPerks";
 import type { StreamResolution } from "@/components/GoLiveModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -290,14 +290,13 @@ export function useLiveKitRoom({
         });
       });
 
-      // Publish microphone (respecting initial mute) with boost-level audio bitrate
+      // Publish microphone (respecting initial mute) with tier + boost-level audio bitrate
       const localMeta = room.localParticipant.metadata;
-      let audioBitrate = 96_000; // default 96kbps
+      let audioBitrate = 96_000;
       if (localMeta) {
         try {
           const m = JSON.parse(localMeta);
-          const bl = Math.min(Math.max(Math.floor(m.boostLevel ?? 0), 0), 3) as 0 | 1 | 2 | 3;
-          audioBitrate = BOOST_PERKS[bl].audioQualityKbps * 1000;
+          audioBitrate = calculateMaxAudioBitrate(m.isPro ?? false, m.boostLevel ?? 0);
         } catch {}
       }
 
@@ -586,12 +585,10 @@ export function useLiveKitRoom({
     setIsCameraOn(false);
   }, []);
 
-  // ── Audio Bitrate (boost-level aware) ─────────────────────────────────────
+  // ── Audio Bitrate (tier + boost-level aware) ──────────────────────────────
 
   const getAudioBitrate = useCallback(() => {
-    const level = metadata?.boostLevel ?? 0;
-    const clampedLevel = Math.min(Math.max(Math.floor(level), 0), 3) as 0 | 1 | 2 | 3;
-    return BOOST_PERKS[clampedLevel].audioQualityKbps * 1000; // kbps → bps
+    return calculateMaxAudioBitrate(metadata?.isPro ?? false, metadata?.boostLevel ?? 0);
   }, [metadata]);
 
   // ── DataChannel (for entrance sounds, soundboard etc.) ────────────────────

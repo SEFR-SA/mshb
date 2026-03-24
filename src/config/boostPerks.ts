@@ -17,3 +17,16 @@ export const BOOST_PERKS: Record<0 | 1 | 2 | 3, BoostPerks> = {
 
 export const getBoostPerks = (level: number): BoostPerks =>
   BOOST_PERKS[Math.min(Math.max(Math.floor(level), 0), 3) as 0 | 1 | 2 | 3];
+
+/** Returns the audio publish bitrate in bps for a participant.
+ *  Rule: take the higher of the server boost level bitrate and the user tier bitrate.
+ *  - Free tier floor: 96 kbps
+ *  - Pro tier floor:  384 kbps
+ *  - Boost levels:    96 / 128 / 256 / 384 kbps
+ */
+export function calculateMaxAudioBitrate(isPro: boolean, boostLevel: number): number {
+  const bl = Math.min(Math.max(Math.floor(boostLevel), 0), 3) as 0 | 1 | 2 | 3;
+  const boostBps = BOOST_PERKS[bl].audioQualityKbps * 1_000;
+  const tierBps  = isPro ? 384_000 : 96_000;
+  return Math.max(boostBps, tierBps);
+}
