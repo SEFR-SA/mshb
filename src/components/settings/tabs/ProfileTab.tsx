@@ -81,9 +81,12 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
       });
   }, [user]);
 
+  const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
   const colorMutation = useMutation({
     mutationFn: async (colors: { primary: string; accent: string }) => {
       if (!user) return;
+      if (!HEX_RE.test(colors.primary) || !HEX_RE.test(colors.accent)) return;
       const { error } = await supabase
         .from("profiles")
         .update({ profile_primary_color: colors.primary, profile_accent_color: colors.accent } as any)

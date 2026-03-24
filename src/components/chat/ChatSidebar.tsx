@@ -224,10 +224,11 @@ const ChatSidebar = ({ activeThreadId }: ChatSidebarProps) => {
     }
     setSearching(true);
     const timer = setTimeout(async () => {
+      const safeSearch = search.replace(/[%_,.()*!|&]/g, "").slice(0, 50);
       const { data } = await supabase
         .from("profiles")
         .select("*")
-        .or(`username.ilike.%${search}%,display_name.ilike.%${search}%`)
+        .or(`username.ilike.%${safeSearch}%,display_name.ilike.%${safeSearch}%`)
         .neq("user_id", user?.id || "")
         .limit(10);
       setSearchResults(data || []);

@@ -95,6 +95,13 @@ Deno.serve(async (req) => {
       metadata = null,
     } = await req.json();
 
+    if (content.length > 5000) {
+      return new Response(
+        JSON.stringify({ error: "Message too long" }),
+        { status: 400, headers: jsonHeaders }
+      );
+    }
+
     if (!channel_id) {
       return new Response(
         JSON.stringify({ error: "channel_id is required" }),
