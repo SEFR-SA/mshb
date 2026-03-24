@@ -2068,6 +2068,8 @@ export type Database = {
           is_screen_sharing: boolean
           is_speaking: boolean
           joined_at: string
+          pending_move_channel_id: string | null
+          pending_move_channel_name: string | null
           server_deafened: boolean
           server_muted: boolean
           user_id: string
@@ -2080,6 +2082,8 @@ export type Database = {
           is_screen_sharing?: boolean
           is_speaking?: boolean
           joined_at?: string
+          pending_move_channel_id?: string | null
+          pending_move_channel_name?: string | null
           server_deafened?: boolean
           server_muted?: boolean
           user_id: string
@@ -2092,6 +2096,8 @@ export type Database = {
           is_screen_sharing?: boolean
           is_speaking?: boolean
           joined_at?: string
+          pending_move_channel_id?: string | null
+          pending_move_channel_name?: string | null
           server_deafened?: boolean
           server_muted?: boolean
           user_id?: string
@@ -2245,6 +2251,15 @@ export type Database = {
       is_server_member: {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean
+      }
+      move_voice_user: {
+        Args: {
+          p_from_channel_id: string
+          p_to_channel_id: string
+          p_to_channel_name: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       recalculate_server_boost: {
         Args: { p_server_id: string }
