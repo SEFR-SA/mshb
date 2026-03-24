@@ -33,6 +33,8 @@ import NotFound from "@/pages/NotFound";
 import "@/i18n";
 import React, { useEffect, useState } from 'react';
 import ErrorBoundary from "@/components/ErrorBoundary";
+import RouteErrorBoundary from "@/components/RouteErrorBoundary";
+import NetworkStatusListener from "@/components/NetworkStatusListener";
 import { supabase } from "@/integrations/supabase/client";
 
 // --- TYPES FOR ELECTRON BRIDGE ---
@@ -193,6 +195,7 @@ const App = () => (
             <TooltipProvider>
               <DeepLinkHandler />
               <AuthCallback />
+              <NetworkStatusListener />
               <UpdateBanner />
 
               <Toaster />
@@ -205,7 +208,7 @@ const App = () => (
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   
-                  <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                  <Route path="/" element={<ProtectedRoute><RouteErrorBoundary><AppLayout /></RouteErrorBoundary></ProtectedRoute>}>
                     <Route element={<HomeView />}>
                       <Route index element={<FriendsDashboard />} />
                       <Route path="friends" element={<FriendsDashboard />} />

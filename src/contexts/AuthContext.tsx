@@ -31,11 +31,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [equippedItems, setEquippedItems] = useState<Record<string, string>>({});
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("user_id", userId)
       .maybeSingle();
+    if (error) { console.error("[AuthContext] fetchProfile:", error.message); return; }
     if (data) {
       const p = data as any;
       if (p.status_until && new Date(p.status_until) < new Date()) {
@@ -52,10 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchPurchases = async (userId: string) => {
-    const [{ data: purchases }, { data: equipped }] = await Promise.all([
+    const [{ data: purchases, error: pe }, { data: equipped, error: ee }] = await Promise.all([
       supabase.from("user_purchases" as any).select("item_id").eq("user_id", userId),
       supabase.from("user_equipped" as any).select("category, item_id").eq("user_id", userId),
     ]);
+    if (pe) console.error("[AuthContext] fetchPurchases:", pe.message);
+    if (ee) console.error("[AuthContext] fetchEquipped:", ee.message);
     if (purchases) setPurchasedItemIds((purchases as any[]).map((p) => p.item_id));
     if (equipped)  setEquippedItems(Object.fromEntries((equipped as any[]).map((e) => [e.category, e.item_id])));
   };

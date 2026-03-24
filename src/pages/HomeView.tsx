@@ -23,14 +23,14 @@ const HomeView = () => {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("friendships")
         .select("requester_id, addressee_id")
         .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
         .eq("status", "accepted");
-      
+      if (error) { console.error("[HomeView] friendships:", error.message); return; }
       if (data) {
-        setFriendUserIds(data.map((f: any) => 
+        setFriendUserIds(data.map((f: any) =>
           f.requester_id === user.id ? f.addressee_id : f.requester_id
         ));
       }

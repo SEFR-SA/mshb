@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { toast } from "sonner";
 import App from "./App.tsx";
 import "./index.css";
 
@@ -13,6 +14,7 @@ window.onerror = (msg, src, line, col, err) => {
 };
 window.addEventListener("unhandledrejection", (e) => {
   console.error("[Unhandled Rejection]", e.reason);
+  toast.error("Something went wrong. Please try again.");
 });
 
 createRoot(document.getElementById("root")!).render(<App />);

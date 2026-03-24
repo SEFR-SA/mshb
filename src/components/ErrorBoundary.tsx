@@ -37,7 +37,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, State
         >
           <p style={{ fontSize: 18, fontWeight: 600 }}>Something went wrong</p>
           <p style={{ fontSize: 13, opacity: 0.6, maxWidth: 360, textAlign: "center" }}>
-            {this.state.error?.message ?? "An unexpected error occurred."}
+            An unexpected error occurred. Please reload the app.
           </p>
           <button
             onClick={() => window.location.reload()}
