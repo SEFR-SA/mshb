@@ -39,6 +39,7 @@ import { NavLink as RouterNavLink } from "react-router-dom";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { useChannelNotificationPref, type ChannelNotifLevel } from "@/hooks/useChannelNotificationPref";
 import { useStreamTimer } from "@/hooks/useStreamTimer";
+import { useVoiceTimer } from "@/hooks/useVoiceTimer";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
 
 
@@ -84,6 +85,7 @@ interface VoiceParticipant {
   name_effect?: string | null;
   name_gradient_start?: string | null;
   name_gradient_end?: string | null;
+  joined_at?: string | null;
 }
 
 interface ServerMember {
@@ -245,6 +247,18 @@ const ChannelDropdown = ({ ch, isAdmin, onEdit, onManageMembers, onDelete }: Cha
     </DropdownMenu>
   );
 };
+
+function VoiceChannelTimer({ participants }: { participants: VoiceParticipant[] }) {
+  const oldest = participants.length > 0
+    ? participants.reduce<string | null>((min, p) => {
+        if (!p.joined_at) return min;
+        return !min || p.joined_at < min ? p.joined_at : min;
+      }, null)
+    : null;
+  const timer = useVoiceTimer(oldest);
+  if (!timer) return null;
+  return <span className="ml-auto text-[10px] font-mono text-green-500 shrink-0">{timer}</span>;
+}
 
 const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceChannelSelect, activeVoiceChannelId }: Props) => {
   const { t } = useTranslation();
@@ -486,7 +500,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
     const { data } = await supabase
       .from("voice_channel_participants")
-      .select("channel_id, user_id, is_speaking, is_muted, is_deafened, is_screen_sharing, server_muted, server_deafened")
+      .select("channel_id, user_id, is_speaking, is_muted, is_deafened, is_screen_sharing, server_muted, server_deafened, joined_at")
       .in("channel_id", voiceChannelIds);
     if (!data || data.length === 0) { setVoiceParticipants(new Map()); return; }
 
@@ -516,6 +530,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         name_effect: (p as any)?.name_effect || null,
         name_gradient_start: (p as any)?.name_gradient_start || null,
         name_gradient_end: (p as any)?.name_gradient_end || null,
+        joined_at: (d as any).joined_at ?? null,
       });
       grouped.set(d.channel_id, list);
     });
@@ -744,6 +759,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const handleParticipantDragStart = (e: React.DragEvent, userId: string, fromChannelId: string) => {
     e.stopPropagation();
     e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("application/json", JSON.stringify({ userId, fromChannelId }));
     setDragItem(userId);
     setDragType("participant");
     setDragParticipantFrom(fromChannelId);
@@ -764,14 +780,24 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     const userId = dragItem;
     const fromChannelId = dragParticipantFrom;
     handleDragEnd();
-    const { error } = await supabase.rpc("move_voice_user" as any, {
-      p_from_channel_id: fromChannelId,
-      p_user_id: userId,
-      p_to_channel_id: targetChannelId,
-      p_to_channel_name: targetChannelName,
-    } as any);
-    if (error) {
-      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+    try {
+      console.log("📥 DROP FIRED, Data:", JSON.parse(e.dataTransfer.getData("application/json")));
+    } catch { /* dataTransfer may be unavailable after drop */ }
+    console.log("🚀 FIRING RPC move_voice_user with params:", { p_from_channel_id: fromChannelId, p_user_id: userId, p_to_channel_id: targetChannelId });
+    try {
+      const { data, error } = await supabase.rpc("move_voice_user" as any, {
+        p_from_channel_id: fromChannelId,
+        p_user_id: userId,
+        p_to_channel_id: targetChannelId,
+        p_to_channel_name: targetChannelName,
+      } as any);
+      console.log("🛠️ RPC RETURN DATA:", data);
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+      }
+    } catch (err) {
+      console.error("❌ move_voice_user threw:", err);
+      toast({ title: t("common.error"), description: String(err), variant: "destructive" });
     }
   };
 
@@ -1005,7 +1031,13 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                               draggable={isAdmin}
                               onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, ch.id, "channel"); }}
                               onDragEnd={handleDragEnd}
-                              onDragOver={(e) => { if (dragType === "participant") handleVoiceChannelDragOver(e, ch.id); else handleChannelDragOver(e, ch.id); }}
+                              onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (dragType === "participant") handleVoiceChannelDragOver(e, ch.id);
+                                else handleChannelDragOver(e, ch.id);
+                              }}
                               onDrop={(e) => { if (dragType === "participant") handleParticipantDrop(e, ch.id, ch.name); else handleChannelDrop(e, ch.id, category); }}
                             >
                               <button
@@ -1017,6 +1049,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                               >
                                 <ChannelIcon className={`h-4 w-4 shrink-0 ${hasParticipants && !ch.is_private ? "text-green-500" : ""}`} />
                                 <span className="truncate">{ch.name}</span>
+                                <VoiceChannelTimer participants={participants} />
                               </button>
                               {renderAdminDropdown(ch)}
                             </div>

@@ -189,17 +189,24 @@ const VoiceUserContextMenu = ({
   };
 
   const handleMoveUser = async (targetChannelId: string, targetChannelName: string) => {
-    const { error } = await supabase.rpc("move_voice_user" as any, {
-      p_from_channel_id: channelId,
-      p_user_id: targetUserId,
-      p_to_channel_id: targetChannelId,
-      p_to_channel_name: targetChannelName,
-    } as any);
-    if (error) {
-      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
-      return;
+    console.log("🚀 FIRING RPC move_voice_user with params:", { p_from_channel_id: channelId, p_user_id: targetUserId, p_to_channel_id: targetChannelId });
+    try {
+      const { data, error } = await supabase.rpc("move_voice_user" as any, {
+        p_from_channel_id: channelId,
+        p_user_id: targetUserId,
+        p_to_channel_id: targetChannelId,
+        p_to_channel_name: targetChannelName,
+      } as any);
+      console.log("🛠️ RPC RETURN DATA:", data);
+      if (error) {
+        toast({ title: t("common.error"), description: error.message, variant: "destructive" });
+        return;
+      }
+      toast({ title: t("voiceContext.moved") });
+    } catch (err) {
+      console.error("❌ move_voice_user threw:", err);
+      toast({ title: t("common.error"), description: String(err), variant: "destructive" });
     }
-    toast({ title: t("voiceContext.moved") });
   };
 
   const handleServerDeafen = async (deafen: boolean) => {

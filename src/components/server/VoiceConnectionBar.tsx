@@ -40,6 +40,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
   const afkKickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSpeakingRef = useRef(false);
+  const isMovingRef = useRef(false);
 
   const displayName = (user as any)?.user_metadata?.display_name ?? user?.email?.split("@")[0] ?? "User";
 
@@ -55,7 +56,10 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       // Only fire cleanup on terminal disconnect, not during reconnection
       if (lk.callState === "reconnecting") return;
       cleanupDb();
-      onDisconnect();
+      // Skip full disconnect if a server-initiated move is in progress —
+      // setVoiceChannel(newChannel) was already called; calling onDisconnect()
+      // would null it out via disconnectVoice(), cancelling the move.
+      if (!isMovingRef.current) onDisconnect();
     },
   });
 
@@ -204,14 +208,15 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       .on(
         "postgres_changes" as any,
         {
-          event: "UPDATE",
+          event: "*",
           schema: "public",
           table: "voice_channel_participants",
-          filter: `channel_id=eq.${channelId}`,
         },
         (payload: any) => {
+          console.log("⚡ RAW REALTIME EVENT:", payload);
+          if (payload.new && payload.new.user_id !== user.id) return;
           const row = payload.new;
-          if (row.user_id !== user.id) return;
+          if (!row) return;
           const room = lk.room.current;
 
           // Server Muted
@@ -256,6 +261,7 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
 
           // Server-initiated channel move
           if (row.pending_move_channel_id && row.pending_move_channel_id !== channelId) {
+            isMovingRef.current = true;
             setVoiceChannel({
               id: row.pending_move_channel_id,
               name: row.pending_move_channel_name ?? "Voice",
@@ -265,10 +271,43 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log("📡 REALTIME SUBSCRIPTION STATUS:", status);
+        if (err) console.error("❌ REALTIME SUBSCRIPTION ERROR:", err);
+      });
 
     return () => { supabase.removeChannel(ch); };
   }, [user, channelId, isJoined, lk, setGlobalMuted, setGlobalDeafened, setIsServerMuted, setIsServerDeafened, setVoiceChannel, serverId]);
+
+  // ── Polling fallback for server-initiated channel move ─────────────────────
+  // Realtime postgres_changes is unreliable for SECURITY DEFINER row updates;
+  // poll every 2s to guarantee the target user processes the move.
+  useEffect(() => {
+    if (!user || !channelId || !isJoined) return;
+
+    const poll = async () => {
+      const { data } = await supabase
+        .from("voice_channel_participants" as any)
+        .select("pending_move_channel_id, pending_move_channel_name")
+        .eq("channel_id", channelId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const r = data as any;
+      if (!r || !r.pending_move_channel_id || r.pending_move_channel_id === channelId) return;
+
+      isMovingRef.current = true;
+      setVoiceChannel({
+        id: r.pending_move_channel_id,
+        name: r.pending_move_channel_name ?? "Voice",
+        serverId,
+      });
+    };
+
+    poll();
+    const id = setInterval(poll, 2000);
+    return () => clearInterval(id);
+  }, [user, channelId, isJoined, serverId, setVoiceChannel]);
 
   // ── Sync remote screen shares to VoiceChannelContext ──────────────────────
 
