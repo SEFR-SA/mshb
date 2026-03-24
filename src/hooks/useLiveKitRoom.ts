@@ -88,6 +88,7 @@ export function useLiveKitRoom({
   const [activeSpeakers, setActiveSpeakers] = useState<Set<string>>(new Set());
   const activeSpeakersRef = useRef<Set<string>>(new Set());
   const [metadata, setMetadata] = useState<{ isPro: boolean; boostLevel: number } | null>(null);
+  const [canPlayAudio, setCanPlayAudio] = useState(false);
 
   // Screen share state
   const [isScreenSharing, setIsScreenSharing] = useState(false);
@@ -266,8 +267,18 @@ export function useLiveKitRoom({
         setActiveSpeakers(ids);
       });
 
+      room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+        setCanPlayAudio(room.canPlaybackAudio);
+      });
+
       // Connect
       await room.connect(wsUrl, token);
+
+      // Proactively start audio routing.
+      // In Electron (autoplay-policy: no-user-gesture-required) this succeeds immediately.
+      // In browsers it may silently fail — VoiceConnectionBar shows a toast fallback.
+      try { await room.startAudio(); } catch {}
+      setCanPlayAudio(room.canPlaybackAudio);
 
       // Publish microphone (respecting initial mute) with boost-level audio bitrate
       const localMeta = room.localParticipant.metadata;
@@ -348,6 +359,13 @@ export function useLiveKitRoom({
       setIsMuted(true);
     }
   }, [isDeafened, isMuted]);
+
+  const startAudio = useCallback(async () => {
+    const room = roomRef.current;
+    if (!room) return;
+    await room.startAudio();
+    setCanPlayAudio(room.canPlaybackAudio);
+  }, []);
 
   // ── Per-user volume ───────────────────────────────────────────────────────
 
@@ -639,6 +657,10 @@ export function useLiveKitRoom({
     isDeafened,
     toggleMute,
     toggleDeafen,
+
+    // Audio playback
+    canPlayAudio,
+    startAudio,
 
     // Per-user volume
     setUserVolume,

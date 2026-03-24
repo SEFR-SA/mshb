@@ -279,6 +279,19 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     return () => { supabase.removeChannel(ch); };
   }, [user, channelId, isJoined, lk, setGlobalMuted, setGlobalDeafened, setIsServerMuted, setIsServerDeafened, setVoiceChannel, serverId]);
 
+  // ── Browser autoplay unlock prompt ────────────────────────────────────────
+  // In Electron, canPlayAudio is always true (autoplay-policy disabled in main.cjs).
+  // In browsers, show a persistent prompt until the user unlocks the AudioContext.
+  useEffect(() => {
+    if (lk.callState !== "connected" || lk.canPlayAudio) return;
+    toast("Voice audio blocked by browser", {
+      description: "Click below to enable audio for this voice channel.",
+      action: { label: "Enable Audio", onClick: () => lk.startAudio() },
+      duration: Infinity,
+      id: "audio-unlock",
+    } as any);
+  }, [lk.canPlayAudio, lk.callState]);
+
   // ── Polling fallback for server-initiated channel move ─────────────────────
   // Realtime postgres_changes is unreliable for SECURITY DEFINER row updates;
   // poll every 2s to guarantee the target user processes the move.
