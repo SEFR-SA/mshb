@@ -247,13 +247,15 @@ export function useLiveKitRoom({
         syncCameras();
       });
 
-      room.on(RoomEvent.TrackSubscribed, (_track, _pub, _participant) => {
+      room.on(RoomEvent.TrackSubscribed, (track) => {
+        if (track.kind === Track.Kind.Audio) track.attach();
         syncParticipants();
         syncScreenShares();
         syncCameras();
       });
 
-      room.on(RoomEvent.TrackUnsubscribed, () => {
+      room.on(RoomEvent.TrackUnsubscribed, (track) => {
+        if (track.kind === Track.Kind.Audio) track.detach();
         syncParticipants();
         syncScreenShares();
         syncCameras();
@@ -279,6 +281,14 @@ export function useLiveKitRoom({
       // In browsers it may silently fail — VoiceConnectionBar shows a toast fallback.
       try { await room.startAudio(); } catch {}
       setCanPlayAudio(room.canPlaybackAudio);
+
+      // Attach audio tracks from participants already in the room when we join.
+      // TrackSubscribed only fires for tracks arriving after connect.
+      room.remoteParticipants.forEach((participant) => {
+        participant.audioTrackPublications.forEach((pub) => {
+          if (pub.track) pub.track.attach();
+        });
+      });
 
       // Publish microphone (respecting initial mute) with boost-level audio bitrate
       const localMeta = room.localParticipant.metadata;
