@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,6 +31,7 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
   const { user, profile, refreshProfile, signOut } = useAuth();
   const isMobile = useIsMobile();
   
+  const { openProfile } = useUserProfile();
   const navigate = useNavigate();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
 
@@ -47,6 +49,11 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
       .eq("user_id", user.id);
     await refreshProfile();
     setShowStatusMenu(false);
+  };
+
+  const handleAvatarClick = () => {
+    onClose?.();
+    if (user) openProfile(user.id);
   };
 
   const handleEditProfile = () => {
@@ -92,23 +99,25 @@ const UserPanelPopover = ({ onClose }: UserPanelPopoverProps) => {
       {/* Avatar + Info — z-[2] */}
       <div className="relative px-3 pb-3 z-[2]">
         <div className="-mt-10 mb-2 flex items-end gap-2">
-          <AvatarDecorationWrapper
-            decorationUrl={p?.avatar_decoration_url}
-            isPro={p?.is_pro}
-            size={80}
-          >
-            <Avatar className="h-20 w-20 border-4 border-black/30">
-              <AvatarImage src={profile.avatar_url || ""} />
-              <AvatarFallback className="bg-primary/20 text-primary text-lg">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <StatusBadge
-              status={currentStatus}
-              size="md"
-              className="absolute bottom-0 end-0 z-20 translate-x-[2px] translate-y-[2px]"
-            />
-          </AvatarDecorationWrapper>
+          <button type="button" onClick={handleAvatarClick} className="shrink-0 cursor-pointer">
+            <AvatarDecorationWrapper
+              decorationUrl={p?.avatar_decoration_url}
+              isPro={p?.is_pro}
+              size={80}
+            >
+              <Avatar className="h-20 w-20 border-4 border-black/30">
+                <AvatarImage src={profile.avatar_url || ""} />
+                <AvatarFallback className="bg-primary/20 text-primary text-lg">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <StatusBadge
+                status={currentStatus}
+                size="md"
+                className="absolute bottom-0 end-0 z-20 translate-x-[2px] translate-y-[2px]"
+              />
+            </AvatarDecorationWrapper>
+          </button>
           <StatusBubble statusText={effectiveStatusText} />
         </div>
 

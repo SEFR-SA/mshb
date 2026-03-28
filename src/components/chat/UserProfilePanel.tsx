@@ -286,20 +286,25 @@ const UserProfilePanel = ({ profile, statusLabel, userId }: UserProfilePanelProp
 
         {/* Avatar + Status Bubble row */}
         <div className="px-4 -mt-16 flex items-end gap-2">
-          <AvatarDecorationWrapper
-            decorationUrl={p?.avatar_decoration_url}
-            isPro={p?.is_pro}
-            size={90}
-            className="shrink-0"
+          <button
+            type="button"
+            className="cursor-pointer hover:opacity-90 transition-opacity shrink-0"
+            onClick={() => targetUserId && openProfile(targetUserId)}
           >
-            <Avatar className="h-[80px] w-[80px] border-4 border-background">
-              <AvatarImage src={profile.avatar_url || ""} />
-              <AvatarFallback className="bg-primary/20 text-primary text-2xl">
-                {(profile.display_name || profile.username || "?").charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <StatusBadge status={status} size="md" className="absolute bottom-1 end-1 z-20" />
-          </AvatarDecorationWrapper>
+            <AvatarDecorationWrapper
+              decorationUrl={p?.avatar_decoration_url}
+              isPro={p?.is_pro}
+              size={90}
+            >
+              <Avatar className="h-[80px] w-[80px] border-4 border-background">
+                <AvatarImage src={profile.avatar_url || ""} />
+                <AvatarFallback className="bg-primary/20 text-primary text-2xl">
+                  {(profile.display_name || profile.username || "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <StatusBadge status={status} size="md" className="absolute bottom-1 end-1 z-20" />
+            </AvatarDecorationWrapper>
+          </button>
           <StatusBubble statusText={effectiveStatusText} />
         </div>
 
