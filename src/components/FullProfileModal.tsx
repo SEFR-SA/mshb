@@ -469,7 +469,7 @@ const FullProfileModal = () => {
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[160px]">
+                <DropdownMenuContent align="end" className="min-w-[160px] z-[10001]">
                   <DropdownMenuItem onClick={() => profileUserId && openInviteToServer(profileUserId)}>
                     <UserPlus className="h-4 w-4 me-2" />
                     {t("inviteToServer.title")}
