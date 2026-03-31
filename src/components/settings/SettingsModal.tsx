@@ -10,7 +10,7 @@ import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
 import {
   User, Shield, Users, Bell, Star, CreditCard,
-  Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag, Keyboard, Monitor, Zap,
+  Palette, Mic, Globe, LogOut, X, Menu, ShoppingBag, Keyboard, Monitor, Zap, Gamepad2,
 } from "lucide-react";
 import StyledDisplayName from "@/components/StyledDisplayName";
 import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
@@ -27,13 +27,14 @@ const VoiceVideoTab    = lazy(() => import("./tabs/VoiceVideoTab"));
 const LanguageTab      = lazy(() => import("./tabs/LanguageTab"));
 const MarketplaceTab   = lazy(() => import("./tabs/MarketplaceTab"));
 const KeybindsTab      = lazy(() => import("./tabs/KeybindsTab"));
+const GameOverlayTab   = lazy(() => import("./tabs/GameOverlayTab"));
 const DevicesTab       = lazy(() => import("./tabs/DevicesTab"));
 const BoostsTab        = lazy(() => import("./tabs/BoostsTab"));
 
 type TabId =
   | "profile" | "account" | "devices" | "social" | "notifications"
   | "subscriptions" | "billing" | "boosts" | "appearance" | "voice" | "language"
-  | "marketplace" | "keybinds";
+  | "marketplace" | "keybinds" | "game_overlay";
 
 interface NavItem {
   id: TabId;
@@ -67,6 +68,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "voice",         labelKey: "settings.voiceVideo",    icon: Mic },
       { id: "language",      labelKey: "settings.languageTime",  icon: Globe },
       { id: "keybinds",      labelKey: "settings.keybinds",      icon: Keyboard },
+      { id: "game_overlay",  labelKey: "settings.gameOverlay",   icon: Gamepad2 },
       { id: "marketplace",   labelKey: "settings.marketplace",   icon: ShoppingBag },
     ],
   },
@@ -84,6 +86,7 @@ const TAB_COMPONENTS: Record<TabId, React.LazyExoticComponent<React.ComponentTyp
   voice:         VoiceVideoTab,
   language:      LanguageTab,
   keybinds:      KeybindsTab,
+  game_overlay:  GameOverlayTab,
   marketplace:   MarketplaceTab,
   boosts:        BoostsTab,
 };
