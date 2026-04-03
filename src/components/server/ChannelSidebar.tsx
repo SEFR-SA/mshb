@@ -748,7 +748,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setDragItem(id);
     setDragType(type);
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", id);
+    e.dataTransfer.setData("text/plain", "channel-drag");
+    if (e.currentTarget instanceof HTMLElement) {
+      e.dataTransfer.setDragImage(e.currentTarget, 20, 20);
+    }
   };
 
   const handleDragEnd = () => {
@@ -762,6 +765,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     e.stopPropagation();
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("application/json", JSON.stringify({ userId, fromChannelId }));
+    e.dataTransfer.setData("text/plain", "participant-drag");
+    if (e.currentTarget instanceof HTMLElement) {
+      e.dataTransfer.setDragImage(e.currentTarget, 20, 20);
+    }
     setDragItem(userId);
     setDragType("participant");
     setDragParticipantFrom(fromChannelId);
@@ -1234,6 +1241,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                             onDrop={(e) => handleChannelDrop(e, ch.id, category)}
                           >
                             <NavLink
+                              draggable={false}
                               to={`/server/${serverId}/channel/${ch.id}`}
                               onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private, is_announcement: ch.is_announcement, is_rules: ch.is_rules, description: (ch as any).description ?? null })}
                               className={({ isActive }) =>
