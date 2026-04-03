@@ -1241,6 +1241,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
                             onDrop={(e) => handleChannelDrop(e, ch.id, category)}
                           >
                             <NavLink
+                              draggable={false}
                               to={`/server/${serverId}/channel/${ch.id}`}
                               onClick={() => onChannelSelect?.({ id: ch.id, name: ch.name, type: ch.type, is_private: ch.is_private, is_announcement: ch.is_announcement, is_rules: ch.is_rules, description: (ch as any).description ?? null })}
                               className={({ isActive }) =>
