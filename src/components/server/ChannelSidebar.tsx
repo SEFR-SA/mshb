@@ -765,6 +765,10 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     e.stopPropagation();
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("application/json", JSON.stringify({ userId, fromChannelId }));
+    e.dataTransfer.setData("text/plain", "participant-drag");
+    if (e.currentTarget instanceof HTMLElement) {
+      e.dataTransfer.setDragImage(e.currentTarget, 20, 20);
+    }
     setDragItem(userId);
     setDragType("participant");
     setDragParticipantFrom(fromChannelId);
