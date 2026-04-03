@@ -446,6 +446,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     const channel = supabase
       .channel(`channels-${serverId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "channels", filter: `server_id=eq.${serverId}` }, () => {
+        if (skipRealtimeReloadRef.current) return;
         pollInterval = 2000;
         load();
       })
