@@ -814,6 +814,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     e.preventDefault();
     if (dragType !== "channel" || !dragItem || dragItem === targetId) { handleDragEnd(); return; }
 
+    const prevChannels = [...channels];
     const allChannels = [...channels];
     const draggedIdx = allChannels.findIndex(c => c.id === dragItem);
     const targetIdx = allChannels.findIndex(c => c.id === targetId);
@@ -830,9 +831,20 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setChannels(updated);
     handleDragEnd();
 
-    // Persist positions
-    for (const ch of updated) {
-      await supabase.from("channels" as any).update({ position: ch.position, category: ch.category } as any).eq("id", ch.id);
+    // Suppress realtime reload while persisting
+    skipRealtimeReloadRef.current = true;
+    const timer = setTimeout(() => { skipRealtimeReloadRef.current = false; }, 2000);
+
+    try {
+      await Promise.all(updated.map(ch =>
+        supabase.from("channels" as any).update({ position: ch.position, category: ch.category } as any).eq("id", ch.id)
+      ));
+    } catch (err) {
+      setChannels(prevChannels);
+      toast({ title: t("common.error"), description: String(err), variant: "destructive" });
+    } finally {
+      clearTimeout(timer);
+      setTimeout(() => { skipRealtimeReloadRef.current = false; }, 500);
     }
   };
 
