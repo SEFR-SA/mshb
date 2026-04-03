@@ -289,6 +289,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [currentUserRole, setCurrentUserRole] = useState<string>("member");
   const [goLiveOpen, setGoLiveOpen] = useState(false);
   const [streamCardOpen, setStreamCardOpen] = useState<string | null>(null);
+  const skipRealtimeReloadRef = useRef(false);
 
   // Listen for "open-go-live" event from UserPanel share-screen button
   useEffect(() => {
