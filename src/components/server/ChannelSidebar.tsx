@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -289,6 +289,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [currentUserRole, setCurrentUserRole] = useState<string>("member");
   const [goLiveOpen, setGoLiveOpen] = useState(false);
   const [streamCardOpen, setStreamCardOpen] = useState<string | null>(null);
+  const skipRealtimeReloadRef = useRef(false);
 
   // Listen for "open-go-live" event from UserPanel share-screen button
   useEffect(() => {
@@ -445,6 +446,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     const channel = supabase
       .channel(`channels-${serverId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "channels", filter: `server_id=eq.${serverId}` }, () => {
+        if (skipRealtimeReloadRef.current) return;
         pollInterval = 2000;
         load();
       })
@@ -812,6 +814,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     e.preventDefault();
     if (dragType !== "channel" || !dragItem || dragItem === targetId) { handleDragEnd(); return; }
 
+    const prevChannels = [...channels];
     const allChannels = [...channels];
     const draggedIdx = allChannels.findIndex(c => c.id === dragItem);
     const targetIdx = allChannels.findIndex(c => c.id === targetId);
@@ -828,9 +831,20 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setChannels(updated);
     handleDragEnd();
 
-    // Persist positions
-    for (const ch of updated) {
-      await supabase.from("channels" as any).update({ position: ch.position, category: ch.category } as any).eq("id", ch.id);
+    // Suppress realtime reload while persisting
+    skipRealtimeReloadRef.current = true;
+    const timer = setTimeout(() => { skipRealtimeReloadRef.current = false; }, 2000);
+
+    try {
+      await Promise.all(updated.map(ch =>
+        supabase.from("channels" as any).update({ position: ch.position, category: ch.category } as any).eq("id", ch.id)
+      ));
+    } catch (err) {
+      setChannels(prevChannels);
+      toast({ title: t("common.error"), description: String(err), variant: "destructive" });
+    } finally {
+      clearTimeout(timer);
+      setTimeout(() => { skipRealtimeReloadRef.current = false; }, 500);
     }
   };
 
@@ -845,6 +859,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     e.preventDefault();
     if (dragType !== "section" || !dragItem || dragItem === targetCategory) { handleDragEnd(); return; }
 
+    const prevChannels = [...channels];
     const categoryOrder = Object.keys(grouped);
     const fromIdx = categoryOrder.indexOf(dragItem);
     const toIdx = categoryOrder.indexOf(targetCategory);
@@ -864,8 +879,20 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
     setChannels(updated);
     handleDragEnd();
 
-    for (const ch of updated) {
-      await supabase.from("channels" as any).update({ position: ch.position } as any).eq("id", ch.id);
+    // Suppress realtime reload while persisting
+    skipRealtimeReloadRef.current = true;
+    const timer = setTimeout(() => { skipRealtimeReloadRef.current = false; }, 2000);
+
+    try {
+      await Promise.all(updated.map(ch =>
+        supabase.from("channels" as any).update({ position: ch.position } as any).eq("id", ch.id)
+      ));
+    } catch (err) {
+      setChannels(prevChannels);
+      toast({ title: t("common.error"), description: String(err), variant: "destructive" });
+    } finally {
+      clearTimeout(timer);
+      setTimeout(() => { skipRealtimeReloadRef.current = false; }, 500);
     }
   };
 

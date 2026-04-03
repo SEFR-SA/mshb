@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { AccessToken } from "npm:livekit-server-sdk@2.9.1";
+import { AccessToken } from "https://esm.sh/livekit-server-sdk@2.9.1";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimiter.ts";
 
 const corsHeaders = {
