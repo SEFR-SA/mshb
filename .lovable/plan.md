@@ -1,52 +1,29 @@
 
 
-## Investigation Summary
+## Two Issues to Fix
 
-I found **4 distinct issues** causing the server mute/deafen feature to malfunction:
+### Issue 1: Build Error — `livekit-server-sdk` npm import in Edge Function
 
-### Issue 1: Muted user's mic still works — LiveKit doesn't enforce server mute
+The `livekit-token` edge function uses `import { AccessToken } from "npm:livekit-server-sdk@2.9.1"` which fails because there is no `deno.json` with `nodeModulesDir` configured. The fix is to switch to an ESM CDN import (esm.sh), matching the pattern used for `@supabase/supabase-js` on line 1 of the same file.
 
-In `VoiceConnectionBar.tsx` (line 167), when `globalMuted` changes, the code calls `room.localParticipant.setMicrophoneEnabled(!globalMuted)`. But when a moderator server-mutes a user, the realtime listener (line 218) sets `globalMuted = true` and disables the mic. However, the speaking detection (line 144) still writes `is_speaking: true` to the database even when the user is server-muted, because LiveKit's `activeSpeakers` fires based on audio input detection regardless of whether the mic track is published.
+**File: `supabase/functions/livekit-token/index.ts`**
+- Change line 2 from `import { AccessToken } from "npm:livekit-server-sdk@2.9.1"` to `import { AccessToken } from "https://esm.sh/livekit-server-sdk@2.9.1"`
 
-**Fix:** In the speaking detection effect, suppress `is_speaking` writes when the user is server-muted. Always write `is_speaking: false` if `isServerMuted` is true.
+### Issue 2: Channel Drag-and-Drop Rubber-Banding
 
-### Issue 2: Speaking indicator shows green mic for server-muted users
+The optimistic state update already exists (lines 826-828 for channels, 863-864 for sections). The rubber-banding happens because the realtime listener at line 447 calls `load()` on every `postgres_changes` event for the `channels` table, which re-fetches all channels from the DB and overwrites the optimistic state.
 
-In `ChannelSidebar.tsx` (lines 997-1003 and 1030-1036), the icon priority is:
-```
-deafened → muted → speaking → null
-```
+**File: `src/components/server/ChannelSidebar.tsx`**
 
-This is correct — `server_muted` should take priority over `is_speaking`. However, because of Issue 1, the DB still has `is_speaking: true` written by the muted user's client, and between realtime update cycles there can be a flash of the green mic. The fix for Issue 1 resolves this at the source.
+1. **Add a "skip next realtime reload" ref** — After an optimistic DnD update, set a ref flag (e.g., `skipNextRealtimeRef.current = true`) with a short timeout (1.5s). When the realtime listener fires, check this flag and skip the `load()` call if set. This prevents the DB round-trip from overwriting the optimistic state.
 
-### Issue 3: Muted user doesn't see the effect immediately — realtime filter is too narrow
+2. **Wrap DB persistence in try/catch with rollback** — In `handleChannelDrop` and `handleSectionDrop`, save the previous channels array before the optimistic update. If any DB update fails, revert `setChannels` to the saved array and show an error toast.
 
-In `VoiceConnectionBar.tsx` (line 208), the realtime subscription filters by `channel_id=eq.${channelId}` and then further filters by `row.user_id !== user.id` (line 212). This part is correct — it only processes updates for the current user's row.
+3. **Add visual drag cues** — Apply `opacity-50` to the dragged channel item (already done at line 1030 for voice channels). Ensure the same applies to text channel rows. The drop indicator line (`h-0.5 bg-primary`) is already present at line 1028.
 
-The actual problem is that the realtime subscription uses `event: "UPDATE"` correctly, but the **initial state is never loaded**. When the component mounts, it doesn't fetch the current `server_muted`/`server_deafened` values from the database. If the moderation happened before the realtime subscription was set up, the user never gets the update.
-
-**Fix:** On mount (when `isJoined` becomes true), fetch the current row and apply any existing server moderation state.
-
-### Issue 4: UserPanel doesn't reflect server moderation visually for the muted user
-
-The UserPanel correctly reads `isServerMuted` and `isServerDeafened` from context and applies the disabled/grayed-out style. This should work once the context values are properly set (fixed by Issues 1 and 3).
-
----
-
-## Plan
-
-### 1. Fix speaking detection to respect server mute (`VoiceConnectionBar.tsx`)
-
-In the speaking detection effect (~line 141), check `isServerMuted` from the voice channel context. If server-muted, always write `is_speaking: false` to the database regardless of what LiveKit reports.
-
-### 2. Fetch initial moderation state on join (`VoiceConnectionBar.tsx`)
-
-After the DB presence row is inserted on join (~line 431), immediately query the row back to check if `server_muted` or `server_deafened` are already true (e.g., from a previous session or pre-set by a moderator). Apply the enforcement if so.
-
-### 3. Ensure realtime listener properly enforces both transitions (`VoiceConnectionBar.tsx`)
-
-The current listener (line 198-255) handles ON transitions but the OFF transition for mute doesn't restore the mic. Update the `else` branch (line 222) to call `setGlobalMuted(false)` when server unmuted (only if not also server-deafened).
+4. **Batch the position updates** — Instead of awaiting N sequential updates in a loop (lines 832-834, 867-869), fire all updates in parallel with `Promise.all` to reduce the window where realtime events could conflict.
 
 ### Files to modify
-- `src/components/server/VoiceConnectionBar.tsx` — All 3 fixes above
+- `supabase/functions/livekit-token/index.ts` — Fix import
+- `src/components/server/ChannelSidebar.tsx` — Add skip-realtime ref, try/catch rollback, parallel DB writes
 
