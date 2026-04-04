@@ -1,50 +1,50 @@
 
 
-## Unique Server Tags — Implementation Plan
+## Make FreeStuff Bot Opt-In
 
 ### What we're building
-A platform-wide uniqueness constraint on server tags so no two servers can claim the same tag (case-insensitive). Live availability feedback in the tag name input field, plus graceful race-condition handling on save.
+A toggle that lets server owners enable/disable the FreeStuff bot. Disabled by default. When disabled: bot doesn't post, bot doesn't appear in the member list, and bot's `server_members` row is removed.
 
 ### Step 1: Database Migration
 
-Create a migration that:
-- Adds a **unique index** on `LOWER(server_tag_name)` (partial — only non-null values, so servers without a tag don't conflict)
-- Creates an RPC function `check_server_tag_available(p_tag text, p_current_server_id uuid)` that returns `boolean` — checks if the lowered tag exists on any other server
+Add `free_games_bot_enabled` boolean column (default `false`) to `servers`:
 
 ```sql
-CREATE UNIQUE INDEX IF NOT EXISTS unique_server_tag_name_lower_idx
-  ON public.servers (LOWER(server_tag_name))
-  WHERE server_tag_name IS NOT NULL;
-
-CREATE OR REPLACE FUNCTION public.check_server_tag_available(p_tag text, p_current_server_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT NOT EXISTS (
-    SELECT 1 FROM public.servers
-    WHERE LOWER(server_tag_name) = LOWER(p_tag)
-      AND id != p_current_server_id
-  );
-$$;
+ALTER TABLE public.servers ADD COLUMN IF NOT EXISTS free_games_bot_enabled boolean NOT NULL DEFAULT false;
 ```
 
-### Step 2: Update `ServerTagTab.tsx`
+### Step 2: Update EngagementTab.tsx
 
-Add debounced availability checking and save-time race condition handling:
+In the "FREE GAMES BOT" section (line 412):
+- Add state `freeGamesBotEnabled` (loaded from `free_games_bot_enabled` in the existing query at line 82)
+- Add a `<Switch>` toggle labeled "Enable Mshb FreeStuff Bot" above the channel selector
+- When toggled ON: update `free_games_bot_enabled = true` and upsert bot into `server_members` (user_id = `00000000-0000-0000-0000-000000000001`, role = `bot`)
+- When toggled OFF: update `free_games_bot_enabled = false`, clear `free_games_channel_id = null`, and delete the bot's `server_members` row
+- Hide the channel selector when the toggle is OFF
+- Add the new column to the load query (line 82)
 
-- **New state**: `isChecking`, `isAvailable` (boolean | null), `savedTagName` (to track original value from DB)
-- **Debounced `useEffect`** on `tagName`: after 500ms, call `check_server_tag_available` RPC. Skip if tag is empty or unchanged from saved value (own tag is always "available").
-- **Visual feedback** below the tag name input:
-  - Checking: spinner + "Checking availability..." (muted)
-  - Available: green checkmark + "Tag is available!"
-  - Taken: red X + "This tag is already taken."
-- **Save button disabled** when `isChecking === true` or `isAvailable === false`
-- **`handleSave` error handling**: catch errors, check for code `23505` (unique violation), show specific toast "This tag was just taken by another server."
+### Step 3: Update ServerMemberList.tsx
+
+The bot appears because it has a `server_members` row with `role = "bot"`. Since Step 2 removes that row when disabled, no changes needed here — the bot simply won't appear in the member query results.
+
+However, as a safety net: fetch `free_games_bot_enabled` from the server, and filter out bot members with `user_id === BOT_USER_ID` when the flag is false.
+
+### Step 4: Update Edge Function
+
+In `free-games-bot/index.ts` (line 102-105), add `.eq("free_games_bot_enabled", true)` to the server query:
+
+```typescript
+const { data: servers } = await service
+  .from("servers")
+  .select("id, free_games_channel_id")
+  .not("free_games_channel_id", "is", null)
+  .eq("free_games_bot_enabled", true);
+```
+
+Then redeploy the edge function.
 
 ### Files to modify
-- **New migration** via migration tool — unique index + RPC function
-- **`src/components/server/settings/ServerTagTab.tsx`** — availability check UI + error handling
-
+- New migration — add `free_games_bot_enabled` column
+- `src/components/server/settings/EngagementTab.tsx` — toggle UI + bot member management
+- `src/components/server/ServerMemberList.tsx` — safety filter for bot visibility
+- `supabase/functions/free-games-bot/index.ts` — add filter condition
