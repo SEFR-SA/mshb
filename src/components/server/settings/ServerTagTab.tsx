@@ -103,6 +103,32 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
     load();
   }, [serverId]);
 
+  // Debounced tag availability check
+  useEffect(() => {
+    const trimmed = tagName.trim();
+    if (!trimmed || trimmed.toLowerCase() === savedTagName.toLowerCase()) {
+      setIsAvailable(trimmed ? true : null);
+      setIsChecking(false);
+      return;
+    }
+    setIsChecking(true);
+    setIsAvailable(null);
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await supabase.rpc("check_server_tag_available", {
+          p_tag: trimmed,
+          p_current_server_id: serverId,
+        } as any);
+        setIsAvailable(!!data);
+      } catch {
+        setIsAvailable(null);
+      } finally {
+        setIsChecking(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [tagName, serverId, savedTagName]);
+
   const handleBadgeColorSelect = (color: string) => {
     setTagColor(color);
     setHexInput(color);
@@ -132,7 +158,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await supabase
+      const { error } = await supabase
         .from("servers" as any)
         .update({
           server_tag_name: tagName.trim() || null,
@@ -142,6 +168,17 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         } as any)
         .eq("id", serverId);
 
+      if (error) {
+        if (error.code === "23505") {
+          toast({ title: t("serverSettings.serverTagTaken", "This tag was just taken by another server."), variant: "destructive" });
+          setIsAvailable(false);
+        } else {
+          toast({ title: t("common.error"), variant: "destructive" });
+        }
+        return;
+      }
+
+      setSavedTagName(tagName.trim());
       toast({ title: t("profile.saved") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
