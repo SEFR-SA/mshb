@@ -1,38 +1,50 @@
 
 
-## Fix Native URL Ghost Image on Channel Drag-and-Drop
+## Unique Server Tags — Implementation Plan
 
-### Problem
-When dragging channels (which wrap `<NavLink>` elements), Chrome/Electron attaches the literal URL path as a ghost image under the cursor. This looks unprofessional.
+### What we're building
+A platform-wide uniqueness constraint on server tags so no two servers can claim the same tag (case-insensitive). Live availability feedback in the tag name input field, plus graceful race-condition handling on save.
 
-### Fix
+### Step 1: Database Migration
 
-**File: `src/components/server/ChannelSidebar.tsx`**
+Create a migration that:
+- Adds a **unique index** on `LOWER(server_tag_name)` (partial — only non-null values, so servers without a tag don't conflict)
+- Creates an RPC function `check_server_tag_available(p_tag text, p_current_server_id uuid)` that returns `boolean` — checks if the lowered tag exists on any other server
 
-**1. Update `handleDragStart` (line 747-752)** to override the drag image and text payload:
-```typescript
-const handleDragStart = (e: React.DragEvent, id: string, type: "channel" | "section") => {
-  setDragItem(id);
-  setDragType(type);
-  e.dataTransfer.effectAllowed = "move";
-  e.dataTransfer.setData("text/plain", "channel-drag");
-  if (e.currentTarget instanceof HTMLElement) {
-    e.dataTransfer.setDragImage(e.currentTarget, 20, 20);
-  }
-};
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS unique_server_tag_name_lower_idx
+  ON public.servers (LOWER(server_tag_name))
+  WHERE server_tag_name IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION public.check_server_tag_available(p_tag text, p_current_server_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT NOT EXISTS (
+    SELECT 1 FROM public.servers
+    WHERE LOWER(server_tag_name) = LOWER(p_tag)
+      AND id != p_current_server_id
+  );
+$$;
 ```
 
-**2. Update `handleParticipantDragStart` (line 761-768)** with the same drag image override:
-```typescript
-const handleParticipantDragStart = (...) => {
-  // ... existing code ...
-  if (e.currentTarget instanceof HTMLElement) {
-    e.dataTransfer.setDragImage(e.currentTarget, 20, 20);
-  }
-};
-```
+### Step 2: Update `ServerTagTab.tsx`
 
-**3. Add `draggable={false}` to inner `<NavLink>` elements** at lines ~1236 and any other `<NavLink>` inside draggable wrappers, so the browser doesn't initiate a separate link-drag on the anchor:
-- Text channel NavLink (~line 1236): add `draggable={false}`
-- Voice channel rows use `<button>` (line 1070), not NavLink — no change needed there
+Add debounced availability checking and save-time race condition handling:
+
+- **New state**: `isChecking`, `isAvailable` (boolean | null), `savedTagName` (to track original value from DB)
+- **Debounced `useEffect`** on `tagName`: after 500ms, call `check_server_tag_available` RPC. Skip if tag is empty or unchanged from saved value (own tag is always "available").
+- **Visual feedback** below the tag name input:
+  - Checking: spinner + "Checking availability..." (muted)
+  - Available: green checkmark + "Tag is available!"
+  - Taken: red X + "This tag is already taken."
+- **Save button disabled** when `isChecking === true` or `isAvailable === false`
+- **`handleSave` error handling**: catch errors, check for code `23505` (unique violation), show specific toast "This tag was just taken by another server."
+
+### Files to modify
+- **New migration** via migration tool — unique index + RPC function
+- **`src/components/server/settings/ServerTagTab.tsx`** — availability check UI + error handling
 
