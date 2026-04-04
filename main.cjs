@@ -89,6 +89,7 @@ let splashWindow = null;
 let mainWindowReady = false;
 let updatePhaseComplete = false;
 let simInterval = null;
+let updateInterval = null;
 
 function createSplashWindow() {
   const html = `<!DOCTYPE html>
@@ -182,12 +183,16 @@ function finishAndShow() {
       splashWindow.close();
       splashWindow = null;
     }
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.show();
       // Handle cold-start deep link (app launched via mshb:// while it was closed)
       const deepLinkArg = process.argv.find(arg => arg.startsWith('mshb://'));
       if (deepLinkArg) {
-        setTimeout(() => mainWindow.webContents.send('on-deep-link', deepLinkArg), 600);
+        setTimeout(() => {
+          if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+            mainWindow.webContents.send('on-deep-link', deepLinkArg);
+          }
+        }, 600);
       }
     }
   }, 350);
@@ -252,10 +257,14 @@ function createWindow() {
 
   // Push native fullscreen state changes to the renderer
   mainWindow.on('enter-full-screen', () => {
-    mainWindow.webContents.send('fullscreen-changed', true);
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send('fullscreen-changed', true);
+    }
   });
   mainWindow.on('leave-full-screen', () => {
-    mainWindow.webContents.send('fullscreen-changed', false);
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send('fullscreen-changed', false);
+    }
   });
 
   // --- Check for updates on restore/focus (user brings window back from taskbar) ---
@@ -265,6 +274,11 @@ function createWindow() {
   mainWindow.on('focus', () => {
     if (app.isPackaged) autoUpdater.checkForUpdates();
   });
+
+  // Nullify the reference so stale-pointer guards work after window destruction
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
 // --- IPC Communication for Updates ---
@@ -273,7 +287,9 @@ autoUpdater.on('checking-for-update', () => {
 });
 
 autoUpdater.on('update-available', () => {
-  if (mainWindow) mainWindow.webContents.send('update-available');
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+    mainWindow.webContents.send('update-available');
+  }
   sendToSplash(0, 'Downloading Recent Updates...');
 });
 
@@ -288,7 +304,9 @@ autoUpdater.on('download-progress', (info) => {
 });
 
 autoUpdater.on('update-downloaded', () => {
-  if (mainWindow) mainWindow.webContents.send('update-downloaded');
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+    mainWindow.webContents.send('update-downloaded');
+  }
   sendToSplash(100, 'Downloading Recent Updates...');
   updatePhaseComplete = true;
   tryShowMain();
@@ -408,7 +426,7 @@ if (!gotTheLock) {
       
       // Catch the URL from the command line
       const url = commandLine.pop();
-      if (url.includes('mshb://')) {
+      if (url.includes('mshb://') && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
         mainWindow.webContents.send('on-deep-link', url);
       }
     }
@@ -418,7 +436,7 @@ if (!gotTheLock) {
 // Handle MacOS deep links
 app.on('open-url', (event, url) => {
   event.preventDefault();
-  if (mainWindow) {
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
     mainWindow.webContents.send('on-deep-link', url);
   }
 });
@@ -458,8 +476,8 @@ app.whenReady().then(() => {
     const feed = `${server}/${repo}/${process.platform}-${process.arch}/${app.getVersion()}`;
     try {
       autoUpdater.setFeedURL({ url: feed });
-      setInterval(() => {
-        if (mainWindow && !mainWindow.isMinimized()) {
+      updateInterval = setInterval(() => {
+        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMinimized()) {
           autoUpdater.checkForUpdates();
         }
       }, 60 * 60 * 1000);
@@ -484,4 +502,6 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  if (simInterval) { clearInterval(simInterval); simInterval = null; }
+  if (updateInterval) { clearInterval(updateInterval); updateInterval = null; }
 });
