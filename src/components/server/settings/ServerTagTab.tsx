@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Lock } from "lucide-react";
+import { Check, Loader2, Lock, X } from "lucide-react";
 import CactusBadge from "@/components/ui/badges/CactusBadge";
 import CrystalBadge from "@/components/ui/badges/CrystalBadge";
 import HeartBadge from "@/components/ui/badges/HeartBadge";
