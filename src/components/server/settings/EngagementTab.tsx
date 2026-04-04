@@ -134,7 +134,43 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
     }
   };
 
-  const handleSave = async () => {
+  const BOT_USER_ID = "00000000-0000-0000-0000-000000000001";
+
+  const handleFreeGamesBotToggle = async (checked: boolean) => {
+    const previous = freeGamesBotEnabled;
+    setFreeGamesBotEnabled(checked);
+    try {
+      if (checked) {
+        // Enable: set flag + upsert bot into server_members
+        await supabase
+          .from("servers" as any)
+          .update({ free_games_bot_enabled: true } as any)
+          .eq("id", serverId);
+        await supabase
+          .from("server_members" as any)
+          .upsert(
+            { server_id: serverId, user_id: BOT_USER_ID, role: "bot" } as any,
+            { onConflict: "server_id,user_id", ignoreDuplicates: true }
+          );
+      } else {
+        // Disable: clear flag + channel + remove bot member row
+        await supabase
+          .from("servers" as any)
+          .update({ free_games_bot_enabled: false, free_games_channel_id: null } as any)
+          .eq("id", serverId);
+        await supabase
+          .from("server_members" as any)
+          .delete()
+          .eq("server_id", serverId)
+          .eq("user_id", BOT_USER_ID);
+        setFreeGamesChannelId("");
+      }
+    } catch {
+      setFreeGamesBotEnabled(previous);
+      toast({ title: t("common.error"), variant: "destructive" });
+    }
+  };
+
     setSaving(true);
     try {
       await supabase
