@@ -171,6 +171,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
     }
   };
 
+  const handleSave = async () => {
     setSaving(true);
     try {
       await supabase
