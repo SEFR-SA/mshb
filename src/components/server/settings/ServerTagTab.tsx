@@ -87,7 +87,9 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         .maybeSingle();
 
       if (s) {
-        setTagName((s as any).server_tag_name ?? "");
+        const name = (s as any).server_tag_name ?? "";
+        setTagName(name);
+        setSavedTagName(name);
         setTagBadge((s as any).server_tag_badge ?? "cactus");
         const badgeColor = (s as any).server_tag_color ?? DEFAULT_COLOR;
         setTagColor(badgeColor);
