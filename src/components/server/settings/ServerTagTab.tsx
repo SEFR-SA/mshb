@@ -453,7 +453,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       {canEdit && (
         <div className="pt-2">
-          <Button onClick={canInteract ? handleSave : handleProBlock} disabled={saving}>
+          <Button onClick={canInteract ? handleSave : handleProBlock} disabled={saving || isChecking || isAvailable === false}>
             {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
             {t("actions.save")}
           </Button>
