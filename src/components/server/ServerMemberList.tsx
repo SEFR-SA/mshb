@@ -215,7 +215,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       noCustomRoleMembers.push(m);
     }
   });
-  members.filter((m) => m.role === "bot").forEach((m) => noCustomRoleBots.push(m));
+  members.filter((m) => m.role === "bot" && (freeGamesBotEnabled || m.user_id !== "00000000-0000-0000-0000-000000000001")).forEach((m) => noCustomRoleBots.push(m));
 
   [...customRoleGroupMap.values()]
     .sort((a, b) => a.role.position - b.role.position)
