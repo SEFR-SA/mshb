@@ -84,6 +84,7 @@ const ServerMemberList = ({ serverId }: Props) => {
   const [userAllRolesMap, setUserAllRolesMap] = useState<Map<string, CustomRole[]>>(new Map());
   const [serverSounds, setServerSounds] = useState<{ id: string; name: string }[]>([]);
   const [entranceSoundId, setEntranceSoundId] = useState<string | null>(null);
+  const [freeGamesBotEnabled, setFreeGamesBotEnabled] = useState(false);
 
   useEffect(() => {
     const load = async () => {
