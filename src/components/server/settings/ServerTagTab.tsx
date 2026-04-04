@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Lock } from "lucide-react";
+import { Check, Loader2, Lock, X } from "lucide-react";
 import CactusBadge from "@/components/ui/badges/CactusBadge";
 import CrystalBadge from "@/components/ui/badges/CrystalBadge";
 import HeartBadge from "@/components/ui/badges/HeartBadge";
@@ -63,11 +63,15 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
   const [saving, setSaving] = useState(false);
 
   const [tagName, setTagName] = useState("");
+  const [savedTagName, setSavedTagName] = useState("");
   const [tagBadge, setTagBadge] = useState("cactus");
   const [tagColor, setTagColor] = useState(DEFAULT_COLOR);
   const [hexInput, setHexInput] = useState(DEFAULT_COLOR);
   const [tagContainerColor, setTagContainerColor] = useState(DEFAULT_CONTAINER_COLOR);
   const [containerHexInput, setContainerHexInput] = useState(DEFAULT_CONTAINER_COLOR);
+
+  const [isChecking, setIsChecking] = useState(false);
+  const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
 
   const badgeColorInputRef = useRef<HTMLInputElement>(null);
   const containerColorInputRef = useRef<HTMLInputElement>(null);
@@ -83,7 +87,9 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         .maybeSingle();
 
       if (s) {
-        setTagName((s as any).server_tag_name ?? "");
+        const name = (s as any).server_tag_name ?? "";
+        setTagName(name);
+        setSavedTagName(name);
         setTagBadge((s as any).server_tag_badge ?? "cactus");
         const badgeColor = (s as any).server_tag_color ?? DEFAULT_COLOR;
         setTagColor(badgeColor);
@@ -96,6 +102,32 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
     };
     load();
   }, [serverId]);
+
+  // Debounced tag availability check
+  useEffect(() => {
+    const trimmed = tagName.trim();
+    if (!trimmed || trimmed.toLowerCase() === savedTagName.toLowerCase()) {
+      setIsAvailable(trimmed ? true : null);
+      setIsChecking(false);
+      return;
+    }
+    setIsChecking(true);
+    setIsAvailable(null);
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await supabase.rpc("check_server_tag_available", {
+          p_tag: trimmed,
+          p_current_server_id: serverId,
+        } as any);
+        setIsAvailable(!!data);
+      } catch {
+        setIsAvailable(null);
+      } finally {
+        setIsChecking(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [tagName, serverId, savedTagName]);
 
   const handleBadgeColorSelect = (color: string) => {
     setTagColor(color);
@@ -126,7 +158,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await supabase
+      const { error } = await supabase
         .from("servers" as any)
         .update({
           server_tag_name: tagName.trim() || null,
@@ -136,6 +168,17 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         } as any)
         .eq("id", serverId);
 
+      if (error) {
+        if (error.code === "23505") {
+          toast({ title: t("serverSettings.serverTagTaken", "This tag was just taken by another server."), variant: "destructive" });
+          setIsAvailable(false);
+        } else {
+          toast({ title: t("common.error"), variant: "destructive" });
+        }
+        return;
+      }
+
+      setSavedTagName(tagName.trim());
       toast({ title: t("profile.saved") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
@@ -205,6 +248,28 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
           maxLength={4}
           className="max-w-xs uppercase"
         />
+        {canInteract && tagName.trim() && (
+          <div className="flex items-center gap-1.5 text-xs mt-1">
+            {isChecking && (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                <span className="text-muted-foreground">{t("serverSettings.serverTagChecking", "Checking availability...")}</span>
+              </>
+            )}
+            {!isChecking && isAvailable === true && (
+              <>
+                <Check className="h-3 w-3 text-green-500" />
+                <span className="text-green-500">{t("serverSettings.serverTagAvailable", "Tag is available!")}</span>
+              </>
+            )}
+            {!isChecking && isAvailable === false && (
+              <>
+                <X className="h-3 w-3 text-destructive" />
+                <span className="text-destructive">{t("serverSettings.serverTagTaken", "This tag is already taken.")}</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <Separator />
@@ -388,7 +453,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
 
       {canEdit && (
         <div className="pt-2">
-          <Button onClick={canInteract ? handleSave : handleProBlock} disabled={saving}>
+          <Button onClick={canInteract ? handleSave : handleProBlock} disabled={saving || isChecking || isAvailable === false}>
             {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
             {t("actions.save")}
           </Button>
