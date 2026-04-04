@@ -57,6 +57,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
   const [inactiveChannelId,  setInactiveChannelId]  = useState<string>("");
   const [inactiveTimeout,    setInactiveTimeout]    = useState<string>("");
   const [freeGamesChannelId, setFreeGamesChannelId] = useState<string>("");
+  const [freeGamesBotEnabled, setFreeGamesBotEnabled] = useState(false);
 
   // ── AutoMod ─────────────────────────────────────────────────────────────
   const [automodEnabled,  setAutomodEnabled]  = useState(false);
