@@ -2138,6 +2138,10 @@ export type Database = {
         Args: { p_new_username: string; p_password: string }
         Returns: Json
       }
+      check_server_tag_available: {
+        Args: { p_current_server_id: string; p_tag: string }
+        Returns: boolean
+      }
       check_username_available: {
         Args: { p_username: string }
         Returns: boolean
