@@ -1670,6 +1670,7 @@ export type Database = {
           created_at: string
           default_notification_level: string
           description: string | null
+          free_games_bot_enabled: boolean
           free_games_channel_id: string | null
           icon_url: string | null
           id: string
@@ -1700,6 +1701,7 @@ export type Database = {
           created_at?: string
           default_notification_level?: string
           description?: string | null
+          free_games_bot_enabled?: boolean
           free_games_channel_id?: string | null
           icon_url?: string | null
           id?: string
@@ -1730,6 +1732,7 @@ export type Database = {
           created_at?: string
           default_notification_level?: string
           description?: string | null
+          free_games_bot_enabled?: boolean
           free_games_channel_id?: string | null
           icon_url?: string | null
           id?: string
