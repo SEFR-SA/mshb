@@ -102,7 +102,8 @@ Deno.serve(async (req) => {
     const { data: servers, error: serversError } = await service
       .from("servers")
       .select("id, free_games_channel_id")
-      .not("free_games_channel_id", "is", null);
+      .not("free_games_channel_id", "is", null)
+      .eq("free_games_bot_enabled", true);
 
     if (serversError) throw serversError;
     if (!servers || servers.length === 0) {

@@ -420,26 +420,43 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
             {t("serverSettings.freeGamesBotDesc")}
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <Label className="text-sm shrink-0 sm:w-48">
-            {t("serverSettings.freeGamesChannel")}
-          </Label>
-          <Select
-            value={freeGamesChannelId || "__none__"}
-            onValueChange={(v) => setFreeGamesChannelId(v === "__none__" ? "" : v)}
+
+        {/* Enable/Disable toggle */}
+        <div className="flex items-start sm:items-center justify-between gap-3">
+          <div>
+            <Label className="text-sm">{t("serverSettings.enableFreeGamesBot", "Enable Mshb FreeStuff Bot")}</Label>
+            <p className="text-xs text-muted-foreground">{t("serverSettings.enableFreeGamesBotDesc", "Adds the bot to your server to automatically announce free games.")}</p>
+          </div>
+          <Switch
+            checked={freeGamesBotEnabled}
+            onCheckedChange={canEdit ? handleFreeGamesBotToggle : undefined}
             disabled={!canEdit}
-          >
-            <SelectTrigger className="w-full sm:w-56">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">{t("serverSettings.noChannel")}</SelectItem>
-              {textChannels.map((c) => (
-                <SelectItem key={c.id} value={c.id}># {c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            className="shrink-0"
+          />
         </div>
+
+        {freeGamesBotEnabled && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <Label className="text-sm shrink-0 sm:w-48">
+              {t("serverSettings.freeGamesChannel")}
+            </Label>
+            <Select
+              value={freeGamesChannelId || "__none__"}
+              onValueChange={(v) => setFreeGamesChannelId(v === "__none__" ? "" : v)}
+              disabled={!canEdit}
+            >
+              <SelectTrigger className="w-full sm:w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">{t("serverSettings.noChannel")}</SelectItem>
+                {textChannels.map((c) => (
+                  <SelectItem key={c.id} value={c.id}># {c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <Separator />
