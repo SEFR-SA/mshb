@@ -486,6 +486,9 @@ export function useLiveKitRoom({
         await room.localParticipant.publishTrack(videoTrack, {
           source: Track.Source.ScreenShare,
           videoCodec: "h264",
+          // "disabled" = encoder never reduces resolution or framerate in response to GCC
+          // feedback. The user explicitly selected their quality tier — we honour it.
+          degradationPreference: "disabled",
           simulcast: false,
           videoEncoding: {
             maxBitrate,
