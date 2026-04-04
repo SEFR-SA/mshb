@@ -248,6 +248,28 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
           maxLength={4}
           className="max-w-xs uppercase"
         />
+        {canInteract && tagName.trim() && (
+          <div className="flex items-center gap-1.5 text-xs mt-1">
+            {isChecking && (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                <span className="text-muted-foreground">{t("serverSettings.serverTagChecking", "Checking availability...")}</span>
+              </>
+            )}
+            {!isChecking && isAvailable === true && (
+              <>
+                <Check className="h-3 w-3 text-green-500" />
+                <span className="text-green-500">{t("serverSettings.serverTagAvailable", "Tag is available!")}</span>
+              </>
+            )}
+            {!isChecking && isAvailable === false && (
+              <>
+                <X className="h-3 w-3 text-destructive" />
+                <span className="text-destructive">{t("serverSettings.serverTagTaken", "This tag is already taken.")}</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <Separator />
