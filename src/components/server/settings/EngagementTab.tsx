@@ -109,6 +109,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         setInactiveTimeout((s as any).inactive_timeout ? String((s as any).inactive_timeout) : "");
         setAutomodEnabled(!!(s as any).automod_enabled);
         setFreeGamesChannelId((s as any).free_games_channel_id ?? "");
+        setFreeGamesBotEnabled(!!(s as any).free_games_bot_enabled);
       }
       setChannels((ch as unknown as Channel[]) || []);
       setBannedWords((bw as unknown as BannedWordEntry[]) || []);
