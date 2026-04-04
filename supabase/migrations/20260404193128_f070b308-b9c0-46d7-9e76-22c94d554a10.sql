@@ -1,0 +1,1 @@
+ALTER TABLE public.servers ADD COLUMN IF NOT EXISTS free_games_bot_enabled boolean NOT NULL DEFAULT false;

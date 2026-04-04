@@ -84,13 +84,16 @@ const ServerMemberList = ({ serverId }: Props) => {
   const [userAllRolesMap, setUserAllRolesMap] = useState<Map<string, CustomRole[]>>(new Map());
   const [serverSounds, setServerSounds] = useState<{ id: string; name: string }[]>([]);
   const [entranceSoundId, setEntranceSoundId] = useState<string | null>(null);
+  const [freeGamesBotEnabled, setFreeGamesBotEnabled] = useState(false);
 
   useEffect(() => {
     const load = async () => {
-      const [{ data }, { data: memberRolesData }] = await Promise.all([
+      const [{ data }, { data: memberRolesData }, { data: serverData }] = await Promise.all([
         supabase.from("server_members" as any).select("user_id, role, joined_at, is_booster, boosted_at").eq("server_id", serverId),
         supabase.from("member_roles" as any).select("user_id, server_roles(id, name, color, icon_url, position)").eq("server_id", serverId),
+        supabase.from("servers" as any).select("free_games_bot_enabled").eq("id", serverId).maybeSingle(),
       ]);
+      setFreeGamesBotEnabled(!!(serverData as any)?.free_games_bot_enabled);
       if (!data) return;
       const userIds = (data as any[]).map((m) => m.user_id);
       const { data: profiles } = await supabase
@@ -212,7 +215,7 @@ const ServerMemberList = ({ serverId }: Props) => {
       noCustomRoleMembers.push(m);
     }
   });
-  members.filter((m) => m.role === "bot").forEach((m) => noCustomRoleBots.push(m));
+  members.filter((m) => m.role === "bot" && (freeGamesBotEnabled || m.user_id !== "00000000-0000-0000-0000-000000000001")).forEach((m) => noCustomRoleBots.push(m));
 
   [...customRoleGroupMap.values()]
     .sort((a, b) => a.role.position - b.role.position)

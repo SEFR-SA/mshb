@@ -57,6 +57,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
   const [inactiveChannelId,  setInactiveChannelId]  = useState<string>("");
   const [inactiveTimeout,    setInactiveTimeout]    = useState<string>("");
   const [freeGamesChannelId, setFreeGamesChannelId] = useState<string>("");
+  const [freeGamesBotEnabled, setFreeGamesBotEnabled] = useState(false);
 
   // ── AutoMod ─────────────────────────────────────────────────────────────
   const [automodEnabled,  setAutomodEnabled]  = useState(false);
@@ -79,7 +80,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           supabase
             .from("servers" as any)
             .select(
-              "welcome_message_enabled, system_message_channel_id, default_notification_level, inactive_channel_id, inactive_timeout, automod_enabled, free_games_channel_id"
+              "welcome_message_enabled, system_message_channel_id, default_notification_level, inactive_channel_id, inactive_timeout, automod_enabled, free_games_channel_id, free_games_bot_enabled"
             )
             .eq("id", serverId)
             .maybeSingle(),
@@ -108,6 +109,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         setInactiveTimeout((s as any).inactive_timeout ? String((s as any).inactive_timeout) : "");
         setAutomodEnabled(!!(s as any).automod_enabled);
         setFreeGamesChannelId((s as any).free_games_channel_id ?? "");
+        setFreeGamesBotEnabled(!!(s as any).free_games_bot_enabled);
       }
       setChannels((ch as unknown as Channel[]) || []);
       setBannedWords((bw as unknown as BannedWordEntry[]) || []);
@@ -128,6 +130,43 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
       .eq("id", serverId);
     if (error) {
       setWelcomeEnabled(previous);
+      toast({ title: t("common.error"), variant: "destructive" });
+    }
+  };
+
+  const BOT_USER_ID = "00000000-0000-0000-0000-000000000001";
+
+  const handleFreeGamesBotToggle = async (checked: boolean) => {
+    const previous = freeGamesBotEnabled;
+    setFreeGamesBotEnabled(checked);
+    try {
+      if (checked) {
+        // Enable: set flag + upsert bot into server_members
+        await supabase
+          .from("servers" as any)
+          .update({ free_games_bot_enabled: true } as any)
+          .eq("id", serverId);
+        await supabase
+          .from("server_members" as any)
+          .upsert(
+            { server_id: serverId, user_id: BOT_USER_ID, role: "bot" } as any,
+            { onConflict: "server_id,user_id", ignoreDuplicates: true }
+          );
+      } else {
+        // Disable: clear flag + channel + remove bot member row
+        await supabase
+          .from("servers" as any)
+          .update({ free_games_bot_enabled: false, free_games_channel_id: null } as any)
+          .eq("id", serverId);
+        await supabase
+          .from("server_members" as any)
+          .delete()
+          .eq("server_id", serverId)
+          .eq("user_id", BOT_USER_ID);
+        setFreeGamesChannelId("");
+      }
+    } catch {
+      setFreeGamesBotEnabled(previous);
       toast({ title: t("common.error"), variant: "destructive" });
     }
   };
@@ -418,26 +457,43 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
             {t("serverSettings.freeGamesBotDesc")}
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <Label className="text-sm shrink-0 sm:w-48">
-            {t("serverSettings.freeGamesChannel")}
-          </Label>
-          <Select
-            value={freeGamesChannelId || "__none__"}
-            onValueChange={(v) => setFreeGamesChannelId(v === "__none__" ? "" : v)}
+
+        {/* Enable/Disable toggle */}
+        <div className="flex items-start sm:items-center justify-between gap-3">
+          <div>
+            <Label className="text-sm">{t("serverSettings.enableFreeGamesBot", "Enable Mshb FreeStuff Bot")}</Label>
+            <p className="text-xs text-muted-foreground">{t("serverSettings.enableFreeGamesBotDesc", "Adds the bot to your server to automatically announce free games.")}</p>
+          </div>
+          <Switch
+            checked={freeGamesBotEnabled}
+            onCheckedChange={canEdit ? handleFreeGamesBotToggle : undefined}
             disabled={!canEdit}
-          >
-            <SelectTrigger className="w-full sm:w-56">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">{t("serverSettings.noChannel")}</SelectItem>
-              {textChannels.map((c) => (
-                <SelectItem key={c.id} value={c.id}># {c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            className="shrink-0"
+          />
         </div>
+
+        {freeGamesBotEnabled && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <Label className="text-sm shrink-0 sm:w-48">
+              {t("serverSettings.freeGamesChannel")}
+            </Label>
+            <Select
+              value={freeGamesChannelId || "__none__"}
+              onValueChange={(v) => setFreeGamesChannelId(v === "__none__" ? "" : v)}
+              disabled={!canEdit}
+            >
+              <SelectTrigger className="w-full sm:w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">{t("serverSettings.noChannel")}</SelectItem>
+                {textChannels.map((c) => (
+                  <SelectItem key={c.id} value={c.id}># {c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <Separator />
