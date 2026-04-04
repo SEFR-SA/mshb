@@ -80,7 +80,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           supabase
             .from("servers" as any)
             .select(
-              "welcome_message_enabled, system_message_channel_id, default_notification_level, inactive_channel_id, inactive_timeout, automod_enabled, free_games_channel_id"
+              "welcome_message_enabled, system_message_channel_id, default_notification_level, inactive_channel_id, inactive_timeout, automod_enabled, free_games_channel_id, free_games_bot_enabled"
             )
             .eq("id", serverId)
             .maybeSingle(),
