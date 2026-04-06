@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 interface NotifPrefs {
   desktopEnabled: boolean;
@@ -42,19 +43,31 @@ const ToggleRow = ({ label, description, checked, onCheckedChange }: ToggleRowPr
 const NotificationsTab = () => {
   const { t } = useTranslation();
   const [prefs, setPrefs] = useState<NotifPrefs>(DEFAULT_PREFS);
+  const [saved, setSaved] = useState<NotifPrefs>(DEFAULT_PREFS);
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem("mshb_notification_prefs");
-      if (stored) setPrefs({ ...DEFAULT_PREFS, ...JSON.parse(stored) });
+      if (stored) {
+        const parsed = { ...DEFAULT_PREFS, ...JSON.parse(stored) };
+        setPrefs(parsed);
+        setSaved(parsed);
+      }
     } catch {}
   }, []);
 
+  const hasChanges = JSON.stringify(prefs) !== JSON.stringify(saved);
+
   const update = <K extends keyof NotifPrefs>(key: K, value: NotifPrefs[K]) => {
-    const next = { ...prefs, [key]: value };
-    setPrefs(next);
-    localStorage.setItem("mshb_notification_prefs", JSON.stringify(next));
+    setPrefs(prev => ({ ...prev, [key]: value }));
   };
+
+  const handleSave = () => {
+    localStorage.setItem("mshb_notification_prefs", JSON.stringify(prefs));
+    setSaved(prefs);
+  };
+
+  const handleReset = () => setPrefs(saved);
 
   const handleDesktopToggle = async (enabled: boolean) => {
     if (enabled && Notification.permission === "default") {
@@ -122,6 +135,7 @@ const NotificationsTab = () => {
         />
       </div>
 
+      <UnsavedChangesBar show={hasChanges} onSave={handleSave} onReset={handleReset} />
     </div>
   );
 };

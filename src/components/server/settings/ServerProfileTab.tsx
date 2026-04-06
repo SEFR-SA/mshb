@@ -1,14 +1,14 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { getBoostPerks } from "@/config/boostPerks";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
 import { Camera, Loader2, Lock } from "lucide-react";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 interface Props {
   serverId: string;
@@ -45,6 +45,21 @@ const ServerProfileTab = ({
   const hasBanner = boostFeatures.includes("server_banner");
   const [saving, setSaving] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
+
+  const [draftName, setDraftName] = useState(serverName);
+  const [draftDescription, setDraftDescription] = useState(description);
+
+  useEffect(() => {
+    setDraftName(serverName);
+    setDraftDescription(description);
+  }, [serverName, description]);
+
+  const hasChanges = draftName.trim() !== serverName.trim() || draftDescription.trim() !== description.trim();
+
+  const handleReset = () => {
+    setDraftName(serverName);
+    setDraftDescription(description);
+  };
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const iconInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -101,16 +116,18 @@ const ServerProfileTab = ({
   };
 
   const handleSave = async () => {
-    if (!serverName.trim()) return;
+    if (!draftName.trim()) return;
     setSaving(true);
     try {
-      await supabase.from("servers" as any).update({ name: serverName.trim(), description: description.trim() } as any).eq("id", serverId);
+      await supabase.from("servers" as any).update({ name: draftName.trim(), description: draftDescription.trim() } as any).eq("id", serverId);
       await supabase.from("server_audit_logs" as any).insert({
         server_id: serverId,
         actor_id: userId,
         action_type: "server_updated",
-        changes: { field: "profile", new_name: serverName.trim() },
+        changes: { field: "profile", new_name: draftName.trim() },
       } as any);
+      setServerName(draftName.trim());
+      setDescription(draftDescription.trim());
       toast({ title: t("profile.saved") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
@@ -169,28 +186,23 @@ const ServerProfileTab = ({
         {/* Server name */}
         <div className="space-y-2">
           <Label>{t("servers.serverName")}</Label>
-          <Input value={serverName} onChange={(e) => setServerName(e.target.value)} disabled={!canEdit} />
+          <Input value={draftName} onChange={(e) => setDraftName(e.target.value)} disabled={!canEdit} />
         </div>
 
         {/* Description */}
         <div className="space-y-2">
           <Label>{t("serverSettings.description")}</Label>
           <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={draftDescription}
+            onChange={(e) => setDraftDescription(e.target.value)}
             disabled={!canEdit}
             placeholder={t("serverSettings.descriptionPlaceholder")}
             rows={3}
           />
         </div>
-
-        {canEdit && (
-          <Button onClick={handleSave} disabled={saving || !serverName.trim()}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin me-2" /> : null}
-            {t("actions.save")}
-          </Button>
-        )}
       </div>
+
+      <UnsavedChangesBar show={canEdit && hasChanges} onSave={handleSave} onReset={handleReset} />
     </div>
   );
 };

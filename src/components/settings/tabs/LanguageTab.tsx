@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 type TimeFormat = "12h" | "24h";
 
@@ -27,26 +28,50 @@ const LanguageTab = () => {
   const { user } = useAuth();
   const [timeFormat, setTimeFormat] = useState<TimeFormat>("12h");
 
+  // Saved baselines — track what is actually persisted
+  const [savedLang, setSavedLang] = useState<"en" | "ar">(
+    () => i18n.language.split("-")[0] as "en" | "ar"
+  );
+  const [savedTimeFormat, setSavedTimeFormat] = useState<TimeFormat>("12h");
+
   useEffect(() => {
     const stored = localStorage.getItem("mshb_time_format") as TimeFormat | null;
-    if (stored) setTimeFormat(stored);
+    if (stored) {
+      setTimeFormat(stored);
+      setSavedTimeFormat(stored);
+    }
   }, []);
 
-  const switchLanguage = async (lang: "en" | "ar") => {
+  const currentLang = i18n.language.split("-")[0] as "en" | "ar";
+  const hasChanges = currentLang !== savedLang || timeFormat !== savedTimeFormat;
+
+  // Keep i18n + DOM direction changes IMMEDIATE for live preview;
+  // the DB write and localStorage write are deferred to handleSave.
+  const switchLanguage = (lang: "en" | "ar") => {
     i18n.changeLanguage(lang);
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
     document.documentElement.lang = lang;
+  };
+
+  const switchTimeFormat = (fmt: TimeFormat) => setTimeFormat(fmt);
+
+  const handleSave = async () => {
+    localStorage.setItem("mshb_time_format", timeFormat);
     if (user) {
-      await supabase.from("profiles").update({ language: lang } as any).eq("user_id", user.id);
+      await supabase.from("profiles").update({ language: currentLang } as any).eq("user_id", user.id);
     }
+    setSavedLang(currentLang);
+    setSavedTimeFormat(timeFormat);
   };
 
-  const switchTimeFormat = (fmt: TimeFormat) => {
-    setTimeFormat(fmt);
-    localStorage.setItem("mshb_time_format", fmt);
+  const handleReset = () => {
+    // Revert the i18n preview back to the last-saved language
+    i18n.changeLanguage(savedLang);
+    document.documentElement.dir = savedLang === "ar" ? "rtl" : "ltr";
+    document.documentElement.lang = savedLang;
+    setTimeFormat(savedTimeFormat);
   };
 
-  const currentLang = i18n.language.split("-")[0] as "en" | "ar";
   const currentLangData = LANGUAGES.find((l) => l.code === currentLang) ?? LANGUAGES[0];
 
   return (
@@ -115,6 +140,8 @@ const LanguageTab = () => {
           ))}
         </div>
       </div>
+
+      <UnsavedChangesBar show={hasChanges} onSave={handleSave} onReset={handleReset} />
     </div>
   );
 };

@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, Check, Loader2, Lock, Plus, Trash2, Upload, X } from "lucide-react";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 interface ServerRole {
   id: string;
@@ -553,21 +554,6 @@ const RolesTab = ({ serverId, canEdit }: Props) => {
             </Tabs>
           </div>
 
-          {/* Save / Reset Banner */}
-          {isDirty && (
-            <div className="border-t bg-background px-6 py-3 flex items-center justify-between gap-3 shrink-0">
-              <p className="text-sm text-muted-foreground">{t("serverSettings.unsavedChanges")}</p>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={handleReset} disabled={saving}>
-                  {t("serverSettings.resetChanges")}
-                </Button>
-                <Button size="sm" onClick={handleSave} disabled={saving || !editName.trim()}>
-                  {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
-                  {t("serverSettings.saveChanges")}
-                </Button>
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>
@@ -579,6 +565,8 @@ const RolesTab = ({ serverId, canEdit }: Props) => {
         {roleListPane}
         {roleEditorPane}
       </div>
+
+      <UnsavedChangesBar show={isDirty} onSave={handleSave} onReset={handleReset} />
 
       {/* Delete Role Confirmation */}
       <AlertDialog open={!!deleteTargetId} onOpenChange={(o) => !o && setDeleteTargetId(null)}>

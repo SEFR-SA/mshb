@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Megaphone, BookOpen, LifeBuoy, Crown, AlertTriangle } from "lucide-react";
 import EnableCommunityModal from "../EnableCommunityModal";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 interface Props {
   serverId: string;
@@ -91,6 +92,8 @@ const ManagementView = ({ serverId, rulesChannelId, updatesChannelId, onRefresh 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [rules, setRules] = useState(rulesChannelId || "");
   const [updates, setUpdates] = useState(updatesChannelId || "");
+  const [savedRules, setSavedRules] = useState(rulesChannelId || "");
+  const [savedUpdates, setSavedUpdates] = useState(updatesChannelId || "");
   const [showDisable, setShowDisable] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -103,14 +106,25 @@ const ManagementView = ({ serverId, rulesChannelId, updatesChannelId, onRefresh 
   useEffect(() => {
     setRules(rulesChannelId || "");
     setUpdates(updatesChannelId || "");
+    setSavedRules(rulesChannelId || "");
+    setSavedUpdates(updatesChannelId || "");
   }, [rulesChannelId, updatesChannelId]);
 
-  const handleSave = async (field: "rules_channel_id" | "public_updates_channel_id", value: string) => {
+  const hasChanges = rules !== savedRules || updates !== savedUpdates;
+
+  const handleSave = async () => {
     setSaving(true);
-    await supabase.from("servers" as any).update({ [field]: value }).eq("id", serverId);
+    await supabase.from("servers" as any).update({ rules_channel_id: rules, public_updates_channel_id: updates } as any).eq("id", serverId);
     setSaving(false);
+    setSavedRules(rules);
+    setSavedUpdates(updates);
     toast({ title: t("common.saved") });
     onRefresh();
+  };
+
+  const handleReset = () => {
+    setRules(savedRules);
+    setUpdates(savedUpdates);
   };
 
   const handleDisable = async () => {
@@ -134,7 +148,7 @@ const ManagementView = ({ serverId, rulesChannelId, updatesChannelId, onRefresh 
       {/* Rules Channel */}
       <div className="space-y-2">
         <label className="text-sm font-medium">{t("community.rulesChannel")}</label>
-        <Select value={rules} onValueChange={(v) => { setRules(v); handleSave("rules_channel_id", v); }}>
+        <Select value={rules} onValueChange={setRules}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             {channels.map((c) => (
@@ -147,7 +161,7 @@ const ManagementView = ({ serverId, rulesChannelId, updatesChannelId, onRefresh 
       {/* Updates Channel */}
       <div className="space-y-2">
         <label className="text-sm font-medium">{t("community.updatesChannel")}</label>
-        <Select value={updates} onValueChange={(v) => { setUpdates(v); handleSave("public_updates_channel_id", v); }}>
+        <Select value={updates} onValueChange={setUpdates}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             {channels.map((c) => (
@@ -184,6 +198,8 @@ const ManagementView = ({ serverId, rulesChannelId, updatesChannelId, onRefresh 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <UnsavedChangesBar show={hasChanges} onSave={handleSave} onReset={handleReset} />
     </div>
   );
 };

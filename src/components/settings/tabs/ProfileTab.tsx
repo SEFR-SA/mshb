@@ -23,6 +23,7 @@ import EffectSelector from "@/components/settings/EffectSelector";
 import ProfileEffectWrapper from "@/components/shared/ProfileEffectWrapper";
 import NameplateWrapper from "@/components/shared/NameplateWrapper";
 import AvatarDecorationWrapper from "@/components/shared/AvatarDecorationWrapper";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsaved?: any }) => {
   const { t } = useTranslation();
@@ -126,7 +127,6 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
         profilePrimaryColor: profilePrimaryColor,
         profileAccentColor:  profileAccentColor,
       };
-      clearUnsaved?.();
       await refreshProfile();
     }
     setSaving(false);
@@ -141,7 +141,6 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
     setActiveServerTagId(originalRef.current.activeServerTagId);
     setProfilePrimaryColor(originalRef.current.profilePrimaryColor ?? "#5865F2");
     setProfileAccentColor(originalRef.current.profileAccentColor  ?? "#3BA55C");
-    clearUnsaved?.();
   };
 
   const isDirty =
@@ -154,21 +153,6 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
       profileAccentColor  !== originalRef.current.profileAccentColor
     );
 
-  const saveFnRef  = useRef(handleSave);
-  const resetFnRef = useRef(handleReset);
-  useEffect(() => {
-    saveFnRef.current  = handleSave;
-    resetFnRef.current = handleReset;
-  });
-
-  useEffect(() => {
-    if (!setUnsaved || !clearUnsaved) return;
-    if (isDirty) {
-      setUnsaved(() => saveFnRef.current(), () => resetFnRef.current());
-    } else {
-      clearUnsaved();
-    }
-  }, [isDirty]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -478,6 +462,8 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
 
         </div>
       </div>
+
+      <UnsavedChangesBar show={isDirty} onSave={handleSave} onReset={handleReset} />
     </div>
   );
 };

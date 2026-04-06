@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 interface SocialPrefs {
   friendRequests: "everyone" | "friends_of_friends" | "server_members" | "nobody";
@@ -19,19 +20,31 @@ const DEFAULT_PREFS: SocialPrefs = {
 const SocialTab = () => {
   const { t } = useTranslation();
   const [prefs, setPrefs] = useState<SocialPrefs>(DEFAULT_PREFS);
+  const [saved, setSaved] = useState<SocialPrefs>(DEFAULT_PREFS);
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem("mshb_social_prefs");
-      if (stored) setPrefs({ ...DEFAULT_PREFS, ...JSON.parse(stored) });
+      if (stored) {
+        const parsed = { ...DEFAULT_PREFS, ...JSON.parse(stored) };
+        setPrefs(parsed);
+        setSaved(parsed);
+      }
     } catch {}
   }, []);
 
+  const hasChanges = JSON.stringify(prefs) !== JSON.stringify(saved);
+
   const update = <K extends keyof SocialPrefs>(key: K, value: SocialPrefs[K]) => {
-    const next = { ...prefs, [key]: value };
-    setPrefs(next);
-    localStorage.setItem("mshb_social_prefs", JSON.stringify(next));
+    setPrefs(prev => ({ ...prev, [key]: value }));
   };
+
+  const handleSave = () => {
+    localStorage.setItem("mshb_social_prefs", JSON.stringify(prefs));
+    setSaved(prefs);
+  };
+
+  const handleReset = () => setPrefs(saved);
 
   const friendRequestOptions = [
     { value: "everyone", label: t("settings.friendRequestsEveryone") },
@@ -100,6 +113,8 @@ const SocialTab = () => {
           </Select>
         </div>
       </div>
+
+      <UnsavedChangesBar show={hasChanges} onSave={handleSave} onReset={handleReset} />
     </div>
   );
 };

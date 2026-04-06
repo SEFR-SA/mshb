@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -20,6 +19,7 @@ import CompassBadge from "@/components/ui/badges/CompassBadge";
 import BannerBadge from "@/components/ui/badges/BannerBadge";
 import { cn } from "@/lib/utils";
 import ServerTagBadgeIcon from "@/components/ServerTagBadgeIcon";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 interface Props {
   serverId: string;
@@ -160,6 +160,15 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
     if (!isPro) {
       toast({ title: t("pro.requiresPro", "Requires Mshb Pro. Upgrade to unlock this feature."), variant: "destructive" });
     }
+  };
+
+  const handleReset = () => {
+    setTagName(savedTagName);
+    setTagBadge(savedTagBadge);
+    setTagColor(savedTagColor);
+    setHexInput(savedTagColor);
+    setTagContainerColor(savedTagContainerColor);
+    setContainerHexInput(savedTagContainerColor);
   };
 
   const handleSave = async () => {
@@ -462,14 +471,11 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         </div>
       </div>
 
-      {canEdit && hasChanges && (
-        <div className="pt-2">
-          <Button onClick={canInteract ? handleSave : handleProBlock} disabled={saving || isChecking || isAvailable === false}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
-            {t("actions.save")}
-          </Button>
-        </div>
-      )}
+      <UnsavedChangesBar
+        show={canEdit && hasChanges}
+        onSave={canInteract ? handleSave : handleProBlock}
+        onReset={handleReset}
+      />
     </div>
   );
 };

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, X, ShieldAlert } from "lucide-react";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 interface Channel {
   id: string;
@@ -70,6 +71,16 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
   const [addingAllowed,   setAddingAllowed]   = useState(false);
   const bannedInputRef  = useRef<HTMLInputElement>(null);
   const allowedInputRef = useRef<HTMLInputElement>(null);
+
+  const savedRef = useRef({
+    welcomeEnabled: false,
+    systemChannelId: "",
+    notifLevel: "all_messages",
+    inactiveChannelId: "",
+    inactiveTimeout: "",
+    freeGamesChannelId: "",
+    automodEnabled: false,
+  });
 
   useEffect(() => {
     if (!serverId) return;

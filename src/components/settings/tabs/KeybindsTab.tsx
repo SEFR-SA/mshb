@@ -9,6 +9,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Plus, Trash2, X } from "lucide-react";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 
 /* ───────────────── Sub-components (unchanged) ───────────────── */
 
@@ -123,34 +124,12 @@ const KeybindsTab = ({ setUnsaved, clearUnsaved }: KeybindsTabProps) => {
   const handleSave = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(customBinds));
     originalRef.current = JSON.stringify(customBinds);
-    clearUnsaved?.();
   };
 
   const handleReset = () => {
     const original: CustomBind[] = JSON.parse(originalRef.current);
     setCustomBinds(original);
-    clearUnsaved?.();
   };
-
-  // Refs to avoid stale closures in setUnsaved callbacks
-  const saveFnRef = useRef(handleSave);
-  const resetFnRef = useRef(handleReset);
-  useEffect(() => {
-    saveFnRef.current = handleSave;
-    resetFnRef.current = handleReset;
-  });
-
-  useEffect(() => {
-    if (!setUnsaved || !clearUnsaved) return;
-    if (isDirty) {
-      setUnsaved(
-        () => saveFnRef.current(),
-        () => resetFnRef.current(),
-      );
-    } else {
-      clearUnsaved();
-    }
-  }, [isDirty]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── CRUD ── */
 
@@ -294,6 +273,8 @@ const KeybindsTab = ({ setUnsaved, clearUnsaved }: KeybindsTabProps) => {
           ))}
         </div>
       ))}
+
+      <UnsavedChangesBar show={isDirty} onSave={handleSave} onReset={handleReset} />
     </div>
   );
 };
