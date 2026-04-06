@@ -205,6 +205,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
     );
   }
 
+  const hasChanges = tagName.trim() !== savedTagName || tagBadge !== savedTagBadge || tagColor !== savedTagColor || tagContainerColor !== savedTagContainerColor;
   const canInteract = canEdit && isPro;
 
   return (
