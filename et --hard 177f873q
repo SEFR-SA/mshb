@@ -1,0 +1,203 @@
+[33md1a9491[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: pull: Fast-forward
+[33m350eb80[m HEAD@{1}: commit (merge): Unsaved Changes Bar in All Tabs
+[33m177f873[m HEAD@{2}: commit: Unsaved Changes Bar in All Tabs
+[33m0a9fb97[m HEAD@{3}: commit: Fix Unsaved Changes Bar in Game Overlay tab
+[33mbb65207[m HEAD@{4}: pull: Fast-forward
+[33mc9834cc[m HEAD@{5}: commit: Fix TypeError: Object has been destroyed
+[33mb30cfbd[m HEAD@{6}: commit: LiveKit Fixes
+[33meb9cd24[m HEAD@{7}: commit: SQL Migration Naming
+[33md871db9[m HEAD@{8}: pull: Fast-forward
+[33m1d20cf4[m HEAD@{9}: pull: Merge made by the 'ort' strategy.
+[33mb4ebc36[m HEAD@{10}: commit: Vite 6 Upgrade
+[33m5f521ea[m HEAD@{11}: pull: Fast-forward
+[33m69cc9b6[m HEAD@{12}: pull: Fast-forward
+[33mba9f20a[m HEAD@{13}: pull: Fast-forward
+[33me4a1d16[m HEAD@{14}: commit: Upload Rules Changes
+[33m761deda[m HEAD@{15}: commit: Audio Fix v3
+[33m2709582[m HEAD@{16}: commit: Audio Fix v2
+[33m2cf8008[m HEAD@{17}: commit: Audio Fix
+[33m7276501[m HEAD@{18}: pull: Merge made by the 'ort' strategy.
+[33mbb9ed70[m HEAD@{19}: commit: Fixes
+[33m0ca66e7[m HEAD@{20}: commit: Fixes to send-message
+[33m425d7ab[m HEAD@{21}: commit: Move Member Fixes
+[33m9040e12[m HEAD@{22}: pull: Fast-forward
+[33ma2bafa5[m HEAD@{23}: pull: Fast-forward
+[33mcbe68b1[m HEAD@{24}: commit: Rate Limiting Endpoint
+[33m9525781[m HEAD@{25}: commit: FreeStuff Bot Fixes
+[33m9a92a64[m HEAD@{26}: commit: FreeStuff Bot Fixes
+[33m5457ed1[m HEAD@{27}: commit: Ghost Row Join Effect
+[33ma5fced8[m HEAD@{28}: commit: Move Members
+[33m13df49b[m HEAD@{29}: pull: Fast-forward
+[33m3e83b06[m HEAD@{30}: pull: Fast-forward
+[33mf27d454[m HEAD@{31}: pull: Fast-forward
+[33m1f4a14a[m HEAD@{32}: commit: Server Mute/Deafen Options
+[33m1eb709b[m HEAD@{33}: pull: Merge made by the 'ort' strategy.
+[33m5b12133[m HEAD@{34}: commit: UI Fixes
+[33m02699a3[m HEAD@{35}: commit: Permissions Fixes
+[33m620dd6a[m HEAD@{36}: pull: Fast-forward
+[33md2702b2[m HEAD@{37}: commit: Permissions
+[33m703c64b[m HEAD@{38}: commit: Create Poll Feature
+[33m6d01503[m HEAD@{39}: commit: FreeGames bot fixes
+[33m747ceaf[m HEAD@{40}: pull: Fast-forward
+[33m413df04[m HEAD@{41}: pull: Fast-forward
+[33ma21ac9b[m HEAD@{42}: commit: FreeGames bot
+[33ma4a2c95[m HEAD@{43}: commit: Fixes
+[33m71b9a90[m HEAD@{44}: commit: Self Screen Sharing Viewer
+[33mce71aef[m HEAD@{45}: commit: Fixes
+[33md6796bb[m HEAD@{46}: pull: Fast-forward
+[33m4000f24[m HEAD@{47}: pull: Fast-forward
+[33m41c8a4b[m HEAD@{48}: pull: Fast-forward
+[33m59b129e[m HEAD@{49}: commit: UI Changes V2
+[33me81ce86[m HEAD@{50}: pull: Fast-forward
+[33m28e0ec5[m HEAD@{51}: commit: UI Changes
+[33m8b1e987[m HEAD@{52}: commit: UI Changes
+[33m71dd8b2[m HEAD@{53}: commit (merge): UI Changes
+[33m17cdee1[m HEAD@{54}: commit: UI Changes
+[33m3fb7425[m HEAD@{55}: pull: Fast-forward
+[33m70a391c[m HEAD@{56}: commit: Screen Sharing Ultimate Fix
+[33m4dcad3c[m HEAD@{57}: pull: Fast-forward
+[33mbed5cc0[m HEAD@{58}: commit: Screen SHaring Fixes v3
+[33meebc27e[m HEAD@{59}: pull: Merge made by the 'ort' strategy.
+[33m3a9eeb7[m HEAD@{60}: commit: Screen SHaring Fixes v2
+[33m0e2ba69[m HEAD@{61}: commit: Screen SHaring Fixes
+[33m9b5968f[m HEAD@{62}: pull: Fast-forward
+[33m2adcedc[m HEAD@{63}: commit: Server Stats
+[33m8e2390c[m HEAD@{64}: commit: Server Stats
+[33m5090796[m HEAD@{65}: pull: Merge made by the 'ort' strategy.
+[33mca237e4[m HEAD@{66}: commit: Words Restrictions Update
+[33m15a12f8[m HEAD@{67}: commit: Words Restrictions Update
+[33m26fafbf[m HEAD@{68}: commit: Fixes Screen Sharing
+[33m00a4aa7[m[33m ([m[1;33mtag: [m[1;33mMarch-2026[m[33m)[m HEAD@{69}: commit: Fixes
+[33mb26325b[m HEAD@{70}: pull: Fast-forward
+[33mcc6fcd3[m HEAD@{71}: pull: Fast-forward
+[33m3384ae0[m HEAD@{72}: pull: Fast-forward
+[33m8115985[m HEAD@{73}: pull: Fast-forward
+[33m31d0e24[m HEAD@{74}: pull: Fast-forward
+[33m6509c5e[m HEAD@{75}: pull: Fast-forward
+[33m0758293[m HEAD@{76}: pull: Fast-forward
+[33m280e09b[m HEAD@{77}: pull: Fast-forward
+[33m65afdce[m HEAD@{78}: pull: Fast-forward
+[33m008a923[m HEAD@{79}: pull: Fast-forward
+[33m58ff1af[m HEAD@{80}: pull: Fast-forward
+[33mf0c2ea9[m HEAD@{81}: pull: Fast-forward
+[33m2fa2e63[m HEAD@{82}: pull: Fast-forward
+[33m24b11bd[m HEAD@{83}: commit: Server Tags Update v2
+[33m1ace04c[m HEAD@{84}: commit: Server Tags Update
+[33m5822f7d[m HEAD@{85}: commit: Profile Reporting System
+[33mc2d09d2[m HEAD@{86}: pull: Fast-forward
+[33mefb094e[m HEAD@{87}: commit: Server Boost Phase 6
+[33ma194a5b[m HEAD@{88}: commit: Server Boost Phase 2
+[33mf1795ad[m HEAD@{89}: pull: Fast-forward
+[33mb5684a1[m HEAD@{90}: pull: Fast-forward
+[33md161189[m HEAD@{91}: pull: Fast-forward
+[33m14fb2b5[m HEAD@{92}: pull: Fast-forward
+[33m7585081[m HEAD@{93}: pull: Fast-forward
+[33m7bb30ba[m HEAD@{94}: pull: Fast-forward
+[33m3181d66[m HEAD@{95}: commit: Documentations Updates
+[33m886e71c[m HEAD@{96}: commit: Documentations Updates
+[33m0dd5438[m HEAD@{97}: commit: AFK Timer
+[33m0ef9e5a[m HEAD@{98}: commit: Update 1.0.0
+[33m8a2e554[m HEAD@{99}: commit: Fixes
+[33m2178dba[m HEAD@{100}: pull: Fast-forward
+[33ma51e828[m HEAD@{101}: pull: Fast-forward
+[33m53c5e32[m HEAD@{102}: commit: Fixes
+[33m26f27b9[m HEAD@{103}: commit: Fixes
+[33m16782e1[m HEAD@{104}: commit: Fixes
+[33md058b95[m HEAD@{105}: commit: Styled Display Name Fixes
+[33m6d73d84[m HEAD@{106}: commit: New Bug Fixes
+[33m6a5ade9[m HEAD@{107}: commit: Nameplate Hover Effect
+[33m459afec[m HEAD@{108}: commit: Profile Card Changes v2
+[33m8ab467f[m HEAD@{109}: commit: Profile Card Changes
+[33mc33b909[m HEAD@{110}: pull: Fast-forward
+[33m4d4c66a[m HEAD@{111}: pull: Fast-forward
+[33md26a86f[m HEAD@{112}: pull: Fast-forward
+[33m5750736[m HEAD@{113}: pull: Fast-forward
+[33m04b6296[m HEAD@{114}: commit: Marketplace Changes
+[33m4ee3c1a[m HEAD@{115}: pull origin main: Fast-forward
+[33m4b791fa[m HEAD@{116}: pull: Merge made by the 'ort' strategy.
+[33mca301df[m HEAD@{117}: commit: Status Bubble
+[33mac4ee0c[m HEAD@{118}: commit: Saving my latest work before pulling
+[33m27ea606[m HEAD@{119}: pull: Fast-forward
+[33m6da9cc4[m HEAD@{120}: pull: Fast-forward
+[33mad677ac[m HEAD@{121}: pull: Merge made by the 'ort' strategy.
+[33m1835c2d[m HEAD@{122}: commit: Saving my latest work before pulling
+[33m2b6a081[m HEAD@{123}: pull: Fast-forward
+[33m97e8e95[m HEAD@{124}: pull: Fast-forward
+[33md794642[m HEAD@{125}: commit: Bug Fixes
+[33m7cf5130[m HEAD@{126}: commit: Saving my latest work before pulling
+[33m98c3a8f[m HEAD@{127}: commit: Saving my latest work before pulling
+[33me4c4719[m HEAD@{128}: commit: Saving my latest work before pulling
+[33m9d87b90[m HEAD@{129}: commit: Saving my latest work before pulling
+[33m558debc[m HEAD@{130}: pull: Merge made by the 'ort' strategy.
+[33m4c68f06[m HEAD@{131}: reset: moving to HEAD
+[33m4c68f06[m HEAD@{132}: commit: Big Fixes
+[33m2033c19[m HEAD@{133}: pull: Fast-forward
+[33mb654943[m HEAD@{134}: commit: Big Fixes
+[33md9ab77c[m HEAD@{135}: pull: Fast-forward
+[33m860f750[m HEAD@{136}: commit: Big Fixes
+[33m7ea1303[m HEAD@{137}: commit: Big Fixes
+[33mbfe43a0[m HEAD@{138}: pull: Fast-forward
+[33m8e3f971[m HEAD@{139}: commit: Big Fixes
+[33ma1f648f[m HEAD@{140}: commit: Server Tags Update
+[33m770b200[m HEAD@{141}: commit: Bug Fixes
+[33mffbf2f8[m HEAD@{142}: commit: Marketplace tab & Creator Studio
+[33m71b2975[m HEAD@{143}: commit: Marketplace tab
+[33mc7715c0[m HEAD@{144}: commit (merge): Marketplace tab
+[33mce05db7[m HEAD@{145}: commit: Bug Fixes
+[33m42a4aac[m HEAD@{146}: commit: Bug Fixes
+[33m8ada2e1[m HEAD@{147}: commit: Bug Fixes
+[33m720b34b[m HEAD@{148}: commit: Bug Fixes
+[33m6bf6acb[m HEAD@{149}: commit: Bug Fixes
+[33mccad8e2[m HEAD@{150}: commit: Bug Fixes
+[33m567b001[m HEAD@{151}: commit: Bug Fixes
+[33m5bf196c[m HEAD@{152}: commit: Bug Fixes
+[33mb51fc1c[m HEAD@{153}: commit: Bug Fixes
+[33m51d77eb[m HEAD@{154}: commit: Bug Fixes
+[33me4f3e47[m HEAD@{155}: commit: Bug Fixes
+[33m4bc5721[m HEAD@{156}: commit: Bug Fixes
+[33m8cef7aa[m HEAD@{157}: commit: Bug Fixes
+[33m3c5f575[m HEAD@{158}: commit: Bug Fixes
+[33mce98431[m HEAD@{159}: pull: Fast-forward
+[33me845bb2[m HEAD@{160}: pull: Fast-forward
+[33me04b460[m HEAD@{161}: commit: Complete Server Changes
+[33m73f5695[m HEAD@{162}: commit: Role Tab
+[33m2337e7b[m HEAD@{163}: commit: Members Tab
+[33m7b68bcb[m HEAD@{164}: commit: Emojis, Stickers & Soundboard Tabs
+[33m79f69b9[m HEAD@{165}: commit: Engagement & Server Tag
+[33mb9c61a5[m HEAD@{166}: pull: Fast-forward
+[33me3f2bda[m HEAD@{167}: commit: Bug Fixes
+[33me81ab35[m HEAD@{168}: commit: Bug Fixes
+[33m9c3eff7[m HEAD@{169}: commit: Auth Page New UI
+[33m203c7e8[m HEAD@{170}: commit: Fix Copy Button for Invite Links
+[33ma449ec9[m HEAD@{171}: commit: Fix Copy Button for Invite Links
+[33m2576be7[m HEAD@{172}: commit: Fix Server Invite Bug
+[33m42b353f[m HEAD@{173}: commit: Fix Server Invite Bug
+[33m99477ea[m HEAD@{174}: pull: Fast-forward
+[33mcf0d254[m HEAD@{175}: commit: Announcement Channels and Audit Logs
+[33mb57e8ae[m HEAD@{176}: commit: docs: map existing codebase
+[33m58bbbfa[m HEAD@{177}: commit: Complete Settings Page Changes
+[33mba654ae[m HEAD@{178}: pull: Fast-forward
+[33md56a3a1[m HEAD@{179}: pull: Fast-forward
+[33m688abe9[m HEAD@{180}: commit: Stream Player HUD — Bug Fixes
+[33m0da0784[m HEAD@{181}: commit: Stream Player HUD Implementation
+[33m35989b3[m HEAD@{182}: commit: Full Screen Button Fixed
+[33mcb5e6fe[m HEAD@{183}: commit: Stream Preview Side Popover
+[33m834022e[m HEAD@{184}: commit: Preview Streaming Card
+[33m162cb16[m HEAD@{185}: commit: Stream Preview HoverCard v2
+[33mbeed14f[m HEAD@{186}: commit: Stream Preview HoverCard
+[33maaf450c[m HEAD@{187}: commit: Bold Border on Fields
+[33md1678cc[m HEAD@{188}: commit: Fix Mobile Member Profile Card
+[33m4911917[m HEAD@{189}: pull: Fast-forward
+[33mdca2712[m HEAD@{190}: commit: Screen Sharing Imrpovments | Servers Side
+[33m0c522af[m HEAD@{191}: pull: Fast-forward
+[33m1ec7391[m HEAD@{192}: pull: Fast-forward
+[33meef2032[m HEAD@{193}: commit: Update Version in Title Bar
+[33m5e8b9b5[m[33m ([m[1;33mtag: [m[1;33mv1.0.4[m[33m)[m HEAD@{194}: commit: Title bar shows app version
+[33m10ed9e5[m HEAD@{195}: commit: Update 1.0.3
+[33m220ff6e[m[33m ([m[1;33mtag: [m[1;33mv1.0.3[m[33m)[m HEAD@{196}: commit: 3 letters username. Availability Check and Lower-case username
+[33m48dc569[m HEAD@{197}: commit: Implement email verification deep-link flow and fix Vercel 404
+[33me5162d7[m HEAD@{198}: pull: Fast-forward
+[33m1720b2c[m HEAD@{199}: pull: Fast-forward
+[33me6ba4de[m HEAD@{200}: pull: Fast-forward
+[33m6ca690f[m HEAD@{201}: commit: fix: vite config base path for lovable and electron
+[33m23d4ae3[m HEAD@{202}: commit (initial): Initial commit — MSHB platform
