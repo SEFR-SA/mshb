@@ -100,36 +100,52 @@ const ProfileTab = ({ setUnsaved, clearUnsaved }: { setUnsaved?: any; clearUnsav
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        display_name:         displayName.trim() || null,
-        about_me:             aboutMe.trim(),
-        active_server_tag_id: activeServerTagId === "none" ? null : activeServerTagId,
-      } as any)
-      .eq("user_id", user.id);
+    try {
+      const trimmedDisplay = displayName.trim() || "";
+      const trimmedAbout   = aboutMe.trim();
+      const trimmedUser    = username.trim() || "";
 
-    if (error) {
-      const msg =
-        error.message?.includes("profile_username_key") || error.message?.includes("unique constraint")
-          ? t("auth.usernameTaken")
-          : error.message;
-      toast({ title: t("common.error"), description: msg, variant: "destructive" });
-    } else {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          display_name:         trimmedDisplay || null,
+          about_me:             trimmedAbout,
+          active_server_tag_id: activeServerTagId === "none" ? null : activeServerTagId,
+        } as any)
+        .eq("user_id", user.id);
+
+      if (error) {
+        const msg =
+          error.message?.includes("profile_username_key") || error.message?.includes("unique constraint")
+            ? t("auth.usernameTaken")
+            : error.message;
+        toast({ title: t("common.error"), description: msg, variant: "destructive" });
+        return;
+      }
+
       await colorMutation.mutateAsync({ primary: profilePrimaryColor, accent: profileAccentColor });
       toast({ title: t("profile.saved") });
+
+      // Sync local state to trimmed values so isDirty becomes false immediately
+      setDisplayName(trimmedDisplay);
+      setAboutMe(trimmedAbout);
+      setUsername(trimmedUser);
+
       originalRef.current = {
-        username:            username.trim() || "",
-        displayName:         displayName.trim() || "",
-        aboutMe:             aboutMe.trim(),
+        username:            trimmedUser,
+        displayName:         trimmedDisplay,
+        aboutMe:             trimmedAbout,
         activeServerTagId:   activeServerTagId === "none" ? "none" : activeServerTagId,
         profilePrimaryColor: profilePrimaryColor,
         profileAccentColor:  profileAccentColor,
       };
       clearUnsaved?.();
       await refreshProfile();
+    } catch (err) {
+      toast({ title: t("common.error"), description: String(err), variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const handleReset = () => {

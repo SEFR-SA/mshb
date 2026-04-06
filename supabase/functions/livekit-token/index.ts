@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     if (roomName.startsWith("server-voice:")) {
       const channelId = roomName.replace("server-voice:", "");
 
-      boostPromise = supabase
+      boostPromise = (supabase
         .from("channels")
         .select("server_id")
         .eq("id", channelId)
@@ -93,32 +93,32 @@ Deno.serve(async (req) => {
             .eq("id", channel.server_id)
             .single();
           return server?.boost_level ?? 0;
-        });
+        })) as Promise<number>;
 
       // Check connect, speak, video permissions via service client (skips defaults for restricted channels)
-      connectPromise = serviceClient
+      connectPromise = (serviceClient
         .rpc("has_channel_permission" as any, {
           _user_id: userId,
           _channel_id: channelId,
           _permission: "connect",
         } as any)
-        .then(({ data }) => data ?? true);
+        .then(({ data }) => data ?? true)) as Promise<boolean>;
 
-      speakPromise = serviceClient
+      speakPromise = (serviceClient
         .rpc("has_channel_permission" as any, {
           _user_id: userId,
           _channel_id: channelId,
           _permission: "speak",
         } as any)
-        .then(({ data }) => data ?? true);
+        .then(({ data }) => data ?? true)) as Promise<boolean>;
 
-      videoPromise = serviceClient
+      videoPromise = (serviceClient
         .rpc("has_channel_permission" as any, {
           _user_id: userId,
           _channel_id: channelId,
           _permission: "video",
         } as any)
-        .then(({ data }) => data ?? true);
+        .then(({ data }) => data ?? true)) as Promise<boolean>;
     }
 
     const [{ data: profile }, boostLevel, canConnect, canSpeak, canVideo] =
