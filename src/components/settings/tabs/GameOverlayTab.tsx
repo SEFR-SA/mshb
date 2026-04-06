@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useGameOverlaySettings } from "@/hooks/useGameOverlaySettings";
+import { useGameOverlaySettings, type GameOverlaySettings } from "@/hooks/useGameOverlaySettings";
+import { UnsavedChangesBar } from "@/components/settings/UnsavedChangesBar";
 import { cn } from "@/lib/utils";
 
 interface GameOverlayTabProps {
@@ -20,27 +21,23 @@ const POSITION_QUADRANTS = [
 
 const GameOverlayTab = ({ setUnsaved, clearUnsaved }: GameOverlayTabProps) => {
   const { t } = useTranslation();
-  const { settings, update, save, reset, isDirty } = useGameOverlaySettings();
+  const { settings, update, save } = useGameOverlaySettings();
 
-  /* ── Stale-closure-safe save/reset refs ── */
-  const saveFnRef = useRef(save);
-  const resetFnRef = useRef(reset);
-  useEffect(() => {
-    saveFnRef.current = save;
-    resetFnRef.current = reset;
-  });
+  /* ── Local draft state ── */
+  const [draft, setDraft] = useState<GameOverlaySettings>(settings);
+  const hasChanges = JSON.stringify(draft) !== JSON.stringify(settings);
+  const pendingSave = useRef(false);
 
+  // Safety-net: sync draft if upstream settings change (e.g. after an external reload)
+  useEffect(() => { setDraft(settings); }, [settings]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // After update(draft) causes a re-render, settings equals draft — safe to call save()
   useEffect(() => {
-    if (!setUnsaved || !clearUnsaved) return;
-    if (isDirty) {
-      setUnsaved(
-        () => saveFnRef.current(),
-        () => resetFnRef.current(),
-      );
-    } else {
-      clearUnsaved();
-    }
-  }, [isDirty]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (pendingSave.current) { save(); pendingSave.current = false; }
+  }, [settings]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSave = () => { pendingSave.current = true; update(draft); };
+  const handleReset = () => setDraft(settings);
 
   return (
     <div className="space-y-8">
@@ -61,14 +58,14 @@ const GameOverlayTab = ({ setUnsaved, clearUnsaved }: GameOverlayTabProps) => {
           </div>
           <Switch
             id="overlay-enable"
-            checked={settings.enabled}
-            onCheckedChange={(v) => update({ enabled: v })}
+            checked={draft.enabled}
+            onCheckedChange={(v) => setDraft(prev => ({ ...prev, enabled: v }))}
           />
         </div>
       </div>
 
       {/* Visual Settings — only when enabled */}
-      {settings.enabled && (
+      {draft.enabled && (
         <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-1 divide-y divide-border/30">
           <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground pb-3">
             {t("gameOverlay.visualSettings")}
@@ -78,8 +75,8 @@ const GameOverlayTab = ({ setUnsaved, clearUnsaved }: GameOverlayTabProps) => {
           <div className="pt-3 pb-2 space-y-2">
             <p className="text-sm font-medium">{t("gameOverlay.avatarSize")}</p>
             <RadioGroup
-              value={settings.avatarSize}
-              onValueChange={(v) => update({ avatarSize: v as "LARGE" | "SMALL" })}
+              value={draft.avatarSize}
+              onValueChange={(v) => setDraft(prev => ({ ...prev, avatarSize: v as "LARGE" | "SMALL" }))}
               className="flex gap-6"
             >
               {(["LARGE", "SMALL"] as const).map((val) => (
@@ -97,8 +94,8 @@ const GameOverlayTab = ({ setUnsaved, clearUnsaved }: GameOverlayTabProps) => {
           <div className="pt-3 pb-2 space-y-2">
             <p className="text-sm font-medium">{t("gameOverlay.displayNames")}</p>
             <RadioGroup
-              value={settings.displayNames}
-              onValueChange={(v) => update({ displayNames: v as "ALWAYS" | "ONLY_SPEAKING" | "NEVER" })}
+              value={draft.displayNames}
+              onValueChange={(v) => setDraft(prev => ({ ...prev, displayNames: v as "ALWAYS" | "ONLY_SPEAKING" | "NEVER" }))}
               className="flex flex-wrap gap-x-6 gap-y-2"
             >
               {([
@@ -120,8 +117,8 @@ const GameOverlayTab = ({ setUnsaved, clearUnsaved }: GameOverlayTabProps) => {
           <div className="pt-3 pb-1 space-y-2">
             <p className="text-sm font-medium">{t("gameOverlay.displayUsers")}</p>
             <RadioGroup
-              value={settings.displayUsers}
-              onValueChange={(v) => update({ displayUsers: v as "ALWAYS" | "ONLY_SPEAKING" })}
+              value={draft.displayUsers}
+              onValueChange={(v) => setDraft(prev => ({ ...prev, displayUsers: v as "ALWAYS" | "ONLY_SPEAKING" }))}
               className="flex gap-6"
             >
               {([
@@ -141,7 +138,7 @@ const GameOverlayTab = ({ setUnsaved, clearUnsaved }: GameOverlayTabProps) => {
       )}
 
       {/* Notification Position — only when enabled */}
-      {settings.enabled && (
+      {draft.enabled && (
         <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
           <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
             {t("gameOverlay.notificationPosition")}
@@ -153,12 +150,12 @@ const GameOverlayTab = ({ setUnsaved, clearUnsaved }: GameOverlayTabProps) => {
             <div className="rounded-xl border-2 border-border bg-background overflow-hidden aspect-video relative">
               <div className="grid grid-cols-2 grid-rows-2 h-full">
                 {POSITION_QUADRANTS.map(({ value, label, corner }) => {
-                  const isSelected = settings.notificationPosition === value;
+                  const isSelected = draft.notificationPosition === value;
                   return (
                     <button
                       key={value}
                       type="button"
-                      onClick={() => update({ notificationPosition: value })}
+                      onClick={() => setDraft(prev => ({ ...prev, notificationPosition: value }))}
                       className={cn(
                         "relative transition-colors border",
                         isSelected
@@ -190,11 +187,17 @@ const GameOverlayTab = ({ setUnsaved, clearUnsaved }: GameOverlayTabProps) => {
 
             {/* Position label */}
             <p className="text-center text-xs text-muted-foreground mt-2">
-              {t(`gameOverlay.${POSITION_QUADRANTS.find(q => q.value === settings.notificationPosition)?.label ?? "topLeft"}`)}
+              {t(`gameOverlay.${POSITION_QUADRANTS.find(q => q.value === draft.notificationPosition)?.label ?? "topLeft"}`)}
             </p>
           </div>
         </div>
       )}
+
+      <UnsavedChangesBar
+        show={hasChanges}
+        onSave={handleSave}
+        onReset={handleReset}
+      />
     </div>
   );
 };

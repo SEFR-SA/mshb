@@ -486,14 +486,16 @@ export function useLiveKitRoom({
         await room.localParticipant.publishTrack(videoTrack, {
           source: Track.Source.ScreenShare,
           videoCodec: "h264",
-          degradationPreference: "maintain-framerate",
+          // "disabled" = encoder never reduces resolution or framerate in response to GCC
+          // feedback. The user explicitly selected their quality tier — we honour it.
+          degradationPreference: "disabled",
           simulcast: false,
           videoEncoding: {
             maxBitrate,
             maxFramerate,
             priority: "high",
           },
-        } as TrackPublishOptions);
+        } as unknown as TrackPublishOptions);
 
         // ── 4. Lock RTCRtpSender encoding parameters ─────────────────────────
         // LiveKit SDK v2.x does not apply maxFramerate to RTCRtpSender when
