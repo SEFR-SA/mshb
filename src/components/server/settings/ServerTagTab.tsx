@@ -65,9 +65,12 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
   const [tagName, setTagName] = useState("");
   const [savedTagName, setSavedTagName] = useState("");
   const [tagBadge, setTagBadge] = useState("cactus");
+  const [savedTagBadge, setSavedTagBadge] = useState("cactus");
   const [tagColor, setTagColor] = useState(DEFAULT_COLOR);
+  const [savedTagColor, setSavedTagColor] = useState(DEFAULT_COLOR);
   const [hexInput, setHexInput] = useState(DEFAULT_COLOR);
   const [tagContainerColor, setTagContainerColor] = useState(DEFAULT_CONTAINER_COLOR);
+  const [savedTagContainerColor, setSavedTagContainerColor] = useState(DEFAULT_CONTAINER_COLOR);
   const [containerHexInput, setContainerHexInput] = useState(DEFAULT_CONTAINER_COLOR);
 
   const [isChecking, setIsChecking] = useState(false);
@@ -90,12 +93,16 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         const name = (s as any).server_tag_name ?? "";
         setTagName(name);
         setSavedTagName(name);
-        setTagBadge((s as any).server_tag_badge ?? "cactus");
+        const badge = (s as any).server_tag_badge ?? "cactus";
+        setTagBadge(badge);
+        setSavedTagBadge(badge);
         const badgeColor = (s as any).server_tag_color ?? DEFAULT_COLOR;
         setTagColor(badgeColor);
+        setSavedTagColor(badgeColor);
         setHexInput(badgeColor);
         const containerColor = (s as any).server_tag_container_color ?? (s as any).server_tag_color ?? DEFAULT_CONTAINER_COLOR;
         setTagContainerColor(containerColor);
+        setSavedTagContainerColor(containerColor);
         setContainerHexInput(containerColor);
       }
       setLoading(false);
@@ -179,6 +186,9 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
       }
 
       setSavedTagName(tagName.trim());
+      setSavedTagBadge(tagBadge);
+      setSavedTagColor(tagColor);
+      setSavedTagContainerColor(tagContainerColor);
       toast({ title: t("profile.saved") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
@@ -195,6 +205,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
     );
   }
 
+  const hasChanges = tagName.trim() !== savedTagName || tagBadge !== savedTagBadge || tagColor !== savedTagColor || tagContainerColor !== savedTagContainerColor;
   const canInteract = canEdit && isPro;
 
   return (
@@ -451,7 +462,7 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         </div>
       </div>
 
-      {canEdit && (
+      {canEdit && hasChanges && (
         <div className="pt-2">
           <Button onClick={canInteract ? handleSave : handleProBlock} disabled={saving || isChecking || isAvailable === false}>
             {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
