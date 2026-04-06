@@ -96,29 +96,29 @@ Deno.serve(async (req) => {
         })) as Promise<number>;
 
       // Check connect, speak, video permissions via service client (skips defaults for restricted channels)
-      connectPromise = serviceClient
+      connectPromise = (serviceClient
         .rpc("has_channel_permission" as any, {
           _user_id: userId,
           _channel_id: channelId,
           _permission: "connect",
         } as any)
-        .then(({ data }) => data ?? true);
+        .then(({ data }) => data ?? true)) as Promise<boolean>;
 
-      speakPromise = serviceClient
+      speakPromise = (serviceClient
         .rpc("has_channel_permission" as any, {
           _user_id: userId,
           _channel_id: channelId,
           _permission: "speak",
         } as any)
-        .then(({ data }) => data ?? true);
+        .then(({ data }) => data ?? true)) as Promise<boolean>;
 
-      videoPromise = serviceClient
+      videoPromise = (serviceClient
         .rpc("has_channel_permission" as any, {
           _user_id: userId,
           _channel_id: channelId,
           _permission: "video",
         } as any)
-        .then(({ data }) => data ?? true);
+        .then(({ data }) => data ?? true)) as Promise<boolean>;
     }
 
     const [{ data: profile }, boostLevel, canConnect, canSpeak, canVideo] =
