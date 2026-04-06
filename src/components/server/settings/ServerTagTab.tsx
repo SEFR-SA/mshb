@@ -65,9 +65,12 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
   const [tagName, setTagName] = useState("");
   const [savedTagName, setSavedTagName] = useState("");
   const [tagBadge, setTagBadge] = useState("cactus");
+  const [savedTagBadge, setSavedTagBadge] = useState("cactus");
   const [tagColor, setTagColor] = useState(DEFAULT_COLOR);
+  const [savedTagColor, setSavedTagColor] = useState(DEFAULT_COLOR);
   const [hexInput, setHexInput] = useState(DEFAULT_COLOR);
   const [tagContainerColor, setTagContainerColor] = useState(DEFAULT_CONTAINER_COLOR);
+  const [savedTagContainerColor, setSavedTagContainerColor] = useState(DEFAULT_CONTAINER_COLOR);
   const [containerHexInput, setContainerHexInput] = useState(DEFAULT_CONTAINER_COLOR);
 
   const [isChecking, setIsChecking] = useState(false);
