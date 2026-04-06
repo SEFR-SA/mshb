@@ -186,6 +186,9 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
       }
 
       setSavedTagName(tagName.trim());
+      setSavedTagBadge(tagBadge);
+      setSavedTagColor(tagColor);
+      setSavedTagContainerColor(tagContainerColor);
       toast({ title: t("profile.saved") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
