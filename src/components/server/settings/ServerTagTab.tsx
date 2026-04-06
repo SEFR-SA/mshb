@@ -93,12 +93,16 @@ const ServerTagTab = ({ serverId, canEdit }: Props) => {
         const name = (s as any).server_tag_name ?? "";
         setTagName(name);
         setSavedTagName(name);
-        setTagBadge((s as any).server_tag_badge ?? "cactus");
+        const badge = (s as any).server_tag_badge ?? "cactus";
+        setTagBadge(badge);
+        setSavedTagBadge(badge);
         const badgeColor = (s as any).server_tag_color ?? DEFAULT_COLOR;
         setTagColor(badgeColor);
+        setSavedTagColor(badgeColor);
         setHexInput(badgeColor);
         const containerColor = (s as any).server_tag_container_color ?? (s as any).server_tag_color ?? DEFAULT_CONTAINER_COLOR;
         setTagContainerColor(containerColor);
+        setSavedTagContainerColor(containerColor);
         setContainerHexInput(containerColor);
       }
       setLoading(false);
