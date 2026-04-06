@@ -488,7 +488,7 @@ export function useLiveKitRoom({
           videoCodec: "h264",
           // "disabled" = encoder never reduces resolution or framerate in response to GCC
           // feedback. The user explicitly selected their quality tier — we honour it.
-          degradationPreference: "disabled",
+          degradationPreference: "disabled" as any,
           simulcast: false,
           videoEncoding: {
             maxBitrate,
