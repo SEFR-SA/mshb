@@ -1,5 +1,5 @@
 import * as React from "react";
-import { format } from "date-fns";
+import { format, startOfDay, isSameDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ interface DateTimePickerProps {
   value: Date | undefined;
   onChange: (date: Date | undefined) => void;
   placeholder?: string;
+  minDate?: Date;
+  minTime?: Date;
 }
 
 const TIME_SLOTS: { label: string; hours: number; minutes: number }[] = [];
@@ -26,7 +28,7 @@ for (let h = 0; h < 24; h++) {
   }
 }
 
-export function DateTimePicker({ value, onChange, placeholder = "Select date & time" }: DateTimePickerProps) {
+export function DateTimePicker({ value, onChange, placeholder = "Select date & time", minDate, minTime }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
   const activeRef = React.useRef<HTMLButtonElement>(null);
 
@@ -56,6 +58,12 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
   const isActiveSlot = (hours: number, minutes: number) =>
     !!value && value.getHours() === hours && value.getMinutes() === minutes;
 
+  const isSlotDisabled = (hours: number, minutes: number) => {
+    if (!minTime || !value) return false;
+    if (!isSameDay(value, minTime)) return false;
+    return hours < minTime.getHours() || (hours === minTime.getHours() && minutes <= minTime.getMinutes());
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -76,22 +84,27 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
             mode="single"
             selected={value}
             onSelect={handleDaySelect}
+            disabled={minDate ? { before: startOfDay(minDate) } : undefined}
             className="p-3 pointer-events-auto"
           />
           <ScrollArea className="h-[300px] w-[120px] border-s border-border">
             <div className="p-1">
               {TIME_SLOTS.map((slot) => {
                 const active = isActiveSlot(slot.hours, slot.minutes);
+                const disabled = isSlotDisabled(slot.hours, slot.minutes);
                 return (
                   <button
                     key={slot.label}
                     ref={active ? activeRef : undefined}
-                    onClick={() => handleTimeSelect(slot.hours, slot.minutes)}
+                    onClick={() => !disabled && handleTimeSelect(slot.hours, slot.minutes)}
+                    disabled={disabled}
                     className={cn(
                       "w-full rounded-md px-3 py-1.5 text-sm text-start transition-colors",
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-accent hover:text-accent-foreground"
+                      disabled
+                        ? "opacity-50 pointer-events-none text-muted-foreground"
+                        : active
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-accent hover:text-accent-foreground"
                     )}
                   >
                     {slot.label}

@@ -73,6 +73,13 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
 
   const updateForm = (partial: Partial<FormState>) => setForm((f) => ({ ...f, ...partial }));
 
+  // Auto-correct: push endDateTime forward if it falls before startDateTime
+  useEffect(() => {
+    if (form.startDateTime && form.endDateTime && form.endDateTime <= form.startDateTime) {
+      updateForm({ endDateTime: new Date(form.startDateTime) });
+    }
+  }, [form.startDateTime]);
+
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -238,6 +245,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
                 value={form.endDateTime}
                 onChange={(d) => updateForm({ endDateTime: d })}
                 placeholder="Select end date & time"
+                minDate={form.startDateTime}
+                minTime={form.startDateTime}
               />
             </div>
 
