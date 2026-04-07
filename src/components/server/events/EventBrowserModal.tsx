@@ -201,7 +201,7 @@ const EventBrowserModal: React.FC<EventBrowserModalProps> = ({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <div className="flex-1 -mx-6 px-6 overflow-y-auto">
           {loading ? (
             <div className="space-y-3">
               {[1, 2].map((i) => (
