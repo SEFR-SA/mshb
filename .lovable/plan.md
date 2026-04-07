@@ -1,34 +1,43 @@
 
 
-## Fix: Match Crop Editor to Cover Preview Size
+## Fix Scrolling in Event Browser and Time Picker
 
-### Problem
-The crop editor viewport (448×252, 16:9) is larger than the cover image previews in steps 2 and 3, which use `w-full h-32` (approximately 448×128, roughly 3.5:1). The user wants the crop editor to match the preview — not the other way around.
+### Root Cause
+
+Radix UI's `ScrollArea` component intercepts wheel/touch events in a way that conflicts with Radix `Dialog` and `Popover` containers. This is a known issue — the scroll events get swallowed or propagated incorrectly, preventing actual scrolling of the content.
 
 ### Fix
 
-**File:** `src/components/server/events/ImageCropEditor.tsx`
+Replace `ScrollArea` with native scrollable `div` elements (`overflow-y-auto`) in two locations. Native overflow scrolling works reliably inside Radix dialogs and popovers.
 
-Update the crop viewport and output canvas dimensions to match the preview's proportions. The modal content area is ~448px wide, and `h-32` = 128px, giving a ratio of 3.5:1.
-
-**New constants:**
-```typescript
-const CROP_WIDTH = 448;
-const CROP_HEIGHT = 128;   // matches h-32 (128px) in the preview
-const OUTPUT_WIDTH = 896;  // 2× crop width for high-res output
-const OUTPUT_HEIGHT = 256;  // 2× crop height, same 3.5:1 ratio
+**1. `src/components/ui/date-time-picker.tsx` (line 90)**
 ```
+// From:
+<ScrollArea className="h-[300px] w-[120px] border-s border-border">
 
-All existing pan/zoom/transform/extraction logic remains untouched — it's ratio-relative and will adapt automatically to the new dimensions.
+// To:
+<div className="h-[300px] w-[120px] border-s border-border overflow-y-auto">
+```
+Remove the `ScrollArea` import.
 
-### What stays untouched
-- `CreateEventModal.tsx` — no changes
-- Pan, zoom, clamp, canvas extraction logic — unchanged (ratio-relative)
-- Date/time, frequency, form submission — untouched
+**2. `src/components/server/events/EventBrowserModal.tsx` (line 183)**
+```
+// From:
+<ScrollArea className="flex-1 -mx-6 px-6">
 
-### File
+// To:
+<div className="flex-1 -mx-6 px-6 overflow-y-auto">
+```
+Remove the `ScrollArea` import.
+
+### Files
 
 | File | Change |
 |------|--------|
-| `src/components/server/events/ImageCropEditor.tsx` | Update `CROP_WIDTH`, `CROP_HEIGHT`, `OUTPUT_WIDTH`, `OUTPUT_HEIGHT` |
+| `src/components/ui/date-time-picker.tsx` | Replace `ScrollArea` with native scrollable div |
+| `src/components/server/events/EventBrowserModal.tsx` | Replace `ScrollArea` with native scrollable div |
+
+### What stays untouched
+- `CreateEventModal.tsx`, `ImageCropEditor.tsx`, `scroll-area.tsx` — no changes
+- All event logic, date validation, frequency — untouched
 
