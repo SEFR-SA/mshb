@@ -697,10 +697,11 @@ export function useLiveKitRoom({
   useEffect(() => {
     return () => {
       if (durationRef.current) clearInterval(durationRef.current);
+      cleanupAllAudio();
       roomRef.current?.disconnect();
       roomRef.current = null;
     };
-  }, []);
+  }, [cleanupAllAudio]);
 
   // ── Return ────────────────────────────────────────────────────────────────
 
