@@ -378,6 +378,7 @@ export function useLiveKitRoom({
 
   const disconnect = useCallback(() => {
     if (durationRef.current) clearInterval(durationRef.current);
+    cleanupAllAudio();
     roomRef.current?.disconnect();
     roomRef.current = null;
     setCallState("ended");
@@ -389,7 +390,7 @@ export function useLiveKitRoom({
     setIsCameraOn(false);
     setRemoteCameraStreams([]);
     setMetadata(null);
-  }, []);
+  }, [cleanupAllAudio]);
 
   // ── Mute / Deafen ─────────────────────────────────────────────────────────
 
