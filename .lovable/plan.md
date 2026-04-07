@@ -1,50 +1,35 @@
 
 
-## Fix Image Cropper: Zoom & Aspect Ratio Bugs
+## Fix: Aspect Ratio Mismatch in Image Crop Editor
 
-### Root Cause Analysis
+### Problem
 
-**Bug 1 — Off-center zoom:** The current code manually computes `width`/`height` in pixels and positions the image using `left`/`top` with `calc()`. When zoom changes, the image dimensions grow but the position formula `calc(50% - ${w/2}px + ${pos.x}px)` doesn't properly anchor the scale to the visual center — it re-centers the *top-left corner* relative to the container, causing the zoom to appear anchored to the top-left.
+The crop editor viewport and the output canvas use different aspect ratios:
 
-**Bug 2 — Distortion:** The `getDisplaySize()` function computes width and height independently based on zoom, which can produce dimensions that don't match the image's intrinsic aspect ratio in edge cases (particularly when the clamp + position math interacts with the display size calculation).
+| Surface | Dimensions | Ratio |
+|---------|-----------|-------|
+| Crop viewport | 460 × 260 | **~1.77:1** (16:9) |
+| Output canvas | 800 × 450 | **~1.78:1** (16:9) |
+| Form preview (step 2) | `w-full h-32` | **variable** (depends on modal width) |
+| Review preview (step 3) | `w-full h-32` | **variable** |
+| EventCard display | `w-full h-40` | **variable** |
 
-### The Fix: CSS `transform` approach
+The crop viewport and output canvas are nearly identical (both ~16:9), so the cropping itself is consistent. The **visual inconsistency** is that the preview thumbnails in the form (step 2 and step 3) use a fixed `h-32` (128px), which at the modal's ~430px content width produces roughly a **3.4:1** ratio — much wider/shorter than the 16:9 crop. This means what the user carefully framed in the editor looks different in the preview.
 
-Replace the manual width/height/left/top positioning with a single CSS `transform` on the `<img>`. This is mathematically simpler and inherently correct:
+### Fix
 
-**Preview rendering:**
-- The `<img>` gets `width`/`height` set to fill the crop area (cover fit, computed once on load) — this preserves aspect ratio by definition since we only set one axis and derive the other.
-- Zoom and pan applied via: `transform: translate(${x}px, ${y}px) scale(${zoom})` with `transformOrigin: 'center center'`.
-- `scale()` zooms from center automatically — no manual offset math needed.
-
-**Clamp logic:**
-- After zoom, the image's visual size is `baseW * zoom` × `baseH * zoom`. Max pan = `(visual - crop) / 2` on each axis, same as now but using the base size × zoom.
-
-**Canvas extraction (Apply only):**
-- Compute what portion of the natural image is visible in the crop window:
-  - `visibleW = naturalW / zoom`, `visibleH = naturalH / zoom` (scaled proportionally to crop)
-  - Offset by pan: `sx = (naturalW - visibleW) / 2 - (pan.x / (baseW * zoom)) * naturalW`
-  - Draw that rect onto the 800×450 output canvas.
+Use `aspect-video` (Tailwind's 16:9 aspect ratio class) on the cover preview images in `CreateEventModal.tsx` instead of fixed `h-32`, so they match the crop editor's 16:9 viewport exactly.
 
 ### Changes
 
-**File:** `src/components/server/events/ImageCropEditor.tsx`
+**File: `src/components/server/events/CreateEventModal.tsx`**
 
-1. **`getDisplaySize()`** — remove zoom from this function. It now returns the base "cover" size only (the minimum size to fill the crop area). Zoom is handled purely by CSS transform.
+1. **Step 2 preview** (line ~307): Change `h-32` to `aspect-video` on the `<img>`.
+2. **Step 3 preview** (line ~338): Change `h-32` to `aspect-video` on the `<img>`.
 
-2. **`<img>` style** — replace manual `width`/`height`/`left`/`top` with:
-   ```
-   width: baseW, height: baseH,
-   left: 50%, top: 50%,
-   transform: translate(calc(-50% + panX), calc(-50% + panY)) scale(zoom),
-   transformOrigin: 'center center'
-   ```
+**File: `src/components/server/events/EventCard.tsx`**
 
-3. **`clamp()`** — update to use `baseSize * zoom` for computing max pan bounds.
+3. **Event card** (line ~59): Change `h-40` to `aspect-video` for consistency across all surfaces.
 
-4. **`handleApply()`** — rewrite extraction math to derive source rect from natural dimensions, zoom, and pan offset relative to base display size.
-
-### No other files touched
-- CreateEventModal.tsx unchanged
-- Date/time, frequency, form submission — all untouched
+No changes to `ImageCropEditor.tsx` — its crop viewport and output canvas are already aligned at 16:9.
 
