@@ -27,6 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { useServerUnread } from "@/hooks/useServerUnread";
 import { useServerVoiceActivity } from "@/hooks/useServerVoiceActivity";
+import { useServerActiveEvents } from "@/hooks/useServerActiveEvents";
 import { useUnreadDMs } from "@/hooks/useUnreadDMs";
 import { useCreateChannel } from "@/contexts/CreateChannelContext";
 import { useNotifications } from "@/hooks/useNotifications";
