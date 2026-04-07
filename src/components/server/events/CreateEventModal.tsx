@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Volume2, MapPin, Upload, X, ArrowLeft } from "lucide-react";
+import ImageCropEditor from "./ImageCropEditor";
 
 interface CreateEventModalProps {
   open: boolean;
