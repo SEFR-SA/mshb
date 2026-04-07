@@ -164,7 +164,13 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
           </DialogTitle>
         </DialogHeader>
 
-        {step === 1 && (
+        {cropImageUrl ? (
+          <ImageCropEditor
+            imageUrl={cropImageUrl}
+            onApply={handleCropApply}
+            onCancel={handleCropCancel}
+          />
+        ) : step === 1 && (
           <div className="space-y-4">
             <RadioGroup
               value={form.locationType}
