@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Volume2, MapPin, Upload, X, ArrowLeft } from "lucide-react";
+import ImageCropEditor from "./ImageCropEditor";
 
 interface CreateEventModalProps {
   open: boolean;
@@ -55,6 +56,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
   const [form, setForm] = useState<FormState>(initialForm);
   const [voiceChannels, setVoiceChannels] = useState<VoiceChannel[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -83,7 +85,16 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    updateForm({ coverFile: file, coverPreview: URL.createObjectURL(file) });
+    setCropImageUrl(URL.createObjectURL(file));
+  };
+
+  const handleCropApply = (croppedFile: File) => {
+    updateForm({ coverFile: croppedFile, coverPreview: URL.createObjectURL(croppedFile) });
+    setCropImageUrl(null);
+  };
+
+  const handleCropCancel = () => {
+    setCropImageUrl(null);
   };
 
   const canProceedStep1 =
@@ -153,6 +164,13 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
           </DialogTitle>
         </DialogHeader>
 
+        {cropImageUrl ? (
+          <ImageCropEditor
+            imageUrl={cropImageUrl}
+            onApply={handleCropApply}
+            onCancel={handleCropCancel}
+          />
+        ) : (<>
         {step === 1 && (
           <div className="space-y-4">
             <RadioGroup
@@ -366,6 +384,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
             </div>
           </div>
         )}
+        </>)}
       </DialogContent>
     </Dialog>
   );
