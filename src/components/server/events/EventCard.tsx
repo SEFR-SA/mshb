@@ -56,7 +56,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, onToggleRsvp, onClick }) =
         <img
           src={event.cover_image_url}
           alt={event.title}
-          className="w-full aspect-video object-cover"
+          className="w-full h-40 object-cover"
         />
       )}
       <div className="p-4 space-y-3">

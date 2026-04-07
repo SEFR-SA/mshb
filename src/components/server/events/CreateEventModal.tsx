@@ -304,7 +304,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
               <Label>Cover Image</Label>
               {form.coverPreview ? (
                 <div className="relative">
-                  <img src={form.coverPreview} alt="Cover" className="w-full aspect-video object-cover rounded-lg" />
+                  <img src={form.coverPreview} alt="Cover" className="w-full h-32 object-cover rounded-lg" />
                   <Button
                     variant="destructive"
                     size="icon"
@@ -335,7 +335,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
           <div className="space-y-4">
             <div className="rounded-lg border border-border overflow-hidden">
               {form.coverPreview && (
-                <img src={form.coverPreview} alt="Cover" className="w-full aspect-video object-cover" />
+                <img src={form.coverPreview} alt="Cover" className="w-full h-32 object-cover" />
               )}
               <div className="p-4 space-y-2">
                 <p className="text-xs font-semibold text-primary uppercase">
