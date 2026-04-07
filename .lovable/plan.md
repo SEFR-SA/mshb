@@ -1,45 +1,37 @@
 
 
-## Add Event Frequency to Server Events
+## Chronological Validation for Event Date/Time Pickers
 
-### Phase 1: Database Migration
+### Approach
 
-Add a `frequency` text column to `server_events`, defaulting to `'DOES_NOT_REPEAT'`:
+Two files need changes: the `DateTimePicker` component (to accept constraint props) and the `CreateEventModal` (to wire constraints and auto-correct).
 
-```sql
-ALTER TABLE public.server_events
-  ADD COLUMN frequency text NOT NULL DEFAULT 'DOES_NOT_REPEAT';
-```
+### Step 1: Extend `DateTimePicker` API
 
-No new RLS policies needed — existing policies cover all columns on the table.
-
-### Phase 2: Update CreateEventModal
-
-**FormState** — add `frequency: string` field, default `'DOES_NOT_REPEAT'`:
+Add two optional props to `DateTimePickerProps`:
 
 ```typescript
-interface FormState {
-  // ... existing fields
-  frequency: string;
-}
+minDate?: Date;        // calendar days before this are disabled
+minTime?: Date;        // time slots before this are disabled (when same day)
 ```
 
-**Step 2 UI** — after the End Date/Time picker, add a `<Select>` dropdown with label "Event Frequency" and these options:
-- Does not repeat (`DOES_NOT_REPEAT`)
-- Daily (`DAILY`)
-- Weekly on {day} (`WEEKLY`)
-- Monthly (`MONTHLY`)
-- Annually (`YEARLY`)
-- Every weekday (Monday to Friday) (`WEEKDAYS`)
+**Calendar**: Pass `disabled={{ before: startOfDay(minDate) }}` to the `Calendar` component.
 
-The "Weekly" and similar labels will be dynamically generated from the selected start date (e.g., "Weekly on Tuesday") to match Discord's behavior shown in the screenshot.
+**Time list**: For each slot, if `minTime` is set and the currently selected date is the same day as `minTime`, disable slots where `(hours, minutes) <= minTime`'s time. Disabled slots get `opacity-50 pointer-events-none`.
 
-**handleSubmit** — include `frequency: form.frequency` in the insert payload (cast as `any` to bypass type checking until types regenerate).
+### Step 2: Wire constraints in `CreateEventModal`
+
+Pass `minDate={form.startDateTime}` and `minTime={form.startDateTime}` to the **End DateTime** picker only. The Start picker remains unconstrained.
+
+### Step 3: Auto-correction `useEffect`
+
+In `CreateEventModal`, add a `useEffect` watching `form.startDateTime`:
+- If `startDateTime` exists and `endDateTime` exists and `endDateTime <= startDateTime`, push `endDateTime` forward to match `startDateTime` (same datetime).
 
 ### Files
 
-| File | Action |
+| File | Change |
 |------|--------|
-| New migration | Add `frequency` column |
-| `src/components/server/events/CreateEventModal.tsx` | Add field to FormState, Select dropdown in step 2, include in insert |
+| `src/components/ui/date-time-picker.tsx` | Add `minDate`/`minTime` props, disable calendar days and time slots |
+| `src/components/server/events/CreateEventModal.tsx` | Pass constraint props to end picker, add auto-correction useEffect |
 
