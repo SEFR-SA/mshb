@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Hash, Volume2, Plus, Link, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone, BookOpen, Music, Bell, BellOff, LifeBuoy, Ticket } from "lucide-react";
+import { Hash, Volume2, Plus, Link, Settings, LogOut, Lock, MoreVertical, Pencil, Trash2, Users, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Monitor, MonitorOff, Video, VideoOff, ChevronDown, FolderPlus, Megaphone, BookOpen, Music, Bell, BellOff, LifeBuoy, Ticket, Calendar } from "lucide-react";
 import VoiceUserContextMenu from "./VoiceUserContextMenu";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useChannelUnread } from "@/hooks/useChannelUnread";
@@ -41,6 +41,9 @@ import { useChannelNotificationPref, type ChannelNotifLevel } from "@/hooks/useC
 import { useStreamTimer } from "@/hooks/useStreamTimer";
 import { useVoiceTimer } from "@/hooks/useVoiceTimer";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
+import EventSidebarIndicator from "./events/EventSidebarIndicator";
+import CreateEventModal from "./events/CreateEventModal";
+import EventBrowserModal from "./events/EventBrowserModal";
 
 
 interface Channel {
@@ -275,6 +278,8 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [createEventOpen, setCreateEventOpen] = useState(false);
+  const [eventBrowserOpen, setEventBrowserOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState("text");
   const [newCategory, setNewCategory] = useState("Text Channels");
@@ -967,6 +972,11 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setInviteModalOpen(true)} title={t("servers.copyInvite")}>
               <Link className="h-3.5 w-3.5" />
             </Button>
+            {isAdmin && (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCreateEventOpen(true)} title="Create Event">
+                <Calendar className="h-3.5 w-3.5" />
+              </Button>
+            )}
             {canOpenSettings && (
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)} title={t("servers.settings")}>
                 <Settings className="h-3.5 w-3.5" />
@@ -976,6 +986,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-4 pb-16">
+          <EventSidebarIndicator serverId={serverId} onClick={() => setEventBrowserOpen(true)} />
           {channelsLoading ? (
             <ChannelListSkeleton count={4} />
           ) : (
@@ -1520,6 +1531,14 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
       <ServerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} serverId={serverId} />
       <InviteModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} serverId={serverId} serverName={server?.name || ""} />
+      <CreateEventModal open={createEventOpen} onOpenChange={setCreateEventOpen} serverId={serverId} />
+      <EventBrowserModal
+        open={eventBrowserOpen}
+        onOpenChange={setEventBrowserOpen}
+        serverId={serverId}
+        isAdmin={isAdmin}
+        onCreateEvent={() => setCreateEventOpen(true)}
+      />
     </>
   );
 };

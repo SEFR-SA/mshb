@@ -449,6 +449,32 @@ export type Database = {
         }
         Relationships: []
       }
+      event_rsvps: {
+        Row: {
+          created_at: string
+          event_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "server_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friendships: {
         Row: {
           addressee_id: string
@@ -1422,6 +1448,69 @@ export type Database = {
           },
         ]
       }
+      server_events: {
+        Row: {
+          channel_id: string | null
+          cover_image_url: string | null
+          created_at: string
+          creator_id: string
+          description: string | null
+          end_time: string | null
+          external_location: string | null
+          id: string
+          location_type: Database["public"]["Enums"]["event_location_type"]
+          server_id: string
+          start_time: string
+          status: Database["public"]["Enums"]["event_status"]
+          title: string
+        }
+        Insert: {
+          channel_id?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          end_time?: string | null
+          external_location?: string | null
+          id?: string
+          location_type?: Database["public"]["Enums"]["event_location_type"]
+          server_id: string
+          start_time: string
+          status?: Database["public"]["Enums"]["event_status"]
+          title: string
+        }
+        Update: {
+          channel_id?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          end_time?: string | null
+          external_location?: string | null
+          id?: string
+          location_type?: Database["public"]["Enums"]["event_location_type"]
+          server_id?: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["event_status"]
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_events_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_events_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_folder_items: {
         Row: {
           created_at: string
@@ -2300,7 +2389,8 @@ export type Database = {
       validate_invite: { Args: { p_code: string }; Returns: Json }
     }
     Enums: {
-      [_ in never]: never
+      event_location_type: "voice" | "external"
+      event_status: "scheduled" | "active" | "completed" | "canceled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2427,6 +2517,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      event_location_type: ["voice", "external"],
+      event_status: ["scheduled", "active", "completed", "canceled"],
+    },
   },
 } as const
