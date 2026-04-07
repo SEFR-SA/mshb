@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     if (roomName.startsWith("server-voice:")) {
       const channelId = roomName.replace("server-voice:", "");
 
-      boostPromise = supabase
+      boostPromise = Promise.resolve(supabase
         .from("channels")
         .select("server_id")
         .eq("id", channelId)
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
             .eq("id", channel.server_id)
             .single();
           return server?.boost_level ?? 0;
-        });
+        }));
 
       // Check connect, speak, video permissions via service client (skips defaults for restricted channels)
       connectPromise = serviceClient
