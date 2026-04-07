@@ -91,16 +91,20 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
             <div className="p-1">
               {TIME_SLOTS.map((slot) => {
                 const active = isActiveSlot(slot.hours, slot.minutes);
+                const disabled = isSlotDisabled(slot.hours, slot.minutes);
                 return (
                   <button
                     key={slot.label}
                     ref={active ? activeRef : undefined}
-                    onClick={() => handleTimeSelect(slot.hours, slot.minutes)}
+                    onClick={() => !disabled && handleTimeSelect(slot.hours, slot.minutes)}
+                    disabled={disabled}
                     className={cn(
                       "w-full rounded-md px-3 py-1.5 text-sm text-start transition-colors",
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-accent hover:text-accent-foreground"
+                      disabled
+                        ? "opacity-50 pointer-events-none text-muted-foreground"
+                        : active
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-accent hover:text-accent-foreground"
                     )}
                   >
                     {slot.label}

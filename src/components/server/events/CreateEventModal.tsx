@@ -245,6 +245,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
                 value={form.endDateTime}
                 onChange={(d) => updateForm({ endDateTime: d })}
                 placeholder="Select end date & time"
+                minDate={form.startDateTime}
+                minTime={form.startDateTime}
               />
             </div>
 
