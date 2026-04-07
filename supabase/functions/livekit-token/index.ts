@@ -112,13 +112,13 @@ Deno.serve(async (req) => {
         } as any)
         .then(({ data }) => data ?? true));
 
-      videoPromise = serviceClient
+      videoPromise = Promise.resolve(serviceClient
         .rpc("has_channel_permission" as any, {
           _user_id: userId,
           _channel_id: channelId,
           _permission: "video",
         } as any)
-        .then(({ data }) => data ?? true);
+        .then(({ data }) => data ?? true));
     }
 
     const [{ data: profile }, boostLevel, canConnect, canSpeak, canVideo] =
