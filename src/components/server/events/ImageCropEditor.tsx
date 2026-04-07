@@ -10,7 +10,7 @@ interface ImageCropEditorProps {
 }
 
 const CROP_WIDTH = 460;
-const CROP_HEIGHT = 260; // ~16:9
+const CROP_HEIGHT = 260;
 const OUTPUT_WIDTH = 800;
 const OUTPUT_HEIGHT = 450;
 
@@ -21,46 +21,39 @@ const ImageCropEditor: React.FC<ImageCropEditorProps> = ({ imageUrl, onApply, on
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const posStart = useRef({ x: 0, y: 0 });
-  const imgRef = useRef<HTMLImageElement | null>(null);
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
   };
 
-  // Compute the displayed image size to fill crop area, then apply zoom
-  const getDisplaySize = useCallback(() => {
+  // Base size: minimum dimensions to "cover" the crop area (no zoom applied)
+  const getBaseSize = useCallback(() => {
     if (!naturalSize.w || !naturalSize.h) return { w: CROP_WIDTH, h: CROP_HEIGHT };
     const imgAspect = naturalSize.w / naturalSize.h;
     const cropAspect = CROP_WIDTH / CROP_HEIGHT;
-    let w: number, h: number;
     if (imgAspect > cropAspect) {
-      // image is wider — fit by height
-      h = CROP_HEIGHT * zoom;
-      w = h * imgAspect;
+      // wider image → fit height
+      return { w: CROP_HEIGHT * imgAspect, h: CROP_HEIGHT };
     } else {
-      // image is taller — fit by width
-      w = CROP_WIDTH * zoom;
-      h = w / imgAspect;
+      // taller image → fit width
+      return { w: CROP_WIDTH, h: CROP_WIDTH / imgAspect };
     }
-    return { w, h };
-  }, [naturalSize, zoom]);
+  }, [naturalSize]);
 
-  // Clamp position so image covers the crop window
   const clamp = useCallback(
     (pos: { x: number; y: number }) => {
-      const { w, h } = getDisplaySize();
-      const maxX = Math.max(0, (w - CROP_WIDTH) / 2);
-      const maxY = Math.max(0, (h - CROP_HEIGHT) / 2);
+      const base = getBaseSize();
+      const maxX = Math.max(0, (base.w * zoom - CROP_WIDTH) / 2);
+      const maxY = Math.max(0, (base.h * zoom - CROP_HEIGHT) / 2);
       return {
         x: Math.min(maxX, Math.max(-maxX, pos.x)),
         y: Math.min(maxY, Math.max(-maxY, pos.y)),
       };
     },
-    [getDisplaySize]
+    [getBaseSize, zoom]
   );
 
-  // Re-clamp when zoom changes
   useEffect(() => {
     setPosition((p) => clamp(p));
   }, [zoom, clamp]);
@@ -91,18 +84,24 @@ const ImageCropEditor: React.FC<ImageCropEditorProps> = ({ imageUrl, onApply, on
   const handleApply = async () => {
     if (!naturalSize.w || !naturalSize.h) return;
 
-    const { w: dispW, h: dispH } = getDisplaySize();
+    const base = getBaseSize();
 
-    // The crop window center in display coords
-    const centerX = dispW / 2 - position.x;
-    const centerY = dispH / 2 - position.y;
+    // Visible region in natural-image coordinates
+    const visibleW = naturalSize.w / zoom;
+    const visibleH = naturalSize.h / zoom;
 
-    // Convert display coords → natural image coords
-    const scale = naturalSize.w / dispW;
-    const sx = (centerX - CROP_WIDTH / 2) * scale;
-    const sy = (centerY - CROP_HEIGHT / 2) * scale;
-    const sw = CROP_WIDTH * scale;
-    const sh = CROP_HEIGHT * scale;
+    // But we only see a CROP_WIDTH × CROP_HEIGHT window of the base*zoom image.
+    // The crop window covers (CROP_WIDTH / (base.w * zoom)) of the natural width.
+    const cropNatW = (CROP_WIDTH / (base.w * zoom)) * naturalSize.w;
+    const cropNatH = (CROP_HEIGHT / (base.h * zoom)) * naturalSize.h;
+
+    // Center of the natural image, shifted by pan
+    // pan is in display pixels; convert to natural coords
+    const panNatX = (position.x / (base.w * zoom)) * naturalSize.w;
+    const panNatY = (position.y / (base.h * zoom)) * naturalSize.h;
+
+    const sx = (naturalSize.w - cropNatW) / 2 - panNatX;
+    const sy = (naturalSize.h - cropNatH) / 2 - panNatY;
 
     const canvas = document.createElement("canvas");
     canvas.width = OUTPUT_WIDTH;
@@ -117,7 +116,7 @@ const ImageCropEditor: React.FC<ImageCropEditorProps> = ({ imageUrl, onApply, on
       if (img.complete) resolve();
     });
 
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+    ctx.drawImage(img, sx, sy, cropNatW, cropNatH, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
 
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", 0.92)
@@ -128,7 +127,7 @@ const ImageCropEditor: React.FC<ImageCropEditorProps> = ({ imageUrl, onApply, on
     onApply(file);
   };
 
-  const displaySize = getDisplaySize();
+  const base = getBaseSize();
 
   return (
     <div className="space-y-4">
@@ -143,17 +142,18 @@ const ImageCropEditor: React.FC<ImageCropEditorProps> = ({ imageUrl, onApply, on
         onPointerUp={handlePointerUp}
       >
         <img
-          ref={imgRef}
           src={imageUrl}
           alt="Crop preview"
           draggable={false}
           onLoad={handleImageLoad}
           className="absolute select-none pointer-events-none"
           style={{
-            width: displaySize.w,
-            height: displaySize.h,
-            left: `calc(50% - ${displaySize.w / 2}px + ${position.x}px)`,
-            top: `calc(50% - ${displaySize.h / 2}px + ${position.y}px)`,
+            width: base.w,
+            height: base.h,
+            left: "50%",
+            top: "50%",
+            transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px)) scale(${zoom})`,
+            transformOrigin: "center center",
           }}
         />
         {/* Corner guides */}
