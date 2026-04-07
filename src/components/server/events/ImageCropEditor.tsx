@@ -9,8 +9,8 @@ interface ImageCropEditorProps {
   onCancel: () => void;
 }
 
-const CROP_WIDTH = 460;
-const CROP_HEIGHT = 260;
+const CROP_WIDTH = 448;
+const CROP_HEIGHT = 252;
 const OUTPUT_WIDTH = 800;
 const OUTPUT_HEIGHT = 450;
 
