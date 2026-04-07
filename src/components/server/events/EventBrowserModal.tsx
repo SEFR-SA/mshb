@@ -54,7 +54,7 @@ const EventBrowserModal: React.FC<EventBrowserModalProps> = ({
 
     const { data: rawEvents } = await supabase
       .from("server_events")
-      .select("*, profiles!server_events_creator_id_fkey(display_name, username, avatar_url)")
+      .select("*")
       .eq("server_id", serverId)
       .in("status", ["scheduled", "active"])
       .order("start_time", { ascending: true });
@@ -64,6 +64,16 @@ const EventBrowserModal: React.FC<EventBrowserModalProps> = ({
       setLoading(false);
       return;
     }
+
+    // Fetch creator profiles
+    const creatorIds = [...new Set(rawEvents.map((e) => e.creator_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, display_name, username, avatar_url")
+      .in("user_id", creatorIds);
+
+    const profileMap: Record<string, { display_name: string | null; username: string | null; avatar_url: string | null }> = {};
+    profiles?.forEach((p) => { profileMap[p.user_id] = p; });
 
     const eventIds = rawEvents.map((e) => e.id);
 
