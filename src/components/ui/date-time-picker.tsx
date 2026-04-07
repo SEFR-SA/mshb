@@ -58,6 +58,12 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
   const isActiveSlot = (hours: number, minutes: number) =>
     !!value && value.getHours() === hours && value.getMinutes() === minutes;
 
+  const isSlotDisabled = (hours: number, minutes: number) => {
+    if (!minTime || !value) return false;
+    if (!isSameDay(value, minTime)) return false;
+    return hours < minTime.getHours() || (hours === minTime.getHours() && minutes <= minTime.getMinutes());
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
