@@ -241,7 +241,26 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
             </div>
 
             <div className="space-y-2">
-              <Label>Description</Label>
+              <Label>Event Frequency</Label>
+              <Select value={form.frequency} onValueChange={(v) => updateForm({ frequency: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Does not repeat" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DOES_NOT_REPEAT">Does not repeat</SelectItem>
+                  <SelectItem value="DAILY">Daily</SelectItem>
+                  <SelectItem value="WEEKLY">
+                    {form.startDateTime
+                      ? `Weekly on ${form.startDateTime.toLocaleDateString(undefined, { weekday: "long" })}`
+                      : "Weekly"}
+                  </SelectItem>
+                  <SelectItem value="MONTHLY">Monthly</SelectItem>
+                  <SelectItem value="YEARLY">Annually</SelectItem>
+                  <SelectItem value="WEEKDAYS">Every weekday (Monday to Friday)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
               <Textarea
                 placeholder="Tell people more about your event..."
                 value={form.description}
