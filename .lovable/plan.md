@@ -1,50 +1,47 @@
 
 
-## Fix Image Cropper: Zoom & Aspect Ratio Bugs
+## Standardize Event Banner Aspect Ratio
 
-### Root Cause Analysis
+### Problem
 
-**Bug 1 — Off-center zoom:** The current code manually computes `width`/`height` in pixels and positions the image using `left`/`top` with `calc()`. When zoom changes, the image dimensions grow but the position formula `calc(50% - ${w/2}px + ${pos.x}px)` doesn't properly anchor the scale to the visual center — it re-centers the *top-left corner* relative to the container, causing the zoom to appear anchored to the top-left.
+The crop viewport is 460×260 (ratio 1.769:1) but the output canvas is 800×450 (ratio 1.778:1 = 16:9). This slight mismatch means the extracted image includes slightly more or less content than what the user sees during cropping.
 
-**Bug 2 — Distortion:** The `getDisplaySize()` function computes width and height independently based on zoom, which can produce dimensions that don't match the image's intrinsic aspect ratio in edge cases (particularly when the clamp + position math interacts with the display size calculation).
+### Fix
 
-### The Fix: CSS `transform` approach
+Change `CROP_HEIGHT` from `260` to `259` — wait, that's still not exact. The cleanest fix: make both use exact 16:9.
 
-Replace the manual width/height/left/top positioning with a single CSS `transform` on the `<img>`. This is mathematically simpler and inherently correct:
+**New constants:**
+```
+CROP_WIDTH  = 460
+CROP_HEIGHT = 259  // 460 / (16/9) = 258.75, rounds to 259 — still imprecise
+```
 
-**Preview rendering:**
-- The `<img>` gets `width`/`height` set to fill the crop area (cover fit, computed once on load) — this preserves aspect ratio by definition since we only set one axis and derive the other.
-- Zoom and pan applied via: `transform: translate(${x}px, ${y}px) scale(${zoom})` with `transformOrigin: 'center center'`.
-- `scale()` zooms from center automatically — no manual offset math needed.
+Better approach — use a clean 16:9 crop viewport:
+```
+CROP_WIDTH  = 464   // 464 / 16 * 9 = 261
+CROP_HEIGHT = 261
+```
 
-**Clamp logic:**
-- After zoom, the image's visual size is `baseW * zoom` × `baseH * zoom`. Max pan = `(visual - crop) / 2` on each axis, same as now but using the base size × zoom.
+Actually simplest: keep `CROP_WIDTH = 460`, set `CROP_HEIGHT = Math.round(460 * 9 / 16) = 259`. The output is 800×450 which is exact 16:9. The 0.03% rounding error at 259 vs 258.75 is invisible. But to be pixel-perfect, use **448×252** (both cleanly divisible: 448/16=28, 252/9=28).
 
-**Canvas extraction (Apply only):**
-- Compute what portion of the natural image is visible in the crop window:
-  - `visibleW = naturalW / zoom`, `visibleH = naturalH / zoom` (scaled proportionally to crop)
-  - Offset by pan: `sx = (naturalW - visibleW) / 2 - (pan.x / (baseW * zoom)) * naturalW`
-  - Draw that rect onto the 800×450 output canvas.
+**Final constants:**
+```typescript
+const CROP_WIDTH = 448;
+const CROP_HEIGHT = 252;   // exact 16:9
+const OUTPUT_WIDTH = 800;
+const OUTPUT_HEIGHT = 450;  // exact 16:9
+```
 
-### Changes
+This is the only change needed. The crop viewport and canvas output now share the exact same 16:9 ratio, so "what you see is what you get."
 
-**File:** `src/components/server/events/ImageCropEditor.tsx`
+### File
 
-1. **`getDisplaySize()`** — remove zoom from this function. It now returns the base "cover" size only (the minimum size to fill the crop area). Zoom is handled purely by CSS transform.
+| File | Change |
+|------|--------|
+| `src/components/server/events/ImageCropEditor.tsx` | Update `CROP_WIDTH` to 448, `CROP_HEIGHT` to 252 |
 
-2. **`<img>` style** — replace manual `width`/`height`/`left`/`top` with:
-   ```
-   width: baseW, height: baseH,
-   left: 50%, top: 50%,
-   transform: translate(calc(-50% + panX), calc(-50% + panY)) scale(zoom),
-   transformOrigin: 'center center'
-   ```
-
-3. **`clamp()`** — update to use `baseSize * zoom` for computing max pan bounds.
-
-4. **`handleApply()`** — rewrite extraction math to derive source rect from natural dimensions, zoom, and pan offset relative to base display size.
-
-### No other files touched
-- CreateEventModal.tsx unchanged
-- Date/time, frequency, form submission — all untouched
+### What stays untouched
+- All pan/zoom/transform logic (already correct — it's ratio-relative)
+- CreateEventModal.tsx — no changes needed
+- Date/time, frequency, form submission — untouched
 
