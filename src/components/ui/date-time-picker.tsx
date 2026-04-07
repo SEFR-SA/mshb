@@ -87,7 +87,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
             disabled={minDate ? { before: startOfDay(minDate) } : undefined}
             className="p-3 pointer-events-auto"
           />
-          <ScrollArea className="h-[300px] w-[120px] border-s border-border">
+          <div className="h-[300px] w-[120px] border-s border-border overflow-y-auto">
             <div className="p-1">
               {TIME_SLOTS.map((slot) => {
                 const active = isActiveSlot(slot.hours, slot.minutes);
