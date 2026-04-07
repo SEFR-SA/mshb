@@ -1,71 +1,50 @@
 
 
-## Event Cover Image Cropper — Implementation Plan
+## Fix Image Cropper: Zoom & Aspect Ratio Bugs
 
-### Approach
+### Root Cause Analysis
 
-Create a new `ImageCropEditor` component file and integrate it into the existing cover image flow. No third-party packages — the pan/zoom/canvas math is straightforward for a fixed-aspect-ratio banner crop.
+**Bug 1 — Off-center zoom:** The current code manually computes `width`/`height` in pixels and positions the image using `left`/`top` with `calc()`. When zoom changes, the image dimensions grow but the position formula `calc(50% - ${w/2}px + ${pos.x}px)` doesn't properly anchor the scale to the visual center — it re-centers the *top-left corner* relative to the container, causing the zoom to appear anchored to the top-left.
 
-### New file: `src/components/server/events/ImageCropEditor.tsx`
+**Bug 2 — Distortion:** The `getDisplaySize()` function computes width and height independently based on zoom, which can produce dimensions that don't match the image's intrinsic aspect ratio in edge cases (particularly when the clamp + position math interacts with the display size calculation).
 
-A self-contained component that receives a raw image URL and returns a cropped `File` on "Apply".
+### The Fix: CSS `transform` approach
 
-**Props:**
-```typescript
-interface ImageCropEditorProps {
-  imageUrl: string;
-  onApply: (croppedFile: File) => void;
-  onCancel: () => void;
-}
-```
+Replace the manual width/height/left/top positioning with a single CSS `transform` on the `<img>`. This is mathematically simpler and inherently correct:
 
-**Internal state:**
-- `zoom: number` — range 1.0 to 3.0, controlled by `<Slider />`
-- `position: { x: number, y: number }` — pixel offset from center, updated by drag
-- `isDragging: boolean` + `dragStart` ref for mouse/touch tracking
-- `imageSize: { naturalWidth, naturalHeight }` — loaded from the `<img>` element
+**Preview rendering:**
+- The `<img>` gets `width`/`height` set to fill the crop area (cover fit, computed once on load) — this preserves aspect ratio by definition since we only set one axis and derive the other.
+- Zoom and pan applied via: `transform: translate(${x}px, ${y}px) scale(${zoom})` with `transformOrigin: 'center center'`.
+- `scale()` zooms from center automatically — no manual offset math needed.
 
-**UI layout** (matches the Discord screenshot):
-- Dark overlay container
-- Title: "Edit Image"
-- Visible crop window (fixed 16:9 or similar banner aspect ratio) with the image behind it, scaled by `zoom` and translated by `position`
-- Zoom slider row: small image icon — `<Slider />` — large image icon
-- "Reset" link (left), "Cancel" + "Apply" buttons (right)
+**Clamp logic:**
+- After zoom, the image's visual size is `baseW * zoom` × `baseH * zoom`. Max pan = `(visual - crop) / 2` on each axis, same as now but using the base size × zoom.
 
-**Pan logic:**
-- `onMouseDown` / `onTouchStart` → set `isDragging`, record start coords
-- `onMouseMove` / `onTouchMove` → update `position` (clamped so image can't leave the crop window)
-- `onMouseUp` / `onTouchEnd` → clear `isDragging`
+**Canvas extraction (Apply only):**
+- Compute what portion of the natural image is visible in the crop window:
+  - `visibleW = naturalW / zoom`, `visibleH = naturalH / zoom` (scaled proportionally to crop)
+  - Offset by pan: `sx = (naturalW - visibleW) / 2 - (pan.x / (baseW * zoom)) * naturalW`
+  - Draw that rect onto the 800×450 output canvas.
 
-**Canvas extraction (on "Apply"):**
-- Create an offscreen `<canvas>` matching desired output dimensions (e.g. 800×450 for 16:9)
-- Calculate the source rectangle from the image's natural dimensions based on current zoom and pan offset
-- `ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvasW, canvasH)`
-- `canvas.toBlob()` → wrap as `File` → call `onApply(file)`
+### Changes
 
-### Changes to `CreateEventModal.tsx`
+**File:** `src/components/server/events/ImageCropEditor.tsx`
 
-**New state:**
-```typescript
-const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
-```
+1. **`getDisplaySize()`** — remove zoom from this function. It now returns the base "cover" size only (the minimum size to fill the crop area). Zoom is handled purely by CSS transform.
 
-**Modified `handleCoverSelect`:**
-Instead of saving directly to form, just set the raw URL:
-```typescript
-setCropImageUrl(URL.createObjectURL(file));
-```
+2. **`<img>` style** — replace manual `width`/`height`/`left`/`top` with:
+   ```
+   width: baseW, height: baseH,
+   left: 50%, top: 50%,
+   transform: translate(calc(-50% + panX), calc(-50% + panY)) scale(zoom),
+   transformOrigin: 'center center'
+   ```
 
-**Conditional render:**
-When `cropImageUrl` is set, render `<ImageCropEditor>` in place of the current step content. On "Apply", receive the cropped file, save to form state (`coverFile` + `coverPreview`), clear `cropImageUrl`. On "Cancel", just clear `cropImageUrl`.
+3. **`clamp()`** — update to use `baseSize * zoom` for computing max pan bounds.
 
-### Files
+4. **`handleApply()`** — rewrite extraction math to derive source rect from natural dimensions, zoom, and pan offset relative to base display size.
 
-| File | Action |
-|------|--------|
-| `src/components/server/events/ImageCropEditor.tsx` | Create — crop editor component |
-| `src/components/server/events/CreateEventModal.tsx` | Edit — intercept file select, show crop editor |
-
-### What this does NOT touch
-- Date/time pickers, frequency dropdown, form submission logic, database schema, any other component
+### No other files touched
+- CreateEventModal.tsx unchanged
+- Date/time, frequency, form submission — all untouched
 
