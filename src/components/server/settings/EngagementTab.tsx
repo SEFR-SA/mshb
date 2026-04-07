@@ -113,14 +113,22 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         ]);
 
       if (s) {
-        setWelcomeEnabled(!!(s as any).welcome_message_enabled);
-        setSystemChannelId((s as any).system_message_channel_id ?? "");
-        setNotifLevel((s as any).default_notification_level ?? "all_messages");
-        setInactiveChannelId((s as any).inactive_channel_id ?? "");
-        setInactiveTimeout((s as any).inactive_timeout ? String((s as any).inactive_timeout) : "");
-        setAutomodEnabled(!!(s as any).automod_enabled);
-        setFreeGamesChannelId((s as any).free_games_channel_id ?? "");
+        const we  = !!(s as any).welcome_message_enabled;
+        const sc  = (s as any).system_message_channel_id ?? "";
+        const nl  = (s as any).default_notification_level ?? "all_messages";
+        const ic  = (s as any).inactive_channel_id ?? "";
+        const it  = (s as any).inactive_timeout ? String((s as any).inactive_timeout) : "";
+        const am  = !!(s as any).automod_enabled;
+        const fg  = (s as any).free_games_channel_id ?? "";
+        setWelcomeEnabled(we);
+        setSystemChannelId(sc);
+        setNotifLevel(nl);
+        setInactiveChannelId(ic);
+        setInactiveTimeout(it);
+        setAutomodEnabled(am);
+        setFreeGamesChannelId(fg);
         setFreeGamesBotEnabled(!!(s as any).free_games_bot_enabled);
+        savedRef.current = { welcomeEnabled: we, systemChannelId: sc, notifLevel: nl, inactiveChannelId: ic, inactiveTimeout: it, freeGamesChannelId: fg, automodEnabled: am };
       }
       setChannels((ch as unknown as Channel[]) || []);
       setBannedWords((bw as unknown as BannedWordEntry[]) || []);
@@ -131,19 +139,6 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
   }, [serverId]);
 
   // ── Handlers: existing settings ─────────────────────────────────────────
-
-  const handleWelcomeToggle = async (checked: boolean) => {
-    const previous = welcomeEnabled;
-    setWelcomeEnabled(checked);
-    const { error } = await supabase
-      .from("servers" as any)
-      .update({ welcome_message_enabled: checked } as any)
-      .eq("id", serverId);
-    if (error) {
-      setWelcomeEnabled(previous);
-      toast({ title: t("common.error"), variant: "destructive" });
-    }
-  };
 
   const BOT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -175,6 +170,8 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           .eq("server_id", serverId)
           .eq("user_id", BOT_USER_ID);
         setFreeGamesChannelId("");
+        // Sync savedRef so the bar doesn't appear for this immediate action
+        savedRef.current = { ...savedRef.current, freeGamesChannelId: "" };
       }
     } catch {
       setFreeGamesBotEnabled(previous);
@@ -188,11 +185,13 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
       await supabase
         .from("servers" as any)
         .update({
+          welcome_message_enabled: welcomeEnabled,
           system_message_channel_id: systemChannelId || null,
           default_notification_level: notifLevel,
           inactive_channel_id: inactiveChannelId || null,
           inactive_timeout: inactiveTimeout ? parseInt(inactiveTimeout, 10) : null,
           free_games_channel_id: freeGamesChannelId || null,
+          automod_enabled: automodEnabled,
         } as any)
         .eq("id", serverId);
 
@@ -203,6 +202,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         changes: { field: "engagement" },
       } as any);
 
+      savedRef.current = { welcomeEnabled, systemChannelId, notifLevel, inactiveChannelId, inactiveTimeout, freeGamesChannelId, automodEnabled };
       toast({ title: t("profile.saved") });
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
@@ -211,27 +211,28 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
     }
   };
 
-  // ── Handlers: AutoMod ────────────────────────────────────────────────────
-
-  const handleAutomodToggle = async (checked: boolean) => {
-    const previous = automodEnabled;
-    setAutomodEnabled(checked);
-    const { error } = await supabase
-      .from("servers" as any)
-      .update({ automod_enabled: checked } as any)
-      .eq("id", serverId);
-    if (error) {
-      setAutomodEnabled(previous);
-      toast({ title: t("common.error"), variant: "destructive" });
-    } else {
-      await supabase.from("server_audit_logs" as any).insert({
-        server_id: serverId,
-        actor_id: user?.id,
-        action_type: "server_updated",
-        changes: { field: "automod_enabled", value: checked },
-      } as any);
-    }
+  const handleReset = () => {
+    const s = savedRef.current;
+    setWelcomeEnabled(s.welcomeEnabled);
+    setSystemChannelId(s.systemChannelId);
+    setNotifLevel(s.notifLevel);
+    setInactiveChannelId(s.inactiveChannelId);
+    setInactiveTimeout(s.inactiveTimeout);
+    setFreeGamesChannelId(s.freeGamesChannelId);
+    setAutomodEnabled(s.automodEnabled);
   };
+
+  const hasChanges = !loading && (
+    welcomeEnabled !== savedRef.current.welcomeEnabled ||
+    systemChannelId !== savedRef.current.systemChannelId ||
+    notifLevel !== savedRef.current.notifLevel ||
+    inactiveChannelId !== savedRef.current.inactiveChannelId ||
+    inactiveTimeout !== savedRef.current.inactiveTimeout ||
+    freeGamesChannelId !== savedRef.current.freeGamesChannelId ||
+    automodEnabled !== savedRef.current.automodEnabled
+  );
+
+  // ── Handlers: AutoMod ────────────────────────────────────────────────────
 
   const handleAddBannedWord = async () => {
     const word = bannedInput.trim().toLowerCase();
@@ -332,7 +333,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           </Label>
           <Switch
             checked={welcomeEnabled}
-            onCheckedChange={canEdit ? handleWelcomeToggle : undefined}
+            onCheckedChange={canEdit ? setWelcomeEnabled : undefined}
             disabled={!canEdit}
             className="shrink-0"
           />
@@ -447,15 +448,6 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
         </div>
       </div>
 
-      {canEdit && (
-        <div className="pt-2">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
-            {t("actions.save")}
-          </Button>
-        </div>
-      )}
-
       <Separator />
 
       {/* Section 4 — Free Games Bot */}
@@ -529,7 +521,7 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           </div>
           <Switch
             checked={automodEnabled}
-            onCheckedChange={canEdit ? handleAutomodToggle : undefined}
+            onCheckedChange={canEdit ? setAutomodEnabled : undefined}
             disabled={!canEdit}
             className="shrink-0"
           />
@@ -670,6 +662,8 @@ const EngagementTab = ({ serverId, canEdit }: Props) => {
           )}
         </div>
       </div>
+
+      <UnsavedChangesBar show={hasChanges} onSave={handleSave} onReset={handleReset} />
     </div>
   );
 };
