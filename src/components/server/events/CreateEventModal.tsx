@@ -262,6 +262,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
               </Select>
             </div>
 
+            <div className="space-y-2">
+              <Label>Description</Label>
               <Textarea
                 placeholder="Tell people more about your event..."
                 value={form.description}
