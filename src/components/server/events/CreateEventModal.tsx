@@ -56,6 +56,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
   const [form, setForm] = useState<FormState>(initialForm);
   const [voiceChannels, setVoiceChannels] = useState<VoiceChannel[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
