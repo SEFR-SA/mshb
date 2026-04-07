@@ -116,6 +116,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
         external_location: form.locationType === "external" ? form.externalLocation.trim() : null,
         cover_image_url: coverUrl,
         status: "scheduled" as any,
+        frequency: form.frequency as any,
       });
 
       if (error) throw error;
