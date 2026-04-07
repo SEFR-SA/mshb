@@ -105,6 +105,50 @@ export function useLiveKitRoom({
   const durationRef = useRef<ReturnType<typeof setInterval>>();
   const screenShareRelockRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ── Remote audio element manager ──────────────────────────────────────────
+  const audioContainerRef = useRef<HTMLDivElement | null>(null);
+  const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+
+  const getAudioContainer = useCallback(() => {
+    if (!audioContainerRef.current) {
+      const div = document.createElement("div");
+      div.id = "livekit-audio-container";
+      div.style.display = "none";
+      document.body.appendChild(div);
+      audioContainerRef.current = div;
+    }
+    return audioContainerRef.current;
+  }, []);
+
+  const attachRemoteAudio = useCallback((track: any, trackSid: string) => {
+    if (audioElementsRef.current.has(trackSid)) return;
+    const container = getAudioContainer();
+    const audioEl = document.createElement("audio");
+    audioEl.autoplay = true;
+    audioEl.setAttribute("playsInline", "true");
+    track.attach(audioEl);
+    container.appendChild(audioEl);
+    audioElementsRef.current.set(trackSid, audioEl);
+  }, [getAudioContainer]);
+
+  const detachRemoteAudio = useCallback((track: any, trackSid: string) => {
+    const audioEl = audioElementsRef.current.get(trackSid);
+    if (audioEl) {
+      track.detach(audioEl);
+      audioEl.remove();
+      audioElementsRef.current.delete(trackSid);
+    }
+  }, []);
+
+  const cleanupAllAudio = useCallback(() => {
+    audioElementsRef.current.forEach((el) => el.remove());
+    audioElementsRef.current.clear();
+    if (audioContainerRef.current) {
+      audioContainerRef.current.remove();
+      audioContainerRef.current = null;
+    }
+  }, []);
+
   // Keep ref in sync with state
   useEffect(() => {
     activeSpeakersRef.current = activeSpeakers;
