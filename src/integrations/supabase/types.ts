@@ -1457,6 +1457,7 @@ export type Database = {
           description: string | null
           end_time: string | null
           external_location: string | null
+          frequency: string
           id: string
           location_type: Database["public"]["Enums"]["event_location_type"]
           server_id: string
@@ -1472,6 +1473,7 @@ export type Database = {
           description?: string | null
           end_time?: string | null
           external_location?: string | null
+          frequency?: string
           id?: string
           location_type?: Database["public"]["Enums"]["event_location_type"]
           server_id: string
@@ -1487,6 +1489,7 @@ export type Database = {
           description?: string | null
           end_time?: string | null
           external_location?: string | null
+          frequency?: string
           id?: string
           location_type?: Database["public"]["Enums"]["event_location_type"]
           server_id?: string
