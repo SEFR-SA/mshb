@@ -134,10 +134,19 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
     if (!user) return;
     supabase
       .from("voice_channel_participants" as any)
-      .delete()
+      .update({ is_speaking: false } as any)
       .eq("channel_id", channelId)
       .eq("user_id", user.id)
-      .then();
+      .then(() => {
+        supabase
+          .from("voice_channel_participants" as any)
+          .delete()
+          .eq("channel_id", channelId)
+          .eq("user_id", user.id)
+          .then(() => {
+            window.dispatchEvent(new CustomEvent("voice-participants-changed"));
+          });
+      });
   }, [user, channelId]);
 
   // ── Speaking detection → DB + AFK reset ───────────────────────────────────
@@ -161,7 +170,9 @@ const VoiceConnectionManager = ({ channelId, channelName, serverId, onDisconnect
       .update({ is_speaking: isSpeaking } as any)
       .eq("channel_id", channelId)
       .eq("user_id", user.id)
-      .then();
+      .then(() => {
+        window.dispatchEvent(new CustomEvent("voice-participants-changed"));
+      });
   }, [lk.activeSpeakers, user, isJoined, channelId, resetIdleTimer, resetAfkTimer, isServerMuted]);
 
   // ── Sync mute/deafen to LiveKit + DB ──────────────────────────────────────
