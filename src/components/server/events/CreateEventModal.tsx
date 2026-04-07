@@ -1,0 +1,367 @@
+import React, { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import { Volume2, MapPin, Calendar, Upload, X, ArrowLeft } from "lucide-react";
+
+interface CreateEventModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  serverId: string;
+}
+
+interface VoiceChannel {
+  id: string;
+  name: string;
+}
+
+interface FormState {
+  locationType: "voice" | "external";
+  channelId: string;
+  externalLocation: string;
+  title: string;
+  description: string;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  coverFile: File | null;
+  coverPreview: string | null;
+}
+
+const initialForm: FormState = {
+  locationType: "voice",
+  channelId: "",
+  externalLocation: "",
+  title: "",
+  description: "",
+  startDate: "",
+  startTime: "",
+  endDate: "",
+  endTime: "",
+  coverFile: null,
+  coverPreview: null,
+};
+
+const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange, serverId }) => {
+  const { user } = useAuth();
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState<FormState>(initialForm);
+  const [voiceChannels, setVoiceChannels] = useState<VoiceChannel[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setStep(1);
+      setForm(initialForm);
+      return;
+    }
+    supabase
+      .from("channels")
+      .select("id, name")
+      .eq("server_id", serverId)
+      .eq("type", "voice")
+      .order("position")
+      .then(({ data }) => setVoiceChannels(data || []));
+  }, [open, serverId]);
+
+  const updateForm = (partial: Partial<FormState>) => setForm((f) => ({ ...f, ...partial }));
+
+  const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    updateForm({ coverFile: file, coverPreview: URL.createObjectURL(file) });
+  };
+
+  const canProceedStep1 =
+    form.locationType === "voice" ? !!form.channelId : form.externalLocation.trim().length > 0;
+
+  const canProceedStep2 = form.title.trim().length > 0 && !!form.startDate && !!form.startTime;
+
+  const handleSubmit = async () => {
+    if (!user) return;
+    setSubmitting(true);
+    try {
+      let coverUrl: string | null = null;
+
+      if (form.coverFile) {
+        const ext = form.coverFile.name.split(".").pop();
+        const path = `${serverId}/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from("event_covers")
+          .upload(path, form.coverFile);
+        if (uploadErr) throw uploadErr;
+        const { data: urlData } = supabase.storage.from("event_covers").getPublicUrl(path);
+        coverUrl = urlData.publicUrl;
+      }
+
+      const startTime = new Date(`${form.startDate}T${form.startTime}`).toISOString();
+      const endTime =
+        form.endDate && form.endTime
+          ? new Date(`${form.endDate}T${form.endTime}`).toISOString()
+          : null;
+
+      const { error } = await supabase.from("server_events").insert({
+        server_id: serverId,
+        creator_id: user.id,
+        title: form.title.trim(),
+        description: form.description.trim() || null,
+        start_time: startTime,
+        end_time: endTime,
+        location_type: form.locationType as any,
+        channel_id: form.locationType === "voice" ? form.channelId : null,
+        external_location: form.locationType === "external" ? form.externalLocation.trim() : null,
+        cover_image_url: coverUrl,
+        status: "scheduled" as any,
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Event created!", description: `"${form.title}" has been scheduled.` });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast({ title: "Failed to create event", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {step > 1 && (
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setStep((s) => s - 1)}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            {step === 1 && "Where is your event?"}
+            {step === 2 && "Event Details"}
+            {step === 3 && "Review & Create"}
+          </DialogTitle>
+        </DialogHeader>
+
+        {step === 1 && (
+          <div className="space-y-4">
+            <RadioGroup
+              value={form.locationType}
+              onValueChange={(v) => updateForm({ locationType: v as "voice" | "external" })}
+              className="space-y-3"
+            >
+              <label className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/30 cursor-pointer transition-colors">
+                <RadioGroupItem value="voice" />
+                <Volume2 className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Voice Channel</p>
+                  <p className="text-xs text-muted-foreground">Host in a voice channel</p>
+                </div>
+              </label>
+              <label className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/30 cursor-pointer transition-colors">
+                <RadioGroupItem value="external" />
+                <MapPin className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Somewhere Else</p>
+                  <p className="text-xs text-muted-foreground">Add a link or location</p>
+                </div>
+              </label>
+            </RadioGroup>
+
+            {form.locationType === "voice" && (
+              <div className="space-y-2">
+                <Label>Select a Channel</Label>
+                <Select value={form.channelId} onValueChange={(v) => updateForm({ channelId: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a voice channel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {voiceChannels.map((ch) => (
+                      <SelectItem key={ch.id} value={ch.id}>
+                        <span className="flex items-center gap-2">
+                          <Volume2 className="h-3.5 w-3.5" />
+                          {ch.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {form.locationType === "external" && (
+              <div className="space-y-2">
+                <Label>Location or Link</Label>
+                <Input
+                  placeholder="Add a location, link, or something..."
+                  value={form.externalLocation}
+                  onChange={(e) => updateForm({ externalLocation: e.target.value })}
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button onClick={() => setStep(2)} disabled={!canProceedStep1}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Event Topic *</Label>
+              <Input
+                placeholder="What is your event about?"
+                value={form.title}
+                onChange={(e) => updateForm({ title: e.target.value })}
+                maxLength={100}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Start Date *</Label>
+                <Input
+                  type="date"
+                  value={form.startDate}
+                  onChange={(e) => updateForm({ startDate: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Start Time *</Label>
+                <Input
+                  type="time"
+                  value={form.startTime}
+                  onChange={(e) => updateForm({ startTime: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>End Date</Label>
+                <Input
+                  type="date"
+                  value={form.endDate}
+                  onChange={(e) => updateForm({ endDate: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Time</Label>
+                <Input
+                  type="time"
+                  value={form.endTime}
+                  onChange={(e) => updateForm({ endTime: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                placeholder="Tell people more about your event..."
+                value={form.description}
+                onChange={(e) => updateForm({ description: e.target.value })}
+                className="min-h-[80px]"
+                maxLength={1000}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Cover Image</Label>
+              {form.coverPreview ? (
+                <div className="relative">
+                  <img src={form.coverPreview} alt="Cover" className="w-full h-32 object-cover rounded-lg" />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-6 w-6"
+                    onClick={() => updateForm({ coverFile: null, coverPreview: null })}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 h-24 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-accent/20 transition-colors">
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Upload Cover Image</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleCoverSelect} />
+                </label>
+              )}
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={() => setStep(3)} disabled={!canProceedStep2}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border overflow-hidden">
+              {form.coverPreview && (
+                <img src={form.coverPreview} alt="Cover" className="w-full h-32 object-cover" />
+              )}
+              <div className="p-4 space-y-2">
+                <p className="text-xs font-semibold text-primary uppercase">
+                  {form.startDate && form.startTime
+                    ? new Date(`${form.startDate}T${form.startTime}`).toLocaleDateString(undefined, {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                      }) +
+                      " — " +
+                      new Date(`${form.startDate}T${form.startTime}`).toLocaleTimeString(undefined, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : ""}
+                </p>
+                <h3 className="text-lg font-bold">{form.title}</h3>
+                {form.description && (
+                  <p className="text-sm text-muted-foreground">{form.description}</p>
+                )}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {form.locationType === "voice" ? (
+                    <>
+                      <Volume2 className="h-3.5 w-3.5" />
+                      <span>
+                        {voiceChannels.find((c) => c.id === form.channelId)?.name || "Voice Channel"}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="h-3.5 w-3.5" />
+                      <span>{form.externalLocation}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={submitting}>
+                {submitting ? "Creating..." : "Create Event"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default CreateEventModal;
