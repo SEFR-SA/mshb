@@ -1,27 +1,30 @@
 
 
-## Fix: Dropdown Menu & Start Button Issues in Event Cards
+## Fix: Start Event Confirmation Dialog Trapped Behind Modal
 
-### Bug 1: Dropdown Menu Not Visible
+### Root Cause
 
-**Root cause:** The `DropdownMenuContent` portals to document body at `z-50` (default). But the Dialog overlay and content sit at `z-[10000]`. The dropdown renders *behind* the dialog — it opens but is invisible.
+The `AlertDialog` (confirmation for Start/Cancel) uses `z-50` for both its overlay and content. The parent `Dialog` (Event Browser) uses `z-[10000]`. The AlertDialog renders *behind* the Dialog — the user sees the overlay darken but the actual confirmation buttons are invisible and unreachable. This also blocks closing the parent Dialog since the AlertDialog's overlay captures all clicks.
 
-**Fix in `EventCard.tsx`:** Add `className="z-[10001]"` to `<DropdownMenuContent>` so it renders above the dialog layer. This follows the existing project convention noted in the codebase (SelectContent uses `z-[10001]` for the same reason).
+### Fix
 
-### Bug 2: Start Button Doesn't Close Modal or Navigate
+**File: `src/components/server/events/EventBrowserModal.tsx`**
 
-**Root cause:** In `handleConfirmAction` (EventBrowserModal.tsx), after updating the event status and calling `setVoiceChannel` + `navigate`, the code never calls `onOpenChange(false)` to close the Events dialog. The dialog stays open, blocking the navigation visually.
+Pass `className="z-[10002]"` to `AlertDialogContent` and update the `AlertDialogOverlay` z-index indirectly by passing a className override on `AlertDialogContent`. Since `AlertDialogContent` includes `AlertDialogOverlay` internally, we need to update the `alert-dialog.tsx` component's z-indices.
 
-**Fix in `EventBrowserModal.tsx`:** After a successful "start" action, call `onOpenChange(false)` before navigating. This closes the dialog and allows the user to see the voice channel they've been routed to.
+**Simpler approach — File: `src/components/ui/alert-dialog.tsx`**
+
+Update the `AlertDialogOverlay` from `z-50` to `z-[10001]` and `AlertDialogContent` from `z-50` to `z-[10001]`. This matches the convention already used for `DropdownMenuContent` and keeps the AlertDialog above all Dialog layers.
+
+This is safe because AlertDialogs are always top-priority confirmation dialogs that should appear above everything else.
 
 ### Changes
 
-**File: `src/components/server/events/EventCard.tsx`**
-- Line 175: Add `className="z-[10001]"` to `<DropdownMenuContent>`
-
-**File: `src/components/server/events/EventBrowserModal.tsx`**
-- In `handleConfirmAction`, after the successful start branch (line ~192), add `onOpenChange(false)` before the voice join + navigate block
+| File | Change |
+|------|--------|
+| `src/components/ui/alert-dialog.tsx` | Line 19: `z-50` → `z-[10001]`; Line 37: `z-50` → `z-[10001]` |
 
 ### What stays untouched
-- Date/time logic, frequency, CreateEventModal, ImageCropEditor — all unchanged
+- EventBrowserModal.tsx, EventCard.tsx, CreateEventModal.tsx — no changes
+- All event logic, date/time, frequency — untouched
 
