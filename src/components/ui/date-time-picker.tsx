@@ -84,6 +84,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
             mode="single"
             selected={value}
             onSelect={handleDaySelect}
+            disabled={minDate ? { before: startOfDay(minDate) } : undefined}
             className="p-3 pointer-events-auto"
           />
           <ScrollArea className="h-[300px] w-[120px] border-s border-border">
