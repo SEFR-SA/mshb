@@ -202,7 +202,7 @@ const EventBrowserModal: React.FC<EventBrowserModalProps> = ({
     } else if (type === "cancel") {
       const { error } = await supabase
         .from("server_events")
-        .update({ status: "cancelled" as any })
+        .update({ status: "canceled" as any })
         .eq("id", eventId);
 
       if (error) {
