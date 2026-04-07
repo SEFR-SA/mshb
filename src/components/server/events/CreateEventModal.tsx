@@ -31,6 +31,7 @@ interface FormState {
   description: string;
   startDateTime: Date | undefined;
   endDateTime: Date | undefined;
+  frequency: string;
   coverFile: File | null;
   coverPreview: string | null;
 }
@@ -43,6 +44,7 @@ const initialForm: FormState = {
   description: "",
   startDateTime: undefined,
   endDateTime: undefined,
+  frequency: "DOES_NOT_REPEAT",
   coverFile: null,
   coverPreview: null,
 };
@@ -114,6 +116,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
         external_location: form.locationType === "external" ? form.externalLocation.trim() : null,
         cover_image_url: coverUrl,
         status: "scheduled" as any,
+        frequency: form.frequency as any,
       });
 
       if (error) throw error;
@@ -236,6 +239,27 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
                 onChange={(d) => updateForm({ endDateTime: d })}
                 placeholder="Select end date & time"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Event Frequency</Label>
+              <Select value={form.frequency} onValueChange={(v) => updateForm({ frequency: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Does not repeat" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DOES_NOT_REPEAT">Does not repeat</SelectItem>
+                  <SelectItem value="DAILY">Daily</SelectItem>
+                  <SelectItem value="WEEKLY">
+                    {form.startDateTime
+                      ? `Weekly on ${form.startDateTime.toLocaleDateString(undefined, { weekday: "long" })}`
+                      : "Weekly"}
+                  </SelectItem>
+                  <SelectItem value="MONTHLY">Monthly</SelectItem>
+                  <SelectItem value="YEARLY">Annually</SelectItem>
+                  <SelectItem value="WEEKDAYS">Every weekday (Monday to Friday)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
