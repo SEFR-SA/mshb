@@ -981,6 +981,7 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-4 pb-16">
+          <EventSidebarIndicator serverId={serverId} onClick={() => setEventBrowserOpen(true)} />
           {channelsLoading ? (
             <ChannelListSkeleton count={4} />
           ) : (
