@@ -28,7 +28,7 @@ for (let h = 0; h < 24; h++) {
   }
 }
 
-export function DateTimePicker({ value, onChange, placeholder = "Select date & time" }: DateTimePickerProps) {
+export function DateTimePicker({ value, onChange, placeholder = "Select date & time", minDate, minTime }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
   const activeRef = React.useRef<HTMLButtonElement>(null);
 
