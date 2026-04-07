@@ -384,7 +384,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
             </div>
           </div>
         )}
-        }
+        </>)}
       </DialogContent>
     </Dialog>
   );
