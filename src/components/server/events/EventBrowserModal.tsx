@@ -227,7 +227,7 @@ const EventBrowserModal: React.FC<EventBrowserModalProps> = ({
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -112,7 +112,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
                 );
               })}
             </div>
-          </ScrollArea>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
