@@ -85,7 +85,16 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    updateForm({ coverFile: file, coverPreview: URL.createObjectURL(file) });
+    setCropImageUrl(URL.createObjectURL(file));
+  };
+
+  const handleCropApply = (croppedFile: File) => {
+    updateForm({ coverFile: croppedFile, coverPreview: URL.createObjectURL(croppedFile) });
+    setCropImageUrl(null);
+  };
+
+  const handleCropCancel = () => {
+    setCropImageUrl(null);
   };
 
   const canProceedStep1 =
