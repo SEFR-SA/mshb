@@ -5,7 +5,7 @@ import { NavLink } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
-import { Pencil, Palette, FolderOpen, ChevronDown, ChevronRight, CheckCheck } from "lucide-react";
+import { Pencil, Palette, FolderOpen, ChevronDown, ChevronRight, CheckCheck, Calendar } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface FolderServer {
@@ -24,6 +24,7 @@ interface ServerFolderProps {
   onNavigate?: () => void;
   onDropServer: (serverId: string) => void;
   unreadMap: Map<string, boolean>;
+  activeEventSet?: Set<string>;
   onMarkFolderAsRead?: () => void;
 }
 
@@ -37,6 +38,7 @@ const ServerFolder: React.FC<ServerFolderProps> = ({
   onNavigate,
   onDropServer,
   unreadMap,
+  activeEventSet,
   onMarkFolderAsRead,
 }) => {
   const { t } = useTranslation();
@@ -116,6 +118,7 @@ const ServerFolder: React.FC<ServerFolderProps> = ({
             >
               {servers.map((s) => {
                 const hasUnread = unreadMap.get(s.id) || false;
+                const hasActiveEvent = activeEventSet?.has(s.id) || false;
                 return (
                   <div key={s.id} className="relative">
                     {getNotificationPrefs().showBadge && hasUnread && (
@@ -142,6 +145,11 @@ const ServerFolder: React.FC<ServerFolderProps> = ({
                         </AvatarFallback>
                       </Avatar>
                     </NavLink>
+                    {hasActiveEvent && (
+                      <div className="absolute -bottom-0.5 -end-0.5 bg-primary rounded-full p-0.5 z-10">
+                        <Calendar className="h-2 w-2 text-primary-foreground" />
+                      </div>
+                    )}
                   </div>
                 );
               })}
