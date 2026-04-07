@@ -1,7 +1,14 @@
-import React from "react";
-import { Calendar, MapPin, Volume2, Users, Star } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Calendar, MapPin, Volume2, Users, Star, MoreHorizontal, Play, Flag, Pencil, XCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface EventCardProps {
   event: {
@@ -15,6 +22,7 @@ interface EventCardProps {
     external_location: string | null;
     cover_image_url: string | null;
     status: string;
+    creator_id: string;
     creator: {
       display_name: string | null;
       username: string | null;
@@ -24,11 +32,35 @@ interface EventCardProps {
     rsvp_count: number;
     is_interested: boolean;
   };
+  isAdmin: boolean;
+  currentUserId: string | null;
   onToggleRsvp: (eventId: string, isInterested: boolean) => void;
+  onStartEvent?: (eventId: string) => void;
+  onEditEvent?: (eventId: string) => void;
+  onCancelEvent?: (eventId: string) => void;
   onClick?: () => void;
 }
 
-const EventCard: React.FC<EventCardProps> = ({ event, onToggleRsvp, onClick }) => {
+const FIFTEEN_MINUTES = 15 * 60 * 1000;
+
+const EventCard: React.FC<EventCardProps> = ({
+  event,
+  isAdmin,
+  currentUserId,
+  onToggleRsvp,
+  onStartEvent,
+  onEditEvent,
+  onCancelEvent,
+  onClick,
+}) => {
+  const [tick, setTick] = useState(0);
+
+  // Re-evaluate every 60s for the time-gated start button
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
   const startDate = new Date(event.start_time);
   const formattedDate = startDate.toLocaleDateString(undefined, {
     weekday: "long",
@@ -46,6 +78,13 @@ const EventCard: React.FC<EventCardProps> = ({ event, onToggleRsvp, onClick }) =
       : event.external_location || "External Location";
 
   const creatorName = event.creator?.display_name || event.creator?.username || "Unknown";
+
+  const isCreatorOrAdmin = currentUserId === event.creator_id || isAdmin;
+  const timeUntilStart = startDate.getTime() - Date.now();
+  const canStart =
+    isCreatorOrAdmin &&
+    event.status === "scheduled" &&
+    timeUntilStart <= FIFTEEN_MINUTES;
 
   return (
     <div
@@ -105,8 +144,66 @@ const EventCard: React.FC<EventCardProps> = ({ event, onToggleRsvp, onClick }) =
               }}
             >
               <Star className={`h-3 w-3 ${event.is_interested ? "fill-current" : ""}`} />
-              {event.is_interested ? "Interested" : "Interested"}
+              Interested
             </Button>
+
+            {canStart && (
+              <Button
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStartEvent?.(event.id);
+                }}
+              >
+                <Play className="h-3 w-3" />
+                Start
+              </Button>
+            )}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                {isCreatorOrAdmin && event.status === "scheduled" && (
+                  <DropdownMenuItem onClick={() => onStartEvent?.(event.id)}>
+                    <Play className="h-4 w-4 me-2" />
+                    Start Event
+                  </DropdownMenuItem>
+                )}
+                {isCreatorOrAdmin && (
+                  <DropdownMenuItem onClick={() => onEditEvent?.(event.id)}>
+                    <Pencil className="h-4 w-4 me-2" />
+                    Edit Event
+                  </DropdownMenuItem>
+                )}
+                {isCreatorOrAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => onCancelEvent?.(event.id)}
+                    >
+                      <XCircle className="h-4 w-4 me-2" />
+                      Cancel Event
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                  <Flag className="h-4 w-4 me-2" />
+                  Report Event
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

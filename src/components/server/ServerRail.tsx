@@ -7,7 +7,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2, CheckCheck, ShieldCheck, ScrollText, User, FolderPlus, Tag, TrendingUp, Smile, Sticker, Bell, Zap, Crown } from "lucide-react";
+import { Plus, LogIn, MessageSquare, Users, Settings, Copy, LogOut, Trash2, Monitor, Volume2, CheckCheck, ShieldCheck, ScrollText, User, FolderPlus, Tag, TrendingUp, Smile, Sticker, Bell, Zap, Crown, Calendar } from "lucide-react";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent, ContextMenuCheckboxItem } from "@/components/ui/context-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -27,6 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { useServerUnread } from "@/hooks/useServerUnread";
 import { useServerVoiceActivity } from "@/hooks/useServerVoiceActivity";
+import { useServerActiveEvents } from "@/hooks/useServerActiveEvents";
 import { useUnreadDMs } from "@/hooks/useUnreadDMs";
 import { useCreateChannel } from "@/contexts/CreateChannelContext";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -98,6 +99,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const serverIds = servers.map((s) => s.id);
   const unreadMap = useServerUnread(serverIds);
   const voiceActivityMap = useServerVoiceActivity(serverIds);
+  const activeEventSet = useServerActiveEvents(serverIds);
   const { unreadDMs } = useUnreadDMs();
   const { prefsMap: notifPrefsMap, setLevel: setNotifLevel } = useServerNotificationPrefs(serverIds);
 
@@ -423,6 +425,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                   onNavigate={onNavigate}
                   onDropServer={(serverId) => handleDropOnFolder(folder.id, serverId)}
                   unreadMap={unreadMap}
+                  activeEventSet={activeEventSet}
                   onMarkFolderAsRead={() => Promise.all(folderServers.map((s) => handleMarkAsRead(s.id)))}
                 />
               );
@@ -478,7 +481,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                               </AvatarFallback>
                             </Avatar>
                           </NavLink>
-                          {voiceActivity?.hasVoice && (
+                          {voiceActivity?.hasVoice ? (
                             <div className="absolute -bottom-0.5 -end-0.5 bg-green-500 rounded-full p-0.5 z-10">
                               {voiceActivity.hasScreenShare ? (
                                 <Monitor className="h-2.5 w-2.5 text-white" />
@@ -486,7 +489,11 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                                 <Volume2 className="h-2.5 w-2.5 text-white" />
                               )}
                             </div>
-                          )}
+                          ) : activeEventSet.has(s.id) ? (
+                            <div className="absolute -bottom-0.5 -end-0.5 bg-primary rounded-full p-0.5 z-10">
+                              <Calendar className="h-2.5 w-2.5 text-primary-foreground" />
+                            </div>
+                          ) : null}
                         </div>
                       </TooltipTrigger>
                     </ContextMenuTrigger>
