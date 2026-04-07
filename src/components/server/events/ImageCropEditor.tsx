@@ -10,9 +10,9 @@ interface ImageCropEditorProps {
 }
 
 const CROP_WIDTH = 448;
-const CROP_HEIGHT = 252;
-const OUTPUT_WIDTH = 800;
-const OUTPUT_HEIGHT = 450;
+const CROP_HEIGHT = 128;
+const OUTPUT_WIDTH = 896;
+const OUTPUT_HEIGHT = 256;
 
 const ImageCropEditor: React.FC<ImageCropEditorProps> = ({ imageUrl, onApply, onCancel }) => {
   const [zoom, setZoom] = useState(1);
