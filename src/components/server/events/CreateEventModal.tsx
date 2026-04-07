@@ -44,6 +44,7 @@ const initialForm: FormState = {
   description: "",
   startDateTime: undefined,
   endDateTime: undefined,
+  frequency: "DOES_NOT_REPEAT",
   coverFile: null,
   coverPreview: null,
 };
