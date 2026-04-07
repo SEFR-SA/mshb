@@ -972,6 +972,11 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setInviteModalOpen(true)} title={t("servers.copyInvite")}>
               <Link className="h-3.5 w-3.5" />
             </Button>
+            {isAdmin && (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCreateEventOpen(true)} title="Create Event">
+                <Calendar className="h-3.5 w-3.5" />
+              </Button>
+            )}
             {canOpenSettings && (
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)} title={t("servers.settings")}>
                 <Settings className="h-3.5 w-3.5" />
