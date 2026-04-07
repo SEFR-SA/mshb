@@ -122,7 +122,7 @@ const EventBrowserModal: React.FC<EventBrowserModalProps> = ({
       external_location: e.external_location,
       cover_image_url: e.cover_image_url,
       status: e.status as string,
-      creator: e.profiles as any,
+      creator: profileMap[e.creator_id] || null,
       channel_name: e.channel_id ? channelMap[e.channel_id] || null : null,
       rsvp_count: countMap[e.id] || 0,
       is_interested: userRsvpSet.has(e.id),
