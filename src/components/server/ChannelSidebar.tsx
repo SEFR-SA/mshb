@@ -41,6 +41,9 @@ import { useChannelNotificationPref, type ChannelNotifLevel } from "@/hooks/useC
 import { useStreamTimer } from "@/hooks/useStreamTimer";
 import { useVoiceTimer } from "@/hooks/useVoiceTimer";
 import { useServerPermissions } from "@/hooks/useServerPermissions";
+import EventSidebarIndicator from "./events/EventSidebarIndicator";
+import CreateEventModal from "./events/CreateEventModal";
+import EventBrowserModal from "./events/EventBrowserModal";
 
 
 interface Channel {
