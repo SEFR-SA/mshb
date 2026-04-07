@@ -172,7 +172,7 @@ const EventCard: React.FC<EventCardProps> = ({
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuContent align="end" className="z-[10001]" onClick={(e) => e.stopPropagation()}>
                 {isCreatorOrAdmin && event.status === "scheduled" && (
                   <DropdownMenuItem onClick={() => onStartEvent?.(event.id)}>
                     <Play className="h-4 w-4 me-2" />

@@ -190,6 +190,7 @@ const EventBrowserModal: React.FC<EventBrowserModalProps> = ({
       } else {
         toast({ title: "Event started!" });
         setEvents((prev) => prev.map((e) => e.id === eventId ? { ...e, status: "active" } : e));
+        onOpenChange(false);
 
         // Auto-join voice channel if applicable
         if (event?.location_type === "voice" && event.channel_id) {
