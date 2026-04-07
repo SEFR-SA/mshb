@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-
 interface DateTimePickerProps {
   value: Date | undefined;
   onChange: (date: Date | undefined) => void;
@@ -30,13 +29,24 @@ for (let h = 0; h < 24; h++) {
 
 export function DateTimePicker({ value, onChange, placeholder = "Select date & time", minDate, minTime }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
+  const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
   const activeRef = React.useRef<HTMLButtonElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
 
   React.useEffect(() => {
     if (open) {
       setTimeout(() => activeRef.current?.scrollIntoView({ block: "center" }), 50);
     }
   }, [open]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      setPortalContainer(
+        (triggerRef.current?.closest("[role='dialog'], [data-vaul-drawer]") as HTMLElement | null) ?? null,
+      );
+    }
+    setOpen(nextOpen);
+  };
 
   const handleDaySelect = (day: Date | undefined) => {
     if (!day) return;
@@ -65,9 +75,10 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
+          ref={triggerRef}
           variant="outline"
           className={cn(
             "w-full justify-start text-start font-normal",
@@ -78,7 +89,12 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
           {value ? format(value, "PPP 'at' p") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 z-[10001]" align="start" sideOffset={4}>
+      <PopoverContent
+        container={portalContainer}
+        className="w-auto p-0 z-[10001]"
+        align="start"
+        sideOffset={4}
+      >
         <div className="flex">
           <Calendar
             mode="single"
@@ -87,7 +103,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
             disabled={minDate ? { before: startOfDay(minDate) } : undefined}
             className="p-3 pointer-events-auto"
           />
-          <div className="h-[300px] w-[120px] border-s border-border overflow-y-auto">
+          <div className="h-[300px] w-[120px] border-s border-border overflow-y-auto overscroll-contain">
             <div className="p-1">
               {TIME_SLOTS.map((slot) => {
                 const active = isActiveSlot(slot.hours, slot.minutes);
