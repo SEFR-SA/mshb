@@ -1,118 +1,149 @@
 
-## What I found
 
-There are 2 separate blockers:
+## Server Events System — Implementation Plan
 
-1. **The voice token backend is still down**
-   - Client logs show: `Failed to send a request to the Edge Function`
-   - Backend logs show the real cause: `livekit-token` is crashing at boot because `https://esm.sh/livekit-server-sdk@2.9.1` fails with the `Duration` export error.
-   - If this function cannot boot, users never receive a token, so there is no real LiveKit connection, no incoming audio, and no active-speaker events.
+### Overview
+Build a Discord-style server events system: database tables, storage bucket, creation wizard, sidebar indicator, and event browser with RSVP — across 4 phases.
 
-2. **Remote audio is not being managed correctly in the client**
-   - `src/hooks/useLiveKitRoom.ts` currently calls `track.attach()` for remote audio, but it does not keep or render the returned `<audio>` element anywhere.
-   - That means subscribed audio tracks are not reliably attached to persistent DOM audio elements.
+### Phase 1: Database & Storage Migration
 
-The green mic path is mostly already there:
-- `useLiveKitRoom.ts` already listens to `RoomEvent.ActiveSpeakersChanged`
-- `VoiceConnectionBar.tsx` already maps local speaking state into `voice_channel_participants.is_speaking`
-- `ChannelSidebar.tsx` already renders the green mic from `p.is_speaking`
+**Migration file** via migration tool:
 
-So I would **not** refactor the whole architecture. I would fix the broken connection first, then make the audio attachment and speaking-state propagation reliable.
+```sql
+-- Enums
+CREATE TYPE public.event_location_type AS ENUM ('voice', 'external');
+CREATE TYPE public.event_status AS ENUM ('scheduled', 'active', 'completed', 'canceled');
 
-## Implementation plan
+-- server_events table
+CREATE TABLE public.server_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  server_id uuid NOT NULL REFERENCES public.servers(id) ON DELETE CASCADE,
+  creator_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  start_time timestamptz NOT NULL,
+  end_time timestamptz,
+  location_type event_location_type NOT NULL DEFAULT 'voice',
+  channel_id uuid REFERENCES public.channels(id) ON DELETE SET NULL,
+  external_location text,
+  cover_image_url text,
+  status event_status NOT NULL DEFAULT 'scheduled',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
-### 1. Repair the token backend
-**File:** `supabase/functions/livekit-token/index.ts`
+-- event_rsvps table
+CREATE TABLE public.event_rsvps (
+  event_id uuid NOT NULL REFERENCES public.server_events(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (event_id, user_id)
+);
 
-- Replace the current broken `esm.sh` `livekit-server-sdk` import with an edge-runtime-safe import approach.
-- Keep the existing token payload, permission checks, room naming, and grants exactly as they are.
-- Before redeploying, verify the backend still has the required LiveKit secrets:
-  - `LIVEKIT_API_KEY`
-  - `LIVEKIT_API_SECRET`
-  - `LIVEKIT_WS_URL`
+-- RLS
+ALTER TABLE public.server_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_rsvps ENABLE ROW LEVEL SECURITY;
 
-Why this matters:
-- Right now the function never boots, so the rest of the voice stack cannot work at all.
+-- View: server members can see events
+CREATE POLICY "Members can view events" ON public.server_events
+  FOR SELECT TO authenticated
+  USING (is_server_member(auth.uid(), server_id));
 
-### 2. Persist remote audio elements in the DOM
-**File:** `src/hooks/useLiveKitRoom.ts`
+-- Insert/Update/Delete: admins only
+CREATE POLICY "Admins can manage events" ON public.server_events
+  FOR ALL TO authenticated
+  USING (is_server_admin(auth.uid(), server_id))
+  WITH CHECK (is_server_admin(auth.uid(), server_id));
 
-Add a minimal audio element manager inside the hook:
+-- RSVPs: members can view
+CREATE POLICY "Members can view rsvps" ON public.event_rsvps
+  FOR SELECT TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.server_events e
+    WHERE e.id = event_id AND is_server_member(auth.uid(), e.server_id)
+  ));
 
-- Create a hidden audio container once for the room session.
-- Keep a `Map` of remote audio elements keyed by track SID (or participant identity + track SID).
-- On `RoomEvent.TrackSubscribed`:
-  - if the track is remote audio, create/reuse an `<audio autoPlay playsInline>` element
-  - call `track.attach(audioEl)`
-  - append it to the hidden container
-- On initial connect:
-  - walk existing remote participants and attach any already-published audio tracks the same way
-- On `RoomEvent.TrackUnsubscribed`:
-  - `track.detach(audioEl)`
-  - remove the `<audio>` element from the DOM
-  - delete it from the map
-- On disconnect/unmount:
-  - remove all managed audio elements and clear the map
+-- RSVPs: users manage their own
+CREATE POLICY "Users manage own rsvps" ON public.event_rsvps
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
 
-Why this matters:
-- This is the missing piece for “I can see them in channel but cannot hear them.”
+CREATE POLICY "Users delete own rsvps" ON public.event_rsvps
+  FOR DELETE TO authenticated USING (user_id = auth.uid());
 
-### 3. Make the speaking indicator update reliably even when realtime is flaky
-**File:** `src/components/server/VoiceConnectionBar.tsx`
+-- Realtime
+ALTER PUBLICATION supabase_realtime ADD TABLE public.server_events;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.event_rsvps;
 
-Keep the current DB-backed UI flow, but harden it:
+-- Storage bucket
+INSERT INTO storage.buckets (id, name, public) VALUES ('event_covers', 'event_covers', true);
 
-- Continue using `lk.activeSpeakers.has(user.id)` as the source for local speaking state
-- When `is_speaking` changes and the row is updated in `voice_channel_participants`, immediately dispatch the already-existing `voice-participants-changed` window event
-- Also force `is_speaking = false` during disconnect/cleanup so stale green mics do not linger
+-- Storage policies
+CREATE POLICY "Anyone can view event covers" ON storage.objects
+  FOR SELECT TO public USING (bucket_id = 'event_covers');
 
-Why this matters:
-- `ChannelSidebar.tsx` already listens for `voice-participants-changed` and refetches participants
-- Your logs show multiple Realtime `TIMED_OUT` / `CLOSED` events, so this gives the green mic a reliable fallback without refactoring the sidebar
+CREATE POLICY "Authenticated users can upload event covers" ON storage.objects
+  FOR INSERT TO authenticated WITH CHECK (bucket_id = 'event_covers');
 
-### 4. Leave the UI rendering layer mostly untouched
-**Files not expected to change:** `src/components/server/ChannelSidebar.tsx` unless a tiny follow-up is needed
-
-- The sidebar already renders:
-  - muted/deafened icons
-  - green mic from `p.is_speaking`
-- I would keep that as-is and feed it better data, instead of adding a new parallel state path
-
-## Files to modify
-
-1. `supabase/functions/livekit-token/index.ts`
-2. `src/hooks/useLiveKitRoom.ts`
-3. `src/components/server/VoiceConnectionBar.tsx`
-
-## Technical details
-
-```text
-Current flow
-Channel join -> fetch token -> connect room -> subscribe tracks -> audio should play
-                                      \
-                                       -> ActiveSpeakersChanged -> update DB -> sidebar refetch -> green mic
-
-Broken today
-livekit-token boot failure -> no token -> no room connection
-and
-remote audio attach() result is not persisted in DOM
-and
-speaking UI depends on flaky realtime without a fallback refetch trigger
+CREATE POLICY "Users can delete own event covers" ON storage.objects
+  FOR DELETE TO authenticated USING (bucket_id = 'event_covers');
 ```
 
-## Validation checklist after implementation
+### Phase 2: Creation Modal — `src/components/server/events/CreateEventModal.tsx`
 
-1. Join the same voice channel with 2 accounts
-2. Confirm `livekit-token` returns 200 and the room connects
-3. Confirm each user hears the other immediately after join
-4. Confirm the green mic appears while speaking and clears when silent
-5. Confirm leaving the channel removes audio cleanly and clears speaking state
+**State management**: A single `useState` object holds all form fields. A `step` state (1–3) controls the wizard.
 
-## Scope guard
+```text
+FormState = {
+  locationType: 'voice' | 'external'
+  channelId: string | null
+  externalLocation: string
+  title: string
+  description: string
+  startDate: Date
+  startTime: string
+  frequency: 'none' | 'weekly' | 'daily'  // future-proof but only 'none' for now
+  coverFile: File | null
+  coverPreview: string | null
+}
+```
 
-I will keep this tightly scoped:
-- no token/grant redesign
-- no permission logic changes
-- no voice UI redesign
-- no refactor of sidebar structure
-- only the backend token boot issue, remote audio DOM attachment, and reliable speaking-state propagation
+**Step 1 — Location**: Radio group (Voice Channel / Somewhere Else). If voice, show a `<Select>` of voice channels. If external, show a text input.
+
+**Step 2 — Event Info**: Title, date picker, time select, description textarea, cover image upload with preview and "Remove Image" button.
+
+**Step 3 — Review**: Render a preview card matching the Discord review screenshot. "Back", "Cancel", "Create Event" buttons. On submit: upload cover to `event_covers` bucket, insert into `server_events`.
+
+**Trigger**: Add a "Create Event" option to the server header dropdown in `ChannelSidebar.tsx` (visible to admins only). Opens the modal.
+
+### Phase 3: Sidebar Indicator — `src/components/server/events/EventSidebarIndicator.tsx`
+
+- Fetches count of `server_events` where `server_id = current` and `status IN ('scheduled', 'active')`.
+- Subscribes to realtime `postgres_changes` on `server_events` filtered by `server_id`.
+- Renders a small bar: calendar icon + "X Event(s)" text, clickable.
+- Placed in `ChannelSidebar.tsx` between the server header and the channel list (line ~978, before the `flex-1 overflow-y-auto` div content).
+- Only renders if count > 0.
+
+### Phase 4: Event Browser & RSVP — `src/components/server/events/EventBrowserModal.tsx`
+
+- Opens when clicking the sidebar indicator.
+- Header: calendar icon + "X Event(s)" + "Create Event" button (admin only).
+- Fetches all upcoming events with RSVP counts via a joined query.
+- **EventCard** component per event: cover image, title, time, location, description snippet, creator avatar/name, interested count.
+- **RSVP logic**: Check if current user has an `event_rsvps` row. Toggle insert/delete on click. Realtime subscription on `event_rsvps` filtered by event IDs updates counts live.
+- **Event detail view**: Clicking a card expands to full detail with tabs: "Event Info" and "X Interested" (list of users).
+- **Context menu** (admin): Edit Event, Cancel Event, Copy Event Link.
+
+### Files to create
+- `src/components/server/events/CreateEventModal.tsx`
+- `src/components/server/events/EventSidebarIndicator.tsx`
+- `src/components/server/events/EventBrowserModal.tsx`
+- `src/components/server/events/EventCard.tsx`
+
+### Files to modify
+- `src/components/server/ChannelSidebar.tsx` — Add EventSidebarIndicator + "Create Event" menu item
+- New migration via migration tool
+
+### Realtime strategy
+- `EventSidebarIndicator`: subscribes to `server_events` changes (INSERT/UPDATE/DELETE) filtered by `server_id` → refetches count.
+- `EventBrowserModal`: subscribes to `event_rsvps` changes → refetches RSVP counts for displayed events.
+- No separate subscription needed for the creation modal — it closes after submit and the indicator auto-updates.
+
