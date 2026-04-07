@@ -425,6 +425,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                   onNavigate={onNavigate}
                   onDropServer={(serverId) => handleDropOnFolder(folder.id, serverId)}
                   unreadMap={unreadMap}
+                  activeEventSet={activeEventSet}
                   onMarkFolderAsRead={() => Promise.all(folderServers.map((s) => handleMarkAsRead(s.id)))}
                 />
               );
