@@ -336,7 +336,10 @@ export function useLiveKitRoom({
       // TrackSubscribed only fires for tracks arriving after connect.
       room.remoteParticipants.forEach((participant) => {
         participant.audioTrackPublications.forEach((pub) => {
-          if (pub.track) pub.track.attach();
+          if (pub.track) {
+            const sid = pub.trackSid ?? `${participant.identity}-audio`;
+            attachRemoteAudio(pub.track, sid);
+          }
         });
       });
 
