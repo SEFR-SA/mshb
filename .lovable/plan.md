@@ -1,37 +1,71 @@
 
 
-## Chronological Validation for Event Date/Time Pickers
+## Event Cover Image Cropper — Implementation Plan
 
 ### Approach
 
-Two files need changes: the `DateTimePicker` component (to accept constraint props) and the `CreateEventModal` (to wire constraints and auto-correct).
+Create a new `ImageCropEditor` component file and integrate it into the existing cover image flow. No third-party packages — the pan/zoom/canvas math is straightforward for a fixed-aspect-ratio banner crop.
 
-### Step 1: Extend `DateTimePicker` API
+### New file: `src/components/server/events/ImageCropEditor.tsx`
 
-Add two optional props to `DateTimePickerProps`:
+A self-contained component that receives a raw image URL and returns a cropped `File` on "Apply".
 
+**Props:**
 ```typescript
-minDate?: Date;        // calendar days before this are disabled
-minTime?: Date;        // time slots before this are disabled (when same day)
+interface ImageCropEditorProps {
+  imageUrl: string;
+  onApply: (croppedFile: File) => void;
+  onCancel: () => void;
+}
 ```
 
-**Calendar**: Pass `disabled={{ before: startOfDay(minDate) }}` to the `Calendar` component.
+**Internal state:**
+- `zoom: number` — range 1.0 to 3.0, controlled by `<Slider />`
+- `position: { x: number, y: number }` — pixel offset from center, updated by drag
+- `isDragging: boolean` + `dragStart` ref for mouse/touch tracking
+- `imageSize: { naturalWidth, naturalHeight }` — loaded from the `<img>` element
 
-**Time list**: For each slot, if `minTime` is set and the currently selected date is the same day as `minTime`, disable slots where `(hours, minutes) <= minTime`'s time. Disabled slots get `opacity-50 pointer-events-none`.
+**UI layout** (matches the Discord screenshot):
+- Dark overlay container
+- Title: "Edit Image"
+- Visible crop window (fixed 16:9 or similar banner aspect ratio) with the image behind it, scaled by `zoom` and translated by `position`
+- Zoom slider row: small image icon — `<Slider />` — large image icon
+- "Reset" link (left), "Cancel" + "Apply" buttons (right)
 
-### Step 2: Wire constraints in `CreateEventModal`
+**Pan logic:**
+- `onMouseDown` / `onTouchStart` → set `isDragging`, record start coords
+- `onMouseMove` / `onTouchMove` → update `position` (clamped so image can't leave the crop window)
+- `onMouseUp` / `onTouchEnd` → clear `isDragging`
 
-Pass `minDate={form.startDateTime}` and `minTime={form.startDateTime}` to the **End DateTime** picker only. The Start picker remains unconstrained.
+**Canvas extraction (on "Apply"):**
+- Create an offscreen `<canvas>` matching desired output dimensions (e.g. 800×450 for 16:9)
+- Calculate the source rectangle from the image's natural dimensions based on current zoom and pan offset
+- `ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvasW, canvasH)`
+- `canvas.toBlob()` → wrap as `File` → call `onApply(file)`
 
-### Step 3: Auto-correction `useEffect`
+### Changes to `CreateEventModal.tsx`
 
-In `CreateEventModal`, add a `useEffect` watching `form.startDateTime`:
-- If `startDateTime` exists and `endDateTime` exists and `endDateTime <= startDateTime`, push `endDateTime` forward to match `startDateTime` (same datetime).
+**New state:**
+```typescript
+const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
+```
+
+**Modified `handleCoverSelect`:**
+Instead of saving directly to form, just set the raw URL:
+```typescript
+setCropImageUrl(URL.createObjectURL(file));
+```
+
+**Conditional render:**
+When `cropImageUrl` is set, render `<ImageCropEditor>` in place of the current step content. On "Apply", receive the cropped file, save to form state (`coverFile` + `coverPreview`), clear `cropImageUrl`. On "Cancel", just clear `cropImageUrl`.
 
 ### Files
 
-| File | Change |
+| File | Action |
 |------|--------|
-| `src/components/ui/date-time-picker.tsx` | Add `minDate`/`minTime` props, disable calendar days and time slots |
-| `src/components/server/events/CreateEventModal.tsx` | Pass constraint props to end picker, add auto-correction useEffect |
+| `src/components/server/events/ImageCropEditor.tsx` | Create — crop editor component |
+| `src/components/server/events/CreateEventModal.tsx` | Edit — intercept file select, show crop editor |
+
+### What this does NOT touch
+- Date/time pickers, frequency dropdown, form submission logic, database schema, any other component
 
