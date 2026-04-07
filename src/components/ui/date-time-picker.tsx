@@ -1,5 +1,5 @@
 import * as React from "react";
-import { format } from "date-fns";
+import { format, startOfDay, isSameDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ interface DateTimePickerProps {
   value: Date | undefined;
   onChange: (date: Date | undefined) => void;
   placeholder?: string;
+  minDate?: Date;
+  minTime?: Date;
 }
 
 const TIME_SLOTS: { label: string; hours: number; minutes: number }[] = [];
