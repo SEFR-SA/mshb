@@ -6,10 +6,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Volume2, MapPin, Calendar, Upload, X, ArrowLeft } from "lucide-react";
+import { Volume2, MapPin, Upload, X, ArrowLeft } from "lucide-react";
 
 interface CreateEventModalProps {
   open: boolean;
@@ -28,10 +29,8 @@ interface FormState {
   externalLocation: string;
   title: string;
   description: string;
-  startDate: string;
-  startTime: string;
-  endDate: string;
-  endTime: string;
+  startDateTime: Date | undefined;
+  endDateTime: Date | undefined;
   coverFile: File | null;
   coverPreview: string | null;
 }
@@ -42,10 +41,8 @@ const initialForm: FormState = {
   externalLocation: "",
   title: "",
   description: "",
-  startDate: "",
-  startTime: "",
-  endDate: "",
-  endTime: "",
+  startDateTime: undefined,
+  endDateTime: undefined,
   coverFile: null,
   coverPreview: null,
 };
@@ -83,10 +80,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
   const canProceedStep1 =
     form.locationType === "voice" ? !!form.channelId : form.externalLocation.trim().length > 0;
 
-  const canProceedStep2 = form.title.trim().length > 0 && !!form.startDate && !!form.startTime;
+  const canProceedStep2 = form.title.trim().length > 0 && !!form.startDateTime;
 
   const handleSubmit = async () => {
-    if (!user) return;
+    if (!user || !form.startDateTime) return;
     setSubmitting(true);
     try {
       let coverUrl: string | null = null;
@@ -102,11 +99,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
         coverUrl = urlData.publicUrl;
       }
 
-      const startTime = new Date(`${form.startDate}T${form.startTime}`).toISOString();
-      const endTime =
-        form.endDate && form.endTime
-          ? new Date(`${form.endDate}T${form.endTime}`).toISOString()
-          : null;
+      const startTime = form.startDateTime.toISOString();
+      const endTime = form.endDateTime ? form.endDateTime.toISOString() : null;
 
       const { error } = await supabase.from("server_events").insert({
         server_id: serverId,
@@ -226,42 +220,22 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Start Date *</Label>
-                <Input
-                  type="date"
-                  value={form.startDate}
-                  onChange={(e) => updateForm({ startDate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Start Time *</Label>
-                <Input
-                  type="time"
-                  value={form.startTime}
-                  onChange={(e) => updateForm({ startTime: e.target.value })}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Start Date & Time *</Label>
+              <DateTimePicker
+                value={form.startDateTime}
+                onChange={(d) => updateForm({ startDateTime: d })}
+                placeholder="Select start date & time"
+              />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>End Date</Label>
-                <Input
-                  type="date"
-                  value={form.endDate}
-                  onChange={(e) => updateForm({ endDate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>End Time</Label>
-                <Input
-                  type="time"
-                  value={form.endTime}
-                  onChange={(e) => updateForm({ endTime: e.target.value })}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>End Date & Time</Label>
+              <DateTimePicker
+                value={form.endDateTime}
+                onChange={(d) => updateForm({ endDateTime: d })}
+                placeholder="Select end date & time"
+              />
             </div>
 
             <div className="space-y-2">
@@ -314,14 +288,14 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ open, onOpenChange,
               )}
               <div className="p-4 space-y-2">
                 <p className="text-xs font-semibold text-primary uppercase">
-                  {form.startDate && form.startTime
-                    ? new Date(`${form.startDate}T${form.startTime}`).toLocaleDateString(undefined, {
+                  {form.startDateTime
+                    ? form.startDateTime.toLocaleDateString(undefined, {
                         weekday: "long",
                         month: "long",
                         day: "numeric",
                       }) +
                       " — " +
-                      new Date(`${form.startDate}T${form.startTime}`).toLocaleTimeString(undefined, {
+                      form.startDateTime.toLocaleTimeString(undefined, {
                         hour: "2-digit",
                         minute: "2-digit",
                       })
