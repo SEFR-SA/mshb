@@ -31,6 +31,7 @@ interface FormState {
   description: string;
   startDateTime: Date | undefined;
   endDateTime: Date | undefined;
+  frequency: string;
   coverFile: File | null;
   coverPreview: string | null;
 }
