@@ -1,50 +1,39 @@
 
 
-## Make FreeStuff Bot Opt-In
+## Fix Plan: Build Error + Voice Channel Bugs
 
-### What we're building
-A toggle that lets server owners enable/disable the FreeStuff bot. Disabled by default. When disabled: bot doesn't post, bot doesn't appear in the member list, and bot's `server_members` row is removed.
+### Root Cause
 
-### Step 1: Database Migration
+The `livekit-token` edge function has **4 TypeScript errors** (TS2739) that prevent it from deploying. The Supabase JS client's `.then()` returns `PromiseLike`, not a full `Promise`. Without a working token endpoint, users cannot connect to LiveKit rooms at all — which explains both the missing speaking indicators and the missing audio.
 
-Add `free_games_bot_enabled` boolean column (default `false`) to `servers`:
+The speaking indicator logic (`ActiveSpeakersChanged` → DB write → realtime refetch) and audio attachment logic (`TrackSubscribed` → `track.attach()`) in `useLiveKitRoom.ts` and `VoiceConnectionBar.tsx` are **already correctly implemented**. They just never execute because the connection fails at the token stage.
 
-```sql
-ALTER TABLE public.servers ADD COLUMN IF NOT EXISTS free_games_bot_enabled boolean NOT NULL DEFAULT false;
-```
+### Fix: `supabase/functions/livekit-token/index.ts`
 
-### Step 2: Update EngagementTab.tsx
+Wrap each of the 4 reassigned promises in `Promise.resolve(...)` to coerce `PromiseLike` into a proper `Promise`:
 
-In the "FREE GAMES BOT" section (line 412):
-- Add state `freeGamesBotEnabled` (loaded from `free_games_bot_enabled` in the existing query at line 82)
-- Add a `<Switch>` toggle labeled "Enable Mshb FreeStuff Bot" above the channel selector
-- When toggled ON: update `free_games_bot_enabled = true` and upsert bot into `server_members` (user_id = `00000000-0000-0000-0000-000000000001`, role = `bot`)
-- When toggled OFF: update `free_games_bot_enabled = false`, clear `free_games_channel_id = null`, and delete the bot's `server_members` row
-- Hide the channel selector when the toggle is OFF
-- Add the new column to the load query (line 82)
-
-### Step 3: Update ServerMemberList.tsx
-
-The bot appears because it has a `server_members` row with `role = "bot"`. Since Step 2 removes that row when disabled, no changes needed here — the bot simply won't appear in the member query results.
-
-However, as a safety net: fetch `free_games_bot_enabled` from the server, and filter out bot members with `user_id === BOT_USER_ID` when the flag is false.
-
-### Step 4: Update Edge Function
-
-In `free-games-bot/index.ts` (line 102-105), add `.eq("free_games_bot_enabled", true)` to the server query:
-
+**Line 83** — `boostPromise`:
 ```typescript
-const { data: servers } = await service
-  .from("servers")
-  .select("id, free_games_channel_id")
-  .not("free_games_channel_id", "is", null)
-  .eq("free_games_bot_enabled", true);
+boostPromise = Promise.resolve(supabase
+  .from("channels")
+  .select("server_id")
+  ...
+  .then(...));
 ```
 
-Then redeploy the edge function.
+**Lines 99, 107, 115** — `connectPromise`, `speakPromise`, `videoPromise`:
+```typescript
+connectPromise = Promise.resolve(serviceClient
+  .rpc(...)
+  .then(({ data }) => data ?? true));
+```
 
-### Files to modify
-- New migration — add `free_games_bot_enabled` column
-- `src/components/server/settings/EngagementTab.tsx` — toggle UI + bot member management
-- `src/components/server/ServerMemberList.tsx` — safety filter for bot visibility
-- `supabase/functions/free-games-bot/index.ts` — add filter condition
+Same pattern for all three. This is a one-line wrapper on each assignment — no logic changes.
+
+### Files Modified
+- `supabase/functions/livekit-token/index.ts` — wrap 4 promise assignments in `Promise.resolve()`
+
+### What This Does NOT Touch
+- No changes to `useLiveKitRoom.ts`, `VoiceConnectionBar.tsx`, `ChannelSidebar.tsx`, or any other file
+- No changes to connection parameters, token generation logic, or architecture
+
