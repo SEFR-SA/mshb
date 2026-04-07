@@ -1526,6 +1526,14 @@ const ChannelSidebar = ({ serverId, activeChannelId, onChannelSelect, onVoiceCha
 
       <ServerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} serverId={serverId} />
       <InviteModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} serverId={serverId} serverName={server?.name || ""} />
+      <CreateEventModal open={createEventOpen} onOpenChange={setCreateEventOpen} serverId={serverId} />
+      <EventBrowserModal
+        open={eventBrowserOpen}
+        onOpenChange={setEventBrowserOpen}
+        serverId={serverId}
+        isAdmin={isAdmin}
+        onCreateEvent={() => setCreateEventOpen(true)}
+      />
     </>
   );
 };
