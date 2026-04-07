@@ -29,9 +29,11 @@ for (let h = 0; h < 24; h++) {
 
 export function DateTimePicker({ value, onChange, placeholder = "Select date & time", minDate, minTime }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
-  const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
   const activeRef = React.useRef<HTMLButtonElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
+
+  const portalContainer =
+    (triggerRef.current?.closest("[role='dialog'], [data-vaul-drawer]") as HTMLElement | null) ?? undefined;
 
   React.useEffect(() => {
     if (open) {
@@ -39,13 +41,12 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
     }
   }, [open]);
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) {
-      setPortalContainer(
-        (triggerRef.current?.closest("[role='dialog'], [data-vaul-drawer]") as HTMLElement | null) ?? null,
-      );
-    }
-    setOpen(nextOpen);
+  const handleTimeListWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    const container = event.currentTarget;
+    if (container.scrollHeight <= container.clientHeight) return;
+    event.preventDefault();
+    event.stopPropagation();
+    container.scrollTop += event.deltaY;
   };
 
   const handleDaySelect = (day: Date | undefined) => {
@@ -75,7 +76,7 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
   };
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           ref={triggerRef}
@@ -103,7 +104,11 @@ export function DateTimePicker({ value, onChange, placeholder = "Select date & t
             disabled={minDate ? { before: startOfDay(minDate) } : undefined}
             className="p-3 pointer-events-auto"
           />
-          <div className="h-[300px] w-[120px] border-s border-border overflow-y-auto overscroll-contain">
+          <div
+            className="h-[300px] w-[120px] border-s border-border overflow-y-auto overscroll-contain"
+            onWheelCapture={handleTimeListWheel}
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
             <div className="p-1">
               {TIME_SLOTS.map((slot) => {
                 const active = isActiveSlot(slot.hours, slot.minutes);
