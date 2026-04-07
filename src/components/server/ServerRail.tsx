@@ -99,6 +99,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
   const serverIds = servers.map((s) => s.id);
   const unreadMap = useServerUnread(serverIds);
   const voiceActivityMap = useServerVoiceActivity(serverIds);
+  const activeEventSet = useServerActiveEvents(serverIds);
   const { unreadDMs } = useUnreadDMs();
   const { prefsMap: notifPrefsMap, setLevel: setNotifLevel } = useServerNotificationPrefs(serverIds);
 
