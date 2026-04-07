@@ -180,7 +180,7 @@ const EventBrowserModal: React.FC<EventBrowserModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pr-8">
             <DialogTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
               Events
