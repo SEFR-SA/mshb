@@ -291,15 +291,21 @@ export function useLiveKitRoom({
         syncCameras();
       });
 
-      room.on(RoomEvent.TrackSubscribed, (track) => {
-        if (track.kind === Track.Kind.Audio) track.attach();
+      room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+        if (track.kind === Track.Kind.Audio && participant instanceof RemoteParticipant) {
+          const sid = publication.trackSid ?? `${participant.identity}-audio`;
+          attachRemoteAudio(track, sid);
+        }
         syncParticipants();
         syncScreenShares();
         syncCameras();
       });
 
-      room.on(RoomEvent.TrackUnsubscribed, (track) => {
-        if (track.kind === Track.Kind.Audio) track.detach();
+      room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
+        if (track.kind === Track.Kind.Audio) {
+          const sid = publication.trackSid ?? `${(participant as any)?.identity}-audio`;
+          detachRemoteAudio(track, sid);
+        }
         syncParticipants();
         syncScreenShares();
         syncCameras();

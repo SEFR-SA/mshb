@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { AccessToken } from "https://esm.sh/livekit-server-sdk@2.9.1";
+import { AccessToken } from "npm:livekit-server-sdk@2.9.1";
 import { isRateLimited, rateLimitResponse } from "../_shared/rateLimiter.ts";
 
 const corsHeaders = {
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
         .select("server_id")
         .eq("id", channelId)
         .single()
-        .then(async ({ data: channel }) => {
+        .then(async ({ data: channel }: any) => {
           if (!channel?.server_id) return 0;
           const { data: server } = await supabase
             .from("servers")
@@ -95,14 +95,13 @@ Deno.serve(async (req) => {
           return server?.boost_level ?? 0;
         }));
 
-      // Check connect, speak, video permissions via service client (skips defaults for restricted channels)
       connectPromise = Promise.resolve(serviceClient
         .rpc("has_channel_permission" as any, {
           _user_id: userId,
           _channel_id: channelId,
           _permission: "connect",
         } as any)
-        .then(({ data }) => data ?? true));
+        .then(({ data }: any) => data ?? true));
 
       speakPromise = Promise.resolve(serviceClient
         .rpc("has_channel_permission" as any, {
@@ -110,7 +109,7 @@ Deno.serve(async (req) => {
           _channel_id: channelId,
           _permission: "speak",
         } as any)
-        .then(({ data }) => data ?? true));
+        .then(({ data }: any) => data ?? true));
 
       videoPromise = Promise.resolve(serviceClient
         .rpc("has_channel_permission" as any, {
@@ -118,7 +117,7 @@ Deno.serve(async (req) => {
           _channel_id: channelId,
           _permission: "video",
         } as any)
-        .then(({ data }) => data ?? true));
+        .then(({ data }: any) => data ?? true));
     }
 
     const [{ data: profile }, boostLevel, canConnect, canSpeak, canVideo] =
