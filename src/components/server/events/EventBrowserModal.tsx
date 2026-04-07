@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Calendar, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -201,7 +201,7 @@ const EventBrowserModal: React.FC<EventBrowserModalProps> = ({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <div className="flex-1 -mx-6 px-6 overflow-y-auto">
           {loading ? (
             <div className="space-y-3">
               {[1, 2].map((i) => (
@@ -227,7 +227,7 @@ const EventBrowserModal: React.FC<EventBrowserModalProps> = ({
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
