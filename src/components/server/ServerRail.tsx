@@ -480,7 +480,7 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                               </AvatarFallback>
                             </Avatar>
                           </NavLink>
-                          {voiceActivity?.hasVoice && (
+                          {voiceActivity?.hasVoice ? (
                             <div className="absolute -bottom-0.5 -end-0.5 bg-green-500 rounded-full p-0.5 z-10">
                               {voiceActivity.hasScreenShare ? (
                                 <Monitor className="h-2.5 w-2.5 text-white" />
@@ -488,7 +488,11 @@ const ServerRail = ({ onNavigate }: ServerRailProps) => {
                                 <Volume2 className="h-2.5 w-2.5 text-white" />
                               )}
                             </div>
-                          )}
+                          ) : activeEventSet.has(s.id) ? (
+                            <div className="absolute -bottom-0.5 -end-0.5 bg-primary rounded-full p-0.5 z-10">
+                              <Calendar className="h-2.5 w-2.5 text-primary-foreground" />
+                            </div>
+                          ) : null}
                         </div>
                       </TooltipTrigger>
                     </ContextMenuTrigger>
