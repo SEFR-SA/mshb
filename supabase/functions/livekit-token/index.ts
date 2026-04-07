@@ -104,13 +104,13 @@ Deno.serve(async (req) => {
         } as any)
         .then(({ data }) => data ?? true));
 
-      speakPromise = serviceClient
+      speakPromise = Promise.resolve(serviceClient
         .rpc("has_channel_permission" as any, {
           _user_id: userId,
           _channel_id: channelId,
           _permission: "speak",
         } as any)
-        .then(({ data }) => data ?? true);
+        .then(({ data }) => data ?? true));
 
       videoPromise = serviceClient
         .rpc("has_channel_permission" as any, {
